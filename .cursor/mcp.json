@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "TalkToFigma": {
+      "command": "bunx",
+      "args": [
+        "cursor-talk-to-figma-mcp@latest"
+      ]
+    },
+    "gradle-mcp-server": {
+      "command": "/Users/sdu/mcp-servers/gradle-mcp-server/run-gradle-mcp.sh",
+      "args": [],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+
+
+
+
+
+

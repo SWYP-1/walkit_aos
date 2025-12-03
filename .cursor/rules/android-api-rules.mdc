@@ -1,0 +1,446 @@
+---
+description: "Core rules for targeting modern Android APIs (15, 14, etc.) as of 2025. Enforce these rules strictly for AI code generation and developer reviews."
+globs: 
+alwaysApply: true
+---
+
+# Core Rules for Modern Android API Compliance (2025)
+
+This document defines essential development rules for targeting recent Android versions, including Android 15 (API 35). These rules must be strictly followed during AI code generation and developer reviews.
+
+---
+
+## Target SDK Requirements (2025 Updated)
+
+### Play Store Requirements
+
+- **New apps**: MUST target Android 15 (API level 35) as of August 31, 2025.
+- **Existing apps**: MUST target Android 14 (API level 34) minimum.
+- Android 15 blocks installations of apps targeting below API 24.
+- Apps with `targetSdk < 24` will fail installation with `INSTALL_FAILED_DEPRECATED_SDK_VERSION`.
+
+---
+
+## Android 15 (API 35) - Mandatory Changes
+
+### 🚨 Edge-to-Edge Enforcement (CRITICAL)
+
+**Why this change?**: To provide a modern, immersive UI by default for all applications.
+**Default behavior**: All apps targeting Android 15 are rendered edge-to-edge by default. This is a breaking change.
+
+```kotlin
+// Apps are edge-to-edge by DEFAULT.
+// You MUST handle window insets manually to prevent UI from being obscured by system bars.
+
+// ✅ Correct (Views): Apply insets manually
+WindowCompat.setDecorFitsSystemWindows(window, false)
+ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
+    val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+    view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+    insets
+}
+
+// ✅ Correct (Compose): Use Material 3 Scaffold for automatic inset handling
+Scaffold { paddingValues ->
+    // Content within the Scaffold automatically receives the correct padding.
+}
+
+// ✅ For custom composables, apply insets manually
+WindowInsets.safeDrawing.asPaddingValues()
+```
+
+**Key Changes:**
+
+- **Status bar**: Transparent by default.
+- **Navigation bar**: 80% opacity for 3-button mode, fully transparent for gesture navigation.
+- **Display cutout**: `LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS` is enforced.
+- `setNavigationBarColor()` and `setStatusBarColor()` are **DEPRECATED**.
+
+**Test Checklist:**
+
+- ✅ Check all screens, especially low-traffic ones (e.g., onboarding, settings).
+- ✅ Test with both 3-button AND gesture navigation modes.
+- ✅ Test on devices with various display cutouts (notches, punch-holes).
+- ✅ Verify Material 2 components, as they do not automatically handle insets.
+
+---
+
+### 🔒 Foreground Service Changes
+
+#### 1. DataSync & MediaProcessing Timeout (6-Hour Limit)
+
+```kotlin
+// dataSync and mediaProcessing services have a 6-hour cumulative timeout within any 24-hour period.
+override fun onTimeout(type: Int, serviceFgs: Int) {
+    // You MUST implement this method and call stopSelf() within seconds of the callback.
+    // Failure to do so will cause an ANR (Application Not Responding) and the system
+    // will throw a RemoteServiceException, crashing the app.
+    stopSelf()
+}
+
+// ❌ WRONG: Starting dataSync without considering the timeout.
+startForeground(notificationId, notification, FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+
+// ✅ CORRECT: Use WorkManager for long-running or deferrable tasks.
+val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+    .setConstraints(Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build())
+    .build()
+WorkManager.getInstance(context).enqueue(uploadWorkRequest)
+```
+
+**Testing:**
+
+```bash
+# Enable timeout testing for your app
+adb shell am compat enable FGS_INTRODUCE_TIME_LIMITS your.package.name
+
+# Adjust timeout for easier testing (e.g., to 60 seconds)
+adb shell device_config put activity_manager data_sync_fgs_timeout_duration 60000
+```
+
+#### 2. BOOT_COMPLETED Restrictions
+
+You cannot launch the following foreground service types from a `BOOT_COMPLETED` broadcast receiver:
+- `dataSync`
+- `camera`
+- `mediaPlayback`
+- `phoneCall`
+- `mediaProjection`
+- `microphone`
+
+```kotlin
+// ❌ WRONG: This will throw ForegroundServiceStartNotAllowedException on Android 15+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            val serviceIntent = Intent(context, DataSyncService::class.java)
+            context.startForegroundService(serviceIntent) // ❌ FAILS!
+        }
+    }
+}
+
+// ✅ CORRECT: Use WorkManager to schedule the work or start it later.
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            WorkManager.getInstance(context)
+                .enqueue(OneTimeWorkRequestBuilder<SyncWorker>().build())
+        }
+    }
+}
+```
+
+---
+
+### 📵 Do Not Disturb (DND) Changes
+
+```kotlin
+// ❌ DEPRECATED: You can no longer change the global DND state directly.
+notificationManager.setInterruptionFilter(INTERRUPTION_FILTER_ALL) // Has no effect!
+
+// ✅ CORRECT: Contribute an AutomaticZenRule for the system to manage.
+val rule = AutomaticZenRule(
+    "My App Rule",
+    null,
+    ComponentName(context, MyConditionProviderService::class.java),
+    NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+    true
+)
+notificationManager.addAutomaticZenRule(rule)
+```
+
+---
+
+### 🔐 Security Changes
+
+#### Secured Background Activity Launches
+
+```kotlin
+// PendingIntent creators now BLOCK background activity launches by default for security.
+val pendingIntent = PendingIntent.getActivity(
+    context,
+    requestCode,
+    intent,
+    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    // Background activity launch is BLOCKED unless explicitly allowed.
+)
+
+// To allow background activity launch (use with caution):
+val options = ActivityOptions.makeBasic()
+    .setPendingIntentBackgroundActivityStartMode(
+        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+    )
+```
+
+---
+
+## Android 14 (API 34) - Critical Changes
+
+### 🚨 Foreground Service Type MANDATORY
+
+```xml
+<!-- You MUST declare a specific foregroundServiceType in the manifest. -->
+<service 
+    android:name=".LocationService"
+    android:foregroundServiceType="location"
+    android:exported="false" />
+
+<!-- Available types: -->
+<!-- camera, connectedDevice, dataSync, health, location, -->
+<!-- mediaPlayback, mediaProjection, microphone, phoneCall, -->
+<!-- remoteMessaging, shortService, specialUse, systemExempted -->
+
+<!-- ❌ WRONG: No type specified. Throws SecurityException on start. -->
+<service android:name=".MyService" android:exported="false" />
+```
+
+```kotlin
+// When starting the service, you MUST specify the matching type.
+startForeground(
+    NOTIFICATION_ID,
+    notification,
+    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+)
+```
+
+---
+
+### 📸 Selected Photos Access (Partial Media Permissions)
+
+```xml
+<!-- Android 14+ uses granular media permissions. -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+<uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+
+<!-- ❌ DEPRECATED for API 33+: -->
+<!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> -->
+```
+
+**Tip: Requesting Additional Photos**
+If the user previously selected only a few media items, you can re-request the `READ_MEDIA_VISUAL_USER_SELECTED` permission to give them an opportunity to select more. The system will show the photo picker UI again.
+
+---
+
+### 🔔 USE_FULL_SCREEN_INTENT Restricted
+
+```xml
+<!-- This permission is now restricted to calling and alarm apps only. -->
+<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+```
+
+```kotlin
+// Check if the app has permission before using it.
+if (notificationManager.canUseFullScreenIntent()) {
+    // Permission granted, you can use full-screen intents.
+} else {
+    // Permission not granted, prompt the user to grant it in settings.
+    val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+    intent.data = Uri.parse("package:$packageName")
+    startActivity(intent)
+}
+```
+
+---
+
+### 📡 Context-registered Receiver Flags
+
+```kotlin
+// ❌ WRONG: No export flag specified. Will crash on Android 14+.
+registerReceiver(myReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+// ✅ CORRECT: Explicitly specify EXPORTED or NOT_EXPORTED.
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+    registerReceiver(
+        myReceiver,
+        IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+        Context.RECEIVER_NOT_EXPORTED // For internal-only receivers
+    )
+}
+```
+
+---
+
+## Android 13 (API 33) - Key Changes
+
+### 🔔 POST_NOTIFICATIONS Permission
+
+```xml
+<!-- Mandatory permission for sending notifications on Android 13+. -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+```
+
+```kotlin
+// A runtime permission is now required to post notifications.
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+```
+
+---
+
+## Android 12 (API 31) - Critical Changes
+
+### 🔔 PendingIntent Mutability MANDATORY
+
+```kotlin
+// ❌ WRONG: No mutability flag. This will crash on API 31+.
+val pendingIntent = PendingIntent.getActivity(
+    context,
+    requestCode,
+    intent,
+    PendingIntent.FLAG_UPDATE_CURRENT // Missing FLAG_IMMUTABLE or FLAG_MUTABLE!
+)
+
+// ✅ CORRECT: Always specify FLAG_IMMUTABLE for security unless mutability is required.
+val pendingIntent = PendingIntent.getActivity(
+    context,
+    requestCode,
+    intent,
+    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+)
+```
+
+---
+
+### ⏰ Exact Alarms Permission
+
+```xml
+<!-- Required for apps that need to schedule exact alarms. -->
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+```
+
+```kotlin
+// Check for permission before scheduling exact alarms.
+val alarmManager = getSystemService(AlarmManager::class.java)
+
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    if (!alarmManager.canScheduleExactAlarms()) {
+        // Permission not granted, redirect user to settings.
+        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+        startActivity(intent)
+        return
+    }
+}
+
+alarmManager.setExactAndAllowWhileIdle(
+    AlarmManager.RTC_WAKEUP,
+    triggerTime,
+    pendingIntent
+)
+```
+
+---
+
+### 📱 Granular Bluetooth Permissions
+
+```xml
+<!-- Android 12+ requires separate, granular bluetooth permissions. -->
+<!-- BLUETOOTH_SCAN: 블루투스 스캔 결과를 위치 정보 파악에 사용하지 않음을 명시합니다. -->
+<!-- 이 플래그가 없다면, ACCESS_FINE_LOCATION 권한도 함께 요청해야 합니다. -->
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+    android:usesPermissionFlags="neverForLocation" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+<!-- Only needed if you derive physical location from Bluetooth beacons. -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+```
+
+---
+
+## Android 11 (API 30) - Key Changes
+
+### 📂 Scoped Storage Enforced
+
+```kotlin
+// ❌ WRONG: Direct access to public storage directories is no longer allowed.
+File(Environment.getExternalStorageDirectory(), "myfile.txt")
+
+// ✅ CORRECT (App-specific files): Use the app-specific directory.
+val appSpecificDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+File(appSpecificDir, "myfile.txt")
+
+// ✅ CORRECT (Shared media): Use the MediaStore API.
+val contentValues = ContentValues().apply {
+    put(MediaStore.MediaColumns.DISPLAY_NAME, "photo.jpg")
+    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+}
+val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+// ✅ CORRECT (User-selected files): Use the Storage Access Framework (SAF).
+val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+    type = "*/*"
+    addCategory(Intent.CATEGORY_OPENABLE)
+}
+startActivityForResult(intent, OPEN_DOCUMENT_REQUEST_CODE)
+```
+
+---
+
+## Android 9 (API 28) - Key Changes
+
+### 🔒 Cleartext HTTP Blocked by Default
+
+```xml
+<!-- res/xml/network_security_config.xml -->
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext only for specific legacy domains if absolutely necessary. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">legacy-api.example.com</domain>
+    </domain-config>
+</network-security-config>
+```
+
+```xml
+<!-- Reference the config in your AndroidManifest.xml -->
+<application
+    android:networkSecurityConfig="@xml/network_security_config">
+</application>
+```
+
+---
+
+## General Best Practices
+
+### ✅ Always Do:
+
+1.  **Specify API levels clearly** in `build.gradle.kts`:
+    ```kotlin
+    android {
+        compileSdk = 35
+        defaultConfig {
+            minSdk = 24
+            targetSdk = 35
+        }
+    }
+    ```
+2.  **Use AndroidX and Jetpack libraries**, as they handle many compatibility issues automatically.
+3.  **Test on multiple API levels**, especially `targetSdk`, `targetSdk-1`, and `minSdk`.
+4.  **Heed Android Studio lint warnings**, as they catch many compatibility and deprecation issues early.
+5.  **Implement proper error handling** for permission denials and feature unavailability.
+6.  **Use `BuildCompat` for pre-release SDKs**: When testing against unreleased SDKs, use `BuildCompat.isAtLeast...()` for reliable version checks.
+    ```kotlin
+    // Example: Check for Android 15 (Vanilla Ice Cream) during its preview phase
+    if (BuildCompat.isAtLeastV()) {
+        // Code specific to Android 15 developer preview/beta
+    }
+    ```
+
+### ❌ Never Do:
+
+1.  **Never assume permissions are granted**; always perform runtime checks.
+2.  **Never use `file://` URIs** to share files with other apps; always use `FileProvider` and `content://` URIs.
+3.  **Never omit PendingIntent mutability flags** on API 31 and higher.
+4.  **Never ignore deprecation warnings**; they are signals for upcoming breaking changes.
+5.  **Never hardcode API level integers** for version checks; always use `Build.VERSION.SDK_INT` and the named constants from `Build.VERSION_CODES`.
