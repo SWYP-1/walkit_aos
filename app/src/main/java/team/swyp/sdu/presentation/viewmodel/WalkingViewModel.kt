@@ -48,6 +48,10 @@ class WalkingViewModel
         private val _uiState = MutableStateFlow<WalkingUiState>(WalkingUiState.Initial)
         val uiState: StateFlow<WalkingUiState> = _uiState.asStateFlow()
 
+        // Location 리스트를 StateFlow로 노출 (Shared ViewModel을 위한)
+        private val _locations = MutableStateFlow<List<LocationPoint>>(emptyList())
+        val locations: StateFlow<List<LocationPoint>> = _locations.asStateFlow()
+
         private var currentSession: WalkingSession? = null
         private val locationPoints = mutableListOf<LocationPoint>()
         private var stepCountJob: Job? = null
@@ -100,6 +104,7 @@ class WalkingViewModel
             val startTime = System.currentTimeMillis()
             currentSession = WalkingSession(startTime = startTime)
             locationPoints.clear()
+            _locations.value = emptyList()
 
             stepCounterManager.startTracking()
             startLocationTracking()
@@ -291,6 +296,9 @@ class WalkingViewModel
                     primaryActivity = primaryActivity,
                 )
 
+            // Location 리스트를 StateFlow에 저장 (Shared ViewModel을 위한)
+            _locations.value = locationPointsFromService
+
             // 활동 상태 추적 중지
             activityRecognitionManager.stopTracking()
 
@@ -348,7 +356,11 @@ class WalkingViewModel
                     ).apply {
                         action = LocationTrackingService.ACTION_STOP_TRACKING
                     }
-            getApplication<Application>().startForegroundService(intent)
+            // 서비스를 중지할 때는 startService()를 사용합니다.
+            // startForegroundService()를 사용하면 서비스가 startForeground()를 호출해야 하는데,
+            // ACTION_STOP_TRACKING은 서비스를 중지하는 액션이므로 startForeground()를 호출하지 않아 오류가 발생합니다.
+            // startService()는 일반 서비스로 시작하므로 startForeground()를 호출할 필요가 없습니다.
+            getApplication<Application>().startService(intent)
         }
 
         /**
@@ -1008,6 +1020,7 @@ class WalkingViewModel
             // 상태 초기화
             currentSession = null
             locationPoints.clear()
+            _locations.value = emptyList()
             activityStatsList.clear()
             lastActivityState = null
             lastActivityChangeTime = 0L
@@ -1063,6 +1076,7 @@ class WalkingViewModel
 
                                     if (!exists) {
                                         locationPoints.add(newPoint)
+                                        _locations.value = locationPoints.toList()
                                     }
                                 }
 

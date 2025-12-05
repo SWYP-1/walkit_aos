@@ -48,6 +48,11 @@ fun MainScreen(
                     onClick = { selectedTabIndex = 1 },
                     text = { Text("달린 기록") },
                 )
+                Tab(
+                    selected = selectedTabIndex == 2,
+                    onClick = { selectedTabIndex = 2 },
+                    text = { Text("캘린더") },
+                )
             }
         },
     ) { paddingValues ->
@@ -75,6 +80,15 @@ fun MainScreen(
                 1 -> {
                     // 달린 기록 리스트 탭
                     WalkingSessionListScreen(
+                        onNavigateToRouteDetail = { locations ->
+                            navController.navigate(Screen.RouteDetail.createRoute(locations))
+                        },
+                    )
+                }
+
+                2 -> {
+                    // 캘린더 탭
+                    CalendarScreen(
                         onNavigateToRouteDetail = { locations ->
                             navController.navigate(Screen.RouteDetail.createRoute(locations))
                         },
