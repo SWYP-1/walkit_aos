@@ -5,6 +5,10 @@ alwaysApply: true
 ---
 # Dependency Management Guide
 
+**관련 규칙**:
+- 보안: [security-rule.mdc](mdc:.cursor/rules/security-rule.mdc) - API 키, 자격 증명 관리
+- 프로젝트 구조: [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc) - 모듈 구조
+
 ## Core Libraries
 - Jetpack Compose: 1.5.0 or higher
 - Kotlin: 2.0.0 or higher

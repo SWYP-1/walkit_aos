@@ -1,0 +1,161 @@
+---
+description: "Offline-First Sync Strategy Rules for Walking Session Records Only"
+globs: "**/*WalkingSession*.kt,**/WalkingViewModel.kt"
+alwaysApply: false
+---
+# Sync Strategy Rules
+
+**Note**: Uses Result type from [result-handling-rules.mdc](mdc:.cursor/rules/result-handling-rules.mdc) and coroutines from [coroutine-rules.mdc](mdc:.cursor/rules/coroutine-rules.mdc)
+
+**적용 범위**: 산책 기록(WalkingSession) 관련 파일에만 적용됩니다.
+- `WalkingSessionRepository.kt` - 세션 저장 및 동기화 로직
+- `WalkingSessionEntity.kt` - 동기화 상태 필드 포함
+- `WalkingSessionDao.kt` - 동기화 관련 쿼리
+- `WalkingSessionMapper.kt` - 동기화 상태 매핑
+- `WalkingViewModel.kt` - 산책 종료 시 `saveSession()` 호출하는 부분만 해당
+
+## Entity with Sync Status
+```kotlin
+@Entity(tableName = "records")
+data class RecordEntity(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val content: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = false,
+    val syncAttempts: Int = 0
+)
+```
+
+## DAO with Sync Queries
+```kotlin
+@Dao
+interface RecordDao {
+    @Query("SELECT * FROM records ORDER BY timestamp DESC")
+    fun getAllRecords(): Flow<List<RecordEntity>>
+    
+    @Query("SELECT * FROM records WHERE isSynced = 0 AND syncAttempts < 3")
+    suspend fun getUnsyncedRecords(): List<RecordEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(record: RecordEntity)
+    
+    @Query("UPDATE records SET isSynced = :isSynced WHERE id = :id")
+    suspend fun updateSyncStatus(id: String, isSynced: Boolean)
+    
+    @Query("UPDATE records SET syncAttempts = syncAttempts + 1 WHERE id = :id")
+    suspend fun incrementSyncAttempt(id: String)
+}
+```
+
+## Repository Pattern (Offline-First)
+```kotlin
+// Save: Local first, sync later
+suspend fun saveRecord(content: String): Result<RecordEntity> {
+    return try {
+        val record = RecordEntity(content = content, isSynced = false)
+        
+        // Step 1: Save to local immediately
+        dao.insert(record)
+        
+        // Step 2: Background sync (non-blocking)
+        syncToServer(record)
+        
+        Result.Success(record)
+    } catch (e: Exception) {
+        Result.Error(e, "저장 실패")
+    }
+}
+
+// Background sync
+private suspend fun syncToServer(record: RecordEntity) {
+    if (!networkHelper.isNetworkAvailable()) return
+    
+    try {
+        val response = api.uploadRecord(record.toDto())
+        if (response.isSuccessful) {
+            dao.updateSyncStatus(record.id, true)
+        } else {
+            dao.incrementSyncAttempt(record.id)
+        }
+    } catch (e: Exception) {
+        dao.incrementSyncAttempt(record.id)
+    }
+}
+
+// Sync all pending
+suspend fun syncPendingRecords(): Result<Int> {
+    if (!networkHelper.isNetworkAvailable()) {
+        return Result.Error(NetworkError.NoInternet, "네트워크 없음")
+    }
+    
+    val unsynced = dao.getUnsyncedRecords()
+    var success = 0
+    
+    unsynced.forEach { record ->
+        try {
+            if (api.uploadRecord(record.toDto()).isSuccessful) {
+                dao.updateSyncStatus(record.id, true)
+                success++
+            } else {
+                dao.incrementSyncAttempt(record.id)
+            }
+        } catch (e: Exception) {
+            dao.incrementSyncAttempt(record.id)
+        }
+    }
+    
+    return Result.Success(success)
+}
+```
+
+## ViewModel
+```kotlin
+val records: StateFlow<List<RecordEntity>> = repository.getRecords()
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+fun saveRecord(content: String) {
+    viewModelScope.launch {
+        _saveState.value = repository.saveRecord(content)
+    }
+}
+
+fun syncRecords() {
+    viewModelScope.launch {
+        repository.syncPendingRecords()
+    }
+}
+```
+
+## UI with Sync Status
+```kotlin
+@Composable
+fun RecordItem(record: RecordEntity) {
+    Row {
+        Text(record.content)
+        Icon(
+            imageVector = if (record.isSynced) Icons.Default.CheckCircle 
+                         else Icons.Default.CloudOff,
+            tint = if (record.isSynced) Color.Green else Color.Gray
+        )
+    }
+}
+
+// Sync status bar
+val unsyncedCount = records.count { !it.isSynced }
+if (unsyncedCount > 0) {
+    Row {
+        Text("동기화 안 됨: $unsyncedCount")
+        TextButton(onClick = { viewModel.syncRecords() }) {
+            Text("동기화")
+        }
+    }
+}
+```
+
+## Rules
+- Save to local FIRST (never block for server)
+- Sync in background (non-blocking)
+- Limit retry to 3 attempts
+- Show sync status to user
+- Provide manual sync button
+- Do NOT delete local data if sync fails

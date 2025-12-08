@@ -1,13 +1,9 @@
 ---
-description: "Comprehensive UI System Guide for Android Jetpack Compose"
+description: "UI and ViewModel Rules for Jetpack Compose"
 globs: ""
 alwaysApply: true
 ---
-
-# Comprehensive UI System Guide
-
-## Overview
-This rule defines comprehensive UI guidelines including business logic separation, component organization, and feature implementation. References [UIRules.md](mdc:app/src/main/java/com/example/composesample/docs/ui/UIRules.md).
+# UI and ViewModel Rules
 
 ## Business Logic Separation
 
@@ -75,7 +71,7 @@ class LiveChatViewModel { ... }     // WRONG
 
 ## State Management
 - Manage state in ViewModel
-- Use StateFlow
+- Use StateFlow (see [coroutine-rules.mdc](mdc:.cursor/rules/coroutine-rules.mdc) for Flow usage)
 - Follow Unidirectional Data Flow (UDF)
 - Apply state hoisting pattern
 - Use `remember` and `derivedStateOf` for expensive calculations
@@ -88,10 +84,35 @@ class LiveChatViewModel { ... }     // WRONG
 
 ## Error Handling
 - User-friendly error messages
-- Offline mode support
 - Implement retry mechanisms
 - Error logging and analytics
+- Use Result type for error handling (see [result-handling-rules.mdc](mdc:.cursor/rules/result-handling-rules.mdc))
 
-## Performance Optimization
-- **Recomposition**: Use `remember` and `derivedStateOf` for expensive calculations
-- **Lazy Components**: Use `LazyColumn` and `LazyRow` for lists
+## Code Style
+
+### Naming Conventions
+- Classes: PascalCase
+- Functions: camelCase
+- Variables: camelCase
+- Constants: SCREAMING_SNAKE_CASE
+- Composable Functions: PascalCase
+
+### Composable Function Rules
+- Must include Preview functions
+- Parameters must have explicit default values
+- Apply state hoisting
+- Reusable components should be in separate files
+
+### Code Formatting
+- Indentation: 4 spaces
+- Maximum line length: 120 characters
+- Maximum function length: 50 lines
+- Maximum file length: 500 lines
+- Comments: Write in Korean
+- Use KDoc format for documentation
+
+### Technical Specifications
+- **Language**: Kotlin
+- **Framework**: Jetpack Compose
+- **Architecture**: MVVM + Clean Architecture
+- **File Coverage**: Write all parts without omission

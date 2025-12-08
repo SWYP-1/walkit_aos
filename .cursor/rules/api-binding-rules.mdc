@@ -1,0 +1,97 @@
+---
+description: "API and DTO Binding Rules for MVVM Architecture"
+globs: ""
+alwaysApply: true
+---
+# API and DTO Binding Rules
+
+## Overview
+This rule explains the steps to add APIs using MVVM architecture and connect data to UI following Material3 guidelines.
+
+## 1. DTO Creation
+
+### Naming Conventions
+- **File Pattern**: `{Domain}Data.kt` or `{Domain}ListData.kt`
+- **Server fields**: snake_case
+- **Client fields**: camelCase
+- **Boolean flags**: prefix with 'is' or 'has'
+- **YN flags**: String type with "Y"/"N"
+
+### Required Structure
+```kotlin
+@Parcelize
+data class ExampleData(
+    @SerializedName("server_field")
+    val clientField: Type? = defaultValue
+) : Parcelable
+```
+
+### Mandatory Annotations
+- **@SerializedName**: REQUIRED for all API response fields
+- **@Parcelize**: REQUIRED for Android component data transfer
+
+### Field Types
+- **Required fields**: Non-null types
+- **Optional fields**: Nullable types with defaults
+- **Collections**: Empty collection defaults
+
+### Companion Objects
+```kotlin
+companion object {
+    val EMPTY = DataModel("")
+    val MOCK = DataModel("test_data")
+}
+```
+
+### Validation Requirements
+1. ALL fields must have @SerializedName
+2. Field names must match API spec exactly
+3. Default values for nullable fields
+4. Proper nullability handling
+5. Documentation for complex business logic
+
+## 2. API Interface
+- Add API call functions within already declared API interfaces
+- Create new interfaces only when no appropriate existing interface exists
+- Use proper naming and organization
+- Explore existing API interfaces and add functions to appropriate locations
+- Avoid creating new interfaces when possible
+
+## 3. API Call Function Implementation
+- Implement API call functions that match API documentation
+- Use proper HTTP methods and endpoints
+- Include error handling and response processing
+- Use Result type for error handling (see [result-handling-rules.mdc](mdc:.cursor/rules/result-handling-rules.mdc))
+- Use coroutines properly (see [coroutine-rules.mdc](mdc:.cursor/rules/coroutine-rules.mdc))
+
+## 4. ViewModel Integration
+- Add API call functions to appropriate ViewModel
+- Store data through API calls via ViewModel
+- Render UI with stored data
+- Follow ViewModel patterns from [ui-viewmodel-rules.mdc](mdc:.cursor/rules/ui-viewmodel-rules.mdc)
+- Avoid creating new ViewModels when possible
+- Reuse existing ViewModels that handle similar functionality
+
+## Constraints
+1. **Import**: Use import statements after checking existing versions
+2. **Responsiveness**: Ensure code responsiveness
+3. **API Documentation**: Required for implementation
+
+## Expected Results
+
+### API Interface
+- API functions added to API interface
+
+### ViewModel
+- API call functions exist in appropriate ViewModel
+- Data stored after API calls
+
+### UI Rendering
+- UI rendered with stored data
+- Follow UI guidelines from [ui-viewmodel-rules.mdc](mdc:.cursor/rules/ui-viewmodel-rules.mdc)
+
+## Additional Guidelines
+- Follow MVVM architecture and Material3 guidelines
+- Implement according to existing project patterns and rules
+- Maintain code consistency and readability
+- Use proper error handling and loading states

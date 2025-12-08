@@ -1,0 +1,66 @@
+---
+description: "Result Type Handling Rules for Error Management"
+globs: ""
+alwaysApply: true
+---
+# Result Handling Rules
+
+## Result Class Definition
+Create sealed interface for type-safe state management:
+
+```kotlin
+sealed interface Result<out T> {
+    data class Success<T>(val data: T) : Result<T>
+    data class Error(val exception: Throwable, val message: String? = null) : Result<Nothing>
+    data object Loading : Result<Nothing>
+}
+```
+
+## Extension Functions
+```kotlin
+inline fun <T, R> Result<T>.map(transform: (T) -> R): Result<R> = when (this) {
+    is Result.Success -> Result.Success(transform(data))
+    is Result.Error -> this
+    is Result.Loading -> this
+}
+
+inline fun <T> Result<T>.onSuccess(action: (T) -> Unit): Result<T> {
+    if (this is Result.Success) action(data)
+    return this
+}
+
+inline fun <T> Result<T>.onError(action: (Throwable, String?) -> Unit): Result<T> {
+    if (this is Result.Error) action(exception, message)
+    return this
+}
+```
+
+## Usage Pattern
+
+**ViewModel:**
+```kotlin
+private val _state = MutableStateFlow<Result<Data>>(Result.Loading)
+val state: StateFlow<Result<Data>> = _state.asStateFlow()
+
+fun loadData() {
+    viewModelScope.launch {
+        _state.value = Result.Loading
+        _state.value = repository.getData()
+    }
+}
+```
+
+**UI:**
+```kotlin
+when (val state = uiState) {
+    is Result.Loading -> LoadingIndicator()
+    is Result.Success -> ContentView(state.data)
+    is Result.Error -> ErrorView(state.message ?: "Error")
+}
+```
+
+## Rules
+- Use Result for operations that can fail
+- Keep Result wrapping at Repository layer
+- Handle all states with `when` expression in UI
+- Do NOT nest Result types

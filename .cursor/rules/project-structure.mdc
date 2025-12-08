@@ -5,6 +5,10 @@ alwaysApply: true
 ---
 # Project Structure Guide
 
+**관련 규칙**:
+- 일반 가이드라인: [android-composer-rule.mdc](mdc:.cursor/rules/android-composer-rule.mdc)
+- UI 구조: [comprehensive-ui-guide.mdc](mdc:.cursor/rules/comprehensive-ui-guide.mdc)
+
 ## Layer Structure
 ```
 app/
