@@ -348,5 +348,150 @@ object WalkingTestData {
 
         return sessions.sortedBy { it.startTime } // 시간순 정렬
     }
+
+    /**
+     * 12월 초(1~5일) 산책 기록 테스트 데이터 생성
+     */
+    fun generateEarlyDecemberSessions(year: Int = LocalDate.now().year): List<WalkingSession> {
+        val sessions = mutableListOf<WalkingSession>()
+        val december = YearMonth.of(year, 12)
+        val baseLat = 37.2411
+        val baseLon = 127.1776
+        val days = (1..5)
+
+        days.forEach { day ->
+            // 60% 확률로 생성
+            if (Random.nextFloat() > 0.4f) {
+                val date = december.atDay(day)
+                val hourOfDay = Random.nextInt(7, 21)
+                val minuteOfDay = Random.nextInt(0, 60)
+
+                val startTime = date
+                    .atTime(hourOfDay, minuteOfDay)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+
+                val durationMinutes = Random.nextInt(20, 75)
+                val durationMillis = durationMinutes * 60 * 1000L
+                val endTime = startTime + durationMillis
+                val stepCount = durationMinutes * Random.nextInt(100, 131)
+                val totalDistance = stepCount * 0.7f
+
+                val locations =
+                    generateLocationPoints(
+                        baseLat = baseLat + Random.nextDouble(-0.01, 0.01),
+                        baseLon = baseLon + Random.nextDouble(-0.01, 0.01),
+                        startTime = startTime,
+                        duration = durationMinutes,
+                        pointCount = Random.nextInt(10, 18),
+                    )
+
+                val stats = generateActivityStats(durationMillis, totalDistance)
+                val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.CONTENT, EmotionType.RELAXED)
+                val sessionEmotions =
+                    listOf(
+                        Emotion(
+                            type = emotionTypes.random(),
+                            timestamp = startTime + durationMillis / 2,
+                            note = "12월 초 기분 좋은 산책",
+                        ),
+                    )
+
+                sessions.add(
+                    WalkingSession(
+                        startTime = startTime,
+                        endTime = endTime,
+                        stepCount = stepCount,
+                        locations = locations,
+                        totalDistance = totalDistance,
+                        activityStats = stats,
+                        primaryActivity = ActivityType.WALKING,
+                        emotions = sessionEmotions,
+                    ),
+                )
+            }
+        }
+
+        return sessions
+    }
+
+    /**
+     * 12월 1일 ~ 11일 산책 기록 생성 (확률적 생성)
+     */
+    fun generateDecemberRangeSessions(
+        year: Int = LocalDate.now().year,
+        startDay: Int = 1,
+        endDay: Int = 11,
+    ): List<WalkingSession> {
+        val sessions = mutableListOf<WalkingSession>()
+        val december = YearMonth.of(year, 12)
+        val baseLat = 37.2411
+        val baseLon = 127.1776
+
+        for (day in startDay..endDay) {
+            if (Random.nextFloat() > 0.35f) {
+                val date = december.atDay(day)
+                sessions.add(generateSessionForDate(date, baseLat, baseLon))
+            }
+        }
+        return sessions.sortedBy { it.startTime }
+    }
+
+    /**
+     * 특정 날짜에 단일 세션 생성 (더미)
+     */
+    fun generateSessionForDate(
+        date: LocalDate,
+        baseLat: Double = 37.2411,
+        baseLon: Double = 127.1776,
+    ): WalkingSession {
+
+        val hourOfDay = Random.nextInt(7, 21)
+        val minuteOfDay = Random.nextInt(0, 60)
+
+        val startTime = date
+            .atTime(hourOfDay, minuteOfDay)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        val durationMinutes = Random.nextInt(25, 80)
+        val durationMillis = durationMinutes * 60 * 1000L
+        val endTime = startTime + durationMillis
+        val stepCount = durationMinutes * Random.nextInt(100, 131)
+        val totalDistance = stepCount * 0.7f
+
+        val locations =
+            generateLocationPoints(
+                baseLat = baseLat + Random.nextDouble(-0.01, 0.01),
+                baseLon = baseLon + Random.nextDouble(-0.01, 0.01),
+                startTime = startTime,
+                duration = durationMinutes,
+                pointCount = Random.nextInt(12, 20),
+            )
+
+        val stats = generateActivityStats(durationMillis, totalDistance)
+        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.CONTENT, EmotionType.RELAXED, EmotionType.PROUD)
+        val sessionEmotions =
+            listOf(
+                Emotion(
+                    type = emotionTypes.random(),
+                    timestamp = startTime + durationMillis / 3,
+                    note = "샘플 산책",
+                ),
+            )
+
+        return WalkingSession(
+            startTime = startTime,
+            endTime = endTime,
+            stepCount = stepCount,
+            locations = locations,
+            totalDistance = totalDistance,
+            activityStats = stats,
+            primaryActivity = ActivityType.WALKING,
+            emotions = sessionEmotions,
+        )
+    }
 }
 

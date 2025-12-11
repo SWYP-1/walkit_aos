@@ -7,16 +7,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import team.swyp.sdu.data.model.LocationPoint
-import team.swyp.sdu.ui.screens.LoginScreen
+import team.swyp.sdu.ui.login.LoginScreen
 import team.swyp.sdu.ui.screens.MainScreen
-import team.swyp.sdu.ui.screens.PokemonDetailScreen
-import team.swyp.sdu.ui.screens.PokemonSearchScreen
 import team.swyp.sdu.ui.screens.RouteDetailScreen
 import team.swyp.sdu.ui.screens.ShopScreen
-import team.swyp.sdu.ui.screens.WalkingResultScreen
-import team.swyp.sdu.ui.screens.WalkingScreen
+import team.swyp.sdu.ui.walking.WalkingResultScreen
+import team.swyp.sdu.ui.walking.WalkingScreen
+import team.swyp.sdu.ui.calendar.CalendarScreen
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import team.swyp.sdu.presentation.viewmodel.UserViewModel
 
 sealed class Screen(
     val route: String,
@@ -48,7 +48,10 @@ sealed class Screen(
 }
 
 @Composable
-fun NavGraph(navController: NavHostController) {
+fun NavGraph(
+    navController: NavHostController,
+    userViewModel: UserViewModel,
+) {
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route,
@@ -65,37 +68,14 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(Screen.Main.route) {
-            MainScreen(navController = navController)
+            MainScreen(
+                navController = navController,
+                userViewModel = userViewModel,
+            )
         }
 
         composable(Screen.Shop.route) {
             ShopScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-            )
-        }
-
-        composable(Screen.Search.route) {
-            PokemonSearchScreen(
-                onNavigateToDetail = { pokemonName ->
-                    navController.navigate(Screen.Detail().createRoute(pokemonName))
-                },
-            )
-        }
-
-        composable(
-            route = Screen.Detail().route,
-            arguments =
-                listOf(
-                    navArgument("pokemonName") {
-                        type = NavType.StringType
-                    },
-                ),
-        ) { backStackEntry ->
-            val pokemonName = backStackEntry.arguments?.getString("pokemonName") ?: ""
-            PokemonDetailScreen(
-                pokemonName = pokemonName,
                 onNavigateBack = {
                     navController.popBackStack()
                 },

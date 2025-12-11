@@ -156,6 +156,9 @@ dependencies {
     // Google Play Billing
     implementation(libs.billing.ktx)
 
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
     // JUnit 4 (기존 호환성)
     testImplementation(libs.junit)
 

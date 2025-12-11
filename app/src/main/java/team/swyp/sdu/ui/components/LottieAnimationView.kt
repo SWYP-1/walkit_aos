@@ -20,6 +20,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import team.swyp.sdu.R
 import timber.log.Timber
@@ -44,29 +45,33 @@ fun LottieAnimationView(
         LottieCompositionSpec.RawRes(R.raw.walking_avocado)
     )
 
-    // ⭐ composition 로딩되기 전 animate 호출 금지
-    if (composition == null) {
-        return
+    val anim = rememberLottieAnimatable()
+
+    LaunchedEffect(composition, isPlaying) {
+        if (composition == null) return@LaunchedEffect
+
+        if (isPlaying) {
+            anim.animate(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                speed = speed,
+                initialProgress = anim.progress, // 현재 위치에서 이어서 시작
+                continueFromPreviousAnimate = true
+            )
+        } else {
+            // ⭐ 재생을 멈추고 progress 유지
+            anim.snapTo(
+                composition = composition,
+                progress = anim.progress
+            )
+        }
     }
 
-    val progress by animateLottieCompositionAsState(
+    LottieAnimation(
         composition = composition,
-        iterations = if (isPlaying) LottieConstants.IterateForever else 1,
-        isPlaying = isPlaying,
-        speed = speed
+        progress = { anim.progress },
+        modifier = modifier.size(size)
     )
-
-    Timber.d("progress=$progress isPlaying=$isPlaying")
-
-    Box(
-        modifier = modifier.size(size),
-        contentAlignment = Alignment.Center
-    ) {
-        LottieAnimation(
-            composition = composition,
-            progress = { progress },
-            modifier = Modifier.fillMaxSize()
-        )
-    }
 }
+
 

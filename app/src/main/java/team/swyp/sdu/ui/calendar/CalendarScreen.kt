@@ -1,4 +1,4 @@
-package team.swyp.sdu.ui.screens
+package team.swyp.sdu.ui.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,20 +47,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import team.swyp.sdu.data.model.Emotion
-import team.swyp.sdu.data.model.EmotionType
-import team.swyp.sdu.data.model.WalkingSession
-import team.swyp.sdu.presentation.viewmodel.WalkingSessionListViewModel
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import team.swyp.sdu.data.model.Emotion
+import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.presentation.viewmodel.WalkingSessionListViewModel
 
-/**
- * 캘린더 화면
- * 기분(Mood) 캘린더를 표시하고 월간 요약 및 통계를 제공합니다.
- */
 @Composable
 fun CalendarScreen(
     onNavigateToRouteDetail: (List<team.swyp.sdu.data.model.LocationPoint>) -> Unit,
@@ -73,10 +69,8 @@ fun CalendarScreen(
         else -> emptyList()
     }
 
-    // 현재 월 상태
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
-    // 날짜별 감정 맵 생성 (세션의 emotions에서 추출)
     val emotionsByDate = remember(sessions) {
         sessions.flatMap { session ->
             session.emotions.map { emotion ->
@@ -88,14 +82,12 @@ fun CalendarScreen(
         }.groupBy({ it.first }, { it.second })
     }
 
-    // 월간 통계 계산
     val monthlyStats = remember(sessions, currentMonth) {
         calculateMonthlyStats(sessions, currentMonth, emotionsByDate)
     }
 
     val navigationBarsPadding = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues()
 
-    // 캘린더 화면 시작 시 11월 더미 데이터 생성
     LaunchedEffect(Unit) {
         viewModel.generateNovemberTestData()
     }
@@ -106,7 +98,6 @@ fun CalendarScreen(
             .padding(navigationBarsPadding)
             .verticalScroll(rememberScrollState()),
     ) {
-        // 상단 헤더
         CalendarHeader(
             currentMonth = currentMonth,
             onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
@@ -116,7 +107,6 @@ fun CalendarScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 캘린더 그리드
         CalendarGrid(
             yearMonth = currentMonth,
             emotionsByDate = emotionsByDate,
@@ -125,7 +115,6 @@ fun CalendarScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 월간 기분 요약
         MonthlyMoodSummary(
             primaryMood = monthlyStats.primaryMood,
             description = monthlyStats.description,
@@ -134,7 +123,6 @@ fun CalendarScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 통계 카드들
         StatisticsCards(
             totalSteps = monthlyStats.totalSteps,
             sessionsCount = monthlyStats.sessionsCount,
@@ -146,9 +134,6 @@ fun CalendarScreen(
     }
 }
 
-/**
- * 캘린더 헤더
- */
 @Composable
 private fun CalendarHeader(
     currentMonth: YearMonth,
@@ -163,9 +148,8 @@ private fun CalendarHeader(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 뒤로가기 버튼 (이미지에 맞춰 왼쪽에 배치)
         IconButton(
-            onClick = { /* TODO: 뒤로가기 처리 - 탭 내부에서는 필요 없을 수 있음 */ },
+            onClick = { /* TODO: 뒤로가기 처리 */ },
             modifier = Modifier.size(24.dp),
         ) {
             Icon(
@@ -178,7 +162,6 @@ private fun CalendarHeader(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // 제목 및 날짜 (중앙 정렬)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Mood Calendar",
@@ -195,7 +178,6 @@ private fun CalendarHeader(
             )
         }
 
-        // 검색/필터 아이콘 (오른쪽)
         IconButton(
             onClick = onSearchClick,
             modifier = Modifier.size(24.dp),
@@ -208,8 +190,7 @@ private fun CalendarHeader(
             )
         }
     }
-    
-    // 이전/다음 달 버튼을 헤더 아래에 별도로 배치 (이미지에는 없지만 기능 유지)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -241,9 +222,6 @@ private fun CalendarHeader(
     }
 }
 
-/**
- * 캘린더 그리드
- */
 @Composable
 private fun CalendarGrid(
     yearMonth: YearMonth,
@@ -252,11 +230,10 @@ private fun CalendarGrid(
 ) {
     val firstDayOfMonth = yearMonth.atDay(1)
     val lastDayOfMonth = yearMonth.atEndOfMonth()
-    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7 // 0 = 일요일
+    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7
     val daysInMonth = yearMonth.lengthOfMonth()
 
     Column(modifier = modifier) {
-        // 요일 헤더
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -275,7 +252,6 @@ private fun CalendarGrid(
             }
         }
 
-        // 날짜 그리드
         var dayIndex = 0
         repeat(6) { week ->
             Row(
@@ -284,7 +260,6 @@ private fun CalendarGrid(
             ) {
                 repeat(7) { dayOfWeek ->
                     if (week == 0 && dayOfWeek < firstDayOfWeek) {
-                        // 첫 주의 빈 칸
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -306,7 +281,6 @@ private fun CalendarGrid(
                         )
                         dayIndex++
                     } else {
-                        // 마지막 주의 빈 칸
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -320,9 +294,6 @@ private fun CalendarGrid(
     }
 }
 
-/**
- * 캘린더 날짜 셀
- */
 @Composable
 private fun CalendarDayCell(
     day: Int,
@@ -353,9 +324,6 @@ private fun CalendarDayCell(
     }
 }
 
-/**
- * 월간 기분 요약 카드
- */
 @Composable
 private fun MonthlyMoodSummary(
     primaryMood: String,
@@ -366,7 +334,7 @@ private fun MonthlyMoodSummary(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF97FFB5), // 연한 초록색
+            containerColor = Color(0xFF97FFB5),
         ),
     ) {
         Row(
@@ -380,7 +348,7 @@ private fun MonthlyMoodSummary(
                 Text(
                     text = "Monthly Mood Summary",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF2E7D32), // 진한 초록색
+                    color = Color(0xFF2E7D32),
                     fontWeight = FontWeight.Medium,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -388,17 +356,16 @@ private fun MonthlyMoodSummary(
                     text = primaryMood,
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B5E20), // 더 진한 초록색
+                    color = Color(0xFF1B5E20),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4CAF50), // 중간 초록색
+                    color = Color(0xFF4CAF50),
                     lineHeight = 22.sp,
                 )
             }
-            // 큰 이모지 그래픽 (이미지처럼 더 크게)
             Text(
                 text = getMoodEmoji(primaryMood),
                 fontSize = 72.sp,
@@ -407,9 +374,6 @@ private fun MonthlyMoodSummary(
     }
 }
 
-/**
- * 통계 카드들
- */
 @Composable
 private fun StatisticsCards(
     totalSteps: Int,
@@ -442,9 +406,6 @@ private fun StatisticsCards(
     }
 }
 
-/**
- * 통계 카드
- */
 @Composable
 private fun StatisticCard(
     title: String,
@@ -489,47 +450,33 @@ private fun StatisticCard(
     }
 }
 
-/**
- * 감정 타입에 따른 색상과 이모지 반환
- * 이미지의 색상 팔레트에 맞춰 조정
- */
-private fun getMoodColorAndEmoji(emotionType: EmotionType?): Pair<Color, String> {
-    return when (emotionType) {
-        // 새로운 감정 타입들
-        EmotionType.HAPPY -> Color(0xFFFFE082) to "😊" // 노란색
-        EmotionType.JOYFUL -> Color(0xFFFFE082) to "😄" // 노란색
-        EmotionType.LIGHT_FOOTED -> Color(0xFFC5E1A5) to "🚶" // 연한 초록색
-        EmotionType.EXCITED -> Color(0xFFFFB74D) to "🤩" // 주황색
-        EmotionType.THRILLED -> Color(0xFFFFB74D) to "✨" // 주황색
-        EmotionType.TIRED -> Color(0xFFCE93D8) to "😴" // 보라색
-        EmotionType.SAD -> Color(0xFFFFAB91) to "😢" // 연한 주황색
-        EmotionType.DEPRESSED -> Color(0xFF90CAF9) to "😔" // 연한 파란색
-        EmotionType.SLUGGISH -> Color(0xFFB0BEC5) to "😑" // 회색
-        EmotionType.MANY_THOUGHTS -> Color(0xFFB39DDB) to "🤔" // 보라색
-        EmotionType.COMPLEX_MIND -> Color(0xFFB39DDB) to "🧠" // 보라색
-        // 기존 감정 타입들
-        EmotionType.CALM -> Color(0xFFA5D6A7) to "😌" // 연한 초록색
-        EmotionType.CONTENT -> Color(0xFF90CAF9) to "😄" // 연한 파란색
-        EmotionType.ANXIOUS -> Color(0xFFF48FB1) to "😰" // 핑크색
-        EmotionType.ENERGETIC -> Color(0xFFFFE082) to "⚡" // 노란색
-        EmotionType.RELAXED -> Color(0xFFA5D6A7) to "😊" // 연한 초록색
-        EmotionType.PROUD -> Color(0xFF90CAF9) to "😎" // 연한 파란색
+private fun getMoodColorAndEmoji(emotionType: EmotionType?): Pair<Color, String> =
+    when (emotionType) {
+        EmotionType.HAPPY -> Color(0xFFFFE082) to "😊"
+        EmotionType.JOYFUL -> Color(0xFFFFE082) to "😄"
+        EmotionType.LIGHT_FOOTED -> Color(0xFFC5E1A5) to "🚶"
+        EmotionType.EXCITED -> Color(0xFFFFB74D) to "🤩"
+        EmotionType.THRILLED -> Color(0xFFFFB74D) to "✨"
+        EmotionType.TIRED -> Color(0xFFCE93D8) to "😴"
+        EmotionType.SAD -> Color(0xFFFFAB91) to "😢"
+        EmotionType.DEPRESSED -> Color(0xFF90CAF9) to "😔"
+        EmotionType.SLUGGISH -> Color(0xFFB0BEC5) to "😑"
+        EmotionType.MANY_THOUGHTS -> Color(0xFFB39DDB) to "🤔"
+        EmotionType.COMPLEX_MIND -> Color(0xFFB39DDB) to "🧠"
+        EmotionType.CALM -> Color(0xFFA5D6A7) to "😌"
+        EmotionType.CONTENT -> Color(0xFF90CAF9) to "😄"
+        EmotionType.ANXIOUS -> Color(0xFFF48FB1) to "😰"
+        EmotionType.ENERGETIC -> Color(0xFFFFE082) to "⚡"
+        EmotionType.RELAXED -> Color(0xFFA5D6A7) to "😊"
+        EmotionType.PROUD -> Color(0xFF90CAF9) to "😎"
         null -> Color.White to "-"
     }
-}
 
-/**
- * 숫자를 천 단위 구분자로 포맷팅
- */
-private fun formatNumber(number: Int): String {
-    return number.toString().reversed().chunked(3).joinToString(",").reversed()
-}
+private fun formatNumber(number: Int): String =
+    number.toString().reversed().chunked(3).joinToString(",").reversed()
 
-/**
- * 기분 텍스트에 따른 이모지 반환
- */
-private fun getMoodEmoji(mood: String): String {
-    return when (mood.lowercase()) {
+private fun getMoodEmoji(mood: String): String =
+    when (mood.lowercase()) {
         "happy" -> "😊"
         "excited" -> "🤩"
         "calm" -> "😌"
@@ -542,11 +489,7 @@ private fun getMoodEmoji(mood: String): String {
         "proud" -> "😎"
         else -> "😊"
     }
-}
 
-/**
- * 월간 통계 데이터 클래스
- */
 private data class MonthlyStats(
     val primaryMood: String,
     val description: String,
@@ -555,9 +498,6 @@ private data class MonthlyStats(
     val focusScore: Int,
 )
 
-/**
- * 월간 통계 계산
- */
 private fun calculateMonthlyStats(
     sessions: List<WalkingSession>,
     month: YearMonth,
@@ -567,18 +507,13 @@ private fun calculateMonthlyStats(
     val monthEnd = month.atEndOfMonth().atTime(23, 59, 59)
         .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    // 해당 월의 세션 필터링
     val monthSessions = sessions.filter { session ->
-        session.startTime >= monthStart && session.startTime <= monthEnd
+        session.startTime in monthStart..monthEnd
     }
 
-    // 총 걸음 수
     val totalSteps = monthSessions.sumOf { it.stepCount.toLong() }.toInt()
-
-    // 세션 수
     val sessionsCount = monthSessions.size
 
-    // 감정별 카운트
     val emotionCounts = emotionsByDate.values.flatten()
         .filter { emotion ->
             val date = java.time.Instant.ofEpochMilli(emotion.timestamp)
@@ -588,7 +523,6 @@ private fun calculateMonthlyStats(
         .groupBy { it.type }
         .mapValues { it.value.size }
 
-    // 가장 많은 감정 찾기
     val primaryEmotionType = emotionCounts.maxByOrNull { it.value }?.key ?: EmotionType.HAPPY
     val primaryMood = when (primaryEmotionType) {
         EmotionType.HAPPY -> "Happy"
@@ -630,7 +564,6 @@ private fun calculateMonthlyStats(
         EmotionType.PROUD -> "You should be proud of yourself. Keep going!"
     }
 
-    // Focus score 계산 (세션 완료율 기반, 30일 기준)
     val focusScore = if (sessionsCount > 0) {
         ((sessionsCount.toFloat() / 30f) * 100f).toInt().coerceIn(0, 100)
     } else {

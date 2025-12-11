@@ -1,0 +1,27 @@
+package team.swyp.sdu.di
+
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+import team.swyp.sdu.data.local.dao.UserDao
+import team.swyp.sdu.data.local.datastore.AuthDataStore
+import team.swyp.sdu.data.remote.user.UserRemoteDataSource
+import team.swyp.sdu.data.repository.UserRepositoryImpl
+import team.swyp.sdu.domain.repository.UserRepository
+
+/**
+ * 사용자 관련 의존성 모듈
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+object UserModule {
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        userDao: UserDao,
+        userRemoteDataSource: UserRemoteDataSource,
+        authDataStore: AuthDataStore,
+    ): UserRepository = UserRepositoryImpl(userDao, userRemoteDataSource, authDataStore)
+}

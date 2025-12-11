@@ -3,12 +3,16 @@ package team.swyp.sdu.di
 import android.content.Context
 import androidx.room.Room
 import team.swyp.sdu.data.local.dao.AppliedItemDao
+import team.swyp.sdu.data.local.dao.MissionProgressDao
 import team.swyp.sdu.data.local.dao.PurchasedItemDao
+import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.dao.WalkingSessionDao
 import team.swyp.sdu.data.local.database.AppDatabase
 import team.swyp.sdu.data.repository.CosmeticItemRepositoryImpl
+import team.swyp.sdu.data.repository.MissionProgressRepositoryImpl
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.repository.CosmeticItemRepository
+import team.swyp.sdu.domain.repository.MissionProgressRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -62,4 +66,18 @@ object DatabaseModule {
         billingManager: team.swyp.sdu.data.remote.billing.BillingManager,
     ): CosmeticItemRepository =
         CosmeticItemRepositoryImpl(purchasedItemDao, appliedItemDao, billingManager)
+
+    @Provides
+    @Singleton
+    fun provideMissionProgressDao(database: AppDatabase): MissionProgressDao = database.missionProgressDao()
+
+    @Provides
+    @Singleton
+    fun provideMissionProgressRepository(
+        missionProgressDao: MissionProgressDao,
+    ): MissionProgressRepository = MissionProgressRepositoryImpl(missionProgressDao)
+
+    @Provides
+    @Singleton
+    fun provideUserDao(database: AppDatabase): UserDao = database.userDao()
 }

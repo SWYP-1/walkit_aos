@@ -1,16 +1,16 @@
 package team.swyp.sdu.ui.screens
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,126 +28,137 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import team.swyp.sdu.navigation.Screen
+import team.swyp.sdu.presentation.viewmodel.UserViewModel
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
+import team.swyp.sdu.core.Result
+import team.swyp.sdu.ui.home.HomeScreen
+import team.swyp.sdu.ui.record.RecordScreen
+import team.swyp.sdu.ui.walking.WalkingScreen
+import team.swyp.sdu.ui.calendar.CalendarScreen
 
 /**
- * 메인 화면 - 상단 탭으로 기록 측정과 기록 리스트를 구분
+ * 메인 탭 화면: 각 피처 화면 호출만 담당
  */
 @Composable
 fun MainScreen(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    userViewModel: UserViewModel,
     loginViewModel: LoginViewModel = hiltViewModel(),
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val userState by userViewModel.userState.collectAsStateWithLifecycle()
+    val userLabel =
+        when (val state = userState) {
+            is Result.Success -> state.data.nickname.ifBlank { "게스트" }
+            is Result.Error -> "불러오기 실패"
+            Result.Loading -> "불러오는 중"
+        }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Column(
-                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Tab(
-                            selected = selectedTabIndex == 0,
-                            onClick = { selectedTabIndex = 0 },
-                            text = { Text("기록 측정") },
-                        )
-                        Tab(
-                            selected = selectedTabIndex == 1,
-                            onClick = { selectedTabIndex = 1 },
-                            text = { Text("달린 기록") },
-                        )
-                        Tab(
-                            selected = selectedTabIndex == 2,
-                            onClick = { selectedTabIndex = 2 },
-                            text = { Text("캘린더") },
-                        )
-                    }
-                    // 상점 버튼
-                    IconButton(
-                        onClick = {
-                            navController.navigate(Screen.Shop.route)
-                        },
-                        modifier = Modifier.padding(end = 4.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "상점",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    // 로그아웃 버튼
-                    IconButton(
-                        onClick = {
-                            loginViewModel.logout()
-                            // 로그인 화면으로 이동 (백 스택 초기화)
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "로그아웃",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { Text("홈") },
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { selectedTabIndex = 1 },
+                        text = { Text("기록 측정") },
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 2,
+                        onClick = { selectedTabIndex = 2 },
+                        text = { Text("산책 기록") },
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 3,
+                        onClick = { selectedTabIndex = 3 },
+                        text = { Text("캘린더") },
+                    )
+                }
+
+                Text(
+                    text = userLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+
+                IconButton(
+                    onClick = { navController.navigate(Screen.Shop.route) },
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingCart,
+                        contentDescription = "상점",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        loginViewModel.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.padding(end = 8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "로그아웃",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         },
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .fillMaxSize(),
         ) {
             when (selectedTabIndex) {
-                0 -> {
-                    // 기록 측정 탭
-                    // 탭이 다시 선택될 때마다 WalkingScreen이 재구성됨
-                    // WalkingScreen 내부의 LaunchedEffect에서 Completed 상태 감지 시 자동 초기화됨
-                    WalkingScreen(
-                        onNavigateToRouteDetail = { locations ->
-                            navController.navigate(Screen.RouteDetail.createRoute(locations))
-                        },
-                        onNavigateToResult = {
-                            navController.navigate(Screen.WalkingResult.route)
-                        },
-                    )
-                }
+                0 -> HomeScreen(
+                    onClickWalk = { selectedTabIndex = 1 },
+                    onClickGoal = { /* TODO: 목표 설정 네비게이션 */ },
+                )
 
-                1 -> {
-                    // 달린 기록 리스트 탭
-                    WalkingSessionListScreen(
-                        onNavigateToRouteDetail = { locations ->
-                            navController.navigate(Screen.RouteDetail.createRoute(locations))
-                        },
-                    )
-                }
+                1 -> WalkingScreen(
+                    onNavigateToRouteDetail = { locations ->
+                        navController.navigate(Screen.RouteDetail.createRoute(locations))
+                    },
+                    onNavigateToResult = {
+                        navController.navigate(Screen.WalkingResult.route)
+                    },
+                )
 
-                2 -> {
-                    // 캘린더 탭
-                    CalendarScreen(
-                        onNavigateToRouteDetail = { locations ->
-                            navController.navigate(Screen.RouteDetail.createRoute(locations))
-                        },
-                    )
-                }
+                2 -> RecordScreen()
+
+                3 -> CalendarScreen(
+                    onNavigateToRouteDetail = { locations ->
+                        navController.navigate(Screen.RouteDetail.createRoute(locations))
+                    },
+                )
             }
         }
     }
 }
+

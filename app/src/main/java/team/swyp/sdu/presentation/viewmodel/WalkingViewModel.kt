@@ -103,6 +103,11 @@ class WalkingViewModel
         private var estimatedStepsPerSecond: Float = 0f // 예상 초당 걸음 수
         private var lastAcceleration: Float = 0f // 마지막 가속도
         private var movementStartTime: Long = 0L // 움직임 시작 시간
+        private var startTimeMillis: Long = 0L // 산책 시작/재개 시점
+        private var elapsedBeforePause: Long = 0L // 일시정지 전까지 누적 시간
+        private var stepOffset: Int = 0 // 일시정지 구간에서 제외할 누적 걸음 수
+        private var pausedStepBase: Int = 0 // 일시정지 시점의 실제 걸음 수
+        private var lastRawStepCount: Int = 0 // 센서에서 받은 누적 걸음 수 (보정 전)
 
         /**
          * 감정 선택/해제
@@ -134,16 +139,20 @@ class WalkingViewModel
                 return
             }
 
-            val startTime = System.currentTimeMillis()
+            startTimeMillis = System.currentTimeMillis()
+            elapsedBeforePause = 0L
+            stepOffset = 0
+            pausedStepBase = 0
+            lastRawStepCount = 0
             // 선택된 감정들을 Emotion 리스트로 변환
             val emotions = selectedEmotions.map { emotionType ->
                 Emotion(
                     type = emotionType,
-                    timestamp = startTime,
+                    timestamp = startTimeMillis,
                 )
             }
             currentSession = WalkingSession(
-                startTime = startTime,
+                startTime = startTimeMillis,
                 emotions = emotions,
             )
             locationPoints.clear()
@@ -190,22 +199,26 @@ class WalkingViewModel
                 stepCounterManager
                     .getStepCountUpdates()
                     .onEach { realStepCount ->
+                        lastRawStepCount = realStepCount
                         val state = _uiState.value
                         if (state is WalkingUiState.Walking) {
+                            if (state.isPaused) return@onEach
+                            val effectiveStepCount = (realStepCount - stepOffset).coerceAtLeast(0)
+
                             // 초기 걸음 수 설정
-                            if (initialStepCount == 0 && realStepCount > 0) {
-                                initialStepCount = realStepCount
+                            if (initialStepCount == 0 && effectiveStepCount > 0) {
+                                initialStepCount = effectiveStepCount
                             }
-                            lastStepCount = realStepCount
+                            lastStepCount = effectiveStepCount
 
                             // 가속도계 기반 보간 업데이트 (실제 걸음 수가 업데이트됨)
-                            updateInterpolatedStepCount(realStepCount)
+                            updateInterpolatedStepCount(effectiveStepCount)
 
                             // 보간된 걸음 수를 UI에 표시 (부드러운 전환)
                             val displayStepCount = interpolatedStepCount
 
                             // 하이브리드 거리 계산 (GPS + Step Counter) - 실제 걸음 수 사용
-                            val totalDistance = calculateHybridDistance(locationPoints, realStepCount)
+                            val totalDistance = calculateHybridDistance(locationPoints, effectiveStepCount)
 
                             // GPS 속도 계산
                             val gpsSpeed = calculateGpsSpeed(locationPoints)
@@ -218,7 +231,7 @@ class WalkingViewModel
                                     acceleration = lastAcceleration,
                                     stepsPerSecond = estimatedStepsPerSecond,
                                     averageStepLength = averageStepLength,
-                                    realStepCount = realStepCount,
+                                    realStepCount = effectiveStepCount,
                                     interpolatedStepCount = displayStepCount,
                                     gpsDistance = gpsDistance,
                                     stepBasedDistance = stepBasedDistance,
@@ -233,7 +246,7 @@ class WalkingViewModel
                                     currentSpeed = gpsSpeed,
                                     debugInfo = debugInfo,
                                 )
-                            updateCurrentSession(stepCount = realStepCount)
+                            updateCurrentSession(stepCount = effectiveStepCount)
 
                             // 포그라운드 알림 업데이트
                             updateForegroundNotification(displayStepCount, totalDistance, state.duration)
@@ -251,13 +264,18 @@ class WalkingViewModel
                         delay(1000)
                         val state = _uiState.value
                         if (state is WalkingUiState.Walking) {
-                            val currentDuration = System.currentTimeMillis() - startTime
-
-                            // 가속도계 기반 보간 업데이트 (실제 걸음 수가 업데이트되지 않았을 수도 있음)
-                            updateInterpolatedStepCount(state.stepCount)
-
-                            // 보간된 걸음 수를 UI에 표시
-                            val displayStepCount = interpolatedStepCount
+                            if (state.isPaused) continue
+                            val currentDuration = elapsedBeforePause + (System.currentTimeMillis() - startTimeMillis)
+                            // 보간 규칙: GPS 이동이 없으면 0, stepDelta 0이면 0, 가속도 보행 감지 시 +1
+                            val gpsDistance = calculateTotalDistance(locationPoints)
+                            val accIsWalking =
+                                (stableMovementState ?: state.currentMovementState).let {
+                                    it == MovementState.WALKING || it == MovementState.RUNNING
+                                }
+                            val stepDelta = (lastRawStepCount - lastRealStepCount).coerceAtLeast(0)
+                            val interpolatedAdd = calculateInterpolatedSteps(gpsDistance, stepDelta, accIsWalking)
+                            val displayStepCount = lastStepCount + interpolatedAdd
+                            lastRealStepCount = lastStepCount
 
                             // 하이브리드 거리 계산 (GPS + Step Counter) - 실제 걸음 수 사용 (거리 계산은 정확해야 함)
                             val totalDistance = calculateHybridDistance(locationPoints, lastStepCount)
@@ -266,7 +284,6 @@ class WalkingViewModel
                             val gpsSpeed = calculateGpsSpeed(locationPoints)
 
                             // 디버그 정보 생성
-                            val gpsDistance = calculateTotalDistance(locationPoints)
                             val stepBasedDistance = calculateStepBasedDistance(lastStepCount)
                             val debugInfo =
                                 WalkingUiState.DebugInfo(
@@ -364,6 +381,34 @@ class WalkingViewModel
         }
 
         /**
+         * 일시정지
+         */
+        fun pauseWalking() {
+            val state = _uiState.value
+            if (state is WalkingUiState.Walking && !state.isPaused) {
+                elapsedBeforePause = state.duration
+                pausedStepBase = lastRawStepCount
+                _uiState.value = state.copy(isPaused = true)
+                Timber.d("산책 일시정지: $elapsedBeforePause ms 누적")
+            }
+        }
+
+        /**
+         * 일시정지 해제 (재개)
+         */
+        fun resumeWalking() {
+            val state = _uiState.value
+            if (state is WalkingUiState.Walking && state.isPaused) {
+                val pausedDelta = (lastRawStepCount - pausedStepBase).coerceAtLeast(0)
+                stepOffset += pausedDelta
+                pausedStepBase = lastRawStepCount
+                startTimeMillis = System.currentTimeMillis()
+                _uiState.value = state.copy(isPaused = false, duration = elapsedBeforePause)
+                Timber.d("산책 재개: 기준 시각 업데이트, 누적 $elapsedBeforePause ms")
+            }
+        }
+
+        /**
          * 위치 추적 시작
          */
         private fun startLocationTracking() {
@@ -445,7 +490,7 @@ class WalkingViewModel
                     .getMovementUpdates()
                     .onEach { detection ->
                         val state = _uiState.value
-                        if (state is WalkingUiState.Walking) {
+                        if (state is WalkingUiState.Walking && !state.isPaused) {
                             val currentTime = System.currentTimeMillis()
                             currentMovementState = detection.state
                             lastAcceleration = detection.acceleration
@@ -595,6 +640,10 @@ class WalkingViewModel
          * 활동 상태 변경 처리
          */
         private fun handleActivityStateChange(newState: ActivityState) {
+            val currentUiState = _uiState.value
+            if (currentUiState is WalkingUiState.Walking && currentUiState.isPaused) {
+                return
+            }
             val currentTime = System.currentTimeMillis()
 
             // 이전 활동 상태의 시간 기록
@@ -993,6 +1042,22 @@ class WalkingViewModel
         }
 
         /**
+         * 보간 규칙:
+         * - GPS 이동이 없으면 0
+         * - 걸음 증가(stepDelta)가 없으면 0
+         * - 가속도 보행 패턴이 감지될 때만 +1
+         */
+        private fun calculateInterpolatedSteps(
+            gpsDistance: Float,
+            stepDelta: Int,
+            accIsWalking: Boolean,
+        ): Int {
+            if (gpsDistance < 2f) return 0
+            if (stepDelta == 0) return 0
+            return if (accIsWalking) 1 else 0
+        }
+
+        /**
          * 가속도계 기반 실시간 걸음 수 보간 업데이트
          * 실제 걸음 수가 업데이트되기 전까지 예상 걸음 수를 계산하여 부드러운 전환을 제공합니다.
          */
@@ -1103,6 +1168,11 @@ class WalkingViewModel
                         if (intent?.action == LocationTrackingService.ACTION_LOCATION_DATA) {
                             val locationsJson = intent.getStringExtra(LocationTrackingService.EXTRA_LOCATIONS) ?: return
                             try {
+                                val currentStateSnapshot = _uiState.value
+                                if (currentStateSnapshot is WalkingUiState.Walking && currentStateSnapshot.isPaused) {
+                                    return
+                                }
+
                                 val newLocations = Json.decodeFromString<List<LocationPoint>>(locationsJson)
 
                                 // 새로운 위치 포인트만 추가 (중복 제거)
@@ -1126,7 +1196,7 @@ class WalkingViewModel
 
                                 // 거리 계산 및 UI 업데이트
                                 val currentState = _uiState.value
-                                if (currentState is WalkingUiState.Walking) {
+                                if (currentState is WalkingUiState.Walking && !currentState.isPaused) {
                                     val totalDistance = calculateHybridDistance(locationPoints, currentState.stepCount)
                                     _uiState.value = currentState.copy(distance = totalDistance)
                                     updateCurrentSession(stepCount = currentState.stepCount)
@@ -1205,6 +1275,7 @@ sealed interface WalkingUiState {
         val currentSpeed: Float = 0f, // 가속도계로 측정한 현재 속도 (m/s)
         // 검증용 디버그 정보
         val debugInfo: DebugInfo? = null,
+        val isPaused: Boolean = false,
     ) : WalkingUiState
 
     /**

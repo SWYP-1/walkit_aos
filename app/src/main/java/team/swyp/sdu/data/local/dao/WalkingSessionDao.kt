@@ -29,6 +29,21 @@ interface WalkingSessionDao {
     fun getAllSessions(): Flow<List<WalkingSessionEntity>>
 
     /**
+     * 기간 내 세션 조회 (startTime 기준)
+     */
+    @Query(
+        """
+        SELECT * FROM walking_sessions
+        WHERE startTime BETWEEN :startMillis AND :endMillis
+        ORDER BY startTime DESC
+        """,
+    )
+    fun getSessionsBetween(
+        startMillis: Long,
+        endMillis: Long,
+    ): Flow<List<WalkingSessionEntity>>
+
+    /**
      * ID로 세션 조회
      */
     @Query("SELECT * FROM walking_sessions WHERE id = :id")

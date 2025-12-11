@@ -55,6 +55,17 @@ class WalkingSessionRepository
                 }
 
         /**
+         * 기간 내 세션 조회
+         */
+        fun getSessionsBetween(
+            startMillis: Long,
+            endMillis: Long,
+        ): Flow<List<WalkingSession>> =
+            walkingSessionDao
+                .getSessionsBetween(startMillis, endMillis)
+                .map { entities -> entities.map { WalkingSessionMapper.toDomain(it) } }
+
+        /**
          * ID로 세션 조회
          */
         suspend fun getSessionById(id: Long): WalkingSession? =
