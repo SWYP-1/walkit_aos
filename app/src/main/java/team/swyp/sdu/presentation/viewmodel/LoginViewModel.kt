@@ -43,6 +43,9 @@ class LoginViewModel @Inject constructor() : ViewModel() {
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
+    private val _isLoginChecked = MutableStateFlow(false)
+    val isLoginChecked: StateFlow<Boolean> = _isLoginChecked.asStateFlow()
+
     init {
         checkLoginStatus()
     }
@@ -52,6 +55,7 @@ class LoginViewModel @Inject constructor() : ViewModel() {
      */
     fun checkLoginStatus() {
         viewModelScope.launch {
+            _isLoginChecked.value = false
             try {
                 // 토큰 존재 여부 확인
                 val hasToken = com.kakao.sdk.auth.AuthApiClient.instance.hasToken()
@@ -72,6 +76,8 @@ class LoginViewModel @Inject constructor() : ViewModel() {
             } catch (e: Exception) {
                 Timber.e(e, "로그인 상태 확인 실패")
                 _isLoggedIn.value = false
+            } finally {
+                _isLoginChecked.value = true
             }
         }
     }

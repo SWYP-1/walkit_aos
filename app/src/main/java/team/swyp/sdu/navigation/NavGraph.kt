@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.ui.login.LoginScreen
+import team.swyp.sdu.ui.splash.SplashScreen
 import team.swyp.sdu.ui.screens.MainScreen
 import team.swyp.sdu.ui.screens.RouteDetailScreen
 import team.swyp.sdu.ui.screens.ShopScreen
@@ -21,6 +22,8 @@ import team.swyp.sdu.presentation.viewmodel.UserViewModel
 sealed class Screen(
     val route: String,
 ) {
+    data object Splash : Screen("splash")
+
     data object Login : Screen("login")
 
     data object Main : Screen("main")
@@ -45,6 +48,10 @@ sealed class Screen(
     }
 
     data object Shop : Screen("shop")
+
+    data object Onboarding : Screen("onboarding")
+
+    data object Friends : Screen("friends")
 }
 
 @Composable
@@ -54,8 +61,14 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.Splash.route,
     ) {
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                navController = navController,
+            )
+        }
+
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
@@ -78,6 +91,23 @@ fun NavGraph(
             ShopScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+            )
+        }
+
+        composable(Screen.Friends.route) {
+            team.swyp.sdu.ui.friend.FriendScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.Onboarding.route) {
+            team.swyp.sdu.ui.onboarding.OnboardingScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onFinish = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
                 },
             )
         }

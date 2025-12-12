@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,12 +35,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.presentation.viewmodel.UserViewModel
-import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.ui.home.HomeScreen
 import team.swyp.sdu.ui.record.RecordScreen
 import team.swyp.sdu.ui.walking.WalkingScreen
-import team.swyp.sdu.ui.calendar.CalendarScreen
+import team.swyp.sdu.ui.settings.SettingsScreen
+import timber.log.Timber
 
 /**
  * 메인 탭 화면: 각 피처 화면 호출만 담당
@@ -47,13 +50,12 @@ fun MainScreen(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     userViewModel: UserViewModel,
-    loginViewModel: LoginViewModel = hiltViewModel(),
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val userState by userViewModel.userState.collectAsStateWithLifecycle()
     val userLabel =
         when (val state = userState) {
-            is Result.Success -> state.data.nickname.ifBlank { "게스트" }
+            is Result.Success -> state.data.nickname.ifBlank { "" }
             is Result.Error -> "불러오기 실패"
             Result.Loading -> "불러오는 중"
         }
@@ -90,15 +92,17 @@ fun MainScreen(
                     Tab(
                         selected = selectedTabIndex == 3,
                         onClick = { selectedTabIndex = 3 },
-                        text = { Text("캘린더") },
+                        text = { Text("설정") },
                     )
                 }
 
-                Text(
-                    text = userLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
+                if (userLabel.isNotBlank()) {
+                    Text(
+                        text = userLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
 
                 IconButton(
                     onClick = { navController.navigate(Screen.Shop.route) },
@@ -112,20 +116,16 @@ fun MainScreen(
                 }
 
                 IconButton(
-                    onClick = {
-                        loginViewModel.logout()
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
-                    modifier = Modifier.padding(end = 8.dp),
+                    onClick = { navController.navigate(Screen.Friends.route) },
+                    modifier = Modifier.padding(end = 4.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = "로그아웃",
+                        imageVector = Icons.Default.People,
+                        contentDescription = "친구 목록",
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
+
             }
         },
     ) { paddingValues ->
@@ -133,7 +133,8 @@ fun MainScreen(
             modifier =
                 Modifier
                     .padding(paddingValues)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.navigationBars),
         ) {
             when (selectedTabIndex) {
                 0 -> HomeScreen(
@@ -150,12 +151,14 @@ fun MainScreen(
                     },
                 )
 
-                2 -> RecordScreen()
-
-                3 -> CalendarScreen(
-                    onNavigateToRouteDetail = { locations ->
-                        navController.navigate(Screen.RouteDetail.createRoute(locations))
+                2 -> RecordScreen(
+                    onStartOnboarding = {
+                        navController.navigate(Screen.Onboarding.route)
                     },
+                )
+
+                3 -> SettingsScreen(
+                    navController = navController,
                 )
             }
         }
