@@ -1,7 +1,6 @@
 package team.swyp.sdu.domain.validator
 
 import team.swyp.sdu.data.model.*
-import team.swyp.sdu.domain.service.ActivityType
 import timber.log.Timber
 
 /**
@@ -80,11 +79,6 @@ class WalkingSessionValidator {
             flags += SuspicionFlag.SHAKING_PATTERN
         }
 
-        // 차량/자전거 이동 감지
-        if (session.primaryActivity == ActivityType.IN_VEHICLE ||
-            session.primaryActivity == ActivityType.ON_BICYCLE
-        ) {
-            flags += SuspicionFlag.VEHICLE_DETECTED
-        }
+        // 차량/자전거 이동 감지 로직은 제거됨
     }
 }

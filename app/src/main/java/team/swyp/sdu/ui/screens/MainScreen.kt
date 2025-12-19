@@ -1,6 +1,5 @@
 package team.swyp.sdu.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,9 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.ui.home.HomeScreen
 import team.swyp.sdu.ui.mypage.MyPageRoute
-import team.swyp.sdu.ui.mypage.MyPageScreen
-import team.swyp.sdu.ui.mypage.settings.SettingsScreen
-import team.swyp.sdu.ui.record.RecordScreen
+import team.swyp.sdu.ui.record.RecordRoute
 
 /**
  * 메인 탭 화면: 각 피처 화면 호출만 담당
@@ -126,10 +123,16 @@ fun MainScreen(
                     },
                 )
 
-                1 -> RecordScreen(
+                1 -> RecordRoute(
                     onStartOnboarding = {
                         navController.navigate(Screen.Onboarding.route)
                     },
+                    onNavigateToAlarm = {
+                        
+                    },
+                    onNavigateToFriend = {
+                        navController.navigate(Screen.Friends.route)
+                    }
                 )
 
                 2 -> {

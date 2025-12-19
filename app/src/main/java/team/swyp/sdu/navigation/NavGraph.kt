@@ -12,11 +12,10 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.presentation.viewmodel.UserViewModel
-import team.swyp.sdu.presentation.viewmodel.WalkingViewModel
+import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.login.LoginScreen
 import team.swyp.sdu.ui.splash.SplashScreen
 import team.swyp.sdu.ui.screens.MainScreen
@@ -98,6 +97,11 @@ fun NavGraph(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
+                onSkipToMain = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -149,13 +153,10 @@ fun NavGraph(
                 val viewModel =
                     entry.sharedViewModel<WalkingViewModel>(navController)
 
-                EmotionSelectionStep(
+                PostWalkingEmotionSelectScreen(
                     viewModel = viewModel,
                     onNext = {
                         navController.navigate(Screen.EmotionRecord.route)
-                    },
-                    onClose = {
-                        navController.popBackStack(Screen.Main.route, false)
                     },
                 )
             }

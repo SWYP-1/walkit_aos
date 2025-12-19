@@ -2,6 +2,8 @@ package team.swyp.sdu.di
 
 import android.content.Context
 import androidx.room.Room
+import com.google.gson.Gson
+import team.swyp.sdu.data.api.walking.WalkApi
 import team.swyp.sdu.data.local.dao.AppliedItemDao
 import team.swyp.sdu.data.local.dao.GoalDao
 import team.swyp.sdu.data.local.dao.MissionProgressDao
@@ -48,8 +50,13 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideWalkingSessionRepository(walkingSessionDao: WalkingSessionDao): WalkingSessionRepository =
-        WalkingSessionRepository(walkingSessionDao)
+    fun provideWalkingSessionRepository(
+        walkingSessionDao: WalkingSessionDao,
+        walkApi: WalkApi,
+        @ApplicationContext context: Context,
+        gson: Gson,
+    ): WalkingSessionRepository =
+        WalkingSessionRepository(walkingSessionDao, walkApi, context, gson)
 
     @Provides
     @Singleton

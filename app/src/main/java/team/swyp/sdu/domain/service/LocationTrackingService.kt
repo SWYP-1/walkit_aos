@@ -22,12 +22,16 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import team.swyp.sdu.MainActivity
 import team.swyp.sdu.data.model.LocationPoint
+import team.swyp.sdu.domain.contract.WalkingRawEvent
 import team.swyp.sdu.domain.service.ActivityType
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -61,6 +65,10 @@ class LocationTrackingService : Service() {
     private var batteryMonitoringJob: kotlinx.coroutines.Job? = null
     private var currentBatteryLevel: Int = 100
     private var isPowerSaveMode: Boolean = false
+
+    // Contract-based architecture를 위한 SharedFlow
+    private val _rawEvents = MutableSharedFlow<WalkingRawEvent>(replay = 1)
+    val rawEvents: SharedFlow<WalkingRawEvent> = _rawEvents.asSharedFlow()
 
     companion object {
         private const val CHANNEL_ID = "location_tracking_channel"
@@ -102,6 +110,49 @@ class LocationTrackingService : Service() {
         const val EXTRA_DURATION = "duration"
     }
 
+    /**
+     * 이벤트 emit 헬퍼 메서드들
+     */
+    private suspend fun emitEvent(event: WalkingRawEvent) {
+        _rawEvents.emit(event)
+    }
+
+    private suspend fun emitTrackingStarted() {
+        emitEvent(WalkingRawEvent.TrackingStarted)
+    }
+
+    private suspend fun emitTrackingStopped() {
+        emitEvent(WalkingRawEvent.TrackingStopped)
+    }
+
+    private suspend fun emitTrackingPaused() {
+        emitEvent(WalkingRawEvent.TrackingPaused)
+    }
+
+    private suspend fun emitTrackingResumed() {
+        emitEvent(WalkingRawEvent.TrackingResumed)
+    }
+
+    private suspend fun emitLocationUpdate(locations: List<LocationPoint>) {
+        emitEvent(WalkingRawEvent.LocationUpdate(locations))
+    }
+
+    private suspend fun emitStepCountUpdate(rawStepCount: Int) {
+        emitEvent(WalkingRawEvent.StepCountUpdate(rawStepCount))
+    }
+
+    private suspend fun emitAccelerometerUpdate(acceleration: Float, movementState: MovementState) {
+        emitEvent(WalkingRawEvent.AccelerometerUpdate(acceleration, movementState))
+    }
+
+    private suspend fun emitActivityStateChange(activityType: ActivityType, confidence: Int) {
+        emitEvent(WalkingRawEvent.ActivityStateChange(activityType, confidence))
+    }
+
+    private suspend fun emitError(message: String, cause: Throwable? = null) {
+        emitEvent(WalkingRawEvent.Error(message, cause))
+    }
+
     override fun onCreate() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -127,11 +178,15 @@ class LocationTrackingService : Service() {
     ): Int {
         when (intent?.action) {
             ACTION_START_TRACKING -> {
-                startTracking()
+                serviceScope.launch {
+                    startTracking()
+                }
             }
 
             ACTION_STOP_TRACKING -> {
-                stopTracking()
+                serviceScope.launch {
+                    stopTracking()
+                }
             }
 
             ACTION_UPDATE_NOTIFICATION -> {
@@ -150,7 +205,7 @@ class LocationTrackingService : Service() {
     /**
      * 위치 추적 시작
      */
-    fun startTracking() {
+    suspend fun startTracking() {
         if (isTracking) {
             Timber.d("이미 위치 추적 중입니다")
             return
@@ -160,6 +215,9 @@ class LocationTrackingService : Service() {
         lastSentIndex = 0
         startForeground(NOTIFICATION_ID, createNotification())
         isTracking = true
+
+        // Contract-based architecture: 추적 시작 이벤트 emit
+        emitTrackingStarted()
 
         // 배터리 모니터링 시작
         startBatteryMonitoring()
@@ -207,6 +265,12 @@ class LocationTrackingService : Service() {
                         locationPoints.add(point)
                         Timber.d("위치 업데이트: ${point.latitude}, ${point.longitude}, 정확도: ${accuracy}m")
 
+                        // Contract-based architecture: 위치 업데이트 이벤트 emit
+                        serviceScope.launch {
+                            val newLocations = listOf(point) // 새로운 위치만 emit
+                            emitLocationUpdate(newLocations)
+                        }
+
                         // 새로운 위치만 Broadcast로 전송 (전체 리스트가 아닌 새로 추가된 부분만)
                         sendNewLocationDataBroadcast()
                     }
@@ -231,7 +295,7 @@ class LocationTrackingService : Service() {
     /**
      * 위치 추적 중지
      */
-    fun stopTracking() {
+    suspend fun stopTracking() {
         if (!isTracking) {
             return
         }
@@ -241,6 +305,9 @@ class LocationTrackingService : Service() {
         }
         locationCallback = null
         isTracking = false
+
+        // Contract-based architecture: 추적 중지 이벤트 emit
+        emitTrackingStopped()
 
         // 배터리 모니터링 중지
         stopBatteryMonitoring()
@@ -252,6 +319,55 @@ class LocationTrackingService : Service() {
         stopSelf()
         Timber.d("위치 추적 중지")
     }
+
+    /**
+     * 위치 추적 일시정지
+     */
+    suspend fun pauseTracking() {
+        if (!isTracking) {
+            Timber.d("추적이 시작되지 않았습니다")
+            return
+        }
+
+        // Contract-based architecture: 추적 일시정지 이벤트 emit
+        emitTrackingPaused()
+
+        Timber.d("위치 추적 일시정지")
+    }
+
+    /**
+     * 위치 추적 재개
+     */
+    suspend fun resumeTracking() {
+        if (!isTracking) {
+            Timber.d("추적이 시작되지 않았습니다")
+            return
+        }
+
+        // Contract-based architecture: 추적 재개 이벤트 emit
+        emitTrackingResumed()
+
+        Timber.d("위치 추적 재개")
+    }
+
+    /**
+     * 걸음 수 업데이트 (외부에서 호출)
+     */
+    suspend fun onStepCountUpdate(rawStepCount: Int) {
+        emitStepCountUpdate(rawStepCount)
+    }
+
+    /**
+     * 가속도계 업데이트 (외부에서 호출)
+     */
+    suspend fun onAccelerometerUpdate(acceleration: Float, movementState: MovementState) {
+        emitAccelerometerUpdate(acceleration, movementState)
+    }
+
+    /**
+     * 추적 상태 확인
+     */
+    fun isCurrentlyTracking(): Boolean = isTracking
 
     /**
      * 새로운 위치 데이터만 Broadcast로 전송 (성능 최적화)
@@ -353,6 +469,12 @@ class LocationTrackingService : Service() {
                                 if (newActivityType != null && newActivityType != currentActivityType) {
                                     currentActivityType = newActivityType
                                     Timber.d("활동 상태 변경 수신: $newActivityType - LocationRequest 즉시 업데이트")
+
+                                    // Contract-based architecture: 활동 상태 변경 이벤트 emit
+                                    serviceScope.launch {
+                                        emitActivityStateChange(newActivityType, 100) // confidence 값은 임시로 100
+                                    }
+
                                     // 즉시 LocationRequest 업데이트 (지연 해결)
                                     updateLocationRequest()
                                 }

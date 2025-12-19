@@ -30,21 +30,12 @@ sealed interface HomeUiState {
         val levelLabel: String = "",
         val todaySteps: Int = 0,
         val sessionsThisWeek: List<WalkingSession>,
-        val weeklyEmotionSummary: WeeklyEmotionSummary? = null,
+        val dominantEmotion : EmotionType? = null,
+        val recentEmotions: List<EmotionType?> = emptyList(), // 최근 7개의 postWalkEmotion
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
 
-/**
- * 이번 주 감정 요약
- */
-data class WeeklyEmotionSummary(
-    val mainEmotion: EmotionType,
-    val mainEmotionCount: Int,
-    val totalDays: Int,
-    val positiveCount: Int,
-    val negativeCount: Int,
-)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -137,13 +128,18 @@ class HomeViewModel @Inject constructor(
                 }
                 .collect { sessions ->
                     val thisWeekSessions = sessions.filterThisWeek()
-                    val emotionSummary = analyzeWeeklyEmotions(thisWeekSessions)
+                    val recentEmotions = sessions
+                        .sortedByDescending { it.startTime }
+                        .take(7)
+                        .map { it.postWalkEmotion }
+                    val dominantEmotion = findDominantEmotion(thisWeekSessions)
                     _uiState.value = HomeUiState.Success(
                         nickname = nickname,
                         levelLabel = levelLabel,
                         todaySteps = todaySteps,
                         sessionsThisWeek = thisWeekSessions,
-                        weeklyEmotionSummary = emotionSummary,
+                        recentEmotions = recentEmotions,
+                        dominantEmotion = dominantEmotion,
                     )
                 }
         }
@@ -163,48 +159,18 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * 이번 주 감정 분석
+     * 이번주 산책에서 가장 많이 경험된 감정 찾기
      */
-    private fun analyzeWeeklyEmotions(sessions: List<WalkingSession>): WeeklyEmotionSummary? {
-        // 모든 세션에서 감정 추출
-        val allEmotions = sessions.flatMap { it.emotions }
-        if (allEmotions.isEmpty()) return null
-
-        // 감정 타입별 카운트
-        val emotionCounts = allEmotions.groupingBy { it.type }.eachCount()
-
-        // 긍정/부정 감정 분류
-        val positiveEmotions = listOf(
-            EmotionType.HAPPY,    // 기쁨
-            EmotionType.JOYFUL,   // 즐거움
-            EmotionType.CONTENT,  // 행복함
-        )
-
-        val negativeEmotions = listOf(
-            EmotionType.DEPRESSED, // 우울함
-            EmotionType.TIRED,     // 지침
-            EmotionType.ANXIOUS,   // 짜증남
-        )
-
-        val positiveCount = positiveEmotions.sumOf { emotionCounts[it] ?: 0 }
-        val negativeCount = negativeEmotions.sumOf { emotionCounts[it] ?: 0 }
-
-        // 가장 많이 나타난 감정 찾기
-        val mainEmotion = emotionCounts.maxByOrNull { it.value }?.key ?: EmotionType.HAPPY
-        val mainEmotionCount = emotionCounts[mainEmotion] ?: 0
-
-        // 이번 주 일수 계산 (월요일부터 오늘까지)
-        val today = LocalDate.now()
-        val startOfWeek = today.with(java.time.DayOfWeek.MONDAY)
-        val totalDays = java.time.temporal.ChronoUnit.DAYS.between(startOfWeek, today).toInt() + 1
-
-        return WeeklyEmotionSummary(
-            mainEmotion = mainEmotion,
-            mainEmotionCount = mainEmotionCount,
-            totalDays = totalDays,
-            positiveCount = positiveCount,
-            negativeCount = negativeCount,
-        )
+    private fun findDominantEmotion(sessions: List<WalkingSession>): EmotionType? {
+        val emotionCounts = sessions
+            .mapNotNull { it.postWalkEmotion }
+            .groupingBy { it }
+            .eachCount()
+        
+        return emotionCounts
+            .maxByOrNull { it.value }
+            ?.key
     }
+
 }
 

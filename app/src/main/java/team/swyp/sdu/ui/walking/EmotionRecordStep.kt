@@ -57,7 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import team.swyp.sdu.presentation.viewmodel.WalkingViewModel
+import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.walking.components.EmotionProgressIndicator
 
 /**

@@ -23,8 +23,11 @@ data class WalkingSessionEntity(
     val stepCount: Int = 0,
     val locationsJson: String = "[]", // LocationPoint 리스트를 JSON으로 직렬화
     val totalDistance: Float = 0f,
-    val activityStatsJson: String = "[]", // ActivityStats 리스트를 JSON으로 직렬화
-    val primaryActivity: String? = null, // ActivityType enum을 String으로 저장
-    val emotionsJson: String = "[]", // Emotion 리스트를 JSON으로 직렬화
     val isSynced: Boolean = false, // 서버 동기화 여부
+    // 산책 저장 API용 필드들
+    val preWalkEmotion: String? = null, // EmotionType을 String으로 저장
+    val postWalkEmotion: String? = null, // EmotionType을 String으로 저장
+    val note: String? = null,
+    val imageUrl: String? = null,
+    val createdDate: String? = null,
 )

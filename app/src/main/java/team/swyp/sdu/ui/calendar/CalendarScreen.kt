@@ -72,16 +72,6 @@ fun CalendarScreen(
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
-    val emotionsByDate = remember(sessions) {
-        sessions.flatMap { session ->
-            session.emotions.map { emotion ->
-                val date = java.time.Instant.ofEpochMilli(emotion.timestamp)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
-                date to emotion
-            }
-        }.groupBy({ it.first }, { it.second })
-    }
 
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
@@ -92,7 +82,7 @@ fun CalendarScreen(
     }
 
     val monthlyStats = remember(sessions, currentMonth) {
-        calculateMonthlyStats(sessions, currentMonth, emotionsByDate)
+        calculateMonthlyStats(sessions, currentMonth)
     }
 
     val navigationBarsPadding = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues()
@@ -118,7 +108,6 @@ fun CalendarScreen(
 
         CalendarGrid(
             yearMonth = currentMonth,
-            emotionsByDate = emotionsByDate,
             sessionsByDate = sessionsByDate,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
@@ -235,7 +224,6 @@ private fun CalendarHeader(
 @Composable
 private fun CalendarGrid(
     yearMonth: YearMonth,
-    emotionsByDate: Map<LocalDate, List<Emotion>>,
     sessionsByDate: Map<LocalDate, List<team.swyp.sdu.data.model.WalkingSession>>,
     modifier: Modifier = Modifier,
 ) {
@@ -279,13 +267,10 @@ private fun CalendarGrid(
                         )
                     } else if (dayIndex < daysInMonth) {
                         val date = yearMonth.atDay(dayIndex + 1)
-                        val emotions = emotionsByDate[date] ?: emptyList()
-                        val primaryEmotion = emotions.firstOrNull()
                         val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
 
                         CalendarDayCell(
                             day = dayIndex + 1,
-                            emotion = primaryEmotion,
                             hasWalkSession = hasWalkSession,
                             modifier = Modifier
                                 .weight(1f)
@@ -310,18 +295,16 @@ private fun CalendarGrid(
 @Composable
 private fun CalendarDayCell(
     day: Int,
-    emotion: Emotion?,
     hasWalkSession: Boolean,
     modifier: Modifier = Modifier,
 ) {
     // 기본 구현: 날짜 숫자 표시
-    val (backgroundColor, _) = getMoodColorAndEmoji(emotion?.type)
+    val backgroundColor = MaterialTheme.colorScheme.surface
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor)
-            .clickable(enabled = emotion != null) { /* TODO: 날짜 클릭 처리 */ },
+            .background(backgroundColor),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -332,11 +315,7 @@ private fun CalendarDayCell(
                 text = day.toString(),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = if (emotion != null) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             )
 
             // 산책 세션이 있으면 초록색 점 표시
@@ -575,7 +554,6 @@ private data class MonthlyStats(
 private fun calculateMonthlyStats(
     sessions: List<WalkingSession>,
     month: YearMonth,
-    emotionsByDate: Map<LocalDate, List<Emotion>>,
 ): MonthlyStats {
     val monthStart = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val monthEnd = month.atEndOfMonth().atTime(23, 59, 59)
@@ -588,33 +566,9 @@ private fun calculateMonthlyStats(
     val totalSteps = monthSessions.sumOf { it.stepCount.toLong() }.toInt()
     val sessionsCount = monthSessions.size
 
-    val emotionCounts = emotionsByDate.values.flatten()
-        .filter { emotion ->
-            val date = java.time.Instant.ofEpochMilli(emotion.timestamp)
-                .atZone(ZoneId.systemDefault()).toLocalDate()
-            date.year == month.year && date.monthValue == month.monthValue
-        }
-        .groupBy { it.type }
-        .mapValues { it.value.size }
-
-    val primaryEmotionType = emotionCounts.maxByOrNull { it.value }?.key ?: EmotionType.HAPPY
-    val primaryMood = when (primaryEmotionType) {
-        EmotionType.HAPPY -> "Happy"
-        EmotionType.JOYFUL -> "Joyful"
-        EmotionType.CONTENT -> "Content"
-        EmotionType.DEPRESSED -> "Depressed"
-        EmotionType.TIRED -> "Tired"
-        EmotionType.ANXIOUS -> "Anxious"
-    }
-
-    val description = when (primaryEmotionType) {
-        EmotionType.HAPPY -> "You're feeling happy and optimistic. Keep up the good vibes!"
-        EmotionType.JOYFUL -> "You're feeling joyful and content. Enjoy this moment!"
-        EmotionType.CONTENT -> "You're satisfied and at ease. Enjoy this contentment!"
-        EmotionType.DEPRESSED -> "Take it easy. Walking can help clear your mind."
-        EmotionType.TIRED -> "You might need some rest. Take care of yourself!"
-        EmotionType.ANXIOUS -> "Take deep breaths. You're stronger than you think."
-    }
+    // 감정 관련 로직 제거됨 - 기본값 설정
+    val primaryMood = "Walking"
+    val description = "You've been walking regularly. Keep up the good work!"
 
     val focusScore = if (sessionsCount > 0) {
         ((sessionsCount.toFloat() / 30f) * 100f).toInt().coerceIn(0, 100)

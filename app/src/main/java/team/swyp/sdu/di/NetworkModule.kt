@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import team.swyp.sdu.data.api.walking.WalkApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -92,20 +93,6 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("pokeapi")
-    fun providePokemonRetrofit(
-        okHttpClient: OkHttpClient,
-        gson: Gson,
-    ): Retrofit =
-        Retrofit
-            .Builder()
-            .baseUrl("https://pokeapi.co/api/v2/") // PokéAPI
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-
-    @Provides
-    @Singleton
     fun provideAuthApi(
         @Named("walkit") retrofit: Retrofit,
     ): AuthApi = retrofit.create(AuthApi::class.java)
@@ -128,10 +115,9 @@ object NetworkModule {
         @Named("walkit") retrofit: Retrofit,
     ): GoalApi = retrofit.create(GoalApi::class.java)
 
-    // TODO: PokemonApiService가 필요하면 구현 후 주석 해제
-    // @Provides
-    // @Singleton
-    // fun providePokemonApiService(
-    //     @Named("pokeapi") pokemonRetrofit: Retrofit,
-    // ): team.swyp.sdu.data.api.PokemonApiService = pokemonRetrofit.create(team.swyp.sdu.data.api.PokemonApiService::class.java)
+    @Provides
+    @Singleton
+    fun provideWalkApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): WalkApi = retrofit.create(WalkApi::class.java)
 }

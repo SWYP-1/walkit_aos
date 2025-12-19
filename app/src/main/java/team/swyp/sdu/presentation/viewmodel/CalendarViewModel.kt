@@ -110,7 +110,7 @@ class CalendarViewModel @Inject constructor(
                                 java.time.Instant.ofEpochMilli(session.startTime)
                                     .atZone(ZoneId.systemDefault())
                                     .toLocalDate()
-                            (date.monthValue == 12 && date.dayOfMonth <= 11)
+                            (date.monthValue == 12 && date.dayOfMonth <= 16)
                         }
                     if (hasNovDec) {
                         Timber.d("Dummy data skipped: early-December data already exists")
@@ -143,6 +143,14 @@ class CalendarViewModel @Inject constructor(
 
     fun nextDay() {
         today.value = today.value.plusDays(1)
+    }
+
+    fun prevWeek() {
+        today.value = today.value.minusWeeks(1)
+    }
+
+    fun nextWeek() {
+        today.value = today.value.plusWeeks(1)
     }
 
     private fun List<WalkingSession>.aggregate(): WalkAggregate {

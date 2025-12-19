@@ -24,8 +24,12 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,9 +59,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.domain.service.ActivityType
-import team.swyp.sdu.presentation.viewmodel.WalkingUiState
-import team.swyp.sdu.presentation.viewmodel.WalkingViewModel
+import team.swyp.sdu.domain.service.MovementState
+import team.swyp.sdu.ui.walking.viewmodel.SensorStatus
+import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
+import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.components.LottieAnimationView
 import java.util.concurrent.TimeUnit
 
@@ -72,7 +78,6 @@ fun WalkingScreen(
     onNavigateToFinish: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     val permissionsState =
         rememberMultiplePermissionsState(
@@ -94,7 +99,7 @@ fun WalkingScreen(
     LaunchedEffect(Unit) {
         val currentState = viewModel.uiState.value
         if (currentState is WalkingUiState.Completed) {
-            viewModel.reset()
+//            viewModel.reset()
         }
     }
 
@@ -104,7 +109,7 @@ fun WalkingScreen(
             if (currentState !is WalkingUiState.Completed &&
                 currentState !is WalkingUiState.Walking
             ) {
-                viewModel.reset()
+//                viewModel.reset()
             }
         }
     }
@@ -117,10 +122,9 @@ fun WalkingScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         when (val state = uiState) {
-            is WalkingUiState.Initial,
-            is WalkingUiState.EmotionSelection,
-                -> {
-                EmotionSelectionView(
+            is WalkingUiState.PreWalkingEmotionSelection -> {
+                // 산책 전 감정 선택
+                PreWalkingEmotionSelectScreen(
                     viewModel = viewModel,
                     onNextClick = {
                         if (permissionsState.allPermissionsGranted) {
@@ -132,15 +136,22 @@ fun WalkingScreen(
             }
 
             is WalkingUiState.Walking -> {
+                val sensorStatus by viewModel.sensorStatus.collectAsStateWithLifecycle()
+                val currentActivityType by viewModel.currentActivityType.collectAsStateWithLifecycle()
+                val activityConfidence by viewModel.activityConfidence.collectAsStateWithLifecycle()
+                val currentAcceleration by viewModel.currentAcceleration.collectAsStateWithLifecycle()
+                val currentMovementState by viewModel.currentMovementState.collectAsStateWithLifecycle()
+                val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
                 WalkingView(
                     stepCount = state.stepCount,
                     duration = state.duration,
-                    distance = state.distance,
-                    currentActivity = state.currentActivity,
-                    currentMovementState = state.currentMovementState,
-                    currentSpeed = state.currentSpeed,
-                    debugInfo = state.debugInfo,
                     isPaused = state.isPaused,
+                    sensorStatus = sensorStatus,
+                    currentActivityType = currentActivityType,
+                    activityConfidence = activityConfidence,
+                    currentAcceleration = currentAcceleration,
+                    currentMovementState = currentMovementState,
+                    currentLocation = currentLocation,
                     onPauseToggle = {
                         if (state.isPaused) {
                             viewModel.resumeWalking()
@@ -160,76 +171,11 @@ fun WalkingScreen(
             is WalkingUiState.Error -> {
                 ErrorView(
                     message = state.message,
-                    onRetryClick = { viewModel.reset() },
+                    onRetryClick = {
+
+                    },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun EmotionSelectionView(
-    viewModel: WalkingViewModel,
-    onNextClick: () -> Unit,
-    permissionsGranted: Boolean,
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val selectedEmotions = when (uiState) {
-        is WalkingUiState.EmotionSelection -> (uiState as WalkingUiState.EmotionSelection).selectedEmotions
-        else -> emptySet()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        Text(
-            text = "산책 전 나의 마음은 어떤가요?",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
-
-        if (!permissionsGranted) {
-            Text(
-                text = "걸음 수 측정과 위치 추적을 위해 권한이 필요합니다",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        EmotionGrid(
-            selectedEmotions = selectedEmotions,
-            onEmotionToggle = { emotionType ->
-                viewModel.toggleEmotion(emotionType)
-            },
-        )
-
-        Button(
-            onClick = onNextClick,
-            enabled = permissionsGranted && selectedEmotions.isNotEmpty(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (selectedEmotions.isNotEmpty()) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            ),
-        ) {
-            Text(
-                text = "다음",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
         }
     }
 }
@@ -352,12 +298,13 @@ private fun EmotionButton(
 private fun WalkingView(
     stepCount: Int,
     duration: Long,
-    distance: Float,
-    currentActivity: ActivityType?,
-    currentMovementState: team.swyp.sdu.domain.service.MovementState?,
-    currentSpeed: Float,
-    debugInfo: WalkingUiState.DebugInfo?,
     isPaused: Boolean,
+    sensorStatus: SensorStatus,
+    currentActivityType: ActivityType?,
+    activityConfidence: Int,
+    currentAcceleration: Float,
+    currentMovementState: MovementState?,
+    currentLocation: LocationPoint?,
     onPauseToggle: () -> Unit,
     onStopClick: () -> Unit,
 ) {
@@ -418,7 +365,7 @@ private fun WalkingView(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = formatDistance(distance),
+                                    text = formatDistance(0f),
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Text(
@@ -454,6 +401,121 @@ private fun WalkingView(
             }
         }
 
+        // 활동 인식 상태 표시 카드
+        currentActivityType?.let { activity ->
+            ActivityStatusCard(
+                activity = activity,
+                confidence = activityConfidence,
+            )
+        }
+
+        // 센서 상태 표시 카드
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "센서 상태",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                
+                SensorStatusRow(
+                    icon = Icons.Default.DirectionsWalk,
+                    label = "걸음 수 센서",
+                    isActive = sensorStatus.isStepCounterActive,
+                    isAvailable = sensorStatus.isStepCounterAvailable,
+                )
+                
+                SensorStatusRow(
+                    icon = Icons.Default.Speed,
+                    label = "가속도계",
+                    isActive = sensorStatus.isAccelerometerActive,
+                    isAvailable = sensorStatus.isAccelerometerAvailable,
+                )
+                
+                SensorStatusRow(
+                    icon = Icons.Default.Sensors,
+                    label = "활동 인식",
+                    isActive = sensorStatus.isActivityRecognitionActive,
+                    isAvailable = sensorStatus.isActivityRecognitionAvailable,
+                )
+                
+                SensorStatusRow(
+                    icon = Icons.Default.LocationOn,
+                    label = "위치 추적",
+                    isActive = sensorStatus.isLocationTrackingActive,
+                    isAvailable = true,
+                )
+            }
+        }
+
+        // 센서 수치 표시 카드
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "센서 수치",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                HorizontalDivider()
+
+                // 걸음 수 센서
+                SensorValueRow(
+                    label = "걸음 수",
+                    value = "$stepCount 걸음",
+                )
+
+                // 가속도계
+                SensorValueRow(
+                    label = "가속도",
+                    value = String.format("%.2f m/s²", currentAcceleration),
+                    subValue = currentMovementState?.let { getMovementStateName(it) },
+                )
+
+                // 활동 인식
+                if (currentActivityType != null) {
+                    SensorValueRow(
+                        label = "활동 인식",
+                        value = getActivityName(currentActivityType!!),
+                        subValue = "신뢰도: ${activityConfidence}%",
+                    )
+                } else {
+                    SensorValueRow(
+                        label = "활동 인식",
+                        value = "측정 중...",
+                    )
+                }
+
+                // 위치 정보
+                if (currentLocation != null) {
+                    SensorValueRow(
+                        label = "위치",
+                        value = String.format("%.6f, %.6f", currentLocation!!.latitude, currentLocation!!.longitude),
+                        subValue = currentLocation!!.accuracy?.let { "정확도: ${String.format("%.1f", it)}m" } ?: "정확도: 측정 중",
+                    )
+                } else {
+                    SensorValueRow(
+                        label = "위치",
+                        value = "측정 중...",
+                    )
+                }
+            }
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -464,406 +526,103 @@ private fun WalkingView(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                currentMovementState?.let { movementState ->
-                    val (statusText, statusColor) =
-                        when (movementState) {
-                            team.swyp.sdu.domain.service.MovementState.WALKING -> "걷는 중" to Color(0xFF4CAF50)
-                            team.swyp.sdu.domain.service.MovementState.RUNNING -> "뛰는 중" to Color(0xFFF44336)
-                            team.swyp.sdu.domain.service.MovementState.STILL -> "정지" to Color(0xFF9E9E9E)
-                            team.swyp.sdu.domain.service.MovementState.UNKNOWN -> "알 수 없음" to Color(0xFF9E9E9E)
-                        }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(12.dp)
-                                        .background(statusColor, CircleShape),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = statusColor,
-                            )
-                        }
-
-                        debugInfo?.let { info ->
-                            val currentAccel = info.acceleration
-                            val thresholdDescription =
-                                when (movementState) {
-                                    team.swyp.sdu.domain.service.MovementState.STILL -> {
-                                        "가속도 ≤ 1.0 m/s² (현재: ${String.format("%.2f", currentAccel)} m/s²)"
-                                    }
-
-                                    team.swyp.sdu.domain.service.MovementState.WALKING -> {
-                                        "가속도 1.0 ~ 2.5 m/s² (현재: ${String.format("%.2f", currentAccel)} m/s²)"
-                                    }
-
-                                    team.swyp.sdu.domain.service.MovementState.RUNNING -> {
-                                        "가속도 ≥ 4.5 m/s² (현재: ${String.format("%.2f", currentAccel)} m/s²)"
-                                    }
-
-                                    else -> {
-                                        "가속도: ${String.format("%.2f", currentAccel)} m/s²"
-                                    }
-                                }
-
-                            Text(
-                                text = thresholdDescription,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 14.sp,
-                            )
-                        }
-
-                        Text(
-                            text = "달리기 전환: 가속도 ≥ 4.5 m/s² 필요",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 14.sp,
-                        )
-                    }
-                }
-
-                if (currentSpeed >= 0.5f) {
-                    HorizontalDivider()
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "현재 속도",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = String.format("%.1f", currentSpeed),
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    text = "m/s",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = "(미터/초)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                val speedKmh = currentSpeed * 3.6f
-                                Text(
-                                    text = String.format("%.1f", speedKmh),
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    text = "km/h",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = "(킬로미터/시간)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        currentActivity?.let { activity ->
-            ActivityStatusCard(activity = activity)
-        }
-
-        debugInfo?.let { info ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "검증 정보",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    HorizontalDivider()
-                    Text(
-                        text = "센서 데이터",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(
-                                text = "가속도",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = String.format("%.2f", info.acceleration),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Text(
-                                text = "m/s² (미터/초²)",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "걸음/초",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = String.format("%.2f", info.stepsPerSecond),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "평균 보폭",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = info.averageStepLength?.let { String.format("%.2f m", it) } ?: "N/A",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-
-                    HorizontalDivider()
-                    Text(
-                        text = "걸음 수 비교",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(
-                                text = "실제 걸음 수",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "${info.realStepCount} 걸음",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "보간 걸음 수",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "${info.interpolatedStepCount} 걸음",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-
-                    HorizontalDivider()
-                    Text(
-                        text = "거리 비교",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(
-                                text = "GPS 거리",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = String.format("%.1f m", info.gpsDistance),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Step 거리",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = String.format("%.1f m", info.stepBasedDistance),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "하이브리드",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = String.format("%.1f m", distance),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-
-                    HorizontalDivider()
-                    Text(
-                        text = "거리 계산 공식",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "하이브리드 거리 = GPS 거리와 Step Counter 거리 결합",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = "GPS 거리 (Haversine 공식):",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = "d = 2R × arcsin(√(sin²(Δlat/2) + cos(lat1)×cos(lat2)×sin²(Δlon/2)))",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                        )
-                        Text(
-                            text = "R = 6,371,000m (지구 반지름)",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "Step Counter 거리:",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = "거리 = 걸음 수 × 평균 보폭",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                        )
-                        Text(
-                            text = "평균 보폭 = GPS 거리 / 걸음 수 (동적 계산)",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "GPS 정확도 ≤ 20m: GPS 우선 사용",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "GPS 부정확: Step Counter 거리 우선 사용",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "차이 > 20%: 가중 평균 (GPS 70% + Step 30%)",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    HorizontalDivider()
-                    Text(
-                        text = "위치 정보",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(
-                                text = "위치 포인트",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "${info.locationPointCount}개",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        info.lastLocation?.let { location ->
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "마지막 위치",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = String.format("%.6f, %.6f", location.latitude, location.longitude),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 10.sp,
-                                )
-                                location.accuracy?.let { accuracy ->
-                                    Text(
-                                        text = String.format("정확도: %.1fm", accuracy),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+//                currentMovementState?.let { movementState ->
+//                    val (statusText, statusColor) =
+//                        when (movementState) {
+//                            team.swyp.sdu.domain.service.MovementState.WALKING -> "걷는 중" to Color(0xFF4CAF50)
+//                            team.swyp.sdu.domain.service.MovementState.RUNNING -> "뛰는 중" to Color(0xFFF44336)
+//                            team.swyp.sdu.domain.service.MovementState.STILL -> "정지" to Color(0xFF9E9E9E)
+//                            team.swyp.sdu.domain.service.MovementState.UNKNOWN -> "알 수 없음" to Color(0xFF9E9E9E)
+//                        }
+//
+//                    Column(
+//                        horizontalAlignment = Alignment.CenterHorizontally,
+//                        verticalArrangement = Arrangement.spacedBy(8.dp),
+//                    ) {
+//                        Row(
+//                            horizontalArrangement = Arrangement.Center,
+//                            verticalAlignment = Alignment.CenterVertically,
+//                        ) {
+//                            Box(
+//                                modifier =
+//                                    Modifier
+//                                        .size(12.dp)
+//                                        .background(statusColor, CircleShape),
+//                            )
+//                            Spacer(modifier = Modifier.width(8.dp))
+//                            Text(
+//                                text = statusText,
+//                                style = MaterialTheme.typography.titleLarge,
+//                                fontWeight = FontWeight.Bold,
+//                                color = statusColor,
+//                            )
+//                        }
+//
+//                        Text(
+//                            text = "달리기 전환: 가속도 ≥ 4.5 m/s² 필요",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            fontSize = 11.sp,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                            lineHeight = 14.sp,
+//                        )
+//                    }
+//                }
+//
+//                if (currentSpeed >= 0.5f) {
+//                    HorizontalDivider()
+//                    Column(
+//                        horizontalAlignment = Alignment.CenterHorizontally,
+//                        verticalArrangement = Arrangement.spacedBy(8.dp),
+//                    ) {
+//                        Text(
+//                            text = "현재 속도",
+//                            style = MaterialTheme.typography.labelMedium,
+//                            color = MaterialTheme.colorScheme.primary,
+//                        )
+//                        Row(
+//                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+//                            verticalAlignment = Alignment.CenterVertically,
+//                        ) {
+//                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                                Text(
+//                                    text = String.format("%.1f", currentSpeed),
+//                                    style = MaterialTheme.typography.headlineMedium,
+//                                    fontWeight = FontWeight.Bold,
+//                                )
+//                                Text(
+//                                    text = "m/s",
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                )
+//                                Text(
+//                                    text = "(미터/초)",
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    fontSize = 10.sp,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                )
+//                            }
+//                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                                val speedKmh = currentSpeed * 3.6f
+//                                Text(
+//                                    text = String.format("%.1f", speedKmh),
+//                                    style = MaterialTheme.typography.headlineMedium,
+//                                    fontWeight = FontWeight.Bold,
+//                                )
+//                                Text(
+//                                    text = "km/h",
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                )
+//                                Text(
+//                                    text = "(킬로미터/시간)",
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    fontSize = 10.sp,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
             }
         }
     }
@@ -896,7 +655,10 @@ private fun ErrorView(
 }
 
 @Composable
-private fun ActivityStatusCard(activity: ActivityType) {
+private fun ActivityStatusCard(
+    activity: ActivityType,
+    confidence: Int = 0,
+) {
     val activityColor = getActivityColor(activity)
     val activityName = getActivityName(activity)
     val activityIcon = getActivityIcon(activity)
@@ -974,6 +736,14 @@ private fun ActivityStatusCard(activity: ActivityType) {
                     fontWeight = FontWeight.Bold,
                     color = activityColor,
                 )
+                if (confidence > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "신뢰도: ${confidence}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -1024,4 +794,124 @@ private fun formatDuration(millis: Long): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format("%02d:%02d", minutes, remainingSeconds)
+}
+
+private fun getMovementStateName(state: MovementState): String =
+    when (state) {
+        MovementState.STILL -> "정지"
+        MovementState.WALKING -> "걷기"
+        MovementState.RUNNING -> "달리기"
+        MovementState.UNKNOWN -> "알 수 없음"
+    }
+
+@Composable
+private fun SensorValueRow(
+    label: String,
+    value: String,
+    subValue: String? = null,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        if (subValue != null) {
+            Text(
+                text = subValue,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 0.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SensorStatusRow(
+    icon: ImageVector,
+    label: String,
+    isActive: Boolean,
+    isAvailable: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(24.dp),
+                tint = if (isActive) {
+                    MaterialTheme.colorScheme.primary
+                } else if (isAvailable) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isActive) {
+                    MaterialTheme.colorScheme.onSurface
+                } else if (isAvailable) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+            )
+        }
+        
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(
+                        color = when {
+                            isActive -> Color(0xFF4CAF50) // 초록색
+                            isAvailable -> Color(0xFF9E9E9E) // 회색
+                            else -> Color(0xFFF44336) // 빨간색
+                        },
+                        shape = CircleShape,
+                    ),
+            )
+            Text(
+                text = when {
+                    isActive -> "활성"
+                    isAvailable -> "대기"
+                    else -> "사용 불가"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = when {
+                    isActive -> Color(0xFF4CAF50)
+                    isAvailable -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.error
+                },
+            )
+        }
+    }
 }

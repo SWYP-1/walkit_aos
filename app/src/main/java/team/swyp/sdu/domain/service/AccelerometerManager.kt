@@ -137,7 +137,6 @@ class AccelerometerManager
                     object : SensorEventListener {
                         override fun onSensorChanged(event: SensorEvent?) {
                             if (!isTracking) {
-                                Timber.w("추적 중이 아니므로 센서 이벤트 무시")
                                 return
                             }
 

@@ -1,11 +1,9 @@
 package team.swyp.sdu.data.local.mapper
 
 import team.swyp.sdu.data.local.entity.WalkingSessionEntity
-import team.swyp.sdu.data.model.ActivityStats
-import team.swyp.sdu.data.model.Emotion
+import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
-import team.swyp.sdu.domain.service.ActivityType
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -33,10 +31,12 @@ object WalkingSessionMapper {
             stepCount = session.stepCount,
             locationsJson = json.encodeToString(session.locations),
             totalDistance = session.totalDistance,
-            activityStatsJson = json.encodeToString(session.activityStats),
-            primaryActivity = session.primaryActivity?.name,
-            emotionsJson = json.encodeToString(session.emotions),
             isSynced = isSynced,
+            preWalkEmotion = session.preWalkEmotion?.name,
+            postWalkEmotion = session.postWalkEmotion?.name,
+            note = session.note,
+            imageUrl = session.imageUrl,
+            createdDate = session.createdDate,
         )
 
     /**
@@ -50,28 +50,21 @@ object WalkingSessionMapper {
                 emptyList()
             }
 
-        val activityStats =
+        // String을 EmotionType으로 변환
+        val preWalkEmotion = entity.preWalkEmotion?.let {
             try {
-                json.decodeFromString<List<ActivityStats>>(entity.activityStatsJson)
+                EmotionType.valueOf(it)
             } catch (e: Exception) {
-                emptyList()
+                null
             }
-
-        val primaryActivity =
-            entity.primaryActivity?.let {
-                try {
-                    ActivityType.valueOf(it)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-        val emotions =
+        }
+        val postWalkEmotion = entity.postWalkEmotion?.let {
             try {
-                json.decodeFromString<List<Emotion>>(entity.emotionsJson)
+                EmotionType.valueOf(it)
             } catch (e: Exception) {
-                emptyList()
+                null
             }
+        }
 
         return WalkingSession(
             startTime = entity.startTime,
@@ -79,9 +72,11 @@ object WalkingSessionMapper {
             stepCount = entity.stepCount,
             locations = locations,
             totalDistance = entity.totalDistance,
-            activityStats = activityStats,
-            primaryActivity = primaryActivity,
-            emotions = emotions,
+            preWalkEmotion = preWalkEmotion,
+            postWalkEmotion = postWalkEmotion,
+            note = entity.note,
+            imageUrl = entity.imageUrl,
+            createdDate = entity.createdDate,
         )
     }
 }

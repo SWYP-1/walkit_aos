@@ -99,6 +99,18 @@ object WalkingTestData {
                 )
             }
 
+            // 산책 전/후 감정 랜덤 선택
+            val allEmotionTypes = listOf(
+                EmotionType.HAPPY,
+                EmotionType.JOYFUL,
+                EmotionType.CONTENT,
+                EmotionType.DEPRESSED,
+                EmotionType.TIRED,
+                EmotionType.ANXIOUS,
+            )
+            val preWalkEmotion = allEmotionTypes.random()
+            val postWalkEmotion = allEmotionTypes.random()
+
             sessions.add(
                 WalkingSession(
                     startTime = startTime,
@@ -106,9 +118,8 @@ object WalkingTestData {
                     stepCount = stepCount,
                     locations = locations,
                     totalDistance = totalDistance,
-                    activityStats = activityStats,
-                    primaryActivity = ActivityType.WALKING,
-                    emotions = sessionEmotions,
+                    preWalkEmotion = preWalkEmotion,
+                    postWalkEmotion = postWalkEmotion,
                 ),
             )
         }
@@ -327,6 +338,10 @@ object WalkingTestData {
                     )
                 }
 
+                // 산책 전/후 감정 랜덤 선택
+                val preWalkEmotion = allEmotionTypes.random()
+                val postWalkEmotion = allEmotionTypes.random()
+
                 sessions.add(
                     WalkingSession(
                         startTime = startTime,
@@ -334,9 +349,8 @@ object WalkingTestData {
                         stepCount = stepCount,
                         locations = locations,
                         totalDistance = totalDistance,
-                        activityStats = activityStats,
-                        primaryActivity = ActivityType.WALKING,
-                        emotions = sessionEmotions,
+                        preWalkEmotion = preWalkEmotion,
+                        postWalkEmotion = postWalkEmotion,
                     ),
                 )
             }
@@ -384,7 +398,7 @@ object WalkingTestData {
                     )
 
                 val stats = generateActivityStats(durationMillis, totalDistance)
-                val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT)
+                val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
                 val sessionEmotions =
                     listOf(
                         Emotion(
@@ -394,6 +408,10 @@ object WalkingTestData {
                         ),
                     )
 
+                // 산책 전/후 감정 랜덤 선택
+                val preWalkEmotion = emotionTypes.random()
+                val postWalkEmotion = emotionTypes.random()
+
                 sessions.add(
                     WalkingSession(
                         startTime = startTime,
@@ -401,9 +419,8 @@ object WalkingTestData {
                         stepCount = stepCount,
                         locations = locations,
                         totalDistance = totalDistance,
-                        activityStats = stats,
-                        primaryActivity = ActivityType.WALKING,
-                        emotions = sessionEmotions,
+                        preWalkEmotion = preWalkEmotion,
+                        postWalkEmotion = postWalkEmotion,
                     ),
                 )
             }
@@ -418,12 +435,15 @@ object WalkingTestData {
     fun generateDecemberRangeSessions(
         year: Int = LocalDate.now().year,
         startDay: Int = 1,
-        endDay: Int = 11,
+        endDay: Int = 16,
     ): List<WalkingSession> {
         val sessions = mutableListOf<WalkingSession>()
         val december = YearMonth.of(year, 12)
         val baseLat = 37.2411
         val baseLon = 127.1776
+
+        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
+
 
         for (day in startDay..endDay) {
             if (Random.nextFloat() > 0.35f) {
@@ -468,15 +488,20 @@ object WalkingTestData {
             )
 
         val stats = generateActivityStats(durationMillis, totalDistance)
-        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED)
-        val sessionEmotions =
-            listOf(
-                Emotion(
-                    type = emotionTypes.random(),
-                    timestamp = startTime + durationMillis / 3,
-                    note = "샘플 산책",
-                ),
-            )
+//        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED)
+//        val sessionEmotions =
+//            listOf(
+//                Emotion(
+//                    type = emotionTypes.random(),
+//                    timestamp = startTime + durationMillis / 3,
+//                    note = "샘플 산책",
+//                ),
+//            )
+
+        // 산책 전/후 감정 랜덤 선택
+        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
+        val preWalkEmotion = emotionTypes.random()
+        val postWalkEmotion = emotionTypes.random()
 
         return WalkingSession(
             startTime = startTime,
@@ -484,9 +509,8 @@ object WalkingTestData {
             stepCount = stepCount,
             locations = locations,
             totalDistance = totalDistance,
-            activityStats = stats,
-            primaryActivity = ActivityType.WALKING,
-            emotions = sessionEmotions,
+            preWalkEmotion = preWalkEmotion,
+            postWalkEmotion = postWalkEmotion,
         )
     }
 }

@@ -51,8 +51,8 @@ import timber.log.Timber
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.presentation.viewmodel.KakaoMapViewModel
-import team.swyp.sdu.presentation.viewmodel.WalkingUiState
-import team.swyp.sdu.presentation.viewmodel.WalkingViewModel
+import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
+import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.walking.viewmodel.WalkingResultUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingResultViewModel
 import java.time.DayOfWeek
@@ -224,16 +224,40 @@ fun WalkingResultScreen(
     val context = LocalContext.current
 
 
-    val session =
-        when (val state = uiState) {
-            is WalkingUiState.Completed -> {
-                state.session
-            }
+    val session = when (val state = uiState) {
+        is WalkingUiState.Completed -> {
+            state.session
+        }
+        else -> {
+            // 정상적인 플로우에서는 Completed 상태여야 함
+            // 예외 상황이 발생한 경우 에러 처리
+            Timber.e("WalkingResultScreen에 도달했지만 세션이 완료되지 않았습니다. 상태: $state")
+            // 에러 상태로 처리하거나 기본 세션 반환 (필요시 에러 화면 표시)
+            null
+        }
+    }
 
-            else -> {
-                WalkingSession(startTime = System.currentTimeMillis())
+    // 세션이 없으면 에러 처리
+    if (session == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "세션 정보를 불러올 수 없습니다.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Button(onClick = onNavigateBack) {
+                    Text("돌아가기")
+                }
             }
         }
+        return
+    }
 
     LaunchedEffect(locations) {
         if (locations.isNotEmpty()) {

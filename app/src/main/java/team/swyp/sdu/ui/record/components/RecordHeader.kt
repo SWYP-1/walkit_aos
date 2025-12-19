@@ -1,4 +1,4 @@
-package team.swyp.sdu.ui.home.components
+package team.swyp.sdu.ui.record.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,20 +15,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.White
 
 @Composable
-fun HomeHeader(
-    profileImageUrl : String
+fun RecordHeader(
+    onClickSearch: () -> Unit,
+    onClickAlarm: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -53,26 +50,32 @@ fun HomeHeader(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_search),
+                    contentDescription = "검색",
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clickable(onClick = onClickSearch)
+                )
 
-                val url = profileImageUrl ?: "https://images.pexels.com/photos/3861976/pexels-photo-3861976.jpeg?_gl=1*8iaqp3*_ga*ODU3MTU1NTU2LjE3NjYwMzk4MDQ.*_ga_8JE65Q40S6*czE3NjYwMzk4MDQkbzEkZzEkdDE3NjYwMzk4MzEkajMzJGwwJGgw"
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(url)
-                        .build(),
-                    contentDescription = "이미지",
-                    modifier = Modifier.size(32.dp),
-                    contentScale = ContentScale.Fit
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_alarm),
+                    contentDescription = "알람",
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clickable(onClick = onClickAlarm)
                 )
             }
         }
     }
 }
 
-
 @Composable
 @Preview
-fun AppHeaderPreview() {
+fun RecordHeaderPreview() {
     WalkItTheme {
-        HomeHeader("https://images.pexels.com/photos/3861976/pexels-photo-3861976.jpeg?_gl=1*8iaqp3*_ga*ODU3MTU1NTU2LjE3NjYwMzk4MDQ.*_ga_8JE65Q40S6*czE3NjYwMzk4MDQkbzEkZzEkdDE3NjYwMzk4MzEkajMzJGwwJGgw")
+        RecordHeader({}, {})
     }
 }

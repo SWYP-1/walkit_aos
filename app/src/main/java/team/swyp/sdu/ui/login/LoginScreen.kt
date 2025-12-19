@@ -43,6 +43,7 @@ import team.swyp.sdu.ui.login.components.LoginButton
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
+    onSkipToMain: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
@@ -145,6 +146,20 @@ fun LoginScreen(
                         ),
                     ) {
                         Text("로그아웃")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 메인화면으로 가기 버튼
+                    Button(
+                        onClick = onSkipToMain,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Text("무시하고 메인화면으로 가기")
                     }
 
                     if (uiState is LoginUiState.Error) {

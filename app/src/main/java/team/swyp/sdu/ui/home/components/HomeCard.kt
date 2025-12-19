@@ -36,8 +36,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.res.painterResource
 import team.swyp.sdu.R
+import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.data.model.EmotionType.*
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.home.components.HomeMission
@@ -258,10 +262,9 @@ fun WeeklyRecordCard(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    EmotionCircle(text = "😐")
-                    EmotionCircle(text = "🙂")
+                    //TODO : 개발을 위해 해놓음 여기서 터지면 뭔가 에러임 출시 때 제거해야함
+                    EmotionCircle(emotionType = session.postWalkEmotion!!)
                 }
             }
 
@@ -302,20 +305,22 @@ fun WeeklyRecordCard(
 }
 
 @Composable
-fun EmotionCircle(text: String) {
-    Box(
-        modifier =
-            Modifier
-                .size(48.dp)
-                .background(Color(0xFF2E2E2E), shape = CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = Color.White,
-            style = MaterialTheme.typography.titleMedium,
-        )
+fun EmotionCircle(emotionType: EmotionType) {
+
+
+    val drawable = when(emotionType){
+        HAPPY -> R.drawable.ic_circle_happy
+        JOYFUL -> R.drawable.ic_circle_joyful
+        CONTENT -> R.drawable.ic_circle_content
+        DEPRESSED -> R.drawable.ic_circle_depressed
+        TIRED -> R.drawable.ic_circle_tired
+        ANXIOUS -> R.drawable.ic_circle_anxious
     }
+    Image(
+        painter = painterResource(drawable),
+        contentDescription = "감정",
+        modifier = Modifier.size(78.dp),
+    )
 }
 
 @Composable
