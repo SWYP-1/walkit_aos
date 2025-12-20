@@ -1,15 +1,13 @@
 package team.swyp.sdu.data.api.user
 
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
-import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.remote.user.dto.RemoteUserDto
 import team.swyp.sdu.data.remote.user.dto.UserSearchResultDto
 
@@ -38,27 +36,34 @@ interface UserApi {
      * 닉네임 등록
      *
      * @param nickname 등록할 닉네임
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
     @POST("/users/nickname/{nickname}")
     suspend fun registerNickname(
         @Path("nickname") nickname: String
-    )
+    ): Response<Void>
+
+    /**
+     * 생년월일 업데이트
+     *
+     * @param birthDate 생년월일 (ISO 8601 형식: "2015-12-04")
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    @POST("/users/birth-date/{birthDate}")
+    suspend fun updateBirthDate(
+        @Path("birthDate") birthDate: String
+    ): Response<Unit>
 
     /**
      * 사용자 정보 등록/업데이트 (온보딩 완료)
      *
-     * @param imageName 프로필 이미지 (선택사항)
-     * @param nickname 닉네임
-     * @param birthDate 생년월일 (ISO 8601 형식)
-     * @param sex 성별
-     * @return 등록된 사용자 정보
+     * @param body 사용자 정보 DTO (JSON)
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
-
-    // ✅ 이미지 없는 경우
     @PUT("/users")
     suspend fun updateUserProfile(
         @Body body: UpdateUserProfileRequest
-    ): RemoteUserDto
+    ): Response<Unit>
 
 }
 

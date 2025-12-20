@@ -56,6 +56,7 @@ import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Error
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Loading
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Success
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Updating
+import javax.inject.Inject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,6 +66,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.mypage.userInfo.component.FilledTextField
 import team.swyp.sdu.ui.theme.Grey10
 import team.swyp.sdu.ui.theme.Grey2
@@ -100,6 +102,9 @@ fun UserInfoManagementScreen(
     // ViewModel 상태 수집
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val userInput by viewModel.userInput.collectAsStateWithLifecycle()
+    
+    // GoalRepository에서 Goal 가져오기 (ViewModel을 통해)
+    val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
 
     // 로컬 상태
     var name by remember { mutableStateOf(userInput.name) }
@@ -109,13 +114,25 @@ fun UserInfoManagementScreen(
     var nickname by remember { mutableStateOf(userInput.nickname) }
     var profileImageUrl by remember { mutableStateOf<String?>(userInput.selectedImageUri ?: userInput.imageName) }
 
-    // 생년월일 초기화
-    LaunchedEffect(userInput.birthDate) {
-        userInput.birthDate.split("-").let { parts ->
-            if (parts.size == 3) {
-                birthYear = parts[0]
-                birthMonth = parts[1]
-                birthDay = parts[2]
+    // userInput이 변경될 때 로컬 상태 업데이트
+    LaunchedEffect(userInput) {
+        // 닉네임 업데이트
+        nickname = userInput.nickname
+        
+        // 이름 업데이트
+        name = userInput.name
+        
+        // 프로필 이미지 업데이트
+        profileImageUrl = userInput.selectedImageUri ?: userInput.imageName
+        
+        // 생년월일 업데이트
+        if (userInput.birthDate.isNotBlank()) {
+            userInput.birthDate.split("-").let { parts ->
+                if (parts.size == 3) {
+                    birthYear = parts[0]
+                    birthMonth = parts[1]
+                    birthDay = parts[2]
+                }
             }
         }
     }
@@ -188,21 +205,85 @@ fun UserInfoManagementScreen(
 
     // 에러 메시지 표시
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // 성공 메시지 표시
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    
+    // 이전 상태 추적
+    var previousState by remember { mutableStateOf<UserInfoUiState?>(null) }
+    
+    // 변경사항 확인 다이얼로그 표시 여부
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    
+    // 변경사항이 있는지 확인하는 함수
+    fun hasChanges(): Boolean {
+        val originalBirthDate = userInput.birthDate
+        val currentBirthDate = if (birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank()) {
+            String.format("%04d-%02d-%02d", 
+                birthYear.toIntOrNull() ?: 0,
+                birthMonth.toIntOrNull() ?: 0,
+                birthDay.toIntOrNull() ?: 0
+            )
+        } else {
+            ""
+        }
+        
+        val originalImageUrl = userInput.selectedImageUri ?: userInput.imageName
+        val currentImageUrl = profileImageUrl
+        
+        return nickname != userInput.nickname ||
+                currentBirthDate != originalBirthDate ||
+                currentImageUrl != originalImageUrl
+    }
 
     // UI 상태에 따른 처리
     LaunchedEffect(uiState) {
         when (uiState) {
             is Error -> {
                 errorMessage = (uiState as Error).message
+                successMessage = null
             }
             is Success -> {
                 errorMessage = null
-                // 성공 시 뒤로가기 또는 성공 메시지 표시
+                // 저장 업데이트 성공 시 성공 메시지 표시
+                if (previousState is Updating) {
+                    successMessage = "프로필이 성공적으로 업데이트되었습니다."
+                }
             }
             else -> {
                 errorMessage = null
+                successMessage = null
             }
         }
+        previousState = uiState
+    }
+    
+    // 성공 메시지 자동 숨김 (3초 후)
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            kotlinx.coroutines.delay(3000)
+            successMessage = null
+        }
+    }
+    
+    // 뒤로가기 핸들러 (변경사항 확인)
+    fun handleNavigateBack() {
+        if (hasChanges()) {
+            showConfirmDialog = true
+        } else {
+            onNavigateBack()
+        }
+    }
+    
+    // 저장 후 뒤로가기 핸들러
+    fun handleSaveAndNavigateBack() {
+        viewModel.updateUserProfile(
+            birthYear = birthYear,
+            birthMonth = birthMonth,
+            birthDay = birthDay,
+            nickname = nickname,
+            imageUri = profileImageUrl
+        )
     }
 
     Column(
@@ -238,9 +319,27 @@ fun UserInfoManagementScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
+        
+        // 성공 메시지 표시
+        successMessage?.let { message ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE8F5E9), RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+            ) {
+                Text(
+                    text = message,
+                    color = Color(0xFF2E7D32),
+                    style = MaterialTheme.walkItTypography.bodyM,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
         AppHeader(
             title = "내 정보 관리",
-            onNavigateBack = onNavigateBack,
+            onNavigateBack = ::handleNavigateBack,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -601,7 +700,7 @@ fun UserInfoManagementScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(47.dp)
-                    .clickable(onClick = onNavigateBack)
+                    .clickable(onClick = ::handleNavigateBack)
                     .border(
                         width = 1.dp,
                         color = Grey3,
@@ -654,6 +753,25 @@ fun UserInfoManagementScreen(
                 )
             }
         }
+    }
+    
+    // 변경사항 확인 다이얼로그
+    if (showConfirmDialog) {
+        ConfirmDialog(
+            title = "변경된 사항이 있습니다.",
+            message = "저장하시겠습니까?",
+            negativeButtonText = "아니요",
+            positiveButtonText = "예",
+            onDismiss = { showConfirmDialog = false },
+            onNegative = {
+                showConfirmDialog = false
+                onNavigateBack()
+            },
+            onPositive = {
+                showConfirmDialog = false
+                handleSaveAndNavigateBack()
+            },
+        )
     }
 }
 

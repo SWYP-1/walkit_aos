@@ -2,23 +2,17 @@ package team.swyp.sdu.data.remote.user
 
 import android.content.Context
 import android.net.Uri
-import javax.inject.Inject
-import javax.inject.Singleton
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
+import dagger.hilt.android.qualifiers.ApplicationContext
+import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.api.user.UserApi
-import team.swyp.sdu.data.remote.user.dto.UserSearchResultDto
 import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.User
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
-import dagger.hilt.android.qualifiers.ApplicationContext
-import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 사용자 정보를 서버에서 가져오는 데이터 소스
@@ -86,14 +80,42 @@ class UserRemoteDataSource @Inject constructor(
      * 닉네임 등록
      *
      * @param nickname 등록할 닉네임
+     * @throws Exception API 호출 실패 시 예외 발생
      */
     suspend fun registerNickname(nickname: String) {
         try {
-            // 닉네임 등록 API 호출 (응답 본문 없음)
-            userApi.registerNickname(nickname)
-            Timber.d("닉네임 등록 성공: $nickname")
+            val response = userApi.registerNickname(nickname)
+            if (response.isSuccessful) {
+                Timber.d("닉네임 등록 성공: $nickname")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "닉네임 등록 실패"
+                Timber.e("닉네임 등록 실패: $errorMessage (코드: ${response.code()})")
+                throw Exception("닉네임 등록 실패: ${response.code()}")
+            }
         } catch (e: Exception) {
             Timber.e(e, "닉네임 등록 실패: $nickname")
+            throw e
+        }
+    }
+
+    /**
+     * 생년월일 업데이트
+     *
+     * @param birthDate 생년월일 (ISO 8601 형식: "2015-12-04")
+     * @throws Exception API 호출 실패 시 예외 발생
+     */
+    suspend fun updateBirthDate(birthDate: String) {
+        try {
+            val response = userApi.updateBirthDate(birthDate)
+            if (response.isSuccessful) {
+                Timber.d("생년월일 업데이트 성공: $birthDate")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "생년월일 업데이트 실패"
+                Timber.e("생년월일 업데이트 실패: $errorMessage (코드: ${response.code()})")
+                throw Exception("생년월일 업데이트 실패: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "생년월일 업데이트 실패: $birthDate")
             throw e
         }
     }
@@ -103,27 +125,29 @@ class UserRemoteDataSource @Inject constructor(
      *
      * @param nickname 닉네임
      * @param birthDate 생년월일 (ISO 8601 형식)
-     * @param sex 성별
-     * @param imageUri 선택된 이미지 URI (선택사항)
-     * @return 업데이트된 사용자 정보
+     * @param imageUri 선택된 이미지 URI (선택사항, 현재 미사용)
+     * @throws Exception API 호출 실패 시 예외 발생
      */
     suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-        sex: Sex,
         imageUri: String? = null,
-    ): User {
-        return try {
-
-            val dto = userApi.updateUserProfile(
-                UpdateUserProfileRequest(
-                    nickname = nickname,
-                    birthDate = birthDate,
-                    sex = sex.name,
-                )
+    ) {
+        try {
+            val dto = UpdateUserProfileRequest(
+                nickname = nickname,
+                birthDate = birthDate,
             )
-            Timber.d("사용자 프로필 업데이트 성공: $nickname")
-            dto.toDomain()
+
+            val response = userApi.updateUserProfile(dto)
+            
+            if (response.isSuccessful) {
+                Timber.d("사용자 프로필 업데이트 성공: $nickname")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "프로필 업데이트 실패"
+                Timber.e("사용자 프로필 업데이트 실패: $errorMessage (코드: ${response.code()})")
+                throw Exception("프로필 업데이트 실패: ${response.code()}")
+            }
         } catch (e: Exception) {
             Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
             throw e

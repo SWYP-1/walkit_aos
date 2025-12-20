@@ -10,7 +10,9 @@ import kotlinx.coroutines.launch
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.User
+import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
+import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.*
 import timber.log.Timber
 import javax.inject.Inject
@@ -21,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class UserInfoManagementViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val goalRepository: GoalRepository,
 ) : ViewModel() {
 
     // UI 상태
@@ -30,9 +33,22 @@ class UserInfoManagementViewModel @Inject constructor(
     // 사용자 정보 입력 상태
     private val _userInput = MutableStateFlow(UserInput())
     val userInput: StateFlow<UserInput> = _userInput.asStateFlow()
+    
+    // Goal 상태
+    val goalFlow: StateFlow<Goal?> = goalRepository.goalFlow
 
     init {
         loadUserInfo()
+        loadGoal()
+    }
+    
+    /**
+     * Goal 조회
+     */
+    private fun loadGoal() {
+        viewModelScope.launch {
+            goalRepository.getGoal()
+        }
     }
 
     /**
@@ -119,12 +135,19 @@ class UserInfoManagementViewModel @Inject constructor(
                 when (val result = userRepository.updateUserProfile(
                     nickname = nickname,
                     birthDate = birthDate,
-                    sex = Sex.MALE,
                     imageUri = imageUri,
                 )) {
                     is Result.Success -> {
-                        Timber.d("사용자 프로필 업데이트 성공: ${result.data.nickname}")
-                        _uiState.value = Success(result.data)
+                        val updatedUser = result.data
+                        Timber.d("사용자 프로필 업데이트 성공: ${updatedUser.nickname}")
+                        // userInput도 업데이트
+                        _userInput.value = UserInput(
+                            nickname = updatedUser.nickname ?: "",
+                            birthDate = updatedUser.birthDate ?: "",
+                            sex = updatedUser.sex ?: Sex.MALE,
+                            imageName = updatedUser.imageName,
+                        )
+                        _uiState.value = Success(updatedUser)
                     }
 
                     is Result.Error -> {
@@ -173,3 +196,5 @@ data class UserInput(
     val imageName: String? = null,
     val selectedImageUri: String? = null,
 )
+
+
