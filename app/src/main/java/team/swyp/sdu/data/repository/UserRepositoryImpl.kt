@@ -16,17 +16,15 @@ import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.data.local.mapper.UserMapper
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
-import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.repository.UserRepository
 import timber.log.Timber
 
 /**
- * 사용자 정보 Repository 구현체
+ * User Repository
  *
- * - 메모리(StateFlow) + Room + Remote 병합
- * - 토큰은 DataStore에 저장
- * - Goal 정보는 GoalRepository에서 별도 관리
+ * Single Source of Truth:
+ * Remote → Room → Flow → StateFlow
  */
 @Singleton
 class UserRepositoryImpl @Inject constructor(
@@ -34,26 +32,33 @@ class UserRepositoryImpl @Inject constructor(
     private val remoteDataSource: UserRemoteDataSource,
     private val authDataStore: AuthDataStore,
 ) : UserRepository {
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val userState = MutableStateFlow<User?>(null)
     override val userFlow: StateFlow<User?> = userState.asStateFlow()
 
     init {
-        userDao
-            .observeUser()
-            .onEach { entity -> userState.value = entity?.let(UserMapper::toDomain) }
+        // ✅ Room 만이 userState 를 변경한다
+        userDao.observeUser()
+            .onEach { entity ->
+                userState.value = entity?.let(UserMapper::toDomain)
+            }
             .launchIn(scope)
     }
 
     override suspend fun getUser(): Result<User> =
         withContext(Dispatchers.IO) {
             try {
-                val currentUser = userState.value
-                if (currentUser != null) {
-                    Result.Success(currentUser)
+                // ✅ Room에서 직접 값을 가져옴 (Single Source of Truth)
+                val entity = userDao.getUser()
+                if (entity != null) {
+                    val user = UserMapper.toDomain(entity)
+                    Timber.d("Room에서 사용자 조회: nickname=${user.nickname}, imageName=${user.imageName}")
+                    Result.Success(user)
                 } else {
-                    // 로컬에 없으면 서버에서 가져오기
+                    Timber.d("Room에 사용자 정보 없음, 서버에서 가져오기")
+                    // 캐시에 없으면 서버에서 가져오기
                     refreshUser()
                 }
             } catch (e: Exception) {
@@ -66,8 +71,18 @@ class UserRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val user = remoteDataSource.fetchUser()
-                userDao.upsert(UserMapper.toEntity(user))
-                userState.value = user
+                Timber.d("사용자 정보 API 응답: nickname=${user.nickname}, imageName=${user.imageName}")
+                
+                // ✅ 이전 사용자 데이터 삭제 후 새 사용자 데이터 저장
+                // PrimaryKey가 nickname이므로 다른 사용자로 로그인 시 여러 레코드가 쌓일 수 있음
+                userDao.clear()
+                val entity = UserMapper.toEntity(user)
+                userDao.upsert(entity)
+                
+                // 저장 확인
+                val savedEntity = userDao.getUser()
+                Timber.d("Room 저장 확인: nickname=${savedEntity?.nickname}, imageName=${savedEntity?.imageName}")
+                
                 Result.Success(user)
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 갱신 실패")
@@ -78,9 +93,8 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun updateUser(user: User): Result<User> =
         withContext(Dispatchers.IO) {
             try {
-                // TODO: 서버 API 구현 시 실제 업데이트 호출
+                // TODO: 서버 API 연동 시 Remote → Room 으로 변경
                 userDao.upsert(UserMapper.toEntity(user))
-                userState.value = user
                 Result.Success(user)
             } catch (e: Exception) {
                 Timber.e(e, "사용자 업데이트 실패")
@@ -117,8 +131,12 @@ class UserRepositoryImpl @Inject constructor(
     ): Result<User> =
         withContext(Dispatchers.IO) {
             try {
-                remoteDataSource.updateUserProfile(nickname, birthDate, imageUri)
-                // 업데이트 후 최신 정보를 서버에서 가져오기
+                remoteDataSource.updateUserProfile(
+                    nickname = nickname,
+                    birthDate = birthDate,
+                    imageUri = imageUri,
+                )
+                // ✅ 서버 반영 후 → 다시 fetch → Room 저장
                 refreshUser()
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
@@ -147,7 +165,10 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun saveAuthTokens(accessToken: String, refreshToken: String?) {
+    override suspend fun saveAuthTokens(
+        accessToken: String,
+        refreshToken: String?,
+    ) {
         withContext(Dispatchers.IO) {
             authDataStore.saveTokens(accessToken, refreshToken)
         }
@@ -157,8 +178,7 @@ class UserRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 authDataStore.clear()
-                userDao.clear()
-                userState.value = null
+                userDao.clear() // 🔥 Room clear → Flow emit → StateFlow null
                 Result.Success(Unit)
             } catch (e: Exception) {
                 Result.Error(e, e.message)

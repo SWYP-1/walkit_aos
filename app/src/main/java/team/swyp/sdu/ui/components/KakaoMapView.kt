@@ -36,6 +36,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -105,8 +107,23 @@ fun KakaoMapView(
     var mapStarted by remember {
         mutableStateOf(false)
     }
+    
+    // MapView 크기 상태
+    var mapViewSize by remember {
+        mutableStateOf<IntSize?>(null)
+    }
 
-    // ViewModel에 locations 전달
+    // 화면 크기 측정 및 ViewModel에 전달
+    LaunchedEffect(mapViewSize) {
+        mapViewSize?.let { size ->
+            if (size.width > 0 && size.height > 0) {
+                viewModel.setMapViewSize(size.width, size.height)
+                Timber.d("MapView 크기 측정 완료: ${size.width}x${size.height}")
+            }
+        }
+    }
+
+    // ViewModel에 locations 전달 (크기가 측정되면 자동으로 재계산됨)
     LaunchedEffect(locations) {
         viewModel.setLocations(locations)
     }
@@ -146,7 +163,13 @@ fun KakaoMapView(
     val isLoading = renderState != MapRenderState.Complete
 
     // 지도뷰와 로딩 인디케이터를 겹쳐서 표시
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { size ->
+                mapViewSize = size
+            }
+    ) {
         // MapView는 항상 VISIBLE로 표시
         AndroidView(
             factory = { ctx ->
@@ -385,42 +408,6 @@ fun captureViewSnapshot(
     }
 }
 
-///**
-// * 수동 스냅샷 생성 함수 (PixelCopy만 사용)
-// *
-// * @param mapView MapView 인스턴스
-// * @param context Context
-// * @return 스냅샷 파일 경로 (실패 시 null)
-// */
-//suspend fun captureMapSnapshot(
-//    mapView: MapView,
-//    context: Context,
-//): String? = kotlinx.coroutines.suspendCoroutine { continuation ->
-//    try {
-//        if (mapView.width == 0 || mapView.height == 0) {
-//            Timber.w("MapView 크기가 0입니다: ${mapView.width}x${mapView.height}")
-//            continuation.resume(null)
-//            return@suspendCoroutine
-//        }
-//
-//        mapView.visibility = View.VISIBLE
-//        val glSurfaceView = findGLSurfaceView(mapView)
-//
-//        if (glSurfaceView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            Timber.d("PixelCopy 방식으로 스냅샷 캡처 시작")
-//            captureUsingPixelCopy(glSurfaceView, mapView, context) { path ->
-//                continuation.resume(path)
-//            }
-//        } else {
-//            Timber.e("PixelCopy를 사용할 수 없습니다: glSurfaceView=${glSurfaceView != null}, SDK=${Build.VERSION.SDK_INT}")
-//            continuation.resume(null)
-//        }
-//    } catch (e: Exception) {
-//        Timber.e(e, "스냅샷 생성 준비 실패: ${e.message}")
-//        continuation.resume(null)
-//    }
-//}
-
 /**
  * PixelCopy API를 사용한 스냅샷 캡처 (Android 8.0+)
  */
@@ -649,6 +636,13 @@ private fun moveCameraToPath(
 
         kakaoMap.moveCamera(cameraUpdate)
         Timber.d("카메라 이동 요청: 중심 (${cameraSettings.centerLat}, ${cameraSettings.centerLon}), 줌 레벨: ${cameraSettings.zoomLevel}")
+        
+        // 경계 정보가 있으면 로그 출력
+        if (cameraSettings.minLat != null && cameraSettings.maxLat != null &&
+            cameraSettings.minLon != null && cameraSettings.maxLon != null) {
+            Timber.d("경계 정보: minLat=${cameraSettings.minLat}, maxLat=${cameraSettings.maxLat}, " +
+                    "minLon=${cameraSettings.minLon}, maxLon=${cameraSettings.maxLon}")
+        }
     } catch (e: Exception) {
         Timber.e(e, "카메라 이동 실패: ${e.message}")
     }

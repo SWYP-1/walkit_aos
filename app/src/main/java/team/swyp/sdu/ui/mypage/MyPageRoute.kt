@@ -24,27 +24,15 @@ fun MyPageRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 사용자 정보 및 누적 통계 데이터 추출
-    val (user, totalStepCount, totalDistanceMeters) = when (val state = uiState) {
-        is MyPageUiState.Loading -> {
-            // 계산 중일 때는 null과 0으로 표시
-            Triple(null, 0, 0f)
-        }
-        is MyPageUiState.Success -> {
-            Triple(state.user, state.totalStepCount, state.totalDistanceMeters)
-        }
-        is MyPageUiState.Error -> {
-            // 에러 발생 시에도 사용자 정보는 표시, 통계는 0으로 표시
-            Triple(state.user, 0, 0f)
-        }
+    // 거리를 항상 km로 변환 (소수점 첫째 자리까지)
+    val distanceKm = when (val state = uiState) {
+        is MyPageUiState.Success -> String.format("%.1f", state.totalDistanceMeters / 1000f)
+        is MyPageUiState.Error -> String.format("%.1f", 0f)
+        is MyPageUiState.Loading -> "0.0"
     }
 
-    // 거리를 항상 km로 변환 (소수점 첫째 자리까지)
-    val distanceKm = String.format("%.1f", totalDistanceMeters / 1000f)
-
     MyPageScreen(
-        nickname = user?.nickname ?: "게스트",
-        totalStepCount = totalStepCount,
+        uiState = uiState,
         totalDistanceKm = distanceKm,
         onNavigateCharacterEdit = onNavigateCharacterEdit,
         onNavigateUserInfoEdit = onNavigateUserInfoEdit,

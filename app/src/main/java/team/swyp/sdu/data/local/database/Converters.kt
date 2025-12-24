@@ -10,6 +10,7 @@ import team.swyp.sdu.domain.service.ActivityType
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import team.swyp.sdu.data.local.entity.SyncState
+import team.swyp.sdu.data.remote.walking.dto.Grade
 
 /**
  * Room Type Converters
@@ -46,4 +47,10 @@ class Converters {
 
     @TypeConverter
     fun toEmotionType(value: String?): EmotionType = EnumConverter.toEmotionType(value)
+
+    @TypeConverter
+    fun fromGrade(value: Grade?): String = EnumConverter.fromGrade(value)
+
+    @TypeConverter
+    fun toGrade(value: String?): Grade = EnumConverter.toGrade(value)
 }

@@ -20,6 +20,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
  * Grade 배지 컴포넌트
  *
  * Grade enum에 따라 색상과 텍스트가 자동으로 변경됩니다.
+ * 레벨은 Grade enum의 level 속성에서 자동으로 가져옵니다.
  * - SEED: "Lv.1 새싹" (초록색)
  * - SPROUT: "Lv.2 묘목" (청록색)
  * - TREE: "Lv.3 나무" (보라색)
@@ -27,22 +28,21 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun GradeBadge(
     grade: Grade,
-    level: Int,
     modifier: Modifier = Modifier,
 ) {
     val (text, backgroundColor, textColor) = when (grade) {
         Grade.SEED -> Triple(
-            "Lv.$level 새싹",
+            "Lv.${grade.level} 새싹",
             SemanticColor.stateGreenTertiary,
             SemanticColor.stateGreenPrimary,
         )
         Grade.SPROUT -> Triple(
-            "Lv.$level 묘목",
+            "Lv.${grade.level} 묘목",
             SemanticColor.stateAquaBlueTertiary,
             SemanticColor.stateAquaBluePrimary,
         )
         Grade.TREE -> Triple(
-            "Lv.$level 나무",
+            "Lv.${grade.level} 나무",
             SemanticColor.statePurpleTertiary,
             SemanticColor.statePurplePrimary,
         )
@@ -73,10 +73,7 @@ fun GradeBadge(
 @Composable
 private fun GradeBadgeSeedPreview() {
     WalkItTheme {
-        GradeBadge(
-            grade = Grade.SEED,
-            level = 1,
-        )
+        GradeBadge(grade = Grade.SEED)
     }
 }
 
@@ -84,10 +81,7 @@ private fun GradeBadgeSeedPreview() {
 @Composable
 private fun GradeBadgeSproutPreview() {
     WalkItTheme {
-        GradeBadge(
-            grade = Grade.SPROUT,
-            level = 2,
-        )
+        GradeBadge(grade = Grade.SPROUT)
     }
 }
 
@@ -95,10 +89,7 @@ private fun GradeBadgeSproutPreview() {
 @Composable
 private fun GradeBadgeTreePreview() {
     WalkItTheme {
-        GradeBadge(
-            grade = Grade.TREE,
-            level = 3,
-        )
+        GradeBadge(grade = Grade.TREE)
     }
 }
 

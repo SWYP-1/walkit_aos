@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -37,10 +38,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Friend
+import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.ui.record.components.HeaderRow
@@ -55,42 +56,59 @@ import java.time.LocalDate
 
 @Composable
 fun RecordRoute(
-    navController: NavHostController,
     modifier: Modifier = Modifier,
-    viewModel: CalendarViewModel = hiltViewModel(),
+    calendarViewModel: CalendarViewModel = hiltViewModel(),
+    recordViewModel: RecordViewModel = hiltViewModel(),
     onNavigateToFriend: () -> Unit = {},
     onNavigateToAlarm: () -> Unit = {},
+    onNavigateToDailyRecord: (String) -> Unit = {}, // 날짜 형식: "yyyy-MM-dd"
     onStartOnboarding: () -> Unit = {},
 ) {
-    val dummyMessage by viewModel.dummyMessage.collectAsStateWithLifecycle()
-    val dayStats by viewModel.dayStats.collectAsStateWithLifecycle()
-    val weekStats by viewModel.weekStats.collectAsStateWithLifecycle()
-    val monthStats by viewModel.monthStats.collectAsStateWithLifecycle()
-    val daySessions by viewModel.daySessions.collectAsStateWithLifecycle()
-    val currentDate by viewModel.currentDate.collectAsStateWithLifecycle()
-    val allSessions by viewModel.allSessions.collectAsStateWithLifecycle()
+    val recordUiState by recordViewModel.uiState.collectAsStateWithLifecycle()
+    val dummyMessage by calendarViewModel.dummyMessage.collectAsStateWithLifecycle()
+    val weekStats by calendarViewModel.weekStats.collectAsStateWithLifecycle()
+    val monthStats by calendarViewModel.monthStats.collectAsStateWithLifecycle()
+    val monthSessions by calendarViewModel.monthSessions.collectAsStateWithLifecycle()
+    val weekSessions by calendarViewModel.weekSessions.collectAsStateWithLifecycle()
+    val currentDate by calendarViewModel.currentDate.collectAsStateWithLifecycle()
 
     RecordScreenContent(
-        navController = navController,
         modifier = modifier,
+        recordUiState = recordUiState,
         dummyMessage = dummyMessage,
-        onDummyClick = { viewModel.generateDummyData() },
+        onDummyClick = { calendarViewModel.generateDummyData() },
         onStartOnboarding = onStartOnboarding,
         weekStats = weekStats,
         monthStats = monthStats,
         currentDate = currentDate,
-        onPrevWeek = { viewModel.prevWeek() },
-        onNextWeek = { viewModel.nextWeek() },
+        onPrevWeek = { calendarViewModel.prevWeek() },
+        onNextWeek = { calendarViewModel.nextWeek() },
         onNavigateToAlarm = onNavigateToAlarm,
         onNavigateToFriend = onNavigateToFriend,
-        allSessions = allSessions,
+        onNavigateToDailyRecord = onNavigateToDailyRecord,
+        onMyProfileClick = {
+            // 내 프로필 클릭 시 캘린더 화면으로 이동 (현재 화면이 캘린더 화면이므로 선택 해제)
+            recordViewModel.clearFriendSelection()
+        },
+        onFriendSelected = { friend ->
+            recordViewModel.selectFriend(friend.nickname)
+        },
+        onFriendDeselected = {
+            recordViewModel.clearFriendSelection()
+        },
+        monthSessions = monthSessions,
+        weekSessions = weekSessions,
+        onMonthChanged = { yearMonth ->
+            // 월 변경 시 CalendarViewModel의 날짜를 해당 월의 첫 날로 설정하여 쿼리 트리거
+            calendarViewModel.setDate(yearMonth.atDay(1))
+        },
     )
 }
 
 @Composable
 private fun RecordScreenContent(
-    navController: NavHostController,
     modifier: Modifier = Modifier,
+    recordUiState: RecordUiState,
     dummyMessage: String?,
     onDummyClick: () -> Unit,
     onStartOnboarding: () -> Unit,
@@ -101,61 +119,69 @@ private fun RecordScreenContent(
     onNextWeek: () -> Unit,
     onNavigateToFriend: () -> Unit,
     onNavigateToAlarm: () -> Unit,
-    allSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    onNavigateToDailyRecord: (String) -> Unit,
+    onMyProfileClick: () -> Unit,
+    onFriendSelected: (Friend) -> Unit,
+    onFriendDeselected: () -> Unit,
+    monthSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    weekSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    onMonthChanged: (java.time.YearMonth) -> Unit,
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     val tabs = RecordTabType.entries
-    
-    // 친구 선택 상태
-    var selectedFriendNickname by remember { mutableStateOf<String?>(null) }
-    
-    // Mock 친구 목록 데이터 (Domain 모델 사용)
-    val friends = remember {
-        listOf(
-            Friend("1", "친구1", null),
-            Friend("2", "친구2", null),
-            Friend("3", "친구3", null),
-            Friend("4", "친구4", null),
-            Friend("5", "친구5", null),
-        )
-    }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-    ) {
-        // Header
-        RecordHeader(
-            onClickAlarm = { onNavigateToAlarm() },
-            onClickSearch = { onNavigateToFriend() }
-        )
-        
-        // 친구 목록 가로 스크롤
-        FriendListRow(
-            friends = friends,
-            selectedFriendNickname = selectedFriendNickname,
-            onFriendSelected = { friend ->
-                selectedFriendNickname = friend.nickname
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-        )
-        
-        // 구분선
-        Divider(
-            modifier = Modifier.fillMaxWidth(),
-        )
-        
-        // 하단 영역: 친구가 선택되었으면 FriendRecordRoute, 아니면 기존 탭 내용
-        if (selectedFriendNickname != null) {
-            FriendRecordRoute(
-                nickname = selectedFriendNickname!!,
-                onNavigateBack = { selectedFriendNickname = null },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.navigationBars),
-            )
-        } else {
+    when (val state = recordUiState) {
+        is RecordUiState.Loading -> {
+            // 로딩 상태 처리 (필요시 로딩 UI 표시)
+        }
+        is RecordUiState.Error -> {
+            // 에러 상태 처리
+        }
+        is RecordUiState.Success -> {
+            Column(
+                modifier = modifier.fillMaxSize(),
+            ) {
+                // Header
+                RecordHeader(
+                    onClickAlarm = { onNavigateToAlarm() },
+                    onClickSearch = { onNavigateToFriend() }
+                )
+
+                // 친구 목록 가로 스크롤
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // 내 프로필 이미지
+                    MyProfileImage(
+                        user = state.user,
+                        onClick = onMyProfileClick,
+                        isSelected = state.selectedFriendNickname == null,
+                    )
+
+                    FriendListRow(
+                        friends = state.friends,
+                        selectedFriendNickname = state.selectedFriendNickname,
+                        onFriendSelected = onFriendSelected,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                // 구분선
+                Divider(
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // 하단 영역: 친구가 선택되었으면 FriendRecordRoute, 아니면 기존 탭 내용
+                if (state.selectedFriendNickname != null) {
+                    FriendRecordRoute(
+                        nickname = state.selectedFriendNickname!!,
+                        onNavigateBack = onFriendDeselected,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.navigationBars),
+                    )
+                } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -173,14 +199,16 @@ private fun RecordScreenContent(
 
                 item {
                     RecordTabContent(
-                        navController = navController,
                         selectedTab = tabs[tabIndex],
                         monthStats = monthStats,
                         weekStats = weekStats,
-                        allSessions = allSessions,
+                        monthSessions = monthSessions,
+                        weekSessions = weekSessions,
                         currentDate = currentDate,
                         onPrevWeek = onPrevWeek,
                         onNextWeek = onNextWeek,
+                        onNavigateToDailyRecord = onNavigateToDailyRecord,
+                        onMonthChanged = onMonthChanged,
                     )
                 }
 
@@ -196,7 +224,56 @@ private fun RecordScreenContent(
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
             }
+                }
+            }
         }
+    }
+}
+
+/**
+ * 내 프로필 이미지 컴포넌트
+ */
+@Composable
+private fun MyProfileImage(
+    user: User?,
+    onClick: () -> Unit,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .width(64.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = user?.imageName,
+                contentDescription = "my profile image",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
+                placeholder = painterResource(R.drawable.ic_default_user),
+                error = painterResource(R.drawable.ic_default_user),
+            )
+        }
+        Text(
+            text = user?.nickname ?: "나",
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (isSelected) {
+                SemanticColor.textBorderGreenSecondary
+            } else {
+                SemanticColor.iconGrey
+            },
+        )
     }
 }
 
@@ -285,27 +362,30 @@ private fun FriendAvatarItem(
  */
 @Composable
 private fun RecordTabContent(
-    navController: NavHostController,
     selectedTab: RecordTabType,
     monthStats: WalkAggregate,
     weekStats: WalkAggregate,
-    allSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    monthSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    weekSessions: List<team.swyp.sdu.data.model.WalkingSession>,
     currentDate: LocalDate,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    onNavigateToDailyRecord: (String) -> Unit,
+    onMonthChanged: (java.time.YearMonth) -> Unit,
 ) {
     when (selectedTab) {
         RecordTabType.Month -> MonthSection(
-            navController = navController,
             stats = monthStats,
-            sessions = allSessions
+            sessions = monthSessions,
+            onNavigateToDailyRecord = onNavigateToDailyRecord,
+            onMonthChanged = onMonthChanged,
         )
         RecordTabType.Week -> WeekSection(
             stats = weekStats,
             currentDate = currentDate,
             onPrevWeek = onPrevWeek,
             onNextWeek = onNextWeek,
-            sessions = allSessions,
+            sessions = weekSessions,
         )
     }
 }

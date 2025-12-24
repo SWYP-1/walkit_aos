@@ -209,7 +209,6 @@ fun WalkingResultScreen(
     currentSession: WalkingSession?,
     isLoadingSession: Boolean,
     sessionError: String?,
-    locations: List<LocationPoint>,
     emotionPhotoUri: android.net.Uri?,
     goal: Goal?,
     syncedSessionsThisWeek: List<WalkingSession>,
@@ -259,7 +258,6 @@ fun WalkingResultScreen(
                 onNavigateToPrevious = onNavigateToPrevious,
                 onNavigateToHome = onNavigateToHome,
                 currentSession = currentSession,
-                locations = locations,
                 emotionPhotoUri = emotionPhotoUri,
                 goal = goal,
                 syncedSessionsThisWeek = syncedSessionsThisWeek,
@@ -285,7 +283,6 @@ private fun WalkingResultScreenContent(
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
     currentSession: WalkingSession,
-    locations: List<LocationPoint>,
     emotionPhotoUri: android.net.Uri?,
     goal: Goal?,
     syncedSessionsThisWeek: List<WalkingSession>,
@@ -416,7 +413,7 @@ private fun WalkingResultScreenContent(
 
                             // 경로 표시
                             PathThumbnail(
-                                locations = locations.ifEmpty { currentSession.locations },
+                                locations = currentSession.locations,
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
@@ -427,7 +424,7 @@ private fun WalkingResultScreenContent(
                         } else {
                             // 케이스 2: 사진이 없는 경우 - MapView 직접 표시
                             KakaoMapView(
-                                locations = locations.ifEmpty { currentSession.locations },
+                                locations = currentSession.locations,
                                 modifier = Modifier.fillMaxSize(),
                                 viewModel = mapViewModel,
                                 onMapViewReady = { mapView ->
@@ -648,7 +645,6 @@ private fun WalkingResultScreenPreview() {
             onNavigateToPrevious = {},
             onNavigateToHome = {},
             currentSession = mockSession,
-            locations = emptyList(),
             emotionPhotoUri = null,
             goal = mockGoal,
             syncedSessionsThisWeek = emptyList(),

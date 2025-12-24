@@ -187,7 +187,6 @@ fun FriendSearchDetailScreenContent(
                     // 등급 배지
                     GradeBadge(
                         grade = data.character.grade,
-                        level = data.character.level,
                     )
 
                     // 닉네임

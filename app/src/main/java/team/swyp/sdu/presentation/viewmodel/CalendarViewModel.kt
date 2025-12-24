@@ -87,6 +87,28 @@ class CalendarViewModel @Inject constructor(
                 initialValue = WalkAggregate(),
             )
 
+    val monthSessions: StateFlow<List<WalkingSession>> =
+        today
+            .flatMapLatest { date ->
+                val (start, end) = monthRange(date)
+                walkingSessionRepository.getSessionsBetween(start, end)
+            }.stateIn(
+                scope = viewModelScope,
+                started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
+    val weekSessions: StateFlow<List<WalkingSession>> =
+        today
+            .flatMapLatest { date ->
+                val (start, end) = weekRange(date)
+                walkingSessionRepository.getSessionsBetween(start, end)
+            }.stateIn(
+                scope = viewModelScope,
+                started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
     val daySessions: StateFlow<List<WalkingSession>> =
         today
             .flatMapLatest { date ->

@@ -482,28 +482,25 @@ class WalkingViewModel @Inject constructor(
      * URI를 파일로 복사하고 경로를 저장합니다.
      * 
      * stopWalking()에서 이미 세션 저장이 완료되었으므로 currentSessionLocalId는 항상 설정되어 있어야 합니다.
+     * 
+     * @return 업데이트 성공 여부
      */
-    fun updateSessionImageAndNote() {
-        viewModelScope.launch {
-            try {
-                val localId = currentSessionLocalId
-                    ?: throw IllegalStateException("저장된 세션이 없습니다. 산책을 먼저 완료해주세요.")
-                
-                val imageUri = _emotionPhotoUri.value // URI 그대로 전달
-                val note = _emotionText.value.ifEmpty { null }
-                
-                walkingSessionRepository.updateSessionImageAndNote(
-                    localId = localId,
-                    imageUri = imageUri, // URI를 전달하면 Repository에서 파일로 복사
-                    note = note
-                )
-                
-                Timber.d("세션 이미지/노트 업데이트 완료: localId=$localId, imageUri=$imageUri, note=$note")
-            } catch (e: Exception) {
-                Timber.e(e, "세션 이미지/노트 업데이트 실패")
-                throw e
-            }
-        }
+     fun updateSessionImageAndNote() {
+         viewModelScope.launch {
+             val localId = currentSessionLocalId
+                 ?: throw IllegalStateException("저장된 세션이 없습니다. 산책을 먼저 완료해주세요.")
+
+             val imageUri = _emotionPhotoUri.value // URI 그대로 전달
+             val note = _emotionText.value.ifEmpty { null }
+
+             walkingSessionRepository.updateSessionImageAndNote(
+                 localId = localId,
+                 imageUri = imageUri, // URI를 전달하면 Repository에서 파일로 복사
+                 note = note
+             )
+
+             Timber.d("세션 이미지/노트 업데이트 완료: localId=$localId, imageUri=$imageUri, note=$note")
+         }
     }
     
     /**

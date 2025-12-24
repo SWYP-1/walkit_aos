@@ -9,10 +9,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.ui.components.MenuItem
 import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.theme.Grey10
+import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
@@ -27,11 +29,10 @@ fun MyPageSettingsSection(
     onNavigateGoalManagement: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.padding(horizontal = 16.dp)) {
+    Column() {
         // 일반 설정 섹션
         SectionCard(modifier = modifier) {
             Text(
-                modifier = modifier.padding(top = 12.dp, start = 16.dp),
                 text = "설정",
                 style = MaterialTheme.walkItTypography.bodyL.copy(
                     fontWeight = FontWeight.SemiBold
@@ -63,6 +64,18 @@ fun MyPageSettingsSection(
         }
     }
 
+}
+
+@Preview
+@Composable
+fun MypageSettingSectionPreview(modifier: Modifier = Modifier) {
+    WalkItTheme {
+        MyPageSettingsSection(
+            onNavigateNotificationSetting = {},
+            onNavigateUserInfoEdit = {},
+            onNavigateGoalManagement = {},
+        )
+    }
 }
 
 

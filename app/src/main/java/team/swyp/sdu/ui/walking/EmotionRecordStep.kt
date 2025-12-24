@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CustomProgressIndicator
@@ -248,7 +251,7 @@ private fun EmotionRecordStepScreenContent(
     emotionText: String,
     onPhotoUriChange: (Uri?) -> Unit,
     onTextChange: (String) -> Unit,
-    onUpdateSessionImageAndNote: () -> Unit,
+    onUpdateSessionImageAndNote: suspend () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     cameraImageUri: Uri?,
@@ -258,6 +261,7 @@ private fun EmotionRecordStepScreenContent(
     galleryPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -479,8 +483,16 @@ private fun EmotionRecordStepScreenContent(
                     text = "다음으로",
                     textColor = SemanticColor.textBorderPrimaryInverse,
                     onClick = {
-                        onUpdateSessionImageAndNote()
-                        onNext()
+                        coroutineScope.launch {
+                            try {
+                                onUpdateSessionImageAndNote()
+                                onNext()
+                            } catch (e: Exception) {
+                                Timber.e(e, "세션 이미지/노트 업데이트 실패")
+                                // 에러 발생 시에도 다음 화면으로 이동 (사용자 경험 고려)
+                                onNext()
+                            }
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     icon = {

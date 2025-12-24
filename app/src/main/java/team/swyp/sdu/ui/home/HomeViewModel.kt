@@ -20,6 +20,7 @@ import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.repository.UserRepository
+import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.domain.repository.MissionRepository
 import team.swyp.sdu.domain.repository.HomeRepository
@@ -60,6 +61,7 @@ sealed interface HomeUiState {
 class HomeViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
     private val userRepository: UserRepository,
+    private val characterRepository: CharacterRepository,
     private val goalRepository: GoalRepository,
     private val missionRepository: MissionRepository,
     private val homeRepository: HomeRepository,
@@ -104,6 +106,14 @@ class HomeViewModel @Inject constructor(
                     val homeData = homeResult.data
                     val totalElapsedTime = System.currentTimeMillis() - totalStartTime
                     Timber.tag(TAG_PERFORMANCE).d("Home 데이터 로드 완료 (전체): ${totalElapsedTime}ms (위치: ${locationElapsedTime}ms, API: ${apiElapsedTime}ms)")
+                    
+                    // Home API에서 받은 Character 정보를 Room에 저장
+                    homeData.character.nickName?.let { nickname ->
+                        characterRepository.saveCharacter(nickname, homeData.character)
+                            .onError { exception, message ->
+                                Timber.w(exception, "캐릭터 정보 저장 실패: $message")
+                            }
+                    }
                     
                     // 기존 로직 유지 (세션 정보 등)
                     loadSessionsWithHomeData(homeData)
@@ -181,9 +191,30 @@ class HomeViewModel @Inject constructor(
             val goalResult = goalRepository.getGoal()
             val missionResult = missionRepository.getWeeklyMissions()
 
+            // refreshUser 실패 시 Room의 기존 데이터 사용
             val nickname = when (userResult) {
-                is Result.Success -> userResult.data.nickname ?: "사용자"
-                else -> "사용자"
+                is Result.Success -> {
+                    Timber.d("사용자 정보 갱신 성공: ${userResult.data.nickname}")
+                    userResult.data.nickname ?: "사용자"
+                }
+                is Result.Error -> {
+                    Timber.w(userResult.exception, "사용자 정보 갱신 실패, Room의 기존 데이터 사용")
+                    // Room에서 기존 사용자 정보 가져오기
+                    when (val cachedUserResult = userRepository.getUser()) {
+                        is Result.Success -> cachedUserResult.data.nickname ?: "사용자"
+                        else -> {
+                            Timber.w("Room에 사용자 정보 없음, 기본값 사용")
+                            "사용자"
+                        }
+                    }
+                }
+                Result.Loading -> {
+                    Timber.w("사용자 정보 갱신 중, Room의 기존 데이터 사용")
+                    when (val cachedUserResult = userRepository.getUser()) {
+                        is Result.Success -> cachedUserResult.data.nickname ?: "사용자"
+                        else -> "사용자"
+                    }
+                }
             }
 
             val goal = when (goalResult) {

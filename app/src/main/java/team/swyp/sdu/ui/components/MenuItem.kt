@@ -44,8 +44,7 @@ fun MenuItem(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 16.dp),
+            .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

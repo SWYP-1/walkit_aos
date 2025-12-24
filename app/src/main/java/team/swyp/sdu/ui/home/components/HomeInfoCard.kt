@@ -36,19 +36,19 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
- * Grade와 level에 따라 레벨 라벨 텍스트를 생성합니다.
+ * Grade에 따라 레벨 라벨 텍스트를 생성합니다.
+ * 레벨은 Grade enum의 level 속성에서 자동으로 가져옵니다.
  *
  * @param grade 등급 (SEED, SPROUT, TREE)
- * @param level 레벨
  * @return "Lv.{level} {등급명}" 형식의 문자열
  */
-fun getGradeLevelText(grade: Grade, level: Int): String {
+fun getGradeLevelText(grade: Grade): String {
     val gradeName = when (grade) {
         Grade.SEED -> "씨앗"
         Grade.SPROUT -> "묘목"
         Grade.TREE -> "나무"
     }
-    return "Lv.$level $gradeName"
+    return "Lv.${grade.level} $gradeName"
 }
 
 @Composable
@@ -87,7 +87,7 @@ fun HomeNameAndGoalContent(
                     )
             ) {
                 Text(
-                    text = " ${getGradeLevelText(grade, level)}",
+                    text = " ${getGradeLevelText(grade)}",
                     // body S/semibold
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.SemiBold

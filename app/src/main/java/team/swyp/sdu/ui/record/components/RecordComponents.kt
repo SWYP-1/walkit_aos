@@ -49,9 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import team.swyp.sdu.R
-import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.components.WheelDatePickerDialog
@@ -117,9 +115,10 @@ fun HeaderRow(
  */
 @Composable
 fun MonthSection(
-    navController: NavHostController,
     stats: WalkAggregate,
     sessions: List<WalkingSession>,
+    onNavigateToDailyRecord: (String) -> Unit, // 날짜 형식: "yyyy-MM-dd"
+    onMonthChanged: (YearMonth) -> Unit = {}, // 월 변경 시 ViewModel에 알림
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
@@ -142,14 +141,20 @@ fun MonthSection(
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         MonthNavigator(
             currentMonth = currentMonth,
-            onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-            onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+            onPreviousMonth = {
+                currentMonth = currentMonth.minusMonths(1)
+                onMonthChanged(currentMonth)
+            },
+            onNextMonth = {
+                currentMonth = currentMonth.plusMonths(1)
+                onMonthChanged(currentMonth)
+            },
         )
 
         CalendarGridRecord(
-            navController = navController,
             yearMonth = currentMonth,
             sessionsByDate = sessionsByDate,
+            onNavigateToDailyRecord = onNavigateToDailyRecord,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
 
@@ -176,7 +181,7 @@ fun WeekSection(
     currentDate: LocalDate,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
-    sessions: List<WalkingSession> = emptyList(),
+    sessions: List<WalkingSession> = emptyList(), // 이미 해당 주의 세션만 필터링된 데이터
 ) {
     // 주간 날짜 범위 계산 (월요일 ~ 일요일)
     val startOfWeek = currentDate.with(DayOfWeek.MONDAY)
@@ -184,7 +189,7 @@ fun WeekSection(
         (0..6).map { startOfWeek.plusDays(it.toLong()) }
     }
 
-    // 세션을 날짜별로 그룹화
+    // 세션을 날짜별로 그룹화 (이미 해당 주의 세션만 포함)
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
             java.time.Instant.ofEpochMilli(session.startTime)
@@ -193,16 +198,8 @@ fun WeekSection(
         }
     }
 
-    // 해당 주의 세션 필터링
-    val weekSessions = remember(sessions, startOfWeek) {
-        val endOfWeek = startOfWeek.plusDays(6)
-        sessions.filter { session ->
-            val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
-                .atZone(java.time.ZoneId.systemDefault())
-                .toLocalDate()
-            !sessionDate.isBefore(startOfWeek) && !sessionDate.isAfter(endOfWeek)
-        }
-    }
+    // sessions는 이미 해당 주의 세션만 포함하므로 추가 필터링 불필요
+    val weekSessions = sessions
 
     // 주요 감정 계산: postWalkEmotion 기준으로 가장 빈도가 높은 감정 찾기
     val dominantEmotionInfo = remember(weekSessions) {
@@ -456,9 +453,9 @@ private fun formatWeekLabel(date: LocalDate): String {
  */
 @Composable
 private fun CalendarGridRecord(
-    navController: NavHostController,
     yearMonth: YearMonth,
     sessionsByDate: Map<LocalDate, List<WalkingSession>>,
+    onNavigateToDailyRecord: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstDayOfMonth = yearMonth.atDay(1)
@@ -504,10 +501,10 @@ private fun CalendarGridRecord(
                         val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
 
                         CalendarDayCellRecord(
-                            navController = navController,
                             date = date,
                             day = dayIndex + 1,
                             hasWalkSession = hasWalkSession,
+                            onNavigateToDailyRecord = onNavigateToDailyRecord,
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
@@ -533,10 +530,10 @@ private fun CalendarGridRecord(
  */
 @Composable
 private fun CalendarDayCellRecord(
-    navController: NavHostController,
     date: LocalDate,
     day: Int,
     hasWalkSession: Boolean,
+    onNavigateToDailyRecord: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Date Picker 다이얼로그 표시 여부
@@ -582,10 +579,8 @@ private fun CalendarDayCellRecord(
         initialDate = date,
         onDateSelected = { selectedDate ->
             showDatePicker = false
-            navController.navigate(
-                Screen.DailyRecord.createRoute(
-                    selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                )
+            onNavigateToDailyRecord(
+                selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             )
         },
         onDismiss = { showDatePicker = false }

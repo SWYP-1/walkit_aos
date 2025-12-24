@@ -2,6 +2,7 @@ package team.swyp.sdu.data.utils
 
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.local.entity.SyncState
+import team.swyp.sdu.data.remote.walking.dto.Grade
 import timber.log.Timber
 
 /**
@@ -71,6 +72,32 @@ object EnumConverter {
         } catch (e: IllegalArgumentException) {
             Timber.w(e, "유효하지 않은 SyncState 값: '$value', 기본값(PENDING) 사용")
             SyncState.PENDING
+        }
+
+    /**
+     * Grade를 String으로 변환
+     *
+     * @param value 변환할 Grade (null이면 기본값 SEED의 name 반환)
+     * @return Grade의 name 문자열
+     */
+    fun fromGrade(value: Grade?): String =
+        value?.name ?: Grade.SEED.name
+
+    /**
+     * String을 Grade로 안전하게 변환
+     *
+     * 변환이 실패하는 경우 기본값(SEED)을 반환합니다.
+     *
+     * @param value 변환할 문자열
+     * @return 변환된 Grade (실패 시 SEED)
+     */
+    fun toGrade(value: String?): Grade =
+        try {
+            if (value == null) Grade.SEED
+            else Grade.valueOf(value)
+        } catch (e: IllegalArgumentException) {
+            Timber.w(e, "유효하지 않은 Grade 값: '$value', 기본값(SEED) 사용")
+            Grade.SEED
         }
 }
 

@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
  *
  * 새로운 서버 API 구조에 맞춘 Entity입니다.
  * Goal 정보는 별도의 GoalEntity로 분리되었습니다.
+ * Character 정보는 CharacterEntity로 별도 관리됩니다.
  */
 @Entity(tableName = "user_profile")
 data class UserEntity(

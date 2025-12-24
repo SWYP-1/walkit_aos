@@ -3,6 +3,7 @@ package team.swyp.sdu.di
 import android.content.Context
 import androidx.room.Room
 import team.swyp.sdu.data.local.dao.AppliedItemDao
+import team.swyp.sdu.data.local.dao.CharacterDao
 import team.swyp.sdu.data.local.dao.GoalDao
 import team.swyp.sdu.data.local.dao.MissionProgressDao
 import team.swyp.sdu.data.local.dao.NotificationSettingsDao
@@ -11,9 +12,11 @@ import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.dao.WalkingSessionDao
 import team.swyp.sdu.data.local.database.AppDatabase
 import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
+import team.swyp.sdu.data.repository.CharacterRepositoryImpl
 import team.swyp.sdu.data.repository.CosmeticItemRepositoryImpl
 import team.swyp.sdu.data.repository.MissionProgressRepositoryImpl
 import team.swyp.sdu.data.repository.WalkingSessionRepository
+import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.CosmeticItemRepository
 import team.swyp.sdu.domain.repository.MissionProgressRepository
 import dagger.Module
@@ -87,6 +90,16 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideUserDao(database: AppDatabase): UserDao = database.userDao()
+
+    @Provides
+    @Singleton
+    fun provideCharacterDao(database: AppDatabase): CharacterDao = database.characterDao()
+
+    @Provides
+    @Singleton
+    fun provideCharacterRepository(
+        characterDao: CharacterDao,
+    ): CharacterRepository = CharacterRepositoryImpl(characterDao)
 
     @Provides
     @Singleton

@@ -122,83 +122,83 @@ fun NotificationSettingsScreen(
             Spacer(Modifier.height(20.dp))
 
             // 전체 알림 섹션 (Figma 디자인에 맞춘 별도 구현)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = Grey2, // color/background/white-secondary
-                            shape = RoundedCornerShape(8.dp), // radius/8px
-                        )
-                        .padding(vertical = 12.dp, horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "전체 알림",
-                        style = MaterialTheme.walkItTypography.bodyL.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        color = Grey10,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = Grey2, // color/background/white-secondary
+                        shape = RoundedCornerShape(8.dp), // radius/8px
                     )
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "전체 알림",
+                    style = MaterialTheme.walkItTypography.bodyL.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Grey10,
+                )
 
-                    CustomSwitch(
-                        checked = uiState.notificationEnabled,
-                        onCheckedChange = onNotificationEnabledChange,
-                    )
-                }
+                CustomSwitch(
+                    checked = uiState.notificationEnabled,
+                    onCheckedChange = onNotificationEnabledChange,
+                )
+            }
 
+            Spacer(Modifier.height(8.dp))
+
+            // 알림 설정 섹션 (목표 알림, 신규 미션, 신규 요청)
+            SectionCard {
+                Text(
+                    text = "알림 설정",
+                    style = MaterialTheme.walkItTypography.bodyL.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Grey10,
+                )
                 Spacer(Modifier.height(8.dp))
 
-                // 알림 설정 섹션 (목표 알림, 신규 미션, 신규 요청)
-                SectionCard {
-                    Text(
-                        text = "알림 설정",
-                        style = MaterialTheme.walkItTypography.bodyL.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        color = Grey10,
-                    )
-                    Spacer(Modifier.height(8.dp))
+                ToggleMenuItem(
+                    title = "목표 알림",
+                    checked = uiState.goalNotificationEnabled,
+                    onCheckedChange = onGoalNotificationEnabledChange,
+                )
+                Spacer(Modifier.height(8.dp))
 
-                    ToggleMenuItem(
-                        title = "목표 알림",
-                        checked = uiState.goalNotificationEnabled,
-                        onCheckedChange = onGoalNotificationEnabledChange,
-                    )
-                    Spacer(Modifier.height(8.dp))
+                ToggleMenuItem(
+                    title = "신규 미션",
+                    checked = uiState.missionNotificationEnabled,
+                    onCheckedChange = onMissionNotificationEnabledChange,
+                )
+                Spacer(Modifier.height(8.dp))
 
-                    ToggleMenuItem(
-                        title = "신규 미션",
-                        checked = uiState.missionNotificationEnabled,
-                        onCheckedChange = onMissionNotificationEnabledChange,
-                    )
-                    Spacer(Modifier.height(8.dp))
+                ToggleMenuItem(
+                    title = "신규 요청",
+                    checked = uiState.friendNotificationEnabled,
+                    onCheckedChange = onFriendNotificationEnabledChange,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
 
-                    ToggleMenuItem(
-                        title = "신규 요청",
-                        checked = uiState.friendNotificationEnabled,
-                        onCheckedChange = onFriendNotificationEnabledChange,
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+            SectionCard {
+                ToggleMenuItem(
+                    title = "마케팅 푸쉬 동의",
+                    checked = uiState.marketingPushEnabled,
+                    onCheckedChange = onMarketingPushEnabledChange,
+                )
+            }
 
-                SectionCard {
-                    ToggleMenuItem(
-                        title = "마케팅 푸쉬 동의",
-                        checked = uiState.marketingPushEnabled,
-                        onCheckedChange = onMarketingPushEnabledChange,
-                    )
-                }
+            Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // GET 테스트 버튼
-                Button(
-                    onClick = onGetNotificationSettings,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("알림 설정 GET")
-                }
+            // GET 테스트 버튼
+            Button(
+                onClick = onGetNotificationSettings,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("알림 설정 GET")
+            }
         }
     }
 }

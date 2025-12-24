@@ -221,7 +221,6 @@ private fun CharacterInfoSection(
                     // Grade 배지
                     GradeBadge(
                         grade = character.grade,
-                        level = character.level,
                     )
 
                     Text(
