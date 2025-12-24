@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.ui.theme.Grey2
+import team.swyp.sdu.ui.theme.SemanticColor
 
 
 @Composable
@@ -22,12 +23,10 @@ fun SectionCard(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                color = Grey2, // color/background/white-secondary
+                color = SemanticColor.backgroundWhiteSecondary, // color/background/white-secondary
                 shape = RoundedCornerShape(8.dp), // radius/8px (Figma 디자인에 맞춤)
             )
-            .padding(
-                vertical = 12.dp, // spacing/12px
-            ),
+            .padding(vertical = 12.dp, horizontal = 16.dp)
     ) {
         content()
     }

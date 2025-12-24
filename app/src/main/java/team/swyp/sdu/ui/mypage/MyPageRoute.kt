@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 
 /**
  * 마이 페이지 Route
@@ -13,11 +14,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun MyPageRoute(
     viewModel: MyPageViewModel = hiltViewModel(),
+    loginViewModel: LoginViewModel = hiltViewModel(),
     onNavigateCharacterEdit: () -> Unit = {},
     onNavigateUserInfoEdit: () -> Unit = {},
     onNavigateGoalManagement: () -> Unit = {},
     onNavigateNotificationSetting: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -48,5 +51,14 @@ fun MyPageRoute(
         onNavigateGoalManagement = onNavigateGoalManagement,
         onNavigateNotificationSetting = onNavigateNotificationSetting,
         onNavigateBack = onNavigateBack,
+        onLogout = {
+            loginViewModel.logout()
+            onNavigateToLogin()
+        },
+        onWithdraw = {
+            // TODO: 탈퇴 기능 구현
+        },
     )
 }
+
+

@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +50,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import timber.log.Timber
 import java.io.File
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Error
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Loading
@@ -298,7 +299,7 @@ fun UserInfoManagementScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
             }
             return@Column
         }

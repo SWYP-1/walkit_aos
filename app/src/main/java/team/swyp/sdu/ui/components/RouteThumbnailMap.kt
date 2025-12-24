@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -26,11 +25,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
+import dagger.hilt.android.EntryPointAccessors
+import team.swyp.sdu.di.LocationManagerEntryPoint
+import team.swyp.sdu.domain.service.LocationManager
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
@@ -46,6 +43,8 @@ import com.kakao.vectormap.shape.PolylineStyles
 import com.kakao.vectormap.shape.ShapeLayer
 import com.kakao.vectormap.shape.ShapeManager
 import team.swyp.sdu.data.model.LocationPoint
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -65,8 +64,17 @@ fun RouteThumbnailMap(
     height: androidx.compose.ui.unit.Dp = 200.dp,
     stableKey: String? = null, // 컴포저블 재생성 방지를 위한 안정적인 키
     snapshotBitmap: androidx.compose.runtime.MutableState<Bitmap?>? = null, // 부모에서 관리하는 스냅샷 비트맵 (옵션)
+    locationManager: LocationManager? = null, // LocationManager (선택사항, 없으면 내부에서 생성)
 ) {
     val context = LocalContext.current
+    
+    // LocationManager 주입 (없으면 내부에서 생성)
+    val locationManagerInstance = locationManager ?: remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            LocationManagerEntryPoint::class.java
+        ).locationManager()
+    }
 
     // 컴포저블 재생성 추적
     androidx.compose.runtime.SideEffect {
@@ -173,64 +181,14 @@ fun RouteThumbnailMap(
         if (locations.isEmpty() && currentLocation.value == null && !locationRequested.value) {
             locationRequested.value = true
             try {
-                val fusedLocationClient: FusedLocationProviderClient =
-                    LocationServices.getFusedLocationProviderClient(context)
-
-                // 위치 권한 확인
-                val hasPermission =
-                    android.content.pm.PackageManager.PERMISSION_GRANTED ==
-                        ContextCompat.checkSelfPermission(
-                            context,
-                            android.Manifest.permission.ACCESS_FINE_LOCATION,
-                        ) || android.content.pm.PackageManager.PERMISSION_GRANTED ==
-                        ContextCompat.checkSelfPermission(
-                            context,
-                            android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                        )
-
-                if (hasPermission) {
-                    // 현재 위치 가져오기
-                    val cancellationTokenSource = CancellationTokenSource()
-                    fusedLocationClient
-                        .getCurrentLocation(
-                            Priority.PRIORITY_HIGH_ACCURACY,
-                            cancellationTokenSource.token,
-                        ).addOnSuccessListener { location ->
-                            if (location != null) {
-                                currentLocation.value =
-                                    LocationPoint(
-                                        latitude = location.latitude,
-                                        longitude = location.longitude,
-                                        timestamp = location.time,
-                                        accuracy = location.accuracy,
-                                    )
-                                Timber
-                                    .tag(
-                                        TAG_THUMBNAIL,
-                                    ).d("현재 위치 가져오기 성공: ${location.latitude}, ${location.longitude}")
-                            } else {
-                                // 마지막으로 알려진 위치 사용
-                                fusedLocationClient.lastLocation.addOnSuccessListener { lastLocation ->
-                                    if (lastLocation != null) {
-                                        currentLocation.value =
-                                            LocationPoint(
-                                                latitude = lastLocation.latitude,
-                                                longitude = lastLocation.longitude,
-                                                timestamp = lastLocation.time,
-                                                accuracy = lastLocation.accuracy,
-                                            )
-                                        Timber
-                                            .tag(
-                                                TAG_THUMBNAIL,
-                                            ).d("마지막 위치 사용: ${lastLocation.latitude}, ${lastLocation.longitude}")
-                                    }
-                                }
-                            }
-                        }.addOnFailureListener { e ->
-                            Timber.tag(TAG_THUMBNAIL).e(e, "현재 위치 가져오기 실패")
-                        }
-                } else {
-                    Timber.tag(TAG_THUMBNAIL).w("위치 권한이 없어서 현재 위치를 가져올 수 없습니다")
+                // LocationManager를 사용하여 현재 위치 가져오기
+                val location = locationManagerInstance.getCurrentLocationOrLast()
+                location?.let {
+                    currentLocation.value = it
+                    Timber.tag(TAG_THUMBNAIL)
+                        .d("현재 위치 가져오기 성공: ${it.latitude}, ${it.longitude}")
+                } ?: run {
+                    Timber.tag(TAG_THUMBNAIL).w("위치를 가져올 수 없습니다")
                 }
             } catch (e: Exception) {
                 Timber.tag(TAG_THUMBNAIL).e(e, "현재 위치 가져오기 중 오류 발생")
@@ -367,8 +325,8 @@ fun RouteThumbnailMap(
                         contentAlignment = Alignment.Center,
                     ) {
                         // 로딩 인디케이터 표시 (배경색 없음)
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp),
+                        CustomProgressIndicator(
+                            size = ProgressIndicatorSize.Medium,
                             color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         )
                     }

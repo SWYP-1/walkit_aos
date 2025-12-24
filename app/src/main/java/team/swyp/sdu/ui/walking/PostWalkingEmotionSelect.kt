@@ -1,115 +1,246 @@
 package team.swyp.sdu.ui.walking
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.EmotionSlider
+import team.swyp.sdu.ui.components.SectionCard
+import team.swyp.sdu.ui.components.TextHighlight
+import team.swyp.sdu.ui.components.WalkingWarningDialog
+import team.swyp.sdu.ui.walking.utils.createDefaultEmotionOptions
+import team.swyp.sdu.ui.walking.utils.findSelectedEmotionIndex
+import team.swyp.sdu.ui.walking.utils.valueToEmotionType
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
+import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.ui.walking.components.WalkingProgressBar
+import timber.log.Timber
 
 /**
- * 감정 선택 단계 화면 (단계 1)
- * 슬라이더로 감정을 선택하는 화면
+ * 산책 후 감정 선택 Route
+ * ViewModel injection과 state collection을 담당하는 Route composable
  */
 @Composable
-fun PostWalkingEmotionSelectScreen(
+fun PostWalkingEmotionSelectRoute(
     viewModel: WalkingViewModel,
-    onNext: () -> Unit,
+    onNext: () -> Unit = {},
+    onClose: () -> Unit = {},
 ) {
+    // ViewModel 인스턴스 확인 로그
+    LaunchedEffect(Unit) {
+        Timber.d("🚶 PostWalkingEmotionSelectRoute - 진입: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
+    }
+    
     val selectedEmotion by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        Text(
-            text = "산책 후 나의 마음은 어떤가요?",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
+    PostWalkingEmotionSelectScreen(
+        selectedEmotion = selectedEmotion,
+        onEmotionSelected = viewModel::selectPostWalkingEmotion,
+        onNextClick = {
+            if (selectedEmotion != null) {
+                viewModel.updatePostWalkEmotion(selectedEmotion!!)
+                onNext()
+            }
+        },
+        onClose = onClose,
+    )
+}
 
-        // 감정 선택 버튼들
+/**
+ * 산책 후 감정 선택 Screen
+ * UI 컴포넌트로 state와 callbacks를 파라미터로 받음
+ */
+@Composable
+private fun PostWalkingEmotionSelectScreen(
+    selectedEmotion: EmotionType?,
+    onEmotionSelected: (EmotionType) -> Unit,
+    onNextClick: () -> Unit,
+    onClose: () -> Unit = {},
+) {
+    var showWarningDialog by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            val emotions = listOf(
-                EmotionType.HAPPY to "기쁨 😊",
-                EmotionType.JOYFUL to "즐거움 🎉",
-                EmotionType.CONTENT to "행복함 😌",
-                EmotionType.DEPRESSED to "우울함 😔",
-                EmotionType.TIRED to "지침 😴",
-                EmotionType.ANXIOUS to "짜증남 😠"
+            // 헤더 (닫기 버튼)
+            AppHeader(
+                title = "",
+                onNavigateBack = {
+                    showWarningDialog = true
+                },
             )
 
-            emotions.forEach { (emotionType, displayText) ->
-                val isSelected = selectedEmotion == emotionType
-                OutlinedButton(
-                    onClick = { viewModel.selectPostWalkingEmotion(emotionType) },
+            // 진행 바 (1번째 칸 채워짐)
+            WalkingProgressBar(
+                currentStep = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            )
+            SectionCard {
+                Text(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                        contentColor = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
+                    text = "산책 후 나의 마음은 어떤가요?",
+                    style = MaterialTheme.walkItTypography.headingS.copy(
+                        fontWeight = FontWeight.SemiBold
                     ),
+                    color = SemanticColor.textBorderPrimary,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = "산책 후 감정이 어떻게 변했는지 기록해주세요.",
+                    // body S/regular
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Normal
+                    ), color = SemanticColor.textBorderSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+
+
+                // 감정 옵션 리스트 생성
+                val emotionOptions = remember {
+                    createDefaultEmotionOptions()
+                }
+
+                // 선택된 감정의 인덱스 찾기
+                val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
+
+                // EmotionSlider를 사용한 감정 선택
+                EmotionSlider(
+                    modifier = Modifier.fillMaxWidth(),
+                    emotions = emotionOptions,
+                    selectedIndex = selectedIndex,
+                    onEmotionSelected = { index ->
+                        if (index in emotionOptions.indices) {
+                            val emotionType = valueToEmotionType(emotionOptions[index].value)
+                            onEmotionSelected(emotionType)
+                        }
+                    }
+                )
+                Spacer(Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = displayText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
+                    CtaButton(
+                        text = "닫기",
+                        textColor = SemanticColor.buttonPrimaryDefault,
+                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        onClick = {
+                            showWarningDialog = true
+                        },
+                        modifier = Modifier.width(96.dp)
+                    )
+
+                    CtaButton(
+                        text = "다음으로",
+                        textColor = SemanticColor.textBorderPrimaryInverse,
+                        onClick = onNextClick,
+                        enabled = selectedEmotion != null,
+                        modifier = Modifier.weight(1f),
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_arrow_forward),
+                                contentDescription = "arrow forward",
+                                tint = SemanticColor.iconWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     )
                 }
             }
-        }
 
-        Button(
-            onClick = onNext,
-            enabled = selectedEmotion != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (selectedEmotion != null) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            ),
-        ) {
-            Text(
-                text = "다음",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            // 경고 다이얼로그
+            if (showWarningDialog) {
+                WalkingWarningDialog(
+                    title = "산책 기록을 중단하시겠습니까?",
+                    message = "이대로 종료하시면 작성한 산책 기록이\n모두 사라져요!",
+                    titleHighlight = TextHighlight(
+                        text = "중단",
+                        color = SemanticColor.stateRedPrimary,
+                    ),
+                    cancelButtonText = "중단하기",
+                    continueButtonText = "계속하기",
+                    cancelButtonColor = SemanticColor.stateRedPrimary,
+                    cancelButtonTextColor = SemanticColor.textBorderPrimaryInverse,
+                    onDismiss = { showWarningDialog = false },
+                    onCancel = {
+                        // 산책 기록 중단 및 메인 화면으로 이동
+                        showWarningDialog = false
+                        onClose()
+                    },
+                    onContinue = {
+                        // 다이얼로그만 닫기
+                        showWarningDialog = false
+                    },
+                )
+            }
         }
+    }
+}
+
+
+
+@Preview(showBackground = true)
+@Composable
+private fun PostWalkingEmotionSelectScreenPreview() {
+    WalkItTheme {
+        PostWalkingEmotionSelectScreen(
+            selectedEmotion = EmotionType.CONTENT,
+            onEmotionSelected = {},
+            onNextClick = {},
+            onClose = {},
+        )
     }
 }

@@ -1,8 +1,7 @@
 package team.swyp.sdu.ui.onboarding
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,16 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,396 +27,444 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import team.swyp.sdu.R
 import java.time.LocalDate
-import team.swyp.sdu.domain.model.Sex
-import team.swyp.sdu.ui.components.WheelPicker
+import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
+import team.swyp.sdu.ui.theme.Black
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
  * 출생년월일 선택 단계 컴포넌트
  */
 @Composable
 fun BirthYearStep(
-    currentYear: Int,
-    currentMonth: Int,
-    currentDay: Int,
-    currentSex: Sex?,
+    uiState: OnboardingUiState,
     onYearChange: (Int) -> Unit,
     onMonthChange: (Int) -> Unit,
     onDayChange: (Int) -> Unit,
-    onSexChange: (Sex) -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
-    val canProceed = try {
-        val yearValid = currentYear in 1901..LocalDate.now().year
-        val monthValid = currentMonth in 1..12
-        val dayValid = try {
-            LocalDate.of(currentYear, currentMonth, currentDay)
-            true
-        } catch (e: Exception) {
-            false
+    val currentYear = uiState.birthYear
+    val currentMonth = uiState.birthMonth
+    val currentDay = uiState.birthDay
+
+    // 텍스트 필드 값 상태 관리
+    var yearText by remember { mutableStateOf(TextFieldValue("")) }
+    var monthText by remember { mutableStateOf(TextFieldValue("")) }
+    var dayText by remember { mutableStateOf(TextFieldValue("")) }
+
+    // 초기값 설정 및 외부 값 변경 시 텍스트 필드 동기화
+    LaunchedEffect(currentYear) {
+        if (currentYear > 0) {
+            val formatted = String.format("%04d", currentYear)
+            if (yearText.text != formatted) {
+                yearText = TextFieldValue(formatted)
+            }
+        } else if (yearText.text.isNotEmpty()) {
+            yearText = TextFieldValue("")
         }
-        val sexValid = currentSex != null
-        yearValid && monthValid && dayValid && sexValid
-    } catch (e: Exception) {
-        false
+    }
+
+    LaunchedEffect(currentMonth) {
+        if (currentMonth > 0) {
+            val formatted = String.format("%02d", currentMonth)
+            if (monthText.text != formatted) {
+                monthText = TextFieldValue(formatted)
+            }
+        } else if (monthText.text.isNotEmpty()) {
+            monthText = TextFieldValue("")
+        }
+    }
+
+    LaunchedEffect(currentDay) {
+        if (currentDay > 0) {
+            val formatted = String.format("%02d", currentDay)
+            if (dayText.text != formatted) {
+                dayText = TextFieldValue(formatted)
+            }
+        } else if (dayText.text.isNotEmpty()) {
+            dayText = TextFieldValue("")
+        }
     }
 
     // 해당 월의 마지막 날짜 계산
     val daysInMonth = remember(currentYear, currentMonth) {
         try {
-            LocalDate.of(currentYear, currentMonth, 1).lengthOfMonth()
+            if (currentYear > 0 && currentMonth > 0) {
+                LocalDate.of(currentYear, currentMonth, 1).lengthOfMonth()
+            } else {
+                31
+            }
         } catch (e: Exception) {
             31
         }
     }
 
+    // 유효성 검사 결과
+    val isValidDate = remember(currentYear, currentMonth, currentDay) {
+        val yearValid = currentYear in 1901..LocalDate.now().year
+        val monthValid = currentMonth in 1..12
+        val dayValid = try {
+            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
+                LocalDate.of(currentYear, currentMonth, currentDay)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+        yearValid && monthValid && dayValid
+    }
+
+    // 모든 필드가 채워졌는지 확인
+    val allFieldsFilled = remember(yearText.text, monthText.text, dayText.text) {
+        yearText.text.length == 4 && monthText.text.length == 2 && dayText.text.length == 2
+    }
+
     // 일자가 유효 범위를 벗어나면 자동으로 조정
     LaunchedEffect(currentYear, currentMonth, currentDay, daysInMonth) {
-        val safeDay = currentDay.coerceIn(1, daysInMonth)
-        if (safeDay != currentDay) {
-            onDayChange(safeDay)
+        if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
+            val safeDay = currentDay.coerceIn(1, daysInMonth)
+            if (safeDay != currentDay) {
+                onDayChange(safeDay)
+                dayText = TextFieldValue(String.format("%02d", safeDay))
+            }
         }
     }
 
-    // 바텀시트 표시 상태
-    var showYearPicker by remember { mutableStateOf(false) }
-    var showMonthPicker by remember { mutableStateOf(false) }
-    var showDayPicker by remember { mutableStateOf(false) }
-    var showSexPicker by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Text(
-                text = "출생 정보와 성별을 선택하세요",
-                style = MaterialTheme.typography.headlineSmall,
-            )
-
-            // 출생년월일 선택 영역
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                // 년도 선택 필드
-                ClickField(
-                    label = "년",
-                    value = "$currentYear",
-                    onClick = { showYearPicker = true },
-                    modifier = Modifier.weight(1f),
-                )
-
-                // 월 선택 필드
-                ClickField(
-                    label = "월",
-                    value = "$currentMonth",
-                    onClick = { showMonthPicker = true },
-                    modifier = Modifier.weight(1f),
-                )
-
-                // 일 선택 필드
-                ClickField(
-                    label = "일",
-                    value = "$currentDay",
-                    onClick = { showDayPicker = true },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            // 성별 선택 필드
-            ClickField(
-                label = "성별",
-                value = when (currentSex) {
-                    Sex.MALE -> "남성"
-                    Sex.FEMALE -> "여성"
-                    null -> "선택하세요"
-                },
-                onClick = { showSexPicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            // 만 나이 표시
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "만",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF6F6F6),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        val age = LocalDate.now().year - currentYear
-                        Text(
-                            text = "$age 세",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // 버튼 영역
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Button(
-                    onClick = onPrev,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Text("이전", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                Button(
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f),
-                    enabled = canProceed,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
-                ) {
-                    Text("완료", color = Color.White)
+    // 모든 필드가 채워졌을 때 유효성 검사 실행
+    LaunchedEffect(allFieldsFilled, currentYear, currentMonth, currentDay) {
+        if (allFieldsFilled && !isValidDate) {
+            // 유효하지 않은 날짜인 경우, 일자를 자동 조정
+            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
+                try {
+                    LocalDate.of(currentYear, currentMonth, currentDay)
+                } catch (e: Exception) {
+                    // 유효하지 않은 날짜인 경우, 해당 월의 마지막 날로 조정
+                    val safeDay = daysInMonth.coerceAtMost(28)
+                    onDayChange(safeDay)
+                    dayText = TextFieldValue(String.format("%02d", safeDay))
                 }
             }
         }
+    }
 
-        // 년도 선택 바텀시트
-        if (showYearPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = (1950..LocalDate.now().year).map { "$it" },
-                initialIndex = (currentYear - 1950).coerceIn(0, LocalDate.now().year - 1950),
-                title = "출생년도 선택",
-                onConfirm = { _, value ->
-                    onYearChange(value.toInt())
-                    showYearPicker = false
-                },
-                onDismiss = { showYearPicker = false },
-            )
+    // 년도 입력 처리
+    fun handleYearInput(newValue: TextFieldValue) {
+        val text = newValue.text.filter { it.isDigit() }
+        if (text.length <= 4) {
+            yearText = newValue.copy(text = text)
+            if (text.length == 4) {
+                val year = text.toIntOrNull() ?: 0
+                if (year in 1901..LocalDate.now().year) {
+                    onYearChange(year)
+                } else {
+                    // 유효하지 않은 년도인 경우 0으로 설정
+                    onYearChange(0)
+                }
+            } else if (text.isEmpty()) {
+                onYearChange(0)
+            }
         }
+    }
 
-        // 월 선택 바텀시트
-        if (showMonthPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = (1..12).map { "$it" },
-                initialIndex = (currentMonth - 1).coerceIn(0, 11),
-                title = "출생월 선택",
-                onConfirm = { _, value ->
-                    val month = value.toInt()
+    // 월 입력 처리
+    fun handleMonthInput(newValue: TextFieldValue) {
+        val text = newValue.text.filter { it.isDigit() }
+        if (text.length <= 2) {
+            monthText = newValue.copy(text = text)
+            if (text.length == 2) {
+                val month = text.toIntOrNull() ?: 0
+                if (month in 1..12) {
                     onMonthChange(month)
-                    // 월 변경 시 일자 범위 조정
-                    val newDaysInMonth = try {
-                        LocalDate.of(currentYear, month, 1).lengthOfMonth()
-                    } catch (e: Exception) {
-                        31
-                    }
-                    if (currentDay > newDaysInMonth) {
-                        onDayChange(newDaysInMonth)
-                    }
-                    showMonthPicker = false
-                },
-                onDismiss = { showMonthPicker = false },
-            )
-        }
-
-        // 일 선택 바텀시트
-        if (showDayPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = (1..daysInMonth).map { "$it" },
-                initialIndex = (currentDay.coerceIn(1, daysInMonth) - 1).coerceIn(0, daysInMonth - 1),
-                title = "출생일 선택",
-                onConfirm = { _, value ->
-                    onDayChange(value.toInt())
-                    showDayPicker = false
-                },
-                onDismiss = { showDayPicker = false },
-            )
-        }
-
-        // 성별 선택 바텀시트
-        if (showSexPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = listOf("남성", "여성"),
-                initialIndex = when (currentSex) {
-                    Sex.MALE -> 0
-                    Sex.FEMALE -> 1
-                    null -> 0
-                },
-                title = "성별 선택",
-                onConfirm = { _, value ->
-                    val sex = when (value) {
-                        "남성" -> Sex.MALE
-                        "여성" -> Sex.FEMALE
-                        else -> Sex.MALE
-                    }
-                    onSexChange(sex)
-                    showSexPicker = false
-                },
-                onDismiss = { showSexPicker = false },
-            )
+                } else {
+                    // 유효하지 않은 월인 경우 0으로 설정
+                    onMonthChange(0)
+                }
+            } else if (text.isEmpty()) {
+                onMonthChange(0)
+            }
         }
     }
-}
 
-@Composable
-private fun ClickField(
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+    // 일 입력 처리
+    fun handleDayInput(newValue: TextFieldValue) {
+        val text = newValue.text.filter { it.isDigit() }
+        if (text.length <= 2) {
+            dayText = newValue.copy(text = text)
+            if (text.length == 2) {
+                val day = text.toIntOrNull() ?: 0
+                if (day > 0) {
+                    // 유효성 검사는 LaunchedEffect에서 처리
+                    onDayChange(day)
+                }
+            } else if (text.isEmpty()) {
+                onDayChange(0)
+            }
+        }
+    }
+
     Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        Modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhiteSecondary)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onClick() },
-            color = Color(0xFFF6F6F6),
-        ) {
+        Spacer(modifier = Modifier.height(56.dp))
+
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
+
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                OnBoardingStepTag(text = "준비 단계")
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "${uiState.nicknameState.value}님,\n" + "생년월일을 선택해주세요",
+                    style = MaterialTheme.walkItTypography.headingM.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Black,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             Text(
-                text = value,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-                style = MaterialTheme.typography.bodyLarge,
+                text = "생년월일", style = MaterialTheme.walkItTypography.bodyS.copy(
+                    fontWeight = FontWeight.Medium
+                ), color = Black
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "생년월일 8자리를 입력해주세요.",
+                style = MaterialTheme.walkItTypography.captionM,
+                color = SemanticColor.textBorderSecondary
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 날짜 입력 필드 (년, 월, 일)
+            val isError = allFieldsFilled && !isValidDate
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 년도 입력 필드
+                DateNumberInputField(
+                    value = yearText,
+                    placeholder = "YYYY",
+                    modifier = Modifier.weight(1f),
+                    onValueChange = ::handleYearInput,
+                    maxLength = 4,
+                    isError = isError
+                )
+
+                // 월 입력 필드
+                DateNumberInputField(
+                    value = monthText,
+                    placeholder = "MM",
+                    modifier = Modifier.weight(1f),
+                    onValueChange = ::handleMonthInput,
+                    maxLength = 2,
+                    isError = isError
+                )
+
+                // 일 입력 필드
+                DateNumberInputField(
+                    value = dayText,
+                    placeholder = "DD",
+                    modifier = Modifier.weight(1f),
+                    onValueChange = ::handleDayInput,
+                    maxLength = 2,
+                    isError = isError
+                )
+            }
+
+            // 유효성 검사 에러 메시지 표시
+            if (isError) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "올바른 날짜를 입력해주세요.",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = SemanticColor.stateRedPrimary
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CtaButton(
+                    text = "이전으로",
+                    textColor = SemanticColor.buttonPrimaryDefault,
+                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    onClick = onPrev,
+                    modifier = Modifier.width(96.dp)      // 1
+                )
+
+                CtaButton(
+                    text = "다음으로",
+                    textColor = SemanticColor.textBorderPrimaryInverse,
+                    onClick = onNext,
+                    modifier = Modifier.weight(1f),   // 2.4
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_forward),
+                            contentDescription = "arrow forward",
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            }
         }
     }
 }
 
+/**
+ * 날짜 입력용 숫자 텍스트 필드 컴포넌트
+ */
 @Composable
-private fun WheelPickerOverlay(
-    visible: Boolean,
-    items: List<String>,
-    initialIndex: Int,
-    onConfirm: (Int, String) -> Unit,
-    onDismiss: () -> Unit,
-    title: String,
+private fun DateNumberInputField(
+    value: TextFieldValue,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    onValueChange: (TextFieldValue) -> Unit,
+    maxLength: Int,
+    isError: Boolean = false,
 ) {
-    if (!visible) return
-
-    var index by remember { mutableStateOf(initialIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) }
-
     Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .background(Color.Black.copy(alpha = 0.35f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onDismiss,
-                ),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .border(
+                width = 1.dp,
+                color = if (isError) SemanticColor.stateRedPrimary
+                else SemanticColor.textBorderPrimary,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .background(SemanticColor.backgroundWhitePrimary)
+            .padding(horizontal = 15.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.weight(1f))
-            Surface(
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                tonalElevation = 4.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onDismiss) { Text("취소") }
-                            TextButton(onClick = { onConfirm(index, items[index]) }) { Text("확인") }
-                        }
-                    }
-                    WheelPicker(
-                        items = items,
-                        initialIndex = index,
-                        onSelected = { i, _ -> index = i },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp),
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.walkItTypography.bodyM.copy(
+                color = if (value.text.isEmpty()) SemanticColor.textBorderSecondary else SemanticColor.textBorderPrimary
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number
+            ),
+            decorationBox = { innerTextField ->
+                if (value.text.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = MaterialTheme.walkItTypography.bodyM,
+                        color = SemanticColor.textBorderSecondary
                     )
                 }
+                innerTextField()
             }
-        }
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "기본 상태 - 날짜 미선택")
 @Composable
-private fun BirthYearStepPreview() {
+private fun BirthYearStepEmptyPreview() {
     WalkItTheme {
         BirthYearStep(
-            currentYear = 1998,
-            currentMonth = 5,
-            currentDay = 15,
-            currentSex = null,
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState("홍길동"),
+                birthYear = 0,
+                birthMonth = 0,
+                birthDay = 0,
+            ),
             onYearChange = {},
             onMonthChange = {},
             onDayChange = {},
-            onSexChange = {},
             onNext = {},
             onPrev = {},
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "날짜 선택됨 - 1998년 5월 15일")
+@Composable
+private fun BirthYearStepPreview() {
+    WalkItTheme {
+        BirthYearStep(
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState("홍길동"),
+                birthYear = 1998,
+                birthMonth = 5,
+                birthDay = 15,
+            ),
+            onYearChange = {},
+            onMonthChange = {},
+            onDayChange = {},
+            onNext = {},
+            onPrev = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "날짜 선택됨 - 2010년 12월 25일")
 @Composable
 private fun BirthYearStepYoungPreview() {
     WalkItTheme {
         BirthYearStep(
-            currentYear = 2010,
-            currentMonth = 12,
-            currentDay = 25,
-            currentSex = Sex.MALE,
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState("김철수"),
+                birthYear = 2010,
+                birthMonth = 12,
+                birthDay = 25,
+            ),
             onYearChange = {},
             onMonthChange = {},
             onDayChange = {},
-            onSexChange = {},
+            onNext = {},
+            onPrev = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "날짜 선택됨 - 2000년 2월 29일 (윤년)")
+@Composable
+private fun BirthYearStepLeapYearPreview() {
+    WalkItTheme {
+        BirthYearStep(
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState("이영희"),
+                birthYear = 2000,
+                birthMonth = 2,
+                birthDay = 29,
+            ),
+            onYearChange = {},
+            onMonthChange = {},
+            onDayChange = {},
             onNext = {},
             onPrev = {},
         )

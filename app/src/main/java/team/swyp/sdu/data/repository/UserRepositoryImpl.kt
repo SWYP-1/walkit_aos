@@ -99,20 +99,50 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun updateBirthDate(birthDate: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                remoteDataSource.updateBirthDate(birthDate)
+                Result.Success(Unit)
+            } catch (e: Exception) {
+                Timber.e(e, "생년월일 업데이트 실패: $birthDate")
+                Result.Error(e, e.message)
+            }
+        }
+
     override suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-        sex: Sex,
         imageUri: String?,
     ): Result<User> =
         withContext(Dispatchers.IO) {
             try {
-                val user = remoteDataSource.updateUserProfile(nickname, birthDate, sex, imageUri)
-                userDao.upsert(UserMapper.toEntity(user))
-                userState.value = user
-                Result.Success(user)
+                remoteDataSource.updateUserProfile(nickname, birthDate, imageUri)
+                // 업데이트 후 최신 정보를 서버에서 가져오기
+                refreshUser()
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun agreeToTerms(
+        termsAgreed: Boolean,
+        privacyAgreed: Boolean,
+        locationAgreed: Boolean,
+        marketingConsent: Boolean,
+    ): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                remoteDataSource.agreeToTerms(
+                    termsAgreed = termsAgreed,
+                    privacyAgreed = privacyAgreed,
+                    locationAgreed = locationAgreed,
+                    marketingConsent = marketingConsent,
+                )
+                Result.Success(Unit)
+            } catch (e: Exception) {
+                Timber.e(e, "약관 동의 실패")
                 Result.Error(e, e.message)
             }
         }

@@ -2,9 +2,6 @@ package team.swyp.sdu.ui.components
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.opengl.GLException
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -13,13 +10,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import com.kakao.vectormap.graphics.gl.GLSurfaceView
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.IntBuffer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import com.kakao.vectormap.route.RouteLineManager
 import com.kakao.vectormap.route.RouteLineLayer
 import com.kakao.vectormap.route.RouteLineSegment
@@ -27,24 +26,26 @@ import com.kakao.vectormap.route.RouteLineOptions
 import com.kakao.vectormap.route.RouteLineStyle
 import com.kakao.vectormap.route.RouteLineStyles
 import com.kakao.vectormap.route.RouteLineStylesSet
-import javax.microedition.khronos.egl.EGL10
-import javax.microedition.khronos.egl.EGLContext
-import javax.microedition.khronos.opengles.GL10
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
@@ -58,14 +59,14 @@ import team.swyp.sdu.presentation.viewmodel.CameraSettings
 import team.swyp.sdu.presentation.viewmodel.KakaoMapViewModel
 import team.swyp.sdu.presentation.viewmodel.KakaoMapUiState
 import team.swyp.sdu.presentation.viewmodel.MapRenderState
+import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.White
 import timber.log.Timber
 
 /**
  * 상수 정의
  */
 private object MapSnapshotConstants {
-    const val TILE_LOADING_DELAY_MS = 500L // fallback용 타일 로딩 대기 시간
-    const val FALLBACK_DELAY_MS = 100L
     const val ROUTE_LINE_WIDTH = 16f
     const val ROUTE_LINE_COLOR = "#4285F4"
     const val RENDER_FRAMES_TO_WAIT = 5 // GPU 렌더링 완료를 위해 대기할 프레임 수 (타일 로딩 보장)
@@ -79,22 +80,19 @@ private object MapSnapshotConstants {
  * @param locations 경로를 표시할 위치 좌표 리스트
  * @param modifier Modifier
  * @param viewModel KakaoMapViewModel (옵션, 없으면 자동 생성)
- * @param onSnapshotCaptured drawPath 완료 후 스냅샷이 생성되면 호출되는 콜백 (옵션)
- * @param showMapView MapView를 화면에 표시할지 여부 (false면 스냅샷만 표시)
+ * @param onMapViewReady MapView가 준비되었을 때 호출되는 콜백 (스냅샷 생성용)
  */
 @Composable
 fun KakaoMapView(
     locations: List<LocationPoint>,
     modifier: Modifier = Modifier,
     viewModel: KakaoMapViewModel = hiltViewModel(),
-    onSnapshotCaptured: ((Bitmap?) -> Unit)? = null,
-    showMapView: Boolean = false,
+    onMapViewReady: ((MapView?) -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
     // ViewModel 상태 구독
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snapshotState by viewModel.snapshotState.collectAsStateWithLifecycle()
     val renderState by viewModel.renderState.collectAsStateWithLifecycle()
 
     // MapView 관련 상태 (UI 제어용)
@@ -113,13 +111,6 @@ fun KakaoMapView(
         viewModel.setLocations(locations)
     }
 
-    // 스냅샷 상태 변경 시 콜백 호출
-    LaunchedEffect(snapshotState) {
-        snapshotState?.let { bitmap ->
-            onSnapshotCaptured?.invoke(bitmap)
-        }
-    }
-
     // 렌더링 상태에 따라 작업 수행
     LaunchedEffect(renderState) {
         val kakaoMap = kakaoMapInstance
@@ -133,55 +124,12 @@ fun KakaoMapView(
                     Timber.d("경로 그리기 시작")
                     drawPath(kakaoMap, currentUiState.locations, viewModel, mapView)
                 } else {
-                    // 경로가 없으면 바로 Ready 상태로
+                    // 경로가 없으면 바로 Complete 상태로
                     viewModel.onPathDrawComplete()
                 }
             }
-            is MapRenderState.Ready -> {
-                Timber.d("경로 그리기 완료 - 스냅샷 생성 시작")
-                captureSnapshot(mapView, viewModel, context)
-            }
-            else -> {}
-        }
-    }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // MapView는 렌더링을 위해 필요하지만 보이지 않게 설정
-        AndroidView(
-            factory = { ctx ->
-                MapView(ctx).apply {
-                    layoutParams =
-                        FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                    // showMapView가 false면 INVISIBLE로 설정 (렌더링은 되지만 보이지 않음)
-                    visibility = if (showMapView) View.VISIBLE else View.INVISIBLE
-                    mapViewRef = this
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { mapView ->
-                // visibility 업데이트
-                mapView.visibility = if (showMapView) View.VISIBLE else View.INVISIBLE
-                
-                if (!mapStarted) {
-                    mapStarted = true
-                    initializeMapView(mapView, viewModel, uiState, context) { kakaoMap ->
-                        kakaoMapInstance = kakaoMap
-                    }
-                }
-            },
-        )
-        
-        // 스냅샷이 생성되면 Image로 표시
-        snapshotState?.let { bitmap ->
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "지도 스냅샷",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.FillBounds,
-            )
+            else -> {}
         }
     }
 
@@ -194,6 +142,58 @@ fun KakaoMapView(
         }
     }
 
+    // 로딩 상태 확인: Complete 상태가 아니면 로딩 중
+    val isLoading = renderState != MapRenderState.Complete
+
+    // 지도뷰와 로딩 인디케이터를 겹쳐서 표시
+    Box(modifier = modifier.fillMaxSize()) {
+        // MapView는 항상 VISIBLE로 표시
+        AndroidView(
+            factory = { ctx ->
+                MapView(ctx).apply {
+                    layoutParams =
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
+                    visibility = View.VISIBLE
+                    mapViewRef = this
+                    // MapView 참조를 외부에 전달 (스냅샷 생성용)
+                    onMapViewReady?.invoke(this)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+            update = { mapView ->
+                // MapView는 항상 VISIBLE로 유지
+                mapView.visibility = View.VISIBLE
+
+                if (!mapStarted) {
+                    mapStarted = true
+                    initializeMapView(mapView, viewModel, uiState, context) { kakaoMap ->
+                        kakaoMapInstance = kakaoMap
+                    }
+                }
+
+                // MapView 참조 업데이트
+                onMapViewReady?.invoke(mapView)
+            },
+        )
+
+        // 로딩 중일 때 투명한 회색 배경과 프로그레스 바 표시
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x80000000)), // 투명한 회색 배경 (50% 투명도)
+                contentAlignment = Alignment.Center,
+            ) {
+                CustomProgressIndicator(
+                    size = ProgressIndicatorSize.Medium,
+                    color = Color.White,
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -259,12 +259,13 @@ private fun updateMapFromState(
         is KakaoMapUiState.Ready -> {
             // 이미 카메라 이동 중이거나 경로 그리기 중이면 중복 호출 방지
             val currentRenderState = viewModel.renderState.value
-            if (currentRenderState != MapRenderState.Idle && 
-                currentRenderState != MapRenderState.Ready) {
+            if (currentRenderState != MapRenderState.Idle &&
+                currentRenderState != MapRenderState.Complete
+            ) {
                 Timber.d("이미 렌더링 진행 중: $currentRenderState - 업데이트 스킵")
                 return
             }
-            
+
             try {
                 // 카메라 이동 시작
                 viewModel.startCameraMove()
@@ -285,42 +286,140 @@ private fun updateMapFromState(
 }
 
 /**
- * 스냅샷 캡처 (PixelCopy 우선, 없으면 fallback)
+ * MapView를 PixelCopy로 캡처하는 suspend 함수
+ *
+ * @param mapView 캡처할 MapView
+ * @param context Context
+ * @return 스냅샷 파일 경로 (실패 시 null)
  */
-private fun captureSnapshot(
+suspend fun captureMapViewSnapshot(
     mapView: MapView,
-    viewModel: KakaoMapViewModel,
     context: Context,
+): String? = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+    captureViewSnapshot(mapView, context) { path ->
+        continuation.resume(path) {}
+    }
+
+    continuation.invokeOnCancellation {
+        Timber.d("MapView 스냅샷 생성 취소됨")
+    }
+}
+
+/**
+ * 공통 스냅샷 유틸리티: View를 PixelCopy로 캡처하는 범용 함수
+ *
+ * @param view 캡처할 View
+ * @param context Context
+ * @param onComplete 스냅샷 생성 완료 시 파일 경로를 반환하는 콜백
+ */
+fun captureViewSnapshot(
+    view: View,
+    context: Context,
+    onComplete: (String?) -> Unit,
 ) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        Timber.e("PixelCopy는 Android 8.0 이상에서만 사용 가능")
+        onComplete(null)
+        return
+    }
+
     try {
-        if (mapView.width == 0 || mapView.height == 0) {
-            Timber.w("MapView 크기가 0입니다: ${mapView.width}x${mapView.height}")
-            viewModel.setSnapshot(null)
+        if (view.width == 0 || view.height == 0) {
+            Timber.w("View 크기가 0입니다: ${view.width}x${view.height}")
+            onComplete(null)
             return
         }
 
-        mapView.visibility = View.VISIBLE
-        val glSurfaceView = findGLSurfaceView(mapView)
+        view.visibility = View.VISIBLE
 
-        when {
-            glSurfaceView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
-                Timber.d("PixelCopy 방식으로 스냅샷 캡처 시작")
-                captureUsingPixelCopy(glSurfaceView, mapView, viewModel, context)
+        // View가 GLSurfaceView인 경우
+        val glSurfaceView = findGLSurfaceView(view)
+        if (glSurfaceView != null) {
+            glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+            waitForFramesToRender(glSurfaceView, "ViewSnapshot") {
+                performPixelCopy(glSurfaceView, context, onComplete)
             }
-            glSurfaceView != null -> {
-                Timber.d("OpenGL 방식으로 스냅샷 캡처 시작 (Android < 8.0)")
-                captureFromGLSurface(glSurfaceView, mapView, viewModel, context)
-            }
-            else -> {
-                Timber.w("GLSurfaceView를 찾을 수 없음 - View 방식 사용")
-                captureFromView(mapView, viewModel, context)
+        } else {
+            // 일반 View인 경우 Window를 통해 PixelCopy 수행
+            val window = (context as? android.app.Activity)?.window
+            if (window != null) {
+                val bitmap = Bitmap.createBitmap(
+                    view.width,
+                    view.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+                val location = IntArray(2)
+                view.getLocationInWindow(location)
+
+                PixelCopy.request(
+                    window,
+                    android.graphics.Rect(
+                        location[0],
+                        location[1],
+                        location[0] + view.width,
+                        location[1] + view.height
+                    ),
+                    bitmap,
+                    { copyResult ->
+                        if (copyResult == PixelCopy.SUCCESS) {
+                            Timber.d("View PixelCopy 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
+                            val savedPath = saveSnapshotToFile(context, bitmap)
+                            Timber.d("View PixelCopy 스냅샷 파일 저장: $savedPath")
+                            onComplete(savedPath)
+                        } else {
+                            Timber.e("View PixelCopy 실패: $copyResult")
+                            onComplete(null)
+                        }
+                    },
+                    Handler(Looper.getMainLooper())
+                )
+            } else {
+                Timber.e("Activity Window를 찾을 수 없습니다")
+                onComplete(null)
             }
         }
     } catch (e: Exception) {
-        Timber.e(e, "스냅샷 생성 준비 실패: ${e.message}")
-        viewModel.setSnapshot(null)
+        Timber.e(e, "View 스냅샷 생성 실패: ${e.message}")
+        onComplete(null)
     }
 }
+
+///**
+// * 수동 스냅샷 생성 함수 (PixelCopy만 사용)
+// *
+// * @param mapView MapView 인스턴스
+// * @param context Context
+// * @return 스냅샷 파일 경로 (실패 시 null)
+// */
+//suspend fun captureMapSnapshot(
+//    mapView: MapView,
+//    context: Context,
+//): String? = kotlinx.coroutines.suspendCoroutine { continuation ->
+//    try {
+//        if (mapView.width == 0 || mapView.height == 0) {
+//            Timber.w("MapView 크기가 0입니다: ${mapView.width}x${mapView.height}")
+//            continuation.resume(null)
+//            return@suspendCoroutine
+//        }
+//
+//        mapView.visibility = View.VISIBLE
+//        val glSurfaceView = findGLSurfaceView(mapView)
+//
+//        if (glSurfaceView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            Timber.d("PixelCopy 방식으로 스냅샷 캡처 시작")
+//            captureUsingPixelCopy(glSurfaceView, mapView, context) { path ->
+//                continuation.resume(path)
+//            }
+//        } else {
+//            Timber.e("PixelCopy를 사용할 수 없습니다: glSurfaceView=${glSurfaceView != null}, SDK=${Build.VERSION.SDK_INT}")
+//            continuation.resume(null)
+//        }
+//    } catch (e: Exception) {
+//        Timber.e(e, "스냅샷 생성 준비 실패: ${e.message}")
+//        continuation.resume(null)
+//    }
+//}
 
 /**
  * PixelCopy API를 사용한 스냅샷 캡처 (Android 8.0+)
@@ -328,23 +427,23 @@ private fun captureSnapshot(
 private fun captureUsingPixelCopy(
     glSurfaceView: GLSurfaceView,
     mapView: MapView,
-    viewModel: KakaoMapViewModel,
     context: Context,
+    onComplete: (String?) -> Unit,
 ) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
         Timber.e("PixelCopy는 Android 8.0 이상에서만 사용 가능")
-        captureFromGLSurface(glSurfaceView, mapView, viewModel, context)
+        onComplete(null)
         return
     }
 
     try {
         glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
         waitForFramesToRender(glSurfaceView, "PixelCopy") {
-            performPixelCopy(glSurfaceView, viewModel, context)
+            performPixelCopy(glSurfaceView, context, onComplete)
         }
     } catch (e: Exception) {
         Timber.e(e, "PixelCopy 준비 실패: ${e.message}")
-        viewModel.setSnapshot(null)
+        onComplete(null)
     }
 }
 
@@ -353,39 +452,40 @@ private fun captureUsingPixelCopy(
  */
 private fun performPixelCopy(
     glSurfaceView: GLSurfaceView,
-    viewModel: KakaoMapViewModel,
     context: Context,
+    onComplete: (String?) -> Unit,
 ) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        onComplete(null)
+        return
+    }
+
     try {
         val bitmap = Bitmap.createBitmap(
             glSurfaceView.width,
             glSurfaceView.height,
             Bitmap.Config.ARGB_8888
         )
-        
+
         PixelCopy.request(
             glSurfaceView,
             bitmap,
             { copyResult ->
                 if (copyResult == PixelCopy.SUCCESS) {
                     Timber.d("PixelCopy 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
-                    val savedPath = saveSnapshotToFile(context, bitmap, 0)
+                    val savedPath = saveSnapshotToFile(context, bitmap)
                     Timber.d("PixelCopy 스냅샷 파일 저장: $savedPath")
-                    viewModel.setSnapshot(bitmap)
+                    onComplete(savedPath)
                 } else {
                     Timber.e("PixelCopy 실패: $copyResult")
-                    // PixelCopy 실패 시 OpenGL 방식으로 재시도
-                    Timber.d("OpenGL 방식으로 재시도")
-                    captureFromGLSurface(glSurfaceView, null, viewModel, context)
+                    onComplete(null)
                 }
             },
             Handler(Looper.getMainLooper())
         )
     } catch (e: Exception) {
         Timber.e(e, "PixelCopy 실행 실패: ${e.message}")
-        viewModel.setSnapshot(null)
+        onComplete(null)
     }
 }
 
@@ -408,148 +508,25 @@ private fun findGLSurfaceView(view: android.view.View): GLSurfaceView? {
     return null
 }
 
-/**
- * OpenGL 기반 스냅샷 캡처 (fallback용 또는 Android < 8.0)
- */
-private fun captureFromGLSurface(
-    glSurfaceView: GLSurfaceView,
-    mapView: MapView?,
-    viewModel: KakaoMapViewModel,
-    context: Context,
-) {
-    glSurfaceView.queueEvent {
-        val bitmap = try {
-            val egl = EGLContext.getEGL() as EGL10
-            val gl = egl.eglGetCurrentContext()?.gl as? GL10
-            
-            if (gl == null) {
-                Timber.e("OpenGL 컨텍스트를 가져올 수 없음")
-                null
-            } else {
-                // GPU 작업이 모두 완료될 때까지 대기
-                gl.glFinish()
-                
-                createBitmapFromGLSurface(
-                    0,
-                    0,
-                    glSurfaceView.width,
-                    glSurfaceView.height,
-                    gl,
-                )
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "OpenGL 스냅샷 생성 실패: ${e.message}")
-            null
-        }
-        
-        Handler(Looper.getMainLooper()).post {
-            if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
-                val savedPath = saveSnapshotToFile(context, bitmap, 0)
-                Timber.d("OpenGL 스냅샷 파일 저장: $savedPath, 크기: ${bitmap.width}x${bitmap.height}")
-                viewModel.setSnapshot(bitmap)
-            } else {
-                Timber.e("비트맵 생성 실패 또는 크기가 0")
-                viewModel.setSnapshot(null)
-            }
-        }
-    }
-}
 
 /**
- * OpenGL 프레임버퍼에서 비트맵 생성
- */
-private fun createBitmapFromGLSurface(
-    x: Int,
-    y: Int,
-    w: Int,
-    h: Int,
-    gl: GL10,
-): Bitmap? {
-    return try {
-        val bitmapBuffer = IntArray(w * h)
-        val bitmapSource = IntArray(w * h)
-        val intBuffer = IntBuffer.wrap(bitmapBuffer)
-        intBuffer.position(0)
-        
-        gl.glReadPixels(x, y, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, intBuffer)
-        
-        var offset1: Int
-        var offset2: Int
-        for (i in 0 until h) {
-            offset1 = i * w
-            offset2 = (h - i - 1) * w
-            for (j in 0 until w) {
-                val texturePixel = bitmapBuffer[offset1 + j]
-                val blue = (texturePixel shr 16) and 0xff
-                val red = (texturePixel shl 16) and 0x00ff0000
-                val greenMask = 0xff00ff00L.toInt()
-                val pixel = (texturePixel and greenMask) or red or blue
-                bitmapSource[offset2 + j] = pixel
-            }
-        }
-        
-        Bitmap.createBitmap(bitmapSource, w, h, Bitmap.Config.ARGB_8888)
-    } catch (e: GLException) {
-        Timber.e(e, "OpenGL 비트맵 생성 실패")
-        null
-    } catch (e: OutOfMemoryError) {
-        Timber.e(e, "메모리 부족")
-        null
-    }
-}
-
-/**
- * View 기반 스냅샷 캡처 (최종 fallback)
- */
-private fun captureFromView(
-    mapView: MapView,
-    viewModel: KakaoMapViewModel,
-    context: Context,
-) {
-    mapView.postDelayed({
-        try {
-            val bitmap = Bitmap.createBitmap(
-                mapView.width,
-                mapView.height,
-                Bitmap.Config.ARGB_8888,
-            )
-            val canvas = Canvas(bitmap)
-            mapView.draw(canvas)
-
-            if (bitmap.width > 0 && bitmap.height > 0) {
-                val savedPath = saveSnapshotToFile(context, bitmap, 0)
-                Timber.d("View 스냅샷 파일 저장: $savedPath")
-                viewModel.setSnapshot(bitmap)
-            } else {
-                Timber.w("스냅샷 크기가 0: width=${bitmap.width}, height=${bitmap.height}")
-                viewModel.setSnapshot(null)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "View 스냅샷 생성 실패: ${e.message}")
-            viewModel.setSnapshot(null)
-        }
-    }, MapSnapshotConstants.FALLBACK_DELAY_MS)
-}
-
-/**
- * 스냅샷을 파일로 저장 (디버깅용)
+ * 스냅샷을 파일로 저장
  */
 private fun saveSnapshotToFile(
     context: Context,
     bitmap: Bitmap,
-    retryCount: Int,
 ): String? {
     return try {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "map_snapshot_${timestamp}_retry${retryCount}.png"
-        
+        val fileName = "map_snapshot_${timestamp}.png"
+
         val fileDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
         val file = File(fileDir, fileName)
-        
+
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
-        
+
         val absolutePath = file.absolutePath
         Timber.d("스냅샷 파일 저장 완료: $absolutePath")
         absolutePath
@@ -590,8 +567,9 @@ private fun drawPath(
 
         val routeLineOptions = createRouteLineOptions(locations)
         routeLineManager.layer.addRouteLine(routeLineOptions) { _, _ ->
-            Timber.d("RouteLine 생성 완료 - GPU 렌더링 대기 중")
-            waitForRouteLineRender(mapView, viewModel)
+            Timber.d("RouteLine 생성 완료")
+            // 경로 그리기 완료 - 바로 Complete 상태로 변경 (스냅샷 생성 없음)
+            viewModel.onPathDrawComplete()
         }
         Timber.d("RouteLine 추가 요청 완료 (콜백 등록됨)")
 
@@ -634,27 +612,6 @@ private fun waitForFramesToRender(
     renderNextFrame()
 }
 
-/**
- * RouteLine 렌더링 완료 대기
- */
-private fun waitForRouteLineRender(
-    mapView: MapView,
-    viewModel: KakaoMapViewModel,
-) {
-    val glSurfaceView = findGLSurfaceView(mapView)
-    if (glSurfaceView != null) {
-        glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-        waitForFramesToRender(glSurfaceView, "RouteLine") {
-            viewModel.onPathDrawComplete()
-        }
-    } else {
-        Timber.w("GLSurfaceView를 찾을 수 없음 - fallback 사용")
-        mapView.postDelayed({
-            Timber.d("RouteLine 렌더링 완료 (fallback)")
-            viewModel.onPathDrawComplete()
-        }, MapSnapshotConstants.TILE_LOADING_DELAY_MS)
-    }
-}
 
 /**
  * RouteLine 옵션 생성
@@ -666,7 +623,7 @@ private fun createRouteLineOptions(locations: List<LocationPoint>): RouteLineOpt
 
     val routeLineStyle = RouteLineStyle.from(
         MapSnapshotConstants.ROUTE_LINE_WIDTH,
-        Color.parseColor(MapSnapshotConstants.ROUTE_LINE_COLOR),
+        White.toArgb()
     )
 
     val routeLineStyles = RouteLineStyles.from(routeLineStyle)
@@ -689,7 +646,7 @@ private fun moveCameraToPath(
         val centerPosition = LatLng.from(cameraSettings.centerLat, cameraSettings.centerLon)
         val cameraUpdate =
             CameraUpdateFactory.newCenterPosition(centerPosition, cameraSettings.zoomLevel)
-        
+
         kakaoMap.moveCamera(cameraUpdate)
         Timber.d("카메라 이동 요청: 중심 (${cameraSettings.centerLat}, ${cameraSettings.centerLon}), 줌 레벨: ${cameraSettings.zoomLevel}")
     } catch (e: Exception) {

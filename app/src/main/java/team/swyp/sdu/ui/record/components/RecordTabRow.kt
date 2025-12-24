@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 enum class RecordTabType {
     Month,
     Week,
-    Day,
 }
 
 /**
@@ -62,7 +61,6 @@ fun RecordTabRow(
                             when (tab) {
                                 RecordTabType.Month -> "월간"
                                 RecordTabType.Week -> "주간"
-                                RecordTabType.Day -> "일간"
                             },
                         color =
                             if (selected) Color.White
@@ -75,4 +73,6 @@ fun RecordTabRow(
         }
     }
 }
+
+
 

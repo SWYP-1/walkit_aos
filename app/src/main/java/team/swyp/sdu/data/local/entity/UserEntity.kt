@@ -12,9 +12,8 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "user_profile")
 data class UserEntity(
     @PrimaryKey
-    val userId: Long,
-    val imageName: String? = null,
     val nickname: String,
+    val imageName: String? = null,
     val birthDate: String? = null,
     val sex: String? = null,
     val updatedAt: Long = System.currentTimeMillis(),

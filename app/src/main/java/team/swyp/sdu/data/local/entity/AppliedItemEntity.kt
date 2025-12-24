@@ -18,3 +18,8 @@ data class AppliedItemEntity(
 
 
 
+
+
+
+
+

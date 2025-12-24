@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.Result
-import team.swyp.sdu.data.dto.mission.WeeklyMissionData
+import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.domain.repository.MissionRepository
 import timber.log.Timber
 import javax.inject.Inject
@@ -17,7 +17,7 @@ import javax.inject.Inject
  * 미션 화면의 상태
  */
 data class MissionUiState(
-    val weeklyMissions: List<WeeklyMissionData> = emptyList(),
+    val weeklyMissions: List<WeeklyMission> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
 )

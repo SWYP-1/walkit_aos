@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import team.swyp.sdu.ui.theme.WalkItTheme
 
 /**
  * 감정 기록 단계 진행률 표시기
@@ -52,3 +54,10 @@ fun EmotionProgressIndicator(
     }
 }
 
+@Preview
+@Composable
+fun EmotionProgressIndicatorPreview() {
+    WalkItTheme {
+        EmotionProgressIndicator(currentStep = 2, totalSteps = 5)
+    }
+}

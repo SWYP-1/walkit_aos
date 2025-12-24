@@ -45,6 +45,27 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location|location" />
+        
+        <!-- Firebase Cloud Messaging Service -->
+        <service
+            android:name=".domain.service.WalkItFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        
+        <!-- FileProvider: 파일 공유를 위한 Content Provider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"

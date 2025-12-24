@@ -11,7 +11,6 @@ import team.swyp.sdu.domain.model.User
 object UserMapper {
     fun toEntity(domain: User): UserEntity =
         UserEntity(
-            userId = domain.userId,
             imageName = domain.imageName,
             nickname = domain.nickname,
             birthDate = domain.birthDate,
@@ -20,7 +19,6 @@ object UserMapper {
 
     fun toDomain(entity: UserEntity): User =
         User(
-            userId = entity.userId,
             imageName = entity.imageName,
             nickname = entity.nickname,
             birthDate = entity.birthDate,

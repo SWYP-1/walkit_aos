@@ -2,23 +2,34 @@ package team.swyp.sdu.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import team.swyp.sdu.ui.theme.Pretendard
-import team.swyp.sdu.ui.theme.TypeScale
+import androidx.compose.ui.unit.max
+import team.swyp.sdu.ui.theme.Green4
+import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.White
 import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
@@ -37,6 +48,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun CtaButton(
     text: String,
+    textColor : Color = White,
+    buttonColor : Color = Green4,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -46,16 +59,14 @@ fun CtaButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     // Figma 디자인 색상
-    val buttonColor = Color(0xFF52CE4B) // color/button/primary-default
-    val textColor = Color(0xFFFFFFFF) // color/text-border/primary-inverse
     val disabledColor = Color(0xFFE0E0E0) // 비활성화 색상 (임시)
 
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().height(51.dp),
         enabled = enabled,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(12.dp), // Figma 디자인의 둥근 모서리
+        shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (enabled) buttonColor else disabledColor,
             contentColor = textColor,
@@ -63,34 +74,95 @@ fun CtaButton(
             disabledContentColor = Color(0xFF9E9E9E),
         ),
         contentPadding = PaddingValues(
-            horizontal = 24.dp,
-            vertical = 16.dp,
+            horizontal = 20.dp,
+            vertical = 10.dp,
         ),
         elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = if (isPressed) 0.dp else 2.dp, // 눌린 상태에서 elevation 제거
+            defaultElevation = if (isPressed) 0.dp else 2.dp,
             pressedElevation = 0.dp,
             disabledElevation = 0.dp,
         ),
     ) {
-        // 아이콘이 있으면 왼쪽에 배치 (향후 확장 가능)
-        icon?.invoke()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.walkItTypography.bodyM.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = textColor,
+                maxLines = 1
+            )
 
-        Text(
-            text = text,
-            style = MaterialTheme.walkItTypography.bodyM,
-            color = textColor,
-        )
+            icon?.let {
+                Spacer(Modifier.width(8.dp))
+                it()
+            }
+        }
     }
 }
 
 /**
  * CtaButton Preview
  */
+@Preview(name = "흰색 글자 + 초록 바탕 (아이콘 없음)")
 @Composable
-fun CtaButtonPreview() {
+fun CtaButtonPreview1() {
     CtaButton(
         text = "CTA button",
+        textColor = White,
+        buttonColor = Green4,
         onClick = {},
+    )
+}
+
+@Preview(name = "초록 글자 + 흰색 바탕 (아이콘 없음)")
+@Composable
+fun CtaButtonPreview2() {
+    CtaButton(
+        text = "CTA button",
+        textColor = Green4,
+        buttonColor = White,
+        onClick = {},
+    )
+}
+
+@Preview(name = "흰색 글자 + 초록 바탕 (아이콘 있음)")
+@Composable
+fun CtaButtonPreview3() {
+    CtaButton(
+        text = "CTA button",
+        textColor = White,
+        buttonColor = Green4,
+        onClick = {},
+        icon = {
+            Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = null,
+                tint = White,
+            )
+        },
+    )
+}
+
+@Preview(name = "초록 글자 + 흰색 바탕 (아이콘 있음)")
+@Composable
+fun CtaButtonPreview4() {
+    CtaButton(
+        text = "CTA button",
+        textColor = Green4,
+        buttonColor = White,
+        onClick = {},
+        icon = {
+            Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = null,
+                tint = Green4,
+            )
+        },
     )
 }
 

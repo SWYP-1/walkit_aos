@@ -1,162 +1,250 @@
 package team.swyp.sdu.ui.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.ui.theme.WalkItTheme
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.Alignment.Companion.CenterHorizontally
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
+import team.swyp.sdu.R
+import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
+import team.swyp.sdu.ui.theme.Black
+import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
  * 닉네임 입력 단계 컴포넌트
  */
 @Composable
 fun NicknameStep(
-    value: String,
-    selectedImageUri: String?,
-    onChange: (String) -> Unit,
-    onImageSelected: (String?) -> Unit,
+    uiState: OnboardingUiState,
+    onNicknameChange: (String) -> Unit,
+    onCheckDuplicate: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
+    val nicknameState = uiState.nicknameState
+    val maxLength = 20
+
+    val isError = nicknameState.isDuplicate == true
+    val canGoNext =
+        nicknameState.value.isNotBlank() &&
+                nicknameState.isDuplicate == false
+
+    // 키보드가 올라왔는지 확인 (키보드 높이가 0보다 크면 올라온 것으로 판단)
+    val density = LocalDensity.current
+    val imePadding = WindowInsets.ime.asPaddingValues()
+    val isImeVisible = imePadding.calculateBottomPadding().value > 0
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = Modifier.fillMaxSize()
     ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("닉네임") },
-            placeholder = { Text("(입력칸)") },
-            singleLine = true,
-        )
+        AppHeader("", onNavigateBack = onPrev) {
+            Icon(
+                painter = painterResource(R.drawable.ic_action_clear),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
+        }
 
-        // 이미지 선택 런처
-        val imagePickerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent(),
-            onResult = { uri ->
-                onImageSelected(uri?.toString())
-            }
-        )
-
-        Surface(
+        Column(
+            horizontalAlignment = CenterHorizontally,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(320.dp)
-                .clickable { imagePickerLauncher.launch("image/*") },
-            color = Color(0xFFE6E6E6),
-            shape = RoundedCornerShape(24.dp),
+                .weight(1f)
+                .imePadding()
+                .padding(horizontal = 16.dp)
+                .background(SemanticColor.backgroundWhiteSecondary)
         ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (selectedImageUri != null) {
-                    // 선택된 이미지가 있으면 표시 (실제로는 Coil이나 Glide로 이미지 로드)
-                    Text("이미지 선택됨", color = MaterialTheme.colorScheme.primary)
-                } else {
-                    Text("캐릭터 이미지 선택", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                // 우측 하단에 카메라 아이콘 추가 가능
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                        .size(48.dp)
-                        .background(Color.White.copy(alpha = 0.8f), CircleShape),
-                    contentAlignment = Alignment.Center
+            Spacer(Modifier.height(24.dp))
+
+            OnBoardingStepTag(text = "준비 단계")
+
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = "캐릭터의 이름을 만들어주세요",
+                style = MaterialTheme.walkItTypography.headingM.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = Black
+            )
+
+            Spacer(Modifier.height(64.dp))
+
+            Image(
+                painter = painterResource(R.drawable.walk_it_character),
+                contentDescription = "walkit character"
+            )
+
+            // 키보드가 올라왔을 때는 Spacer 높이를 줄이고, 평상시에는 92.dp 유지
+            Spacer(
+                modifier = Modifier.height(
+                    if (isImeVisible) 16.dp else 92.dp
+                )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 46.dp)
+                    .clickable {
+                        focusRequester.requestFocus()
+                        keyboardController?.show()
+                    }
+                    .border(
+                        width = 1.dp,
+                        color = if (isError) SemanticColor.stateRedPrimary
+                        else SemanticColor.textBorderPrimary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = nicknameState.value,
+                    onValueChange = onNicknameChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.walkItTypography.bodyM,
+                    modifier = Modifier.focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            // 항상 키보드 내리기
+                            keyboardController?.hide()
+                            // 다음 단계로 진행 가능한 경우에만 진행
+                            if (canGoNext) {
+                                onNext()
+                            }
+                        }
+                    ),
+                    decorationBox = { innerTextField ->
+                        if (nicknameState.value.isEmpty()) {
+                            Text(
+                                "닉네임을 입력해주세요",
+                                style = MaterialTheme.walkItTypography.bodyM,
+                                color = SemanticColor.textBorderSecondary
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+            }
+            if (isError) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
-                    Text("+", style = MaterialTheme.typography.headlineSmall, color = Color.Black)
+                    Text(
+                        text = "중복된 닉네임입니다.",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.stateRedPrimary,
+                    )
                 }
-            }
-        }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        // 버튼 영역
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Button(
-                onClick = onPrev,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Text("이전", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            Button(
-                onClick = onNext,
-                modifier = Modifier.weight(1f),
-                enabled = value.trim().isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-                Text("다음", color = Color.White)
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 키보드가 내려가 있을 때만 버튼 표시
+            // TODO: 중복 체크 후에 다시 구현
+            if (!isImeVisible) {
+                CtaButton(
+                    text = "다음으로",
+                    enabled = true,
+                    onClick = onNext,
+                    buttonColor = SemanticColor.buttonPrimaryDefault,
+                    textColor = SemanticColor.textBorderPrimaryInverse
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_forward),
+                        contentDescription = null,
+                        tint = SemanticColor.iconWhite
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun NicknameStepPreview() {
-    WalkItTheme {
-        NicknameStep(
-            value = "",
-            selectedImageUri = null,
-            onChange = {},
-            onImageSelected = {},
-            onNext = {},
-            onPrev = {},
-        )
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
 private fun NicknameStepFilledPreview() {
     WalkItTheme {
         NicknameStep(
-            value = "홍길동",
-            selectedImageUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000018",
-            onChange = {},
-            onImageSelected = {},
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState(value = "닉네임예시"),
+            ),
+            onCheckDuplicate = {},
             onNext = {},
+            onNicknameChange = {},
             onPrev = {},
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun NicknameStepEmptyPreview() {
+    WalkItTheme {
+        NicknameStep(
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState(value = ""),
+            ),
+            onCheckDuplicate = {},
+            onNext = {},
+            onNicknameChange = {},
+            onPrev = {},
+        )
+    }
+}
+
 

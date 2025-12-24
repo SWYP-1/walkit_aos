@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,9 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,13 +49,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import androidx.navigation.NavHostController
+import team.swyp.sdu.R
+import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.ui.components.WheelDatePickerDialog
 import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.theme.Grey10
+import team.swyp.sdu.ui.theme.Grey2
 import team.swyp.sdu.ui.theme.Grey7
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import java.time.DayOfWeek
@@ -116,6 +117,7 @@ fun HeaderRow(
  */
 @Composable
 fun MonthSection(
+    navController: NavHostController,
     stats: WalkAggregate,
     sessions: List<WalkingSession>,
 ) {
@@ -145,6 +147,7 @@ fun MonthSection(
         )
 
         CalendarGridRecord(
+            navController = navController,
             yearMonth = currentMonth,
             sessionsByDate = sessionsByDate,
             modifier = Modifier.padding(horizontal = 4.dp),
@@ -204,7 +207,7 @@ fun WeekSection(
     // 주요 감정 계산: postWalkEmotion 기준으로 가장 빈도가 높은 감정 찾기
     val dominantEmotionInfo = remember(weekSessions) {
         val emotionFrequency = weekSessions
-            .mapNotNull { it.postWalkEmotion } // null이 아닌 감정만 필터링
+            .map { it.postWalkEmotion }
             .groupingBy { it }
             .eachCount()
 
@@ -453,6 +456,7 @@ private fun formatWeekLabel(date: LocalDate): String {
  */
 @Composable
 private fun CalendarGridRecord(
+    navController: NavHostController,
     yearMonth: YearMonth,
     sessionsByDate: Map<LocalDate, List<WalkingSession>>,
     modifier: Modifier = Modifier,
@@ -500,6 +504,8 @@ private fun CalendarGridRecord(
                         val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
 
                         CalendarDayCellRecord(
+                            navController = navController,
+                            date = date,
                             day = dayIndex + 1,
                             hasWalkSession = hasWalkSession,
                             modifier = Modifier
@@ -527,17 +533,23 @@ private fun CalendarGridRecord(
  */
 @Composable
 private fun CalendarDayCellRecord(
+    navController: NavHostController,
+    date: LocalDate,
     day: Int,
     hasWalkSession: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // Date Picker 다이얼로그 표시 여부
+    var showDatePicker by remember { mutableStateOf(false) }
+
     // 기본 구현: 날짜 숫자 표시
     val backgroundColor = MaterialTheme.colorScheme.surface
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor),
+            .background(backgroundColor)
+            .clickable(onClick = { showDatePicker = true }),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -563,6 +575,21 @@ private fun CalendarDayCellRecord(
             }
         }
     }
+
+    // Date Picker 다이얼로그
+    WheelDatePickerDialog(
+        showDialog = showDatePicker,
+        initialDate = date,
+        onDateSelected = { selectedDate ->
+            showDatePicker = false
+            navController.navigate(
+                Screen.DailyRecord.createRoute(
+                    selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                )
+            )
+        },
+        onDismiss = { showDatePicker = false }
+    )
 }
 
 /**
@@ -897,7 +924,7 @@ private fun calculateMonthlyStatsForRecord(
 
     // 주요 감정 계산: postWalkEmotion 기준으로 가장 빈도가 높은 감정 찾기
     val emotionFrequency = monthSessions
-        .mapNotNull { it.postWalkEmotion } // null이 아닌 감정만 필터링
+        .map { it.postWalkEmotion }
         .groupingBy { it }
         .eachCount()
     
@@ -1040,51 +1067,47 @@ fun WalkingDiaryCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // 산책 전 감정
-                    session.preWalkEmotion?.let { emotion ->
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Color.White),
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                         ) {
-                            Card(
-                                modifier = Modifier.fillMaxSize(),
-                                shape = CircleShape,
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    EmotionIcon(emotionType = emotion)
-                                }
+                                EmotionIcon(emotionType = session.preWalkEmotion)
                             }
                         }
                     }
 
                     // 산책 후 감정
-                    session.postWalkEmotion?.let { emotion ->
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Color.White),
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                         ) {
-                            Card(
-                                modifier = Modifier.fillMaxSize(),
-                                shape = CircleShape,
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    EmotionIcon(emotionType = emotion)
-                                }
+                                EmotionIcon(emotionType = session.postWalkEmotion)
                             }
                         }
                     }
@@ -1139,14 +1162,14 @@ fun WalkingDiaryCard(
                     .fillMaxWidth()
                     .height(138.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF9F9FA))
+                    .background(SemanticColor.backgroundWhiteSecondary)
                     .padding(10.dp),
                 contentAlignment = Alignment.TopStart,
             ) {
                 Text(
                     text = session.note ?: "감정 일기 내용",
                     style = MaterialTheme.walkItTypography.captionM,
-                    color = Grey7,
+                    color = SemanticColor.textBorderSecondary,
                     maxLines = Int.MAX_VALUE,
                 )
             }
@@ -1180,9 +1203,9 @@ private fun DiaryMoreMenu(
                 .background(Color.White),
         ) {
             // 수정하기 메뉴 아이템
-            DiaryMenuItem(
+            DropMenuItem(
                 text = "수정하기",
-                icon = Icons.Default.Edit,
+                iconResId = R.drawable.ic_action_edit,
                 iconColor = Color(0xFF52CE4B), // 초록색
                 textColor = Color(0xFF52CE4B), // 초록색
                 backgroundColor = Color(0xFFF3FFF8), // 연한 초록색 배경
@@ -1190,9 +1213,9 @@ private fun DiaryMoreMenu(
             )
             
             // 삭제하기 메뉴 아이템
-            DiaryMenuItem(
+            DropMenuItem(
                 text = "삭제하기",
-                icon = Icons.Default.Delete,
+                iconResId = R.drawable.ic_action_delete,
                 iconColor = Color(0xFF191919), // 검은색
                 textColor = Color(0xFF191919), // 검은색
                 backgroundColor = Color.White, // 흰색 배경
@@ -1201,6 +1224,9 @@ private fun DiaryMoreMenu(
         }
     }
 }
+
+
+
 
 /**
  * 산책 통계 카드 컴포넌트 (평균 걸음, 산책 시간)
@@ -1326,9 +1352,9 @@ fun WalkingStatsCard(
  * 일기 메뉴 아이템 컴포넌트
  */
 @Composable
-private fun DiaryMenuItem(
+fun DropMenuItem(
     text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconResId: Int,
     iconColor: Color,
     textColor: Color,
     backgroundColor: Color,
@@ -1349,7 +1375,7 @@ private fun DiaryMenuItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(id = iconResId),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = iconColor,
@@ -1367,8 +1393,5 @@ private fun DiaryMenuItem(
 @Preview
 fun WalkingDiaryCardPreview(modifier: Modifier = Modifier) {
     WalkItTheme {
-        WalkingDiaryCard(session = WalkingSession(
-            startTime = 1,
-        ))
     }
 }

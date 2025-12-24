@@ -15,12 +15,14 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import team.swyp.sdu.ui.home.components.WalkingFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import team.swyp.sdu.navigation.Screen
@@ -60,6 +62,17 @@ fun MainScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            if (currentTabIndex == 0) {
+                // 홈 화면에서만 FloatingActionButton 표시
+                WalkingFloatingActionButton(
+                    onClick = {
+                        navController.navigate(Screen.Walking.route)
+                    },
+                    modifier = Modifier.padding(bottom = 40.dp), // NavigationBar 위에 표시
+                )
+            }
+        },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -113,10 +126,7 @@ fun MainScreen(
         ) {
             when (currentTabIndex) {
                 0 -> HomeScreen(
-                    onClickWalk = {
-                        // WalkingScreen으로 네비게이션
-                        navController.navigate(Screen.Walking.route)
-                    },
+                    onClickWalk = {}, // FloatingActionButton에서 처리하므로 빈 함수
                     onClickGoal = { /* TODO: 목표 설정 네비게이션 */ },
                     onClickMission = {
                         navController.navigate(Screen.Mission.route)
@@ -124,11 +134,12 @@ fun MainScreen(
                 )
 
                 1 -> RecordRoute(
+                    navController = navController,
                     onStartOnboarding = {
                         navController.navigate(Screen.Onboarding.route)
                     },
                     onNavigateToAlarm = {
-                        
+                        navController.navigate(Screen.Alarm.route)
                     },
                     onNavigateToFriend = {
                         navController.navigate(Screen.Friends.route)
@@ -147,6 +158,11 @@ fun MainScreen(
                         onNavigateCharacterEdit = {},
                         onNavigateNotificationSetting = {
                             navController.navigate(Screen.NotificationSettings.route)
+                        },
+                        onNavigateToLogin = {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
                         }
                     )
                 }

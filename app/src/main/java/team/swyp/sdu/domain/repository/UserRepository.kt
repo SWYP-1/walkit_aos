@@ -21,12 +21,20 @@ interface UserRepository {
 
     suspend fun registerNickname(nickname: String): Result<Unit>
 
+    suspend fun updateBirthDate(birthDate: String): Result<Unit>
+
     suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-        sex: Sex,
         imageUri: String? = null,
     ): Result<User>
+
+    suspend fun agreeToTerms(
+        termsAgreed: Boolean,
+        privacyAgreed: Boolean,
+        locationAgreed: Boolean,
+        marketingConsent: Boolean,
+    ): Result<Unit>
 
     suspend fun saveAuthTokens(accessToken: String, refreshToken: String?)
 

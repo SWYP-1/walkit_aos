@@ -70,6 +70,13 @@ class UserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 로그아웃
+     * 
+     * 주의: onboardingDataStore의 completeKey는 삭제하지 않습니다.
+     * 온보딩 완료 여부는 로그아웃 후에도 유지되어야 하므로,
+     * 로그아웃 시에는 인증 토큰만 삭제하고 온보딩 완료 상태는 보존합니다.
+     */
     fun logout() {
         viewModelScope.launch {
             userRepository.clearAuth()

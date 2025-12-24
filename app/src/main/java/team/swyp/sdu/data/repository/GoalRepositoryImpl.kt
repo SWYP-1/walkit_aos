@@ -36,17 +36,18 @@ class GoalRepositoryImpl @Inject constructor(
     override val goalFlow: StateFlow<Goal?> = goalState.asStateFlow()
 
     init {
-        // 사용자 ID가 변경될 때마다 해당 사용자의 Goal을 observe
+        // 사용자가 로그아웃한 경우 Goal 초기화만 처리
+        // 목표 로드는 필요한 화면(HomeScreen, GoalManagementScreen)에서만 호출
         userRepository.userFlow
             .onEach { user ->
-                user?.let {
-                    goalDao.observeGoal(it.userId)
-                        .onEach { entity ->
-                            goalState.value = entity?.let { GoalMapper.toDomain(it) }
-                        }
-                        .launchIn(scope)
-                } ?: run {
+                if (user == null) {
+                    // 사용자가 로그아웃한 경우 Goal 초기화
                     goalState.value = null
+                    try {
+                        goalDao.clear()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Goal 삭제 실패")
+                    }
                 }
             }
             .launchIn(scope)
@@ -55,13 +56,14 @@ class GoalRepositoryImpl @Inject constructor(
     override suspend fun getGoal(): Result<Goal> =
         withContext(Dispatchers.IO) {
             try {
-                // 현재 사용자 정보 가져오기
+                // 현재 사용자 정보 확인
                 val currentUser = userRepository.userFlow.value
                 if (currentUser == null) {
                     return@withContext Result.Error(Exception("사용자 정보가 없습니다"))
                 }
 
-                val entity = goalDao.getGoalByUserId(currentUser.userId)
+                // 로컬에서 Goal 조회
+                val entity = goalDao.getGoal()
                 if (entity != null) {
                     val goal = GoalMapper.toDomain(entity)
                     goalState.value = goal
@@ -76,19 +78,35 @@ class GoalRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun updateGoal(userId: Long, goal: Goal): Result<Goal> =
+    override suspend fun createGoal(goal: Goal): Result<Goal> =
         withContext(Dispatchers.IO) {
             try {
-                // 서버에 업데이트
+                // 서버에 생성 (POST)
+                val createdGoal = remoteDataSource.createGoal(goal)
+                // 로컬에 저장
+                goalDao.upsert(GoalMapper.toEntity(createdGoal))
+                goalState.value = createdGoal
+                
+                Result.Success(createdGoal)
+            } catch (e: Exception) {
+                Timber.e(e, "목표 생성 실패")
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun updateGoal(goal: Goal): Result<Goal> =
+        withContext(Dispatchers.IO) {
+            try {
+                // 서버에 수정 (PUT)
                 val updatedGoal = remoteDataSource.updateGoal(goal)
                 
                 // 로컬에 저장
-                goalDao.upsert(GoalMapper.toEntity(updatedGoal, userId))
+                goalDao.upsert(GoalMapper.toEntity(updatedGoal))
                 goalState.value = updatedGoal
                 
                 Result.Success(updatedGoal)
             } catch (e: Exception) {
-                Timber.e(e, "목표 업데이트 실패")
+                Timber.e(e, "목표 수정 실패")
                 Result.Error(e, e.message)
             }
         }
@@ -96,15 +114,13 @@ class GoalRepositoryImpl @Inject constructor(
     override suspend fun refreshGoal(): Result<Goal> =
         withContext(Dispatchers.IO) {
             try {
-                // 현재 사용자 정보 가져오기
-                val currentUser = userRepository.userFlow.value
-                if (currentUser == null) {
-                    return@withContext Result.Error(Exception("사용자 정보가 없습니다"))
-                }
-
+                // 서버에서 최신 데이터 가져오기
                 val goal = remoteDataSource.fetchGoal()
-                goalDao.upsert(GoalMapper.toEntity(goal, currentUser.userId))
+                
+                // 로컬에 저장
+                goalDao.upsert(GoalMapper.toEntity(goal))
                 goalState.value = goal
+                
                 Result.Success(goal)
             } catch (e: Exception) {
                 Timber.e(e, "목표 갱신 실패")
@@ -112,15 +128,5 @@ class GoalRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun clearGoal(userId: Long): Result<Unit> =
-        withContext(Dispatchers.IO) {
-            try {
-                goalDao.deleteByUserId(userId)
-                goalState.value = null
-                Result.Success(Unit)
-            } catch (e: Exception) {
-                Result.Error(e, e.message)
-            }
-        }
 }
 

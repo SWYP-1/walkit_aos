@@ -225,6 +225,12 @@ class LocationTrackingService : Service() {
         locationCallback =
             object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
+                    // 추적이 중지된 경우 위치 업데이트 무시
+                    if (!isTracking) {
+                        Timber.d("추적이 중지되어 위치 업데이트를 무시합니다")
+                        return
+                    }
+                    
                     result.lastLocation?.let { location ->
                         // GPS 정확도 필터링: 정확도가 50m 이하인 경우만 사용
                         val accuracy = location.accuracy
@@ -300,11 +306,14 @@ class LocationTrackingService : Service() {
             return
         }
 
+        // 먼저 추적 상태를 false로 설정하여 새로운 위치 업데이트 차단
+        isTracking = false
+
+        // 위치 업데이트 제거
         locationCallback?.let {
             fusedLocationClient.removeLocationUpdates(it)
         }
         locationCallback = null
-        isTracking = false
 
         // Contract-based architecture: 추적 중지 이벤트 emit
         emitTrackingStopped()

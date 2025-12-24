@@ -19,7 +19,6 @@ data class NotificationSettingsUiState(
     val goalNotificationEnabled: Boolean = true,
     val newMissionNotificationEnabled: Boolean = true,
     val friendRequestNotificationEnabled: Boolean = true,
-    val walkRecordNotificationEnabled: Boolean = true,
 )
 
 /**
@@ -37,14 +36,12 @@ class NotificationSettingsViewModel
                 notificationDataStore.goalNotificationEnabled,
                 notificationDataStore.newMissionNotificationEnabled,
                 notificationDataStore.friendRequestNotificationEnabled,
-                notificationDataStore.walkRecordNotificationEnabled,
-            ) { notification, goal, mission, friendRequest, walkRecord ->
+            ) { notification, goal, mission, friendRequest ->
                 NotificationSettingsUiState(
                     notificationEnabled = notification,
                     goalNotificationEnabled = goal,
                     newMissionNotificationEnabled = mission,
                     friendRequestNotificationEnabled = friendRequest,
-                    walkRecordNotificationEnabled = walkRecord,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -75,11 +72,7 @@ class NotificationSettingsViewModel
                 notificationDataStore.setFriendRequestNotificationEnabled(enabled)
             }
         }
-
-        fun setWalkRecordNotificationEnabled(enabled: Boolean) {
-            viewModelScope.launch {
-                notificationDataStore.setWalkRecordNotificationEnabled(enabled)
-            }
-        }
     }
+
+
 

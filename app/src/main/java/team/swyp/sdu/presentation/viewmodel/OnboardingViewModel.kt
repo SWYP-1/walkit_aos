@@ -337,8 +337,7 @@ constructor(
                 userRepository.updateUserProfile(
                     nickname = state.nickname,
                     birthDate = state.birthDateString,
-                    sex = state.sex,
-                    imageUri = state.selectedImageUri,
+                    imageUri = null,
                 ).onSuccess { user ->
                     Timber.d("사용자 프로필 등록 성공: ${user.nickname}")
 
@@ -347,7 +346,6 @@ constructor(
                         nickname = state.nickname,
                         goalCount = state.goalCount,
                         stepTarget = state.stepTarget,
-                        unit = state.unit,
                         birthYear = state.birthYear,
                         marketingConsent = state.marketingConsentChecked
                     )

@@ -9,9 +9,8 @@ import team.swyp.sdu.domain.model.Goal
  * Goal 도메인 모델과 GoalEntity 간의 변환을 담당합니다.
  */
 object GoalMapper {
-    fun toEntity(domain: Goal, userId: Long): GoalEntity =
+    fun toEntity(domain: Goal): GoalEntity =
         GoalEntity(
-            userId = userId,
             targetStepCount = domain.targetStepCount,
             targetWalkCount = domain.targetWalkCount,
         )
@@ -22,4 +21,5 @@ object GoalMapper {
             targetWalkCount = entity.targetWalkCount,
         )
 }
+
 

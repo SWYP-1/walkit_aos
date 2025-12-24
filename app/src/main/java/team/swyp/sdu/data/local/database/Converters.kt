@@ -3,15 +3,19 @@ package team.swyp.sdu.data.local.database
 import androidx.room.TypeConverter
 import team.swyp.sdu.data.model.ActivityStats
 import team.swyp.sdu.data.model.Emotion
+import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.LocationPoint
+import team.swyp.sdu.data.utils.EnumConverter
 import team.swyp.sdu.domain.service.ActivityType
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import team.swyp.sdu.data.local.entity.SyncState
 
 /**
  * Room Type Converters
  *
  * 복잡한 타입(리스트, enum 등)을 데이터베이스에 저장하기 위한 변환기입니다.
+ * 공통 변환 로직은 EnumConverter에 위임합니다.
  */
 class Converters {
     private val json =
@@ -32,37 +36,14 @@ class Converters {
         }
 
     @TypeConverter
-    fun fromActivityStatsList(value: List<ActivityStats>): String = json.encodeToString(value)
+    fun fromSyncState(value: SyncState?): String = EnumConverter.fromSyncState(value)
 
     @TypeConverter
-    fun toActivityStatsList(value: String): List<ActivityStats> =
-        try {
-            json.decodeFromString<List<ActivityStats>>(value)
-        } catch (e: Exception) {
-            emptyList()
-        }
+    fun toSyncState(value: String?): SyncState = EnumConverter.toSyncState(value)
 
     @TypeConverter
-    fun fromActivityType(value: ActivityType?): String? = value?.name
+    fun fromEmotionType(value: EmotionType?): String = EnumConverter.fromEmotionType(value)
 
     @TypeConverter
-    fun toActivityType(value: String?): ActivityType? =
-        value?.let {
-            try {
-                ActivityType.valueOf(it)
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-    @TypeConverter
-    fun fromEmotionList(value: List<Emotion>): String = json.encodeToString(value)
-
-    @TypeConverter
-    fun toEmotionList(value: String): List<Emotion> =
-        try {
-            json.decodeFromString<List<Emotion>>(value)
-        } catch (e: Exception) {
-            emptyList()
-        }
+    fun toEmotionType(value: String?): EmotionType = EnumConverter.toEmotionType(value)
 }

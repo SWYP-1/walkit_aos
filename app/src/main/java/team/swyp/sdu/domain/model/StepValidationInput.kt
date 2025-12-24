@@ -17,3 +17,8 @@ data class StepValidationInput(
     val locations: List<LocationPoint>, // 위치 포인트 리스트
 )
 
+
+
+
+
+

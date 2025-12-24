@@ -137,6 +137,13 @@ class CalendarViewModel @Inject constructor(
         today.value = LocalDate.now()
     }
 
+    /**
+     * 특정 날짜로 설정
+     */
+    fun setDate(date: LocalDate) {
+        today.value = date
+    }
+
     fun prevDay() {
         today.value = today.value.minusDays(1)
     }
@@ -158,7 +165,7 @@ class CalendarViewModel @Inject constructor(
         var duration = 0L
         for (s in this) {
             steps += s.stepCount
-            val d = (s.endTime ?: s.startTime) - s.startTime
+            val d = s.endTime - s.startTime
             if (d > 0) duration += d
         }
         return WalkAggregate(steps, duration)

@@ -125,8 +125,9 @@ class KakaoMapViewModel
             val latRange = maxLat - minLat
             val lonRange = maxLon - minLon
 
-            // 패딩 추가 (경로가 화면 가장자리에 붙지 않도록 20% 여유 공간 추가)
-            val paddingFactor = 1.2
+            // 패딩 추가 (경로가 화면 가장자리에 붙지 않도록 약 24dp에 해당하는 여유 공간 추가)
+            // 화면 크기에 비례하여 약 15-20% 정도의 패딩을 추가하면 24dp 정도의 여유 공간 확보
+            val paddingFactor = 1.35 // 기존 1.2에서 증가하여 더 넓은 여유 공간 확보
             val paddedLatRange = latRange * paddingFactor
             val paddedLonRange = lonRange * paddingFactor
 
@@ -214,7 +215,7 @@ class KakaoMapViewModel
          */
         fun onPathDrawComplete() {
             if (_renderState.value == MapRenderState.DrawingPath) {
-                _renderState.value = MapRenderState.Ready
+                _renderState.value = MapRenderState.Complete
             }
         }
 
@@ -279,6 +280,6 @@ sealed class MapRenderState {
     data object Idle : MapRenderState()
     data object MovingCamera : MapRenderState()
     data object DrawingPath : MapRenderState()
-    data object Ready : MapRenderState()
+    data object Complete : MapRenderState() // Ready → Complete (자동 스냅샷 없음)
 }
 

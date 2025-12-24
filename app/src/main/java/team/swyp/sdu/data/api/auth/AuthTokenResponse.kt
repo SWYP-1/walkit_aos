@@ -1,5 +1,8 @@
 package team.swyp.sdu.data.api.auth
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AuthTokenResponse(
     val accessToken: String,
     val refreshToken: String,

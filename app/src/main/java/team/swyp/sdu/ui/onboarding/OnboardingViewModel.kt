@@ -19,9 +19,17 @@ import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 import team.swyp.sdu.domain.model.OnboardingData
 import team.swyp.sdu.domain.model.OnboardingProgress
 import team.swyp.sdu.domain.model.Sex
+import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
+import team.swyp.sdu.domain.repository.GoalRepository
 import timber.log.Timber
 import java.time.LocalDate
+
+
+data class NicknameState(
+    val value: String = "",
+    val isDuplicate: Boolean? = null
+)
 
 /**
  * 온보딩 UI 상태
@@ -31,24 +39,21 @@ data class OnboardingUiState(
     val serviceTermsChecked: Boolean = false,
     val privacyPolicyChecked: Boolean = false,
     val marketingConsentChecked: Boolean = false,
-    val nickname: String = "",
-    val selectedImageUri: String? = null, // 선택된 이미지 URI
-    val sex: Sex = Sex.MALE, // 성별
+    val nicknameState: NicknameState = NicknameState(),
     val goalCount: Int = 10,
     val stepTarget: Int = 0,
-    val unit: String = "주",
     val birthYear: Int = LocalDate.now().year - 26,
     val birthMonth: Int = 1,
     val birthDay: Int = 1,
+    val isLoading: Boolean = false,
 ) {
     /**
      * 현재 단계에서 다음 버튼 활성화 여부
      */
     val canProceed: Boolean
         get() = when (currentStep) {
-            0 -> serviceTermsChecked && privacyPolicyChecked
-            1 -> nickname.trim().isNotEmpty()
-            2 -> {
+            0 -> nicknameState.isDuplicate == false
+            1 -> {
                 val yearValid = birthYear in 1901..LocalDate.now().year
                 val monthValid = birthMonth in 1..12
                 val dayValid = try {
@@ -57,10 +62,10 @@ data class OnboardingUiState(
                 } catch (e: Exception) {
                     false
                 }
-                val sexValid = sex != null
-                yearValid && monthValid && dayValid && sexValid
+                yearValid && monthValid && dayValid
             }
-            3 -> {
+
+            2 -> {
                 goalCount > 0 && stepTarget > 0
             }
 
@@ -80,6 +85,7 @@ class OnboardingViewModel
 constructor(
     private val onboardingDataStore: OnboardingDataStore,
     private val userRepository: UserRepository,
+    private val goalRepository: GoalRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -95,50 +101,80 @@ constructor(
             initialValue = false,
         )
 
+    val isTermsAgreed: Flow<Boolean> = onboardingDataStore.isTermsAgreed
+
+    /**
+     * 생년월일 유효성 검사
+     */
+    private fun isBirthDateValid(year: Int, month: Int, day: Int): Boolean {
+        return try {
+            val yearValid = year in 1901..LocalDate.now().year
+            val monthValid = month in 1..12
+            val dayValid = try {
+                LocalDate.of(year, month, day)
+                true
+            } catch (e: Exception) {
+                false
+            }
+            yearValid && monthValid && dayValid
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     init {
         Timber.d("OnboardingViewModel init 시작")
 
-        // 약관 동의 상태와 진행 상태를 함께 확인하여 적절한 단계로 이동
+        // 진행 상태를 확인하여 적절한 단계로 이동
         viewModelScope.launch {
-            val isTermsAgreed = onboardingDataStore.isTermsAgreed.first()
             val progress = onboardingDataStore.getProgress()
+            val isCompleted = onboardingDataStore.isCompleted.first()
 
-            Timber.d("온보딩 상태 확인 - 약관 동의: $isTermsAgreed, 진행 단계: ${progress.currentStep}")
+            Timber.d("온보딩 상태 확인 - 진행 단계: ${progress.currentStep}, 닉네임: ${progress.nickname}, 닉네임등록: ${progress.nicknameRegistered}, completeKey: $isCompleted")
 
-            if (!isTermsAgreed) {
-                // 약관 동의가 아직 안 된 경우
-                Timber.d("약관 동의 단계부터 시작 (currentStep: 0)")
-                // 기본 상태 (currentStep = 0) 유지
-                return@launch
-            }
+            // 약관 동의는 이미 완료된 상태로 온보딩에 진입
+            // 완료 상태는 LoginScreen에서 확인하므로 여기서는 설정하지 않음
+            // (화면 깜박임 방지를 위해)
 
-            // 약관 동의가 완료된 경우, 진행된 단계에 따라 다음 단계로 이동
-            if (progress.currentStep >= 3) {
-                // 모든 단계 완료 - 온보딩 완료 처리
-                Timber.d("모든 온보딩 단계 완료됨, 완료 상태 설정")
-                localCompleted.value = true
-                viewModelScope.launch {
-                    onboardingDataStore.setCompleted(true)
+            val targetStep = when (progress.currentStep) {
+                0 -> {
+                    // 닉네임 단계
+                    Timber.d("닉네임 입력 단계(0)로 복귀")
+                    0
                 }
-                // 완료된 경우 UI 상태를 업데이트하지 않음 (기본 상태 유지)
-                return@launch
-            }
-
-            val targetStep = when {
-                progress.currentStep == 2 -> {
-                    // 목표 설정까지 완료 → 생년월일/성별 단계로 이동 (다음 단계)
-                    Timber.d("목표 설정까지 완료됨 → 생년월일/성별 단계(3)로 이동")
-                    3
+                1 -> {
+                    // 생년월일 단계였지만, 닉네임이 등록되지 않았으면 닉네임 단계로 돌아감
+                    if (!progress.nicknameRegistered || progress.nickname.isBlank()) {
+                        Timber.d("닉네임이 등록되지 않음 → 닉네임 입력 단계(0)로 복귀")
+                        0
+                    } else {
+                        // 닉네임까지 완료 (중복 체크 통과) → 생년월일 단계로 복귀
+                        Timber.d("닉네임까지 완료됨 → 생년월일 단계(1)로 복귀")
+                        1
+                    }
                 }
-                progress.currentStep == 1 -> {
-                    // 닉네임까지 완료 → 목표 설정 단계로 이동 (다음 단계)
-                    Timber.d("닉네임까지 완료됨 → 목표 설정 단계(2)로 이동")
-                    2
+                2 -> {
+                    // 목표 설정 단계였지만, 이전 단계들이 완료되지 않았으면 이전 단계로 돌아감
+                    when {
+                        !progress.nicknameRegistered || progress.nickname.isBlank() -> {
+                            Timber.d("닉네임이 등록되지 않음 → 닉네임 입력 단계(0)로 복귀")
+                            0
+                        }
+                        !isBirthDateValid(progress.birthYear, progress.birthMonth, progress.birthDay) -> {
+                            Timber.d("생년월일이 유효하지 않음 → 생년월일 단계(1)로 복귀")
+                            1
+                        }
+                        else -> {
+                            // 모든 이전 단계 완료 → 목표 설정 단계로 복귀
+                            Timber.d("이전 단계 모두 완료 → 목표 설정 단계(2)로 복귀")
+                            2
+                        }
+                    }
                 }
                 else -> {
-                    // 약관 동의만 완료 → 닉네임 단계로 이동 (다음 단계)
-                    Timber.d("약관 동의만 완료됨 → 닉네임 입력 단계(1)로 이동")
-                    1
+                    // 알 수 없는 단계 → 닉네임 단계부터 시작
+                    Timber.d("알 수 없는 단계(${progress.currentStep}) → 닉네임 입력 단계(0)부터 시작")
+                    0
                 }
             }
 
@@ -147,36 +183,60 @@ constructor(
                 serviceTermsChecked = true,
                 privacyPolicyChecked = true,
                 marketingConsentChecked = progress.marketingConsent,
-                nickname = progress.nickname,
-                selectedImageUri = progress.selectedImageUri,
-                sex = progress.sex,
+                nicknameState = NicknameState(
+                    value = progress.nickname,
+                    isDuplicate = if (progress.nicknameRegistered) false else null
+                ),
                 goalCount = progress.goalCount,
                 stepTarget = progress.stepTarget,
-                unit = progress.unit,
                 birthYear = progress.birthYear,
                 birthMonth = progress.birthMonth,
                 birthDay = progress.birthDay,
             )
+            
+            Timber.d("온보딩 상태 복원 완료 - targetStep: $targetStep")
         }
     }
 
     /**
-     * 진행 상태 자동 저장
+     * 진행 상태 자동 저장 (단계 제외)
+     * 입력값 변경 시 사용
      */
     private fun saveProgress() {
         val currentState = _uiState.value
+        viewModelScope.launch {
+            val existingProgress = onboardingDataStore.getProgress()
+            val progress = OnboardingProgress(
+                currentStep = existingProgress.currentStep, // 기존 단계 유지 (버그 수정)
+                nickname = currentState.nicknameState.value,
+                goalCount = currentState.goalCount,
+                stepTarget = currentState.stepTarget,
+                birthYear = currentState.birthYear,
+                birthMonth = currentState.birthMonth,
+                birthDay = currentState.birthDay,
+                marketingConsent = currentState.marketingConsentChecked,
+                nicknameRegistered = currentState.nicknameState.isDuplicate == false && currentState.nicknameState.value.isNotBlank(),
+            )
+            onboardingDataStore.saveProgress(progress)
+        }
+    }
+
+    /**
+     * 진행 상태 저장 (단계 포함)
+     * API 성공 시 단계를 올릴 때만 사용
+     */
+    private fun saveProgressWithStep(step: Int) {
+        val currentState = _uiState.value
         val progress = OnboardingProgress(
-            currentStep = currentState.currentStep,
-            nickname = currentState.nickname,
-            selectedImageUri = currentState.selectedImageUri,
-            sex = currentState.sex,
+            currentStep = step,
+            nickname = currentState.nicknameState.value,
             goalCount = currentState.goalCount,
             stepTarget = currentState.stepTarget,
-            unit = currentState.unit,
             birthYear = currentState.birthYear,
             birthMonth = currentState.birthMonth,
             birthDay = currentState.birthDay,
             marketingConsent = currentState.marketingConsentChecked,
+            nicknameRegistered = currentState.nicknameState.isDuplicate == false && currentState.nicknameState.value.isNotBlank(),
         )
         viewModelScope.launch {
             onboardingDataStore.saveProgress(progress)
@@ -188,17 +248,20 @@ constructor(
      */
     fun setStep(step: Int) {
         _uiState.value = _uiState.value.copy(currentStep = step)
-        saveProgress()
+        // 단계를 변경할 때는 단계를 포함하여 저장
+        saveProgressWithStep(step)
     }
 
     /**
-     * 다음 단계로 이동
+     * 다음 단계로 이동 (API 성공 시에만 호출)
      */
     fun nextStep() {
         val current = _uiState.value.currentStep
-        if (current < 3 && _uiState.value.canProceed) {
-            _uiState.value = _uiState.value.copy(currentStep = current + 1)
-            saveProgress()
+        if (current < 2) {
+            val nextStep = current + 1
+            _uiState.value = _uiState.value.copy(currentStep = nextStep)
+            // 단계를 올릴 때만 단계를 포함하여 저장
+            saveProgressWithStep(nextStep)
         }
     }
 
@@ -208,8 +271,10 @@ constructor(
     fun previousStep() {
         val current = _uiState.value.currentStep
         if (current > 0) {
-            _uiState.value = _uiState.value.copy(currentStep = current - 1)
-            saveProgress()
+            val prevStep = current - 1
+            _uiState.value = _uiState.value.copy(currentStep = prevStep)
+            // 이전 단계로 이동할 때도 단계를 포함하여 저장
+            saveProgressWithStep(prevStep)
         }
     }
 
@@ -252,40 +317,30 @@ constructor(
         }
     }
 
-    /**
-     * 약관 동의 완료 저장 (외부 호출용)
-     */
-    fun saveTermsAgreement() {
-        Timber.d("saveTermsAgreement() 호출됨")
-        viewModelScope.launch {
-            onboardingDataStore.setTermsAgreed(true)
-            Timber.d("약관 동의 완료 상태 저장 (명시적 호출) - 성공")
-        }
-    }
 
     /**
      * 닉네임 업데이트
      */
     fun updateNickname(nickname: String) {
-        _uiState.value = _uiState.value.copy(nickname = nickname)
+        _uiState.value = _uiState.value.copy(nicknameState = NicknameState(nickname))
         saveProgress()
     }
 
     /**
      * 목표 설정 업데이트
+     * UI 레벨에서 범위 검증을 수행하므로 여기서는 직접 저장
      */
     fun updateGoalCount(goalCount: Int) {
         _uiState.value = _uiState.value.copy(goalCount = goalCount)
         saveProgress()
     }
 
+    /**
+     * 걸음 수 목표 업데이트
+     * UI 레벨에서 범위 검증을 수행하므로 여기서는 직접 저장
+     */
     fun updateStepTarget(stepTarget: Int) {
         _uiState.value = _uiState.value.copy(stepTarget = stepTarget)
-        saveProgress()
-    }
-
-    fun updateUnit(unit: String) {
-        _uiState.value = _uiState.value.copy(unit = unit)
         saveProgress()
     }
 
@@ -314,101 +369,143 @@ constructor(
     }
 
     /**
-     * 선택된 이미지 업데이트
-     */
-    fun updateSelectedImageUri(imageUri: String?) {
-        _uiState.value = _uiState.value.copy(selectedImageUri = imageUri)
-        saveProgress()
-    }
-
-    /**
-     * 성별 업데이트
-     */
-    fun updateSex(sex: Sex) {
-        _uiState.value = _uiState.value.copy(sex = sex)
-        saveProgress()
-    }
-
-    /**
      * 닉네임 등록
      */
     fun registerNickname() {
+        Timber.d("registerNickname() 호출됨")
         val state = _uiState.value
-        if (state.nickname.trim().isEmpty()) {
-            Timber.w("닉네임이 비어있어 등록을 건너뜁니다")
-            return
-        }
+        Timber.d("현재 닉네임 상태: value=${state.nicknameState.value}, isDuplicate=${state.nicknameState.isDuplicate}")
 
         viewModelScope.launch {
-            userRepository.registerNickname(state.nickname.trim())
-                .onSuccess { user ->
-                    Timber.d("닉네임 등록 성공: ${state.nickname}")
+            Timber.d("registerNickname() - coroutine 시작")
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
+            Timber.d("registerNickname() - API 호출 시작: ${state.nicknameState.value}")
+            userRepository.registerNickname(state.nicknameState.value)
+                .onSuccess {
+                    Timber.d("닉네임 등록 성공: ${state.nicknameState.value}")
+                    // 중복 체크 통과 상태로 업데이트
+                    _uiState.value = _uiState.value.copy(
+                        nicknameState = state.nicknameState.copy(isDuplicate = false),
+                        isLoading = false
+                    )
+                    // 진행 상태 저장 (nicknameRegistered = true로 저장됨)
+                    saveProgress()
                     // 다음 단계로 진행
                     nextStep()
                 }
                 .onError { throwable, message ->
                     Timber.e(throwable, "닉네임 등록 실패: $message")
+                    // 중복 체크 실패 상태로 업데이트
+                    _uiState.value = _uiState.value.copy(
+                        nicknameState = state.nicknameState.copy(isDuplicate = true),
+                        isLoading = false
+                    )
                     // TODO: 에러 처리 (UI에 에러 표시)
                 }
         }
     }
 
     /**
-     * 온보딩 완료 및 사용자 프로필 등록
+     * 생년월일 업데이트
      */
-    fun submitOnboarding() {
+    fun updateBirthDate() {
         val state = _uiState.value
+        val birthDate = state.birthDateString
 
-        // 필수 필드 검증
-        if (state.sex == null) {
-            Timber.e("성별이 선택되지 않았습니다")
-            return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            Timber.d("생년월일 진입: $birthDate")
+            
+            userRepository.updateBirthDate(birthDate)
+                .onSuccess {
+                    Timber.d("생년월일 업데이트 성공: $birthDate")
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    // 진행 상태 저장
+                    saveProgress()
+                    // 다음 단계로 진행
+                    nextStep()
+                }
+                .onError { throwable, message ->
+                    Timber.e(throwable, "생년월일 업데이트 실패: $message")
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    // TODO: 에러 처리 (UI에 에러 표시)
+                }
         }
+    }
+
+    /**
+     * 목표 생성 API 호출 (POST /goals)
+     * 온보딩 시 목표를 처음 생성할 때 사용
+     */
+    fun setGoal(onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
+            // 범위 검증: API 호출 전에 값이 유효한지 확인
+            val goalCount = _uiState.value.goalCount.coerceIn(1, 7)
+            val stepTarget = _uiState.value.stepTarget.coerceIn(1000, 100000)
+            
+            // 검증된 값으로 UI 상태 업데이트 (범위를 벗어난 경우 자동 수정)
+            if (_uiState.value.goalCount != goalCount || _uiState.value.stepTarget != stepTarget) {
+                Timber.w("목표 값이 범위를 벗어남 - 자동 수정: goalCount=${_uiState.value.goalCount}->$goalCount, stepTarget=${_uiState.value.stepTarget}->$stepTarget")
+                _uiState.value = _uiState.value.copy(
+                    goalCount = goalCount,
+                    stepTarget = stepTarget
+                )
+                saveProgress()
+            }
+            
+            val goal = Goal(
+                targetStepCount = stepTarget,
+                targetWalkCount = goalCount
+            )
+
+            goalRepository.createGoal(goal)
+                .onSuccess { createdGoal ->
+                    Timber.d("목표 생성 성공: $createdGoal")
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    onSuccess()
+                }
+                .onError { throwable, message ->
+                    Timber.e(throwable, "목표 생성 실패: $message")
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    // TODO: 에러 처리 (UI에 에러 표시)
+                }
+        }
+    }
+
+    /**
+     * 온보딩 완료
+     */
+    fun submitOnboarding(onSuccess: () -> Unit = {}) {
+        val state = _uiState.value
 
         viewModelScope.launch {
             try {
-                // PUT /users API 호출로 사용자 프로필 등록
-                userRepository.updateUserProfile(
-                    nickname = state.nickname,
-                    birthDate = state.birthDateString,
-                    sex = state.sex,
-                    imageUri = state.selectedImageUri,
-                ).onSuccess { user ->
-                    Timber.d("사용자 프로필 등록 성공: ${user.nickname}")
+                // 온보딩 데이터 저장 (목표 설정 등)
+                val onboardingData = OnboardingData(
+                    nickname = state.nicknameState.value,
+                    goalCount = state.goalCount,
+                    stepTarget = state.stepTarget,
+                    birthYear = state.birthYear,
+                    marketingConsent = state.marketingConsentChecked
+                )
+                Timber.d("온보딩 데이터 저장: $onboardingData")
 
-                    // 온보딩 데이터 저장 (목표 설정 등)
-                    val onboardingData = OnboardingData(
-                        nickname = state.nickname,
-                        goalCount = state.goalCount,
-                        stepTarget = state.stepTarget,
-                        unit = state.unit,
-                        birthYear = state.birthYear,
-                        marketingConsent = state.marketingConsentChecked
-                    )
-                    Timber.d("온보딩 데이터 저장: $onboardingData")
-
-                    // 완료 상태 저장
-                    localCompleted.value = true
-                    onboardingDataStore.setCompleted(true)
-
-                    // 모든 온보딩 데이터 초기화 (완료되었으므로 더 이상 필요 없음)
-                    onboardingDataStore.clearAllOnboardingData()
-                }.onError { throwable, message ->
-                    Timber.e(throwable, "사용자 프로필 등록 실패: $message")
-                    // TODO: 에러 처리 (UI에 에러 표시)
-                }
+                // 완료 상태 저장 및 모든 온보딩 데이터 초기화
+                // 중첩된 updateData 호출을 방지하기 위해 하나의 메서드에서 처리
+                localCompleted.value = true
+                onboardingDataStore.completeOnboarding()
+                
+                Timber.d("온보딩 완료 성공 - onSuccess 콜백 호출")
+                // 성공 시 콜백 호출 (화면 전환을 위해 필수)
+                onSuccess()
             } catch (e: Exception) {
                 Timber.e(e, "온보딩 완료 실패")
                 // TODO: 에러 처리
                 throw e
             }
-        }
-    }
-
-    fun setCompleted() {
-        localCompleted.value = true
-        viewModelScope.launch {
-            onboardingDataStore.setCompleted(true)
         }
     }
 }

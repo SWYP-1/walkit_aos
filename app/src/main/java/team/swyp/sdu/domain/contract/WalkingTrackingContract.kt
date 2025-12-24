@@ -62,3 +62,8 @@ interface WalkingTrackingContract {
      */
     fun isAccelerometerAvailable(): Boolean
 }
+
+
+
+
+

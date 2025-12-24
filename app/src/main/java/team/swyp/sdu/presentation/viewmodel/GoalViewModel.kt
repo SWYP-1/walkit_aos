@@ -40,33 +40,33 @@ class GoalViewModel @Inject constructor(
     init {
         // 현재 사용자 ID 가져오기
         viewModelScope.launch {
-            userRepository.userFlow.collect { user ->
-                user?.let {
-                    currentUserId.value = it.userId
-                    // 사용자 ID가 있으면 목표 로드
-                    refreshGoal(it.userId)
-                }
-            }
+//            userRepository.userFlow.collect { user ->
+//                user?.let {
+//                    currentUserId.value = it.userId
+//                    // 사용자 ID가 있으면 목표 로드
+//                    refreshGoal(it.userId)
+//                }
+//            }
         }
     }
 
-    fun refreshGoal(userId: Long? = null) {
-        viewModelScope.launch {
-            val targetUserId = userId ?: currentUserId.value
-            if (targetUserId != null) {
-                goalRepository.refreshGoal()
-                    .onError { throwable, message ->
-                        Timber.e(throwable, "목표 갱신 실패: $message")
-                    }
-            }
-        }
-    }
+//    fun refreshGoal(userId: Long? = null) {
+//        viewModelScope.launch {
+//            val targetUserId = userId ?: currentUserId.value
+//            if (targetUserId != null) {
+//                goalRepository.refreshGoal()
+//                    .onError { throwable, message ->
+//                        Timber.e(throwable, "목표 갱신 실패: $message")
+//                    }
+//            }
+//        }
+//    }
 
     fun updateGoal(goal: Goal, userId: Long? = null) {
         viewModelScope.launch {
             val targetUserId = userId ?: currentUserId.value
             if (targetUserId != null) {
-                goalRepository.updateGoal(targetUserId, goal)
+                goalRepository.updateGoal(goal)
                     .onError { throwable, message ->
                         Timber.e(throwable, "목표 업데이트 실패: $message")
                     }

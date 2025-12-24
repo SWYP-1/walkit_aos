@@ -16,13 +16,13 @@ import kotlinx.serialization.json.Json
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.presentation.viewmodel.UserViewModel
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
-import team.swyp.sdu.ui.login.LoginScreen
+import team.swyp.sdu.ui.login.LoginRoute
 import team.swyp.sdu.ui.splash.SplashScreen
 import team.swyp.sdu.ui.screens.MainScreen
 import team.swyp.sdu.ui.screens.RouteDetailScreen
 import team.swyp.sdu.ui.screens.ShopScreen
 import team.swyp.sdu.ui.walking.*
-import team.swyp.sdu.ui.friend.FriendScreen
+import team.swyp.sdu.ui.friend.FriendRoute
 import team.swyp.sdu.ui.friend.FriendSearchScreen
 import team.swyp.sdu.ui.mission.MissionRoute
 import team.swyp.sdu.ui.mypage.MyPageRoute
@@ -30,6 +30,9 @@ import team.swyp.sdu.ui.mypage.goal.GoalManagementRoute
 import team.swyp.sdu.ui.mypage.settings.NotificationSettingsRoute
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementScreen
 import team.swyp.sdu.ui.onboarding.OnboardingScreen
+import team.swyp.sdu.ui.alarm.AlarmScreen
+import team.swyp.sdu.ui.record.DailyRecordRoute
+import team.swyp.sdu.ui.login.terms.TermsAgreementRoute
 
 /* ----------------------- */
 /* Screen 정의 */
@@ -38,6 +41,7 @@ sealed class Screen(val route: String) {
 
     data object Splash : Screen("splash")
     data object Login : Screen("login")
+    data object TermsAgreement : Screen("terms_agreement")
     data object Main : Screen("main")
 
     // 🔥 Walking Graph
@@ -64,6 +68,13 @@ sealed class Screen(val route: String) {
     data object MyPage : Screen("mypage")
     data object UserInfoManagement : Screen("user_info_management")
     data object NotificationSettings : Screen("notification_settings")
+    data object Alarm : Screen("alarm")
+    
+    data object DailyRecord : Screen("daily_record/{dateString}") {
+        fun createRoute(dateString: String): String {
+            return "daily_record/$dateString"
+        }
+    }
 }
 
 /* ----------------------- */
@@ -86,20 +97,31 @@ fun NavGraph(
 
         /* Login */
         composable(Screen.Login.route) {
-            LoginScreen(
-                onLoginSuccess = {
+            LoginRoute(
+                onNavigateToTermsAgreement = {
+                    navController.navigate(Screen.TermsAgreement.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onNavigateToMain = {
                     navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onNavigateToOnboarding = {
+            )
+        }
+
+        /* Terms Agreement */
+        composable(Screen.TermsAgreement.route) {
+            TermsAgreementRoute(
+                onNavigateBack = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.TermsAgreement.route) { inclusive = true }
+                    }
+                },
+                onNavigateNext = {
                     navController.navigate(Screen.Onboarding.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                },
-                onSkipToMain = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo(Screen.TermsAgreement.route) { inclusive = true }
                     }
                 },
             )
@@ -153,10 +175,13 @@ fun NavGraph(
                 val viewModel =
                     entry.sharedViewModel<WalkingViewModel>(navController)
 
-                PostWalkingEmotionSelectScreen(
+                PostWalkingEmotionSelectRoute(
                     viewModel = viewModel,
                     onNext = {
                         navController.navigate(Screen.EmotionRecord.route)
+                    },
+                    onClose = {
+                        navController.popBackStack(Screen.Main.route, false)
                     },
                 )
             }
@@ -165,13 +190,13 @@ fun NavGraph(
                 val viewModel =
                     entry.sharedViewModel<WalkingViewModel>(navController)
 
-                EmotionRecordStep(
+                EmotionRecordStepRoute(
                     viewModel = viewModel,
                     onNext = {
                         navController.navigate(Screen.WalkingResult.route)
                     },
-                    onClose = {
-                        navController.popBackStack(Screen.Main.route, false)
+                    onPrev = {
+                        navController.popBackStack()
                     },
                 )
             }
@@ -180,15 +205,17 @@ fun NavGraph(
                 val viewModel =
                     entry.sharedViewModel<WalkingViewModel>(navController)
 
-                WalkingResultScreen(
+                WalkingResultRoute(
                     viewModel = viewModel,
-                    onNavigateBack = {
-                        navController.popBackStack(Screen.Main.route, false)
+                    onNavigateToPrevious = {
+                        // EmotionRecordStep으로 돌아가기
+                        navController.popBackStack()
                     },
-                    onNavigateToRouteDetail = { locations ->
-                        navController.navigate(
-                            Screen.RouteDetail.createRoute(locations)
-                        )
+                    onNavigateToHome = {
+                        // 홈으로 이동하면서 WalkingGraph 백스택 모두 지우기
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.WalkingGraph.route) { inclusive = true }
+                        }
                     },
                 )
             }
@@ -228,8 +255,15 @@ fun NavGraph(
 
         /* Friends */
         composable(Screen.Friends.route) {
-            FriendScreen(
-                onNavigateBack = { navController.popBackStack() },
+            FriendRoute(
+                onNavigateBack = {
+                    // Main.route로 돌아가거나, 백스택이 비어있으면 Main.route로 navigate
+                    if (!navController.popBackStack(Screen.Main.route, false)) {
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.Main.route) { inclusive = true }
+                        }
+                    }
+                },
                 onNavigateToSearch = {
                     navController.navigate(Screen.FriendSearch.route)
                 },
@@ -238,7 +272,14 @@ fun NavGraph(
 
         composable(Screen.FriendSearch.route) {
             FriendSearchScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    // Friends.route로 돌아가거나, 없으면 Main.route로
+                    if (!navController.popBackStack(Screen.Friends.route, false)) {
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.Main.route) { inclusive = true }
+                        }
+                    }
+                },
             )
         }
 
@@ -270,6 +311,11 @@ fun NavGraph(
                 onNavigateNotificationSetting = {
                     navController.navigate(Screen.NotificationSettings.route)
                 },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Main.route) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -293,6 +339,29 @@ fun NavGraph(
 
         composable(Screen.Mission.route) {
             MissionRoute(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        /* Alarm */
+        composable(Screen.Alarm.route) {
+            AlarmScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        /* Daily Record */
+        composable(
+            route = Screen.DailyRecord.route,
+            arguments = listOf(
+                navArgument("dateString") {
+                    type = NavType.StringType
+                },
+            ),
+        ) { entry ->
+            val dateString = entry.arguments?.getString("dateString") ?: ""
+            DailyRecordRoute(
+                dateString = dateString,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

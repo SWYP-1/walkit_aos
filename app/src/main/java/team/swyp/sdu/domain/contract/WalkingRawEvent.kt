@@ -73,3 +73,8 @@ sealed interface WalkingRawEvent {
         val timestamp: Long = System.currentTimeMillis()
     ) : WalkingRawEvent
 }
+
+
+
+
+

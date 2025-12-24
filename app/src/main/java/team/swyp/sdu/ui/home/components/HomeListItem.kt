@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 data class HomeMission(
     val title: String,
     val reward: String,
+    val category: String = "챌린지",
 )
 
 @Composable

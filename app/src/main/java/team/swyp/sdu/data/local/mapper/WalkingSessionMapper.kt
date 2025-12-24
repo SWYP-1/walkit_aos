@@ -1,70 +1,51 @@
 package team.swyp.sdu.data.local.mapper
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import team.swyp.sdu.data.local.entity.SyncState
 import team.swyp.sdu.data.local.entity.WalkingSessionEntity
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import team.swyp.sdu.data.remote.walking.dto.WalkingSessionRequest
+import team.swyp.sdu.data.remote.walking.mapper.toWalkPoints
+import team.swyp.sdu.data.utils.EnumConverter
 
-/**
- * WalkingSession과 WalkingSessionEntity 간 변환 유틸리티
- */
 object WalkingSessionMapper {
-    private val json =
-        Json {
-            ignoreUnknownKeys = true
-            encodeDefaults = true
-        }
 
-    /**
-     * Domain Model -> Entity 변환
-     */
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    /** Domain → Entity */
     fun toEntity(
         session: WalkingSession,
-        isSynced: Boolean = false,
+        syncState: SyncState,
     ): WalkingSessionEntity =
         WalkingSessionEntity(
-            id = 0, // 새로 생성되는 경우 0, 업데이트 시에는 실제 ID 사용
+            id = 0,
             startTime = session.startTime,
-            endTime = session.endTime,
+            endTime = session.endTime ?: 0L,
             stepCount = session.stepCount,
             locationsJson = json.encodeToString(session.locations),
             totalDistance = session.totalDistance,
-            isSynced = isSynced,
-            preWalkEmotion = session.preWalkEmotion?.name,
-            postWalkEmotion = session.postWalkEmotion?.name,
+            syncState = syncState,
+            preWalkEmotion = session.preWalkEmotion.name,
+            postWalkEmotion = session.postWalkEmotion.name,
             note = session.note,
-            imageUrl = session.imageUrl,
-            createdDate = session.createdDate,
+            imageUrl = session.imageUrl, // Deprecated 필드 (하위 호환성 유지)
+            localImagePath = session.localImagePath,
+            serverImageUrl = session.serverImageUrl,
+            createdDate = session.createdDate.orEmpty()
         )
 
-    /**
-     * Entity -> Domain Model 변환
-     */
+    /** Entity → Domain */
     fun toDomain(entity: WalkingSessionEntity): WalkingSession {
-        val locations =
-            try {
-                json.decodeFromString<List<LocationPoint>>(entity.locationsJson)
-            } catch (e: Exception) {
-                emptyList()
-            }
-
-        // String을 EmotionType으로 변환
-        val preWalkEmotion = entity.preWalkEmotion?.let {
-            try {
-                EmotionType.valueOf(it)
-            } catch (e: Exception) {
-                null
-            }
-        }
-        val postWalkEmotion = entity.postWalkEmotion?.let {
-            try {
-                EmotionType.valueOf(it)
-            } catch (e: Exception) {
-                null
-            }
-        }
+        val locations = runCatching {
+            json.decodeFromString<List<LocationPoint>>(entity.locationsJson)
+        }.getOrDefault(emptyList())
 
         return WalkingSession(
             startTime = entity.startTime,
@@ -72,11 +53,28 @@ object WalkingSessionMapper {
             stepCount = entity.stepCount,
             locations = locations,
             totalDistance = entity.totalDistance,
-            preWalkEmotion = preWalkEmotion,
-            postWalkEmotion = postWalkEmotion,
+            preWalkEmotion = EnumConverter.toEmotionType(entity.preWalkEmotion),
+            postWalkEmotion = EnumConverter.toEmotionType(entity.postWalkEmotion),
             note = entity.note,
-            imageUrl = entity.imageUrl,
-            createdDate = entity.createdDate,
+            imageUrl = entity.imageUrl, // Deprecated 필드 (하위 호환성 유지)
+            localImagePath = entity.localImagePath,
+            serverImageUrl = entity.serverImageUrl,
+            createdDate = entity.createdDate
         )
     }
+
+    /** Domain → API Request 
+     * 서버 요구사항에 맞게 필수 필드만 포함
+     */
+    fun WalkingSession.toRequest(): WalkingSessionRequest =
+        WalkingSessionRequest(
+            preWalkEmotion = preWalkEmotion.name,
+            postWalkEmotion = postWalkEmotion.name,
+            note = note,
+            points = locations.toWalkPoints(),
+            endTime = endTime ?: System.currentTimeMillis(), // endTime이 null이면 현재 시간 사용
+            startTime = startTime,
+            totalDistance = totalDistance,
+            stepCount = stepCount,
+        )
 }

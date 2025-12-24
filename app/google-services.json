@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "188284794130",
+    "project_id": "walkit-33959",
+    "storage_bucket": "walkit-33959.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188284794130:android:916fd43451003e04faefcb",
+        "android_client_info": {
+          "package_name": "com.google.firebase.walkit.fcm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtEacVsIPXtYQw2LoImAGScQ56aJixvko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188284794130:android:3d8adcfd299f66dafaefcb",
+        "android_client_info": {
+          "package_name": "team.swyp.sdu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtEacVsIPXtYQw2LoImAGScQ56aJixvko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

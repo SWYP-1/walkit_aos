@@ -23,7 +23,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.ui.theme.Pretendard
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.TypeScale
+
+/**
+ * 버튼 설정 데이터 클래스
+ */
+private data class ButtonConfig(
+    val text: String,
+    val backgroundColor: Color,
+    val textColor: Color,
+    val fontWeight: FontWeight,
+)
 
 /**
  * 친구 카드 컴포넌트
@@ -38,6 +49,7 @@ import team.swyp.sdu.ui.theme.TypeScale
  * @param imageName 프로필 이미지 이름 (선택사항)
  * @param followStatus 친구 요청 상태
  * @param onFollowClick 팔로우 버튼 클릭 핸들러
+ * @param enabled 버튼 활성화 여부 (기본값: true)
  * @param modifier Modifier
  */
 @Composable
@@ -46,13 +58,14 @@ fun FriendCard(
     imageName: String? = null,
     followStatus: FollowStatus,
     onFollowClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFFFFF)) // color/background/whtie-primary
+                .background(SemanticColor.backgroundWhitePrimary)
                 .padding(horizontal = 10.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -67,7 +80,7 @@ fun FriendCard(
                     modifier = Modifier
                         .size(36.dp)
                         .background(
-                            Color(0xFFF3F3F5), // color/text-border/secondary-inverse
+                            SemanticColor.textBorderSecondaryInverse,
                             CircleShape,
                         ),
                     contentAlignment = Alignment.Center,
@@ -84,7 +97,7 @@ fun FriendCard(
                     fontWeight = FontWeight.Medium, // Medium
                     lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
                     letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
-                    color = Color(0xFF191919), // color/text-border/primary
+                    color = SemanticColor.textBorderPrimary,
                 )
             }
 
@@ -92,6 +105,7 @@ fun FriendCard(
             FollowButton(
                 followStatus = followStatus,
                 onClick = onFollowClick,
+                enabled = enabled,
             )
         }
 
@@ -100,7 +114,7 @@ fun FriendCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            color = Color(0xFFF3F3F5), // color/text-border/secondary-inverse
+            color = SemanticColor.textBorderSecondaryInverse,
             thickness = 1.dp,
         )
     }
@@ -110,45 +124,129 @@ fun FriendCard(
  * 팔로우 버튼 컴포넌트
  *
  * 상태에 따라 버튼 텍스트와 스타일이 변경됩니다.
+ * - EMPTY/NONE: "팔로우" (기본 버튼 스타일)
+ * - PENDING: "요청 중" (회색 배경, 흰색 텍스트)
+ * - ACCEPTED/FOLLOWING: "팔로잉" (비활성화 상태)
+ *
+ * @param followStatus 팔로우 상태
+ * @param onClick 클릭 핸들러
+ * @param enabled 버튼 활성화 여부 (기본값: true)
+ * @param modifier Modifier
  */
 @Composable
 private fun FollowButton(
     followStatus: FollowStatus,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val (buttonText, buttonColor) = when (followStatus) {
-        FollowStatus.PENDING -> "팔로우" to Color(0xFF52CE4B) // color/button/primary-default
-        FollowStatus.FOLLOWING -> "팔로잉" to Color(0xFFE0E0E0) // 비활성화 색상
-        FollowStatus.NONE -> "팔로우" to Color(0xFF52CE4B) // color/button/primary-default
+    val buttonConfig = when (followStatus) {
+        FollowStatus.EMPTY -> {
+            ButtonConfig(
+                text = "팔로우",
+                backgroundColor = SemanticColor.buttonPrimaryDefault,
+                textColor = SemanticColor.textBorderPrimaryInverse,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        FollowStatus.PENDING -> {
+            // Figma 디자인: 요청 중 버튼 (회색 배경 #818185, 흰색 텍스트, body S/semibold)
+            ButtonConfig(
+                text = "요청 중",
+                backgroundColor = SemanticColor.iconGrey,
+                textColor = SemanticColor.textBorderPrimaryInverse,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        FollowStatus.ACCEPTED -> {
+            ButtonConfig(
+                text = "팔로잉",
+                backgroundColor = SemanticColor.buttonDisabled,
+                textColor = SemanticColor.textBorderDisabled,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        FollowStatus.MYSELF -> {
+            ButtonConfig(
+                text = "",
+                backgroundColor = Color.Transparent,
+                textColor = Color.Transparent,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        FollowStatus.FOLLOWING -> {
+            ButtonConfig(
+                text = "팔로잉",
+                backgroundColor = SemanticColor.buttonDisabled,
+                textColor = SemanticColor.textBorderDisabled,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        FollowStatus.NONE -> {
+            ButtonConfig(
+                text = "팔로우",
+                backgroundColor = SemanticColor.buttonPrimaryDefault,
+                textColor = SemanticColor.textBorderPrimaryInverse,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 
-    val textColor = when (followStatus) {
-        FollowStatus.FOLLOWING -> Color(0xFF9E9E9E) // 비활성화 텍스트 색상
-        else -> Color(0xFFFFFFFF) // color/text-border/primary-inverse
+    val buttonText = buttonConfig.text
+    val buttonColor = buttonConfig.backgroundColor
+    val textColor = buttonConfig.textColor
+    val fontWeight = buttonConfig.fontWeight
+
+    // 자기 자신인 경우 버튼을 표시하지 않음
+    if (followStatus == FollowStatus.MYSELF) {
+        return
+    }
+
+    // PENDING 상태일 때는 body S 사용, 나머지는 body M 사용
+    val fontSize = if (followStatus == FollowStatus.PENDING) {
+        TypeScale.BodyS
+    } else {
+        TypeScale.BodyM
+    }
+
+    // PENDING 상태일 때는 vertical 패딩 4px, 나머지는 8px
+    val verticalPadding = if (followStatus == FollowStatus.PENDING) {
+        4.dp
+    } else {
+        8.dp
+    }
+
+    // PENDING 상태일 때는 letterSpacing -0.14px, 나머지는 -0.16px
+    val letterSpacing = if (followStatus == FollowStatus.PENDING) {
+        (-0.14f).sp
+    } else {
+        (-0.16f).sp
     }
 
     Button(
         onClick = onClick,
+        enabled = enabled && followStatus != FollowStatus.ACCEPTED && followStatus != FollowStatus.FOLLOWING,
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = buttonColor,
             contentColor = textColor,
+            disabledContainerColor = buttonColor,
+            disabledContentColor = textColor,
         ),
         shape = RoundedCornerShape(8.dp), // 둥근 모서리
         contentPadding = PaddingValues(
             horizontal = 16.dp,
-            vertical = 8.dp,
+            vertical = verticalPadding,
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
     ) {
         Text(
             text = buttonText,
             fontFamily = Pretendard,
-            fontSize = TypeScale.BodyM, // 16sp
-            fontWeight = FontWeight.Medium, // Medium
-            lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
-            letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            lineHeight = (fontSize.value * 1.5f).sp, // lineHeight 1.5
+            letterSpacing = letterSpacing,
             color = textColor,
         )
     }

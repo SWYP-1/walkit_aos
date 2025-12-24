@@ -120,6 +120,7 @@ object WalkingTestData {
                     totalDistance = totalDistance,
                     preWalkEmotion = preWalkEmotion,
                     postWalkEmotion = postWalkEmotion,
+                    createdDate = DateUtils.formatToIsoDateTime(startTime)
                 ),
             )
         }
@@ -351,6 +352,7 @@ object WalkingTestData {
                         totalDistance = totalDistance,
                         preWalkEmotion = preWalkEmotion,
                         postWalkEmotion = postWalkEmotion,
+                        createdDate = DateUtils.millisToIsoUtc(startTime)
                     ),
                 )
             }
@@ -421,6 +423,7 @@ object WalkingTestData {
                         totalDistance = totalDistance,
                         preWalkEmotion = preWalkEmotion,
                         postWalkEmotion = postWalkEmotion,
+                        createdDate = DateUtils.millisToIsoUtc(startTime)
                     ),
                 )
             }
@@ -511,6 +514,7 @@ object WalkingTestData {
             totalDistance = totalDistance,
             preWalkEmotion = preWalkEmotion,
             postWalkEmotion = postWalkEmotion,
+            createdDate = DateUtils.millisToIsoUtc(startTime)
         )
     }
 }

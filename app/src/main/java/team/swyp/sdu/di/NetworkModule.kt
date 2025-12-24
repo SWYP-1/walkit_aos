@@ -1,8 +1,7 @@
 package team.swyp.sdu.di
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import team.swyp.sdu.data.api.auth.AuthApi
+import team.swyp.sdu.data.api.follower.FollowerApi
 import team.swyp.sdu.data.api.goal.GoalApi
 import team.swyp.sdu.data.api.mission.MissionApi
 import team.swyp.sdu.data.api.user.UserApi
@@ -17,8 +16,11 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import team.swyp.sdu.data.api.walking.WalkApi
+import team.swyp.sdu.data.api.home.HomeApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -28,10 +30,13 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
-    fun provideGson(): Gson =
-        GsonBuilder()
-            .setLenient()
-            .create()
+    fun provideJson(): Json =
+        Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            explicitNulls = false // null 필드는 JSON에서 제외 (서버에는 true/false만 전송)
+            isLenient = true
+        }
 
     @Provides
     @Singleton
@@ -82,13 +87,13 @@ object NetworkModule {
     @Named("walkit")
     fun provideRetrofit(
         okHttpClient: OkHttpClient,
-        gson: Gson,
+        json: Json,
     ): Retrofit =
         Retrofit
             .Builder()
-            .baseUrl(" https://walkit-shop-swyp-11.shop/") // walkit server
+            .baseUrl("https://walkit-shop-swyp-11.shop/") // walkit server
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
 
     @Provides
@@ -120,4 +125,23 @@ object NetworkModule {
     fun provideWalkApi(
         @Named("walkit") retrofit: Retrofit,
     ): WalkApi = retrofit.create(WalkApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): team.swyp.sdu.data.api.notification.NotificationApi =
+        retrofit.create(team.swyp.sdu.data.api.notification.NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideHomeApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): HomeApi = retrofit.create(HomeApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideFollowerApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): FollowerApi = retrofit.create(FollowerApi::class.java)
 }

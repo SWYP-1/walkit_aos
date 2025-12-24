@@ -68,23 +68,16 @@ class GoalManagementViewModel @Inject constructor(
             )
 
     init {
-        // 현재 사용자 ID 가져오기 및 목표 로드
-        viewModelScope.launch {
-            userRepository.userFlow.collect { user ->
-                user?.let {
-                    currentUserId.value = it.userId
-                    refreshGoal()
-                }
-            }
-        }
+        // 목표 정보 로드 (화면 진입 시)
+        refreshGoal()
 
-        // 서버 데이터로 로컬 상태 초기화
+        // 캐시된 데이터로 로컬 상태 초기화 (빠른 로딩)
         viewModelScope.launch {
             serverGoalState.collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
                         val goal = result.data
-                        // 서버 데이터로 로컬 상태 업데이트
+                        // 캐시된 데이터로 로컬 상태 업데이트
                         _uiState.value = _uiState.value.copy(
                             targetSteps = goal.targetStepCount,
                             walkFrequency = goal.targetWalkCount,
@@ -137,7 +130,7 @@ class GoalManagementViewModel @Inject constructor(
                     targetStepCount = targetSteps,
                     targetWalkCount = walkFrequency,
                 )
-                goalRepository.updateGoal(targetUserId, goal)
+                goalRepository.updateGoal(goal)
                     .onError { throwable, message ->
                         Timber.e(throwable, "목표 업데이트 실패: $message")
                     }
@@ -168,7 +161,7 @@ class GoalManagementViewModel @Inject constructor(
                     targetStepCount = defaultState.targetSteps,
                     targetWalkCount = defaultState.walkFrequency,
                 )
-                goalRepository.updateGoal(targetUserId, defaultGoal)
+                goalRepository.updateGoal(defaultGoal)
                     .onError { throwable, message ->
                         Timber.e(throwable, "목표 초기화 실패: $message")
                     }

@@ -6,8 +6,11 @@ import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.domain.contract.WalkingRawEvent
 import team.swyp.sdu.domain.contract.WalkingTrackingContract
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +21,9 @@ import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.service.ActivityType
+import team.swyp.sdu.domain.service.LocationManager
 import team.swyp.sdu.domain.service.MovementState
+import team.swyp.sdu.utils.DateUtils
 import android.location.Location
 import timber.log.Timber
 import javax.inject.Inject
@@ -27,6 +32,7 @@ import javax.inject.Inject
 class WalkingViewModel @Inject constructor(
     private val tracking: WalkingTrackingContract,
     private val walkingSessionRepository: WalkingSessionRepository,
+    private val locationManager: LocationManager,
 ) : ViewModel() {
 
     private val _uiState =
@@ -40,8 +46,12 @@ class WalkingViewModel @Inject constructor(
     private var lastStepCount = 0
     private var lastRawStepCount = 0
     
-    // 산책 전 감정을 저장 (산책 종료 후 감정 선택 시 사용)
-    private var savedPreWalkingEmotion: EmotionType? = null
+    // 현재 세션의 로컬 ID 저장
+    private var currentSessionLocalId: Long? = null
+    
+    // 산책 전 감정을 저장 (StateFlow로 통일하여 일관성 유지)
+    private val _preWalkingEmotion = MutableStateFlow<EmotionType?>(null)
+    val preWalkingEmotion: StateFlow<EmotionType?> = _preWalkingEmotion.asStateFlow()
     
     // 산책 후 감정을 저장 (별도 화면에서 사용)
     private val _postWalkingEmotion = MutableStateFlow<EmotionType?>(null)
@@ -87,6 +97,10 @@ class WalkingViewModel @Inject constructor(
     private val _currentLocation = MutableStateFlow<LocationPoint?>(null)
     val currentLocation: StateFlow<LocationPoint?> = _currentLocation.asStateFlow()
 
+    // 스냅샷 생성 및 서버 동기화 상태
+    private val _snapshotState = MutableStateFlow<SnapshotState>(SnapshotState.Idle)
+    val snapshotState: StateFlow<SnapshotState> = _snapshotState.asStateFlow()
+
     /**
      * 감정 기록 사진 URI 설정
      */
@@ -104,6 +118,7 @@ class WalkingViewModel @Inject constructor(
     fun selectPreWalkingEmotion(emotionType: EmotionType) {
         val currentState = _uiState.value
         if (currentState is WalkingUiState.PreWalkingEmotionSelection) {
+            _preWalkingEmotion.value = emotionType
             _uiState.value = currentState.copy(preWalkingEmotion = emotionType)
         }
     }
@@ -111,6 +126,13 @@ class WalkingViewModel @Inject constructor(
     fun selectPostWalkingEmotion(emotionType: EmotionType) {
         _postWalkingEmotion.value = emotionType
         Timber.i("Post Emotion : $emotionType")
+    }
+    
+    /**
+     * 산책 전 감정 초기화 (새 산책 시작 시)
+     */
+    fun resetPreWalkingEmotion() {
+        _preWalkingEmotion.value = null
     }
     
     /**
@@ -184,18 +206,32 @@ class WalkingViewModel @Inject constructor(
     /* ---------------- Actions ---------------- */
 
     fun startWalking() {
+        // 산책 전 감정이 선택되었는지 확인 (UI에서 이미 체크하지만, 안전장치)
+        val preEmotion = _preWalkingEmotion.value
+        require(preEmotion != null) { "산책 전 감정을 선택해야 합니다" }
+        
         startTimeMillis = System.currentTimeMillis()
         elapsedBeforePause = 0L
         lastStepCount = 0
         lastRawStepCount = 0
         
-        // 위치 리스트 초기화
-        _locations.value = emptyList()
-        
-        // 현재 상태에서 산책 전 감정을 저장
-        val currentState = _uiState.value
-        if (currentState is WalkingUiState.PreWalkingEmotionSelection) {
-            savedPreWalkingEmotion = currentState.preWalkingEmotion
+        // 위치 리스트 초기화 및 현재 위치를 첫 번째에 추가
+        viewModelScope.launch {
+            val initialLocations = mutableListOf<LocationPoint>()
+            
+            // 현재 위치 가져오기 (권한 체크 포함)
+            // 실패하면 빈 배열로 시작하고, LocationTrackingService가 위치를 추적하여 추가함
+            val currentLocation = locationManager.getCurrentLocation()
+            if (currentLocation != null) {
+                // 현재 위치를 첫 번째에 추가
+                initialLocations.add(currentLocation)
+                _currentLocation.value = currentLocation
+                Timber.d("산책 시작: 현재 위치를 locations 배열 첫 번째에 추가 - ${currentLocation.latitude}, ${currentLocation.longitude}")
+            } else {
+                Timber.d("산책 시작: 현재 위치를 가져올 수 없음. LocationTrackingService가 위치를 추적하여 추가할 예정")
+            }
+            
+            _locations.value = initialLocations
         }
 
         viewModelScope.launch {
@@ -212,7 +248,6 @@ class WalkingViewModel @Inject constructor(
         _activityConfidence.value = 0
         _currentAcceleration.value = 0f
         _currentMovementState.value = null
-        _currentLocation.value = null
 
         startDurationUpdates()
         updateSensorStatus()
@@ -230,17 +265,40 @@ class WalkingViewModel @Inject constructor(
         }
     }
 
-    fun stopWalking() {
-        viewModelScope.launch {
-            tracking.stopTracking()
-        }
+    /**
+     * 산책 종료 및 세션 저장
+     * 
+     * 세션 저장이 완료될 때까지 기다린 후 Completed 상태로 변경합니다.
+     */
+    suspend fun stopWalking() {
+        tracking.stopTracking()
         durationJob?.cancel()
         
         // 센서 상태 업데이트
         updateSensorStatus()
         
-        // 세션 완성 및 저장
-        completeAndSaveSession()
+        // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
+        val completedSession = createCompletedSession()
+        
+        // SavingSession 상태로 변경 (로딩 화면 표시)
+        _uiState.value = WalkingUiState.SavingSession(completedSession)
+        
+        // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
+        try {
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$currentSessionLocalId")
+            currentSessionLocalId = walkingSessionRepository.createSessionPartial(completedSession)
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$currentSessionLocalId, postEmotion=${completedSession.postWalkEmotion}")
+            Timber.d("부분 세션 저장 완료: localId=$currentSessionLocalId, postEmotion=${completedSession.postWalkEmotion}")
+            
+            // 세션 저장 완료 후 Completed 상태로 변경
+            _uiState.value = WalkingUiState.Completed(completedSession)
+        } catch (e: Exception) {
+            Timber.e(e, "부분 세션 저장 실패")
+            // 에러 발생해도 Completed 상태로 변경 (메모리에 세션 있음)
+            // 사용자는 정상적으로 결과 화면을 볼 수 있음
+            _uiState.value = WalkingUiState.Completed(completedSession)
+            throw e // 에러를 다시 던져서 호출자가 처리할 수 있도록 함
+        }
     }
 
     /**
@@ -353,43 +411,238 @@ class WalkingViewModel @Inject constructor(
     /* ---------------- Session Completion ---------------- */
     
     /**
-     * 세션 완성 및 저장
+     * 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
+     * 
+     * 하이브리드 접근: 메모리에서 즉시 세션 객체를 생성하여 Completed 상태로 사용
      */
-    private fun completeAndSaveSession() {
+    private fun createCompletedSession(): WalkingSession {
+        val preEmotion = _preWalkingEmotion.value
+            ?: throw IllegalStateException("산책 전 감정이 선택되지 않았습니다")
+        
+        // postWalkEmotion이 선택되지 않았으면 preWalkEmotion과 동일하게 설정
+        val postEmotion = _postWalkingEmotion.value ?: preEmotion
+        
+        val endTime = System.currentTimeMillis()
+        val collectedLocations = _locations.value
+        val totalDistance = calculateTotalDistance(collectedLocations)
+        
+        // 완료된 세션 생성 (imageUrl과 note는 null, 나중에 업데이트됨)
+        return WalkingSession(
+            startTime = startTimeMillis,
+            endTime = endTime,
+            stepCount = lastStepCount,
+            locations = collectedLocations,
+            totalDistance = totalDistance,
+            preWalkEmotion = preEmotion,
+            postWalkEmotion = postEmotion, // 기본값은 preWalkEmotion과 동일
+            note = null, // 나중에 업데이트
+            imageUrl = null, // Deprecated 필드
+            localImagePath = null, // 나중에 업데이트
+            serverImageUrl = null, // 서버 동기화 후 업데이트
+            createdDate = DateUtils.formatToIsoDateTime(startTimeMillis)
+        )
+    }
+    
+    
+    /**
+     * 산책 후 감정 업데이트 (PostWalkingEmotionScreen에서 선택 시 호출)
+     * 
+     * @param postWalkEmotion 선택된 산책 후 감정
+     */
+    /**
+     * 산책 후 감정 업데이트 (PostWalkingEmotionScreen에서 선택 시 호출)
+     * 
+     * @param postWalkEmotion 선택된 산책 후 감정
+     */
+    fun updatePostWalkEmotion(postWalkEmotion: EmotionType) {
         viewModelScope.launch {
             try {
-                val endTime = System.currentTimeMillis()
-                val collectedLocations = _locations.value
-                val totalDistance = calculateTotalDistance(collectedLocations)
+                val localId = currentSessionLocalId
+                    ?: throw IllegalStateException("저장된 세션이 없습니다")
                 
-                // WalkingSession 완성
-                val completedSession = WalkingSession(
-                    startTime = startTimeMillis,
-                    endTime = endTime,
-                    stepCount = lastStepCount,
-                    locations = collectedLocations,
-                    totalDistance = totalDistance,
-                    preWalkEmotion = savedPreWalkingEmotion,
-                    postWalkEmotion = _postWalkingEmotion.value,
-                    note = _emotionText.value.ifEmpty { null },
-                    imageUrl = null, // 서버 업로드 후 업데이트됨
-                    createdDate = null // 서버 응답에서 받아옴
+                walkingSessionRepository.updatePostWalkEmotion(
+                    localId = localId,
+                    postWalkEmotion = postWalkEmotion
                 )
                 
-                // 세션 저장 (로컬 + 서버 동기화)
-                walkingSessionRepository.saveSession(
-                    session = completedSession,
-                    imageUri = _emotionPhotoUri.value
-                )
+                // ViewModel 상태도 업데이트
+                _postWalkingEmotion.value = postWalkEmotion
                 
-                // UI State를 Completed로 변경
-                _uiState.value = WalkingUiState.Completed(completedSession)
-                
-                Timber.d("산책 세션 저장 완료: 걸음수=${lastStepCount}, 거리=${totalDistance}m, 위치포인트=${collectedLocations.size}개")
+                Timber.d("산책 후 감정 업데이트 완료: localId=$localId, emotion=$postWalkEmotion")
             } catch (e: Exception) {
-                Timber.e(e, "산책 세션 저장 실패")
-                _uiState.value = WalkingUiState.Error("세션 저장 중 오류가 발생했습니다: ${e.message}")
+                Timber.e(e, "산책 후 감정 업데이트 실패")
+                throw e
             }
+        }
+    }
+    
+    /**
+     * 세션의 이미지와 노트 업데이트 (사진/텍스트 단계에서 호출)
+     * 
+     * URI를 파일로 복사하고 경로를 저장합니다.
+     * 
+     * stopWalking()에서 이미 세션 저장이 완료되었으므로 currentSessionLocalId는 항상 설정되어 있어야 합니다.
+     */
+    fun updateSessionImageAndNote() {
+        viewModelScope.launch {
+            try {
+                val localId = currentSessionLocalId
+                    ?: throw IllegalStateException("저장된 세션이 없습니다. 산책을 먼저 완료해주세요.")
+                
+                val imageUri = _emotionPhotoUri.value // URI 그대로 전달
+                val note = _emotionText.value.ifEmpty { null }
+                
+                walkingSessionRepository.updateSessionImageAndNote(
+                    localId = localId,
+                    imageUri = imageUri, // URI를 전달하면 Repository에서 파일로 복사
+                    note = note
+                )
+                
+                Timber.d("세션 이미지/노트 업데이트 완료: localId=$localId, imageUri=$imageUri, note=$note")
+            } catch (e: Exception) {
+                Timber.e(e, "세션 이미지/노트 업데이트 실패")
+                throw e
+            }
+        }
+    }
+    
+    /**
+     * 세션의 노트 업데이트
+     * 
+     * @param localId 업데이트할 세션의 로컬 ID
+     * @param note 업데이트할 노트 텍스트
+     */
+    fun updateSessionNote(localId: Long, note: String) {
+        viewModelScope.launch {
+            try {
+                walkingSessionRepository.updateSessionImageAndNote(
+                    localId = localId,
+                    imageUri = null, // 이미지는 변경하지 않음
+                    note = note
+                )
+                Timber.d("세션 노트 업데이트 완료: localId=$localId, note=$note")
+            } catch (e: Exception) {
+                Timber.e(e, "세션 노트 업데이트 실패: localId=$localId")
+            }
+        }
+    }
+
+    /**
+     * 세션의 노트 삭제 (null로 설정)
+     * 
+     * @param localId 삭제할 세션의 로컬 ID
+     */
+    fun deleteSessionNote(localId: Long) {
+        viewModelScope.launch {
+            try {
+                walkingSessionRepository.updateSessionImageAndNote(
+                    localId = localId,
+                    imageUri = null, // 이미지는 변경하지 않음
+                    note = null // 노트를 null로 설정하여 삭제
+                )
+                Timber.d("세션 노트 삭제 완료: localId=$localId")
+            } catch (e: Exception) {
+                Timber.e(e, "세션 노트 삭제 실패: localId=$localId")
+            }
+        }
+    }
+
+    /**
+     * 세션을 서버와 동기화 (WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 호출)
+     * 
+     * 화면을 벗어나도 네트워크 요청이 계속 진행되도록 nonCancellable 컨텍스트 사용
+     */
+    fun syncSessionToServer() {
+        viewModelScope.launch {
+            try {
+                _snapshotState.value = SnapshotState.Syncing
+                
+                val localId = currentSessionLocalId
+                    ?: throw IllegalStateException("저장된 세션이 없습니다")
+                
+                // nonCancellable 컨텍스트를 사용하여 화면을 벗어나도 네트워크 요청이 계속 진행되도록 함
+                // 큰 이미지 파일(3MB+) 업로드 중에 화면을 벗어나도 취소되지 않음
+                withContext(NonCancellable) {
+                    walkingSessionRepository.syncSessionToServer(localId)
+                }
+                
+                _snapshotState.value = SnapshotState.Complete
+                Timber.d("서버 동기화 완료: localId=$localId")
+            } catch (e: CancellationException) {
+                // nonCancellable을 사용했으므로 이 경우는 발생하지 않아야 하지만, 안전을 위해 처리
+                _snapshotState.value = SnapshotState.Error("서버 동기화 취소됨")
+                Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${currentSessionLocalId}")
+            } catch (e: Exception) {
+                // 실제 서버 에러인 경우에만 로깅 및 사용자 알림
+                _snapshotState.value = SnapshotState.Error(e.message ?: "서버 동기화 실패")
+                Timber.e(e, "서버 동기화 실패: ${e.message}")
+                // TODO: 에러 처리 (사용자에게 알림)
+            }
+        }
+    }
+    
+    /**
+     * 스냅샷 생성 및 저장 프로세스 시작
+     * 
+     * @param captureSnapshot 스냅샷 생성 suspend 함수
+     * @return 저장 성공 여부
+     */
+    suspend fun captureAndSaveSnapshot(captureSnapshot: suspend () -> String?): Boolean {
+        return try {
+            _snapshotState.value = SnapshotState.Capturing
+            
+            val imagePath = captureSnapshot()
+            
+            if (imagePath != null) {
+                _snapshotState.value = SnapshotState.Saving
+                saveSnapshotToSession(imagePath)
+                _snapshotState.value = SnapshotState.Idle // 저장 완료 후 Idle로 변경
+                Timber.d("스냅샷 생성 및 저장 완료: imagePath=$imagePath")
+                true
+            } else {
+                Timber.w("스냅샷 생성 실패")
+                _snapshotState.value = SnapshotState.Error("스냅샷 생성 실패")
+                false
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "스냅샷 생성 중 오류 발생")
+            _snapshotState.value = SnapshotState.Error(e.message ?: "스냅샷 생성 실패")
+            false
+        }
+    }
+    
+    /**
+     * 현재 세션의 로컬 ID 노출 (WalkingResultScreen에서 사용)
+     */
+    val currentSessionLocalIdValue: Long?
+        get() = currentSessionLocalId
+    
+    /**
+     * ID로 세션 조회 (WalkingResultScreen에서 사용)
+     */
+    suspend fun getSessionById(localId: Long): WalkingSession? {
+        return walkingSessionRepository.getSessionById(localId)
+    }
+    
+    /**
+     * 스냅샷 이미지를 세션에 저장 (WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 호출)
+     * 
+     * @param imagePath 스냅샷 파일 경로
+     */
+    suspend fun saveSnapshotToSession(imagePath: String?) {
+        val localId = currentSessionLocalId
+            ?: throw IllegalStateException("저장된 세션이 없습니다")
+        
+        if (imagePath != null) {
+            val imageUri = android.net.Uri.fromFile(java.io.File(imagePath))
+            walkingSessionRepository.updateSessionImageAndNote(
+                localId = localId,
+                imageUri = imageUri,
+                note = null
+            )
+            Timber.d("스냅샷 저장 완료: localId=$localId, imagePath=$imagePath")
+        } else {
+            Timber.w("스냅샷 이미지 경로가 null입니다 - 이미지 없이 저장됨")
         }
     }
     
@@ -438,6 +691,18 @@ data class SensorStatus(
 )
 
 /**
+ * 스냅샷 생성 및 서버 동기화 상태
+ */
+sealed class SnapshotState {
+    data object Idle : SnapshotState()
+    data object Capturing : SnapshotState()
+    data object Saving : SnapshotState()
+    data object Syncing : SnapshotState()
+    data object Complete : SnapshotState()
+    data class Error(val message: String) : SnapshotState()
+}
+
+/**
  * Walking UI State
  */
 sealed interface WalkingUiState {
@@ -455,6 +720,13 @@ sealed interface WalkingUiState {
         val stepCount: Int,
         val duration: Long,
         val isPaused: Boolean = false,
+    ) : WalkingUiState
+
+    /**
+     * 세션 저장 중 (로딩 화면 표시)
+     */
+    data class SavingSession(
+        val session: WalkingSession,
     ) : WalkingUiState
 
     /**

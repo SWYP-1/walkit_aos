@@ -83,3 +83,8 @@ enum class ValidationAction {
     ACCEPT_FLAGGED,  // 저장하지만 의심 플래그 표시
     REJECT           // 거부
 }
+
+
+
+
+

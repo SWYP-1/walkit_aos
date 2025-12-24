@@ -7,16 +7,18 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import team.swyp.sdu.domain.model.OnboardingProgress
 import team.swyp.sdu.domain.model.Sex
+import timber.log.Timber
 
 @Singleton
 class OnboardingDataStore @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @Named("onboarding") private val dataStore: DataStore<Preferences>,
 ) {
     // 기존 키들
     private val completedKey = booleanPreferencesKey("onboarding_completed")
@@ -36,6 +38,7 @@ class OnboardingDataStore @Inject constructor(
     private val birthMonthKey = intPreferencesKey("onboarding_birth_month")
     private val birthDayKey = intPreferencesKey("onboarding_birth_day")
     private val marketingConsentKey = booleanPreferencesKey("onboarding_marketing_consent")
+    private val nicknameRegisteredKey = booleanPreferencesKey("onboarding_nickname_registered")
 
     val isCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[completedKey] ?: false }
 
@@ -43,7 +46,7 @@ class OnboardingDataStore @Inject constructor(
 
     suspend fun getProgress(): OnboardingProgress {
         return dataStore.data.first().let { prefs ->
-            OnboardingProgress(
+            val progress = OnboardingProgress(
                 currentStep = prefs[currentStepKey] ?: 0,
                 nickname = prefs[nicknameKey] ?: "",
                 selectedImageUri = prefs[selectedImageUriKey],
@@ -57,8 +60,11 @@ class OnboardingDataStore @Inject constructor(
                 birthYear = prefs[birthYearKey] ?: 1990,
                 birthMonth = prefs[birthMonthKey] ?: 1,
                 birthDay = prefs[birthDayKey] ?: 1,
-                marketingConsent = prefs[marketingConsentKey] ?: false
+                marketingConsent = prefs[marketingConsentKey] ?: false,
+                nicknameRegistered = prefs[nicknameRegisteredKey] ?: false
             )
+            Timber.d("OnboardingDataStore.getProgress() - currentStep: ${progress.currentStep}, nickname: ${progress.nickname}, goalCount: ${progress.goalCount}")
+            progress
         }
     }
 
@@ -83,7 +89,9 @@ class OnboardingDataStore @Inject constructor(
             prefs[birthMonthKey] = progress.birthMonth
             prefs[birthDayKey] = progress.birthDay
             prefs[marketingConsentKey] = progress.marketingConsent
+            prefs[nicknameRegisteredKey] = progress.nicknameRegistered
         }
+        Timber.d("OnboardingDataStore.saveProgress() 완료 - currentStep: ${progress.currentStep}, nickname: ${progress.nickname}, goalCount: ${progress.goalCount}")
     }
 
     suspend fun clearProgress() {
@@ -99,14 +107,61 @@ class OnboardingDataStore @Inject constructor(
             prefs.remove(birthMonthKey)
             prefs.remove(birthDayKey)
             prefs.remove(marketingConsentKey)
+            prefs.remove(nicknameRegisteredKey)
         }
     }
 
+    /**
+     * 온보딩 진행 데이터 초기화
+     * 
+     * 주의: completedKey는 삭제하지 않습니다.
+     * completedKey는 온보딩 완료 여부를 나타내는 중요한 플래그이므로
+     * 로그아웃 시에도 유지되어야 합니다.
+     */
     suspend fun clearAllOnboardingData() {
         dataStore.edit { prefs ->
-            // 약관 동의 상태도 초기화
+            // 약관 동의 상태 초기화
             prefs.remove(termsAgreedKey)
-            clearProgress()
+            // 진행 상태 데이터 모두 제거
+            prefs.remove(currentStepKey)
+            prefs.remove(nicknameKey)
+            prefs.remove(selectedImageUriKey)
+            prefs.remove(sexKey)
+            prefs.remove(goalCountKey)
+            prefs.remove(stepTargetKey)
+            prefs.remove(unitKey)
+            prefs.remove(birthYearKey)
+            prefs.remove(birthMonthKey)
+            prefs.remove(birthDayKey)
+            prefs.remove(marketingConsentKey)
+            prefs.remove(nicknameRegisteredKey)
+            // completedKey는 삭제하지 않음 (온보딩 완료 여부 유지)
+        }
+    }
+
+    /**
+     * 온보딩 완료 처리 (완료 상태 저장 + 모든 데이터 초기화)
+     * 중첩된 updateData 호출을 방지하기 위해 하나의 edit 블록에서 처리
+     */
+    suspend fun completeOnboarding() {
+        dataStore.edit { prefs ->
+            // 완료 상태 저장
+            prefs[completedKey] = true
+            // 약관 동의 상태 초기화
+            prefs.remove(termsAgreedKey)
+            // 진행 상태 데이터 모두 제거
+            prefs.remove(currentStepKey)
+            prefs.remove(nicknameKey)
+            prefs.remove(selectedImageUriKey)
+            prefs.remove(sexKey)
+            prefs.remove(goalCountKey)
+            prefs.remove(stepTargetKey)
+            prefs.remove(unitKey)
+            prefs.remove(birthYearKey)
+            prefs.remove(birthMonthKey)
+            prefs.remove(birthDayKey)
+            prefs.remove(marketingConsentKey)
+            prefs.remove(nicknameRegisteredKey)
         }
     }
 }

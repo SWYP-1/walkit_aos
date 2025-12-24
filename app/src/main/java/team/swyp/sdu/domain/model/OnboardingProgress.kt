@@ -17,6 +17,7 @@ data class OnboardingProgress(
     val birthMonth: Int = 1,
     val birthDay: Int = 1,
     val marketingConsent: Boolean = false,
+    val nicknameRegistered: Boolean = false, // 닉네임이 중복 체크를 통과하고 등록되었는지 여부
 ) {
     companion object {
         val EMPTY = OnboardingProgress()

@@ -10,6 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.data.local.datastore.NotificationDataStore
@@ -23,7 +24,8 @@ import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 object DataStoreModule {
     @Provides
     @Singleton
-    fun providePreferencesDataStore(
+    @Named("auth")
+    fun provideAuthPreferencesDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> =
         PreferenceDataStoreFactory.create(
@@ -32,26 +34,33 @@ object DataStoreModule {
 
     @Provides
     @Singleton
-    fun provideAuthDataStore(
-        dataStore: DataStore<Preferences>,
-    ): AuthDataStore = AuthDataStore(dataStore)
-
-    @Provides
-    @Singleton
-    fun provideOnboardingDataStore(
-        dataStore: DataStore<Preferences>,
-    ): OnboardingDataStore = OnboardingDataStore(dataStore)
-
-    @Provides
-    @Singleton
-    fun provideNotificationDataStore(
+    @Named("onboarding")
+    fun provideOnboardingPreferencesDataStore(
         @ApplicationContext context: Context,
-    ): NotificationDataStore {
-        val notificationDataStore = PreferenceDataStoreFactory.create(
+    ): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("onboarding_prefs") },
+        )
+
+    @Provides
+    @Singleton
+    @Named("notification")
+    fun provideNotificationPreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
             produceFile = { context.preferencesDataStoreFile("notification_prefs") },
         )
-        return NotificationDataStore(notificationDataStore)
-    }
+
+    @Provides
+    @Singleton
+    @Named("fcm")
+    fun provideFcmPreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("fcm_prefs") },
+        )
 }
 
 

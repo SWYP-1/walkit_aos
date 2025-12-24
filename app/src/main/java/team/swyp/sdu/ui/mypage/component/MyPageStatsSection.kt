@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.components.formatStepCount
 
@@ -21,10 +22,15 @@ fun MyPageStatsSection(
     WalkingSummaryCard(
         leftLabel = "누적 걸음수",
         leftValue = formatStepCount(totalStepCount),
-        leftUnit = "걸음",
+        leftUnit = SummaryUnit.Step("걸음"),
         rightLabel = "누적 이동거리",
         rightValue = totalDistanceKm,
-        rightUnit = "km",
+        rightUnit = SummaryUnit.Step("km"),
         modifier = modifier.padding(horizontal = 20.dp),
     )
 }
+
+
+
+
+

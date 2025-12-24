@@ -7,7 +7,12 @@ data class OnboardingData(
     val nickname: String,
     val goalCount: Int,
     val stepTarget: Int,
-    val unit: String,
     val birthYear: Int,
     val marketingConsent: Boolean,
 )
+
+
+
+
+
+

@@ -41,6 +41,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
  * - 오른쪽: 선택적 액션 버튼 (프로필 이미지, 아이콘 등)
  *
  * @param title 헤더 제목
+ * @param showBackButton 뒤로가기 버튼 표시 여부
  * @param onNavigateBack 뒤로가기 클릭 핸들러
  * @param modifier Modifier
  * @param rightAction 오른쪽 액션 (선택사항)
@@ -48,7 +49,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun AppHeader(
     title: String,
-    onNavigateBack: () -> Unit,
+    showBackButton: Boolean = true,
+    onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     rightAction: @Composable (() -> Unit)? = null,
 ) {

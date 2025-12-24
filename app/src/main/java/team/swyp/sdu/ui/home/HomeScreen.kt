@@ -20,12 +20,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import team.swyp.sdu.presentation.viewmodel.NotificationPermissionViewModel
+import team.swyp.sdu.ui.notification.NotificationPermissionDialog
 import team.swyp.sdu.ui.home.HomeUiState
 import team.swyp.sdu.ui.home.components.GoalCard
 import team.swyp.sdu.ui.home.components.MissionCard
@@ -38,6 +43,8 @@ import team.swyp.sdu.ui.home.components.DominantEmotionCard
 import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.home.components.CharacterSection
+import team.swyp.sdu.domain.model.MissionCategory
+import team.swyp.sdu.ui.home.components.HomeInfoCard
 
 /**
  * 홈 화면 (요약/캐릭터/미션/주간 기록)
@@ -48,8 +55,34 @@ fun HomeScreen(
     onClickGoal: () -> Unit,
     onClickMission: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
+    permissionViewModel: NotificationPermissionViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 알림 권한 요청 Launcher
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        permissionViewModel.handlePermissionResult(isGranted)
+    }
+
+    // 위치 권한 요청 Launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // 권한 수락 → 데이터 재로드
+            viewModel.reloadAfterPermissionGranted()
+        }
+        // 권한 거부 시 기본 위치로 이미 로드된 데이터 유지
+    }
+
+    // 홈 화면 진입 시 알림 권한 다이얼로그 표시 여부 확인
+    LaunchedEffect(Unit) {
+        permissionViewModel.checkShouldShowDialog()
+        // 초기 데이터 로드는 ViewModel의 init에서 자동으로 수행됨
+        // (기본 위치로 로드)
+    }
 
     val nickname = when (uiState) {
         is HomeUiState.Success -> (uiState as HomeUiState.Success).nickname
@@ -67,11 +100,17 @@ fun HomeScreen(
     val profileImageUrl = "https://images.pexels.com/photos/3861976/pexels-photo-3861976.jpeg?_gl=1*8iaqp3*_ga*ODU3MTU1NTU2LjE3NjYwMzk4MDQ.*_ga_8JE65Q40S6*czE3NjYwMzk4MDQkbzEkZzEkdDE3NjYwMzk4MzEkajMzJGwwJGgw"
     val goalTitle = "목표명 / 달성률"
     val progressRatio = 0.68f
-    val missions =
-        listOf(
-            HomeMission("5,000보 이상 걷기", "300 Exp"),
-            HomeMission("5,000보 이상 걷기", "300 Exp"),
-        )
+    val missions = when (uiState) {
+        is HomeUiState.Success -> (uiState as HomeUiState.Success).missions.map { weeklyMission ->
+            HomeMission(
+                title = weeklyMission.title,
+                reward = "${weeklyMission.rewardPoints} Exp",
+                category = MissionCategory.fromApiValue(weeklyMission.category)?.displayName
+                    ?: weeklyMission.category,
+            )
+        }
+        else -> emptyList()
+    }
 
     Column {
         HomeHeader(profileImageUrl = profileImageUrl)
@@ -86,27 +125,7 @@ fun HomeScreen(
                     .padding(top = 12.dp),
         ) {
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = nickname,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                LevelChip(text = levelLabel)
-            }
-
-            CharacterSection(
-                onClickWalk = onClickWalk,
-                todaySteps = todaySteps,
-            )
-
-            GoalCard(
-                title = goalTitle,
-                progress = progressRatio,
-                onClickGoal = onClickGoal,
-            )
+           HomeInfoCard(homeUiState = uiState)
 
             Text(
                 text = "오늘의 추천 미션",
@@ -114,22 +133,12 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
             )
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                missions.chunked(2).forEach { rowMissions ->
-                    Row(
+                missions.forEach { mission ->
+                    MissionCard(
+                        mission = mission,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        rowMissions.forEach { mission ->
-                            MissionCard(
-                                mission = mission,
-                                modifier = Modifier.weight(1f),
-                                onClick = onClickMission,
-                            )
-                        }
-                        if (rowMissions.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
+                        onClick = onClickMission,
+                    )
                 }
             }
 
@@ -161,22 +170,20 @@ fun HomeScreen(
 
                         // 이번주 주요 감정 카드
                         val dominantEmotion = (uiState as HomeUiState.Success).dominantEmotion
-                        if (dominantEmotion != null) {
-                            DominantEmotionCard(
-                                emotionType = dominantEmotion,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Spacer(Modifier.height(8.dp))
-                        }
+                        DominantEmotionCard(
+                            emotionType = dominantEmotion,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             val recentEmotions = (uiState as HomeUiState.Success).recentEmotions
                             val itemCount = recentEmotions.size.coerceAtMost(7)
 
-                            repeat(itemCount) { index ->
+                            repeat(7) { index ->
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -190,6 +197,7 @@ fun HomeScreen(
                                 }
                             }
                         }
+
                         Spacer(Modifier.height(24.dp))
 
                     }
@@ -231,4 +239,12 @@ fun HomeScreen(
 //        }
         }
     }
+
+    // 알림 권한 다이얼로그 표시
+    NotificationPermissionDialog(
+        viewModel = permissionViewModel,
+        onRequestPermission = {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        },
+    )
 }

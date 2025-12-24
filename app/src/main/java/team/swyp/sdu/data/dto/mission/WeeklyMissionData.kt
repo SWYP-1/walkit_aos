@@ -1,51 +1,53 @@
 package team.swyp.sdu.data.dto.mission
 
 import androidx.annotation.Keep
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import team.swyp.sdu.domain.model.MissionConfig
 import team.swyp.sdu.domain.model.MissionConfigParser
 import team.swyp.sdu.domain.model.MissionType
 
 @Keep
+@Serializable
 data class WeeklyMissionData(
-    @SerializedName("userWeeklyMissionId")
+    @SerialName("userWeeklyMissionId")
     val userWeeklyMissionId: Long,
 
-    @SerializedName("missionId")
+    @SerialName("missionId")
     val missionId: Long,
 
-    @SerializedName("title")
+    @SerialName("title")
     val title: String,
 
-    @SerializedName("description")
+    @SerialName("description")
     val description: String,
 
-    @SerializedName("category")
+    @SerialName("category")
     val category: String,
 
-    @SerializedName("type")
+    @SerialName("type")
     val type: String,
 
-    @SerializedName("status")
+    @SerialName("status")
     val status: String,
 
-    @SerializedName("rewardPoints")
+    @SerialName("rewardPoints")
     val rewardPoints: Int,
 
-    @SerializedName("assignedConfigJson")
+    @SerialName("assignedConfigJson")
     val assignedConfigJson: String,
 
-    @SerializedName("weekStart")
+    @SerialName("weekStart")
     val weekStart: String,
 
-    @SerializedName("weekEnd")
+    @SerialName("weekEnd")
     val weekEnd: String,
 
-    @SerializedName("completedAt")
-    val completedAt: String?,
+    @SerialName("completedAt")
+    val completedAt: String? = null,
 
-    @SerializedName("failedAt")
-    val failedAt: String?,
+    @SerialName("failedAt")
+    val failedAt: String? = null,
 ) {
     /**
      * 미션 타입 enum으로 변환

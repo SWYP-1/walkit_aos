@@ -2,8 +2,11 @@ package team.swyp.sdu.data.api.walking
 
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.Response
+import retrofit2.http.DELETE
 import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Path
 import team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse
 
 /**
@@ -16,12 +19,34 @@ interface WalkApi {
      *
      * @param data 산책 데이터 JSON
      * @param image 산책 이미지 (선택사항)
-     * @return 저장 결과
+     * @return 저장 결과 (이미지 URL 포함)
      */
     @Multipart
     @POST("/walk/save")
     suspend fun saveWalk(
         @retrofit2.http.Part("data") data: RequestBody,
         @retrofit2.http.Part image: MultipartBody.Part?
-    ): WalkSaveResponse
+    ): Response<WalkSaveResponse>
+
+    /**
+     * 산책 좋아요 누르기
+     *
+     * @param walkId 산책 ID
+     * @return 응답 (성공 시 빈 응답)
+     */
+    @POST("/walk-likes/{walkId}")
+    suspend fun likeWalk(
+        @Path("walkId") walkId: Long
+    ): Response<Unit>
+
+    /**
+     * 산책 좋아요 취소
+     *
+     * @param walkId 산책 ID
+     * @return 응답 (성공 시 빈 응답)
+     */
+    @DELETE("/walk-likes/{walkId}")
+    suspend fun unlikeWalk(
+        @Path("walkId") walkId: Long
+    ): Response<Unit>
 }

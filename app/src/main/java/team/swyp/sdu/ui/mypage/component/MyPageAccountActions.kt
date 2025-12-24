@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.mypage.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
  */
 @Composable
 fun MyPageAccountActions(
+    onLogout: () -> Unit = {},
+    onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -33,7 +36,8 @@ fun MyPageAccountActions(
         Text(
             text = "로그아웃",
             style = MaterialTheme.walkItTypography.bodyS,
-            color = Grey7
+            color = Grey7,
+            modifier = Modifier.clickable(onClick = onLogout)
         )
 
         VerticalDivider(
@@ -47,7 +51,10 @@ fun MyPageAccountActions(
         Text(
             text = "탈퇴 하기",
             style = MaterialTheme.walkItTypography.bodyS,
-            color = Grey7
+            color = Grey7,
+            modifier = Modifier.clickable(onClick = onWithdraw)
         )
     }
 }
+
+

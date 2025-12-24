@@ -44,7 +44,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -65,7 +67,10 @@ import team.swyp.sdu.domain.service.MovementState
 import team.swyp.sdu.ui.walking.viewmodel.SensorStatus
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
+import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.LottieAnimationView
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -78,6 +83,7 @@ fun WalkingScreen(
     onNavigateToFinish: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionsState =
         rememberMultiplePermissionsState(
@@ -160,13 +166,42 @@ fun WalkingScreen(
                         }
                     },
                     onStopClick = {
-                        viewModel.stopWalking()
-                        onNavigateToFinish()
+                        // 세션 저장이 완료될 때까지 기다림
+                        coroutineScope.launch {
+                            Timber.d("🚶 WalkingScreen - stopWalking 호출 전: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
+                            viewModel.stopWalking()
+                            Timber.d("🚶 WalkingScreen - stopWalking 호출 후: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
+                        }
+                        // 화면 전환은 LaunchedEffect에서 처리 (세션 저장 완료 후)
                     },
                 )
             }
 
-            is WalkingUiState.Completed -> {}
+            is WalkingUiState.SavingSession -> {
+                // 세션 저장 중 로딩 화면
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                        Text(
+                            text = "산책 기록을 저장하는 중...",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+
+            is WalkingUiState.Completed -> {
+                // 세션 저장 완료 후 자동으로 다음 화면으로 이동
+                LaunchedEffect(Unit) {
+                    onNavigateToFinish()
+                }
+            }
 
             is WalkingUiState.Error -> {
                 ErrorView(

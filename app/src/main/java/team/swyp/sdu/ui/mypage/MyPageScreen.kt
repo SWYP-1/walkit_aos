@@ -44,6 +44,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
  * @param onNavigateUserInfoEdit 내 정보 관리 네비게이션 핸들러
  * @param onNavigateNotificationSetting 알림 설정 네비게이션 핸들러
  * @param onNavigateBack 뒤로가기 핸들러
+ * @param onLogout 로그아웃 핸들러
+ * @param onWithdraw 탈퇴하기 핸들러
  * @param modifier Modifier
  */
 @Composable
@@ -56,6 +58,8 @@ fun MyPageScreen(
     onNavigateGoalManagement: () -> Unit,
     onNavigateNotificationSetting: () -> Unit,
     onNavigateBack: () -> Unit,
+    onLogout: () -> Unit = {},
+    onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -93,7 +97,10 @@ fun MyPageScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        MyPageAccountActions()
+        MyPageAccountActions(
+            onLogout = onLogout,
+            onWithdraw = onWithdraw,
+        )
     }
 }
 
@@ -111,6 +118,8 @@ private fun MyPageScreenPreview() {
             onNavigateGoalManagement = {},
             onNavigateNotificationSetting = {},
             onNavigateBack = {},
+            onLogout = {},
+            onWithdraw = {},
         )
     }
 }

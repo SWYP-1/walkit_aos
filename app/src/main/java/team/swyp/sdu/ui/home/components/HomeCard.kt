@@ -3,6 +3,7 @@ package team.swyp.sdu.ui.home.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import java.io.File
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.EmotionType.*
@@ -60,8 +65,8 @@ fun CharacterSection(
                 .height(260.dp),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = R.drawable.walk_it_character),
+        Image(
+            painter = painterResource(id = R.drawable.walk_it_character),
             contentDescription = "산책 캐릭터",
             modifier = Modifier.size(220.dp),
         )
@@ -83,24 +88,6 @@ fun CharacterSection(
                 text = "%,d".format(todaySteps),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
-            )
-        }
-        Box(
-            modifier =
-                Modifier
-                    .size(72.dp)
-                    .background(Color(0xFFCCCCCC), shape = CircleShape)
-                    .padding(12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "산책하기",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .background(Color.Transparent)
-                    .padding(horizontal = 4.dp)
-                    .clickableNoRipple(onClickWalk),
             )
         }
     }
@@ -185,48 +172,6 @@ fun GoalCard(
     }
 }
 
-@Composable
-fun MissionCard(
-    mission: HomeMission,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .clickableNoRipple(onClick),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = mission.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = mission.reward,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                contentDescription = "미션 상세",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-    }
-}
 
 @Composable
 fun WeeklyRecordCard(
@@ -248,14 +193,39 @@ fun WeeklyRecordCard(
                         .background(Color(0xFFE6E6E6), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
                 contentAlignment = Alignment.BottomStart,
             ) {
-                PathThumbnail(
-                    locations = session.locations,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                    pathColor = Color(0xFF4A4A4A),
-                )
+                // 이미지 URI 가져오기 (localImage -> serverImage 순서)
+                val imageUri = session.getImageUri()
+                
+                if (imageUri != null) {
+                    // 이미지가 있으면 이미지 표시
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(
+                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
+                                    // 서버 URL인 경우
+                                    imageUri
+                                } else {
+                                    // 로컬 파일 경로인 경우
+                                    File(imageUri)
+                                }
+                            )
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "산책 기록 썸네일",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    )
+                } else {
+                    // 이미지가 없으면 경로 썸네일 표시
+                    PathThumbnail(
+                        locations = session.locations,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                        pathColor = Color(0xFF4A4A4A),
+                    )
+                }
 
                 Row(
                     modifier =
@@ -263,8 +233,7 @@ fun WeeklyRecordCard(
                             .align(Alignment.BottomEnd)
                             .padding(16.dp),
                 ) {
-                    //TODO : 개발을 위해 해놓음 여기서 터지면 뭔가 에러임 출시 때 제거해야함
-                    EmotionCircle(emotionType = session.postWalkEmotion!!)
+                    EmotionCircle(emotionType = session.postWalkEmotion)
                 }
             }
 

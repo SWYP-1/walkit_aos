@@ -7,6 +7,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import team.swyp.sdu.data.api.user.TermsAgreementRequest
 import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.remote.user.dto.RemoteUserDto
 import team.swyp.sdu.data.remote.user.dto.UserSearchResultDto
@@ -65,5 +66,15 @@ interface UserApi {
         @Body body: UpdateUserProfileRequest
     ): Response<Unit>
 
+    /**
+     * 약관 동의
+     *
+     * @param body 약관 동의 정보 DTO (JSON)
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    @POST("/users/policy")
+    suspend fun agreeToTerms(
+        @Body body: TermsAgreementRequest
+    ): Response<Unit>
 }
 

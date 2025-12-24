@@ -19,15 +19,19 @@ data class WalkingSessionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val startTime: Long,
-    val endTime: Long? = null,
+    val endTime: Long,
     val stepCount: Int = 0,
     val locationsJson: String = "[]", // LocationPoint 리스트를 JSON으로 직렬화
     val totalDistance: Float = 0f,
     val isSynced: Boolean = false, // 서버 동기화 여부
     // 산책 저장 API용 필드들
-    val preWalkEmotion: String? = null, // EmotionType을 String으로 저장
-    val postWalkEmotion: String? = null, // EmotionType을 String으로 저장
+    val preWalkEmotion: String, // EmotionType을 String으로 저장
+    val postWalkEmotion: String, // EmotionType을 String으로 저장
     val note: String? = null,
-    val imageUrl: String? = null,
-    val createdDate: String? = null,
+    @Deprecated("Use localImagePath and serverImageUrl instead")
+    val imageUrl: String? = null, // Deprecated: localImagePath와 serverImageUrl 사용
+    val localImagePath: String? = null, // 로컬 파일 경로
+    val serverImageUrl: String? = null, // 서버 URL
+    val createdDate: String,
+    val syncState: SyncState
 )

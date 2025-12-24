@@ -25,9 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import team.swyp.sdu.data.dto.mission.WeeklyMissionData
 import team.swyp.sdu.domain.model.MissionCategory
 import team.swyp.sdu.domain.model.MissionConfig
+import team.swyp.sdu.domain.model.WeeklyMission
 
 /**
  * 미션 카드 컴포넌트
@@ -36,7 +36,7 @@ import team.swyp.sdu.domain.model.MissionConfig
  */
 @Composable
 fun MissionCard(
-    mission: WeeklyMissionData,
+    mission: WeeklyMission,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -101,7 +101,11 @@ fun MissionCard(
                         }
                         "${colorName} 사진 찍기"
                     }
-                    null -> mission.description // 파싱 실패 시 description 사용
+                    null -> {
+                        // 파싱 실패 또는 빈 설정인 경우 description 사용
+                        // 서버에서 항상 값을 제공하므로, 파싱 실패는 예외 상황
+                        mission.description
+                    }
                 }
 
                 Text(

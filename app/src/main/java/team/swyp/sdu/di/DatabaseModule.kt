@@ -2,15 +2,15 @@ package team.swyp.sdu.di
 
 import android.content.Context
 import androidx.room.Room
-import com.google.gson.Gson
-import team.swyp.sdu.data.api.walking.WalkApi
 import team.swyp.sdu.data.local.dao.AppliedItemDao
 import team.swyp.sdu.data.local.dao.GoalDao
 import team.swyp.sdu.data.local.dao.MissionProgressDao
+import team.swyp.sdu.data.local.dao.NotificationSettingsDao
 import team.swyp.sdu.data.local.dao.PurchasedItemDao
 import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.dao.WalkingSessionDao
 import team.swyp.sdu.data.local.database.AppDatabase
+import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
 import team.swyp.sdu.data.repository.CosmeticItemRepositoryImpl
 import team.swyp.sdu.data.repository.MissionProgressRepositoryImpl
 import team.swyp.sdu.data.repository.WalkingSessionRepository
@@ -52,11 +52,10 @@ object DatabaseModule {
     @Singleton
     fun provideWalkingSessionRepository(
         walkingSessionDao: WalkingSessionDao,
-        walkApi: WalkApi,
+        walkRemoteDataSource: WalkRemoteDataSource,
         @ApplicationContext context: Context,
-        gson: Gson,
     ): WalkingSessionRepository =
-        WalkingSessionRepository(walkingSessionDao, walkApi, context, gson)
+        WalkingSessionRepository(walkingSessionDao, walkRemoteDataSource, context)
 
     @Provides
     @Singleton
@@ -92,4 +91,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideGoalDao(database: AppDatabase): GoalDao = database.goalDao()
+
+    @Provides
+    @Singleton
+    fun provideNotificationSettingsDao(database: AppDatabase): NotificationSettingsDao = database.notificationSettingsDao()
 }

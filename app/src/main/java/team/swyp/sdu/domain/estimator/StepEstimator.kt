@@ -136,3 +136,8 @@ class StepEstimator @Inject constructor() {
     fun getEstimatedStepsPerSecond(): Float = estimatedStepsPerSecond
 }
 
+
+
+
+
+

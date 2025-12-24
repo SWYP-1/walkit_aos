@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import team.swyp.sdu.data.local.entity.WalkingSessionEntity
+import team.swyp.sdu.data.local.entity.SyncState
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -68,15 +69,26 @@ interface WalkingSessionDao {
     suspend fun update(session: WalkingSessionEntity)
 
     /**
-     * 동기화되지 않은 세션 조회
+     * 동기화되지 않은 세션 조회 (PENDING 또는 FAILED 상태)
      */
-    @Query("SELECT * FROM walking_sessions WHERE isSynced = 0 ORDER BY startTime ASC")
+    @Query("SELECT * FROM walking_sessions WHERE syncState IN ('PENDING', 'FAILED') ORDER BY startTime ASC")
     suspend fun getUnsyncedSessions(): List<WalkingSessionEntity>
 
     /**
-     * 동기화 상태 업데이트
+     * 동기화 상태 업데이트 (SyncState 사용)
      */
-    @Query("UPDATE walking_sessions SET isSynced = :isSynced WHERE id = :id")
+    @Query("UPDATE walking_sessions SET syncState = :syncState WHERE id = :id")
+    suspend fun updateSyncState(
+        id: Long,
+        syncState: SyncState,
+    )
+
+    /**
+     * 동기화 상태 업데이트 (기존 호환성을 위한 메서드, deprecated)
+     * @deprecated SyncState를 직접 사용하는 updateSyncState를 사용하세요
+     */
+    @Deprecated("Use updateSyncState instead", ReplaceWith("updateSyncState(id, if (isSynced) SyncState.SYNCED else SyncState.PENDING)"))
+    @Query("UPDATE walking_sessions SET syncState = CASE WHEN :isSynced = 1 THEN 'SYNCED' ELSE 'PENDING' END WHERE id = :id")
     suspend fun updateSyncStatus(
         id: Long,
         isSynced: Boolean,

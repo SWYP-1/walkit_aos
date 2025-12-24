@@ -2,8 +2,11 @@ package team.swyp.sdu.data.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import team.swyp.sdu.domain.service.ActivityType
+import timber.log.Timber
+import java.io.File
 import java.util.UUID
 
 /**
@@ -28,26 +31,27 @@ data class ActivityStats(
  * @param totalDistance 총 이동 거리 (미터)
  */
 @Parcelize
-@Serializable
 data class WalkingSession(
     val id: String = UUID.randomUUID().toString(),
     val startTime: Long,
-    val endTime: Long? = null,
+    val endTime: Long,
     val stepCount: Int = 0,
     val locations: List<LocationPoint> = emptyList(),
     val totalDistance: Float = 0f,
-    // 산책 저장 API용 필드들
-    val preWalkEmotion: EmotionType? = null,
-    val postWalkEmotion: EmotionType? = null,
+    val preWalkEmotion: EmotionType,
+    val postWalkEmotion: EmotionType,
     val note: String? = null,
-    val imageUrl: String? = null,
-    val createdDate: String? = null,
+    @Deprecated("Use localImagePath and serverImageUrl instead")
+    val imageUrl: String? = null, // Deprecated: localImagePath와 serverImageUrl 사용
+    val localImagePath: String? = null, // 로컬 파일 경로
+    val serverImageUrl: String? = null, // 서버 URL
+    val createdDate: String,
 ) : Parcelable {
     /**
      * 산책 시간 (초)
      */
     val duration: Long
-        get() = (endTime ?: System.currentTimeMillis()) - startTime
+        get() = endTime - startTime
 
     /**
      * 산책 시간을 포맷된 문자열로 반환 (mm:ss)
@@ -93,6 +97,33 @@ data class WalkingSession(
      */
     fun hasMeaningfulGpsMovement(): Boolean {
         return totalDistance >= 10f // 10m 이상 이동
+    }
+    
+    /**
+     * 이미지 로딩 전략 (스마트 Fallback)
+     * 
+     * 우선순위:
+     * 1. 로컬 파일 존재 확인 → 사용
+     * 2. 로컬 파일 없음 + 서버 URL 있음 → 서버 URL 사용 (조용한 Fallback)
+     * 3. 둘 다 없음 → null 반환
+     * 
+     * @return 이미지 URI (로컬 파일 경로 또는 서버 URL)
+     */
+    fun getImageUri(): String? {
+        // 1순위: 로컬 파일이 존재하면 사용 (빠름, 오프라인)
+        if (localImagePath != null) {
+            val file = File(localImagePath)
+            if (file.exists() && file.length() > 0) {
+                return localImagePath
+            } else {
+                // 로컬 파일이 없거나 손상된 경우
+                // 조용히 서버 URL로 Fallback (사용자 알림 없음)
+                Timber.d("로컬 이미지 파일 없음: $localImagePath → 서버 URL로 Fallback")
+            }
+        }
+        
+        // 2순위: 서버 URL 사용 (다중 기기 지원, 캐시 삭제 대응)
+        return serverImageUrl
     }
 }
 

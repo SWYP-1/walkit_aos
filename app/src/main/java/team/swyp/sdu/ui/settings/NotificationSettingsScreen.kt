@@ -45,7 +45,6 @@ fun NotificationSettingsRoute(
         onGoalNotificationEnabledChange = viewModel::setGoalNotificationEnabled,
         onNewMissionNotificationEnabledChange = viewModel::setNewMissionNotificationEnabled,
         onFriendRequestNotificationEnabledChange = viewModel::setFriendRequestNotificationEnabled,
-        onWalkRecordNotificationEnabledChange = viewModel::setWalkRecordNotificationEnabled,
         onNavigateBack = onNavigateBack,
     )
 }
@@ -61,7 +60,6 @@ fun NotificationSettingsRoute(
  * @param onGoalNotificationEnabledChange 목표 알림 설정 변경 핸들러
  * @param onNewMissionNotificationEnabledChange 신규 미션 알림 설정 변경 핸들러
  * @param onFriendRequestNotificationEnabledChange 친구 요청 알림 설정 변경 핸들러
- * @param onWalkRecordNotificationEnabledChange 산책 기록 반응 알림 설정 변경 핸들러
  * @param onNavigateBack 뒤로가기 핸들러
  */
 @Composable
@@ -71,7 +69,6 @@ fun NotificationSettingsScreen(
     onGoalNotificationEnabledChange: (Boolean) -> Unit,
     onNewMissionNotificationEnabledChange: (Boolean) -> Unit,
     onFriendRequestNotificationEnabledChange: (Boolean) -> Unit,
-    onWalkRecordNotificationEnabledChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -161,13 +158,6 @@ fun NotificationSettingsScreen(
                     checked = uiState.friendRequestNotificationEnabled,
                     onCheckedChange = onFriendRequestNotificationEnabledChange,
                 )
-                Spacer(Modifier.height(8.dp))
-
-                ToggleMenuItem(
-                    title = "산책 기록 반응",
-                    checked = uiState.walkRecordNotificationEnabled,
-                    onCheckedChange = onWalkRecordNotificationEnabledChange,
-                )
             }
         }
     }
@@ -183,13 +173,11 @@ private fun NotificationSettingsScreenPreview() {
                 goalNotificationEnabled = true,
                 newMissionNotificationEnabled = false,
                 friendRequestNotificationEnabled = true,
-                walkRecordNotificationEnabled = false,
             ),
             onNotificationEnabledChange = {},
             onGoalNotificationEnabledChange = {},
             onNewMissionNotificationEnabledChange = {},
             onFriendRequestNotificationEnabledChange = {},
-            onWalkRecordNotificationEnabledChange = {},
             onNavigateBack = {},
         )
     }

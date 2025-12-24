@@ -1,10 +1,7 @@
 package team.swyp.sdu.ui.onboarding
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,43 +9,36 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import team.swyp.sdu.ui.components.WheelPicker
+import team.swyp.sdu.R
+import team.swyp.sdu.domain.goal.GoalRange
+import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.mypage.goal.component.GoalSettingCard
+import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
+import team.swyp.sdu.ui.theme.Black
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
  * 목표 설정 단계 컴포넌트
  */
 @Composable
 fun GoalStep(
-    unit: String,
-    unitMenuExpanded: Boolean,
-    onUnitClick: () -> Unit,
-    onUnitDismiss: () -> Unit,
-    onUnitSelect: (String) -> Unit,
+    uiState: OnboardingUiState,
     goal: Int,
     onGoalChange: (Int) -> Unit,
     steps: Int,
@@ -56,272 +46,161 @@ fun GoalStep(
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
-    val periodNumber = 1
-    val canProceed = goal > 0 && steps > 0
+    // 주간 산책 횟수 범위: 1~7회 (미만, 초과 불가)
+    val goalRange = remember { GoalRange(min = 1, max = 7) }
 
-    // 바텀시트 표시 상태
-    var showGoalPicker by remember { mutableStateOf(false) }
-    var showStepsPicker by remember { mutableStateOf(false) }
+    // 걸음 수 목표 범위: 1000~100000보 (1000보 단위, 미만, 초과 불가)
+    val stepRange = remember { GoalRange(min = 1000, max = 100000) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // 숫자/단위 및 목표 클릭 영역 (드롭다운 + 휠)
-            Row(
+    // 현재 값이 범위를 벗어나면 조정
+    val safeGoal = remember(goal) { goal.coerceIn(goalRange.min, goalRange.max) }
+    val safeSteps = remember(steps) { steps.coerceIn(stepRange.min, stepRange.max) }
+
+    // 범위 도달 여부 확인
+    val isGoalMinReached = safeGoal <= goalRange.min
+    val isGoalMaxReached = safeGoal >= goalRange.max
+    val isStepsMinReached = safeSteps <= stepRange.min
+    val isStepsMaxReached = safeSteps >= stepRange.max
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhiteSecondary)
+    ) {
+        Spacer(modifier = Modifier.height(56.dp))
+
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                OnBoardingStepTag(text = "목표 설정")
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Text(
-                    text = "$periodNumber",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
+                    text = "${uiState.nicknameState.value}님,\n" + "함께 걸어봐요",
+                    style = MaterialTheme.walkItTypography.headingM.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Black,
+                    textAlign = TextAlign.Center
                 )
-                Box {
-                    ChipButton(
-                        text = unit,
-                        onClick = onUnitClick,
-                    )
-                    DropdownMenu(
-                        expanded = unitMenuExpanded,
-                        onDismissRequest = onUnitDismiss,
-                    ) {
-                        listOf("달", "주").forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = { onUnitSelect(option) },
-                            )
-                        }
-                    }
-                }
-                Text(text = "/", style = MaterialTheme.typography.headlineSmall)
-                ChipButton(
-                    text = "${goal} 회",
-                    onClick = { showGoalPicker = true },
-                )
+
+                Spacer(modifier = Modifier.height(42.dp))
             }
 
-            // 달/주 당 목표 걸음수
-            ClickField(
-                label = "${unit}에 몇 보",
-                value = if (steps > 0) "$steps 보" else "선택",
-                onClick = { showStepsPicker = true },
+            // 주간 산책 횟수 설정
+            GoalSettingCard(
+                title = "주간 산책 횟수",
+                currentNumber = safeGoal,
+                onNumberChange = { newValue ->
+                    // 범위를 벗어난 값은 아예 설정하지 않음
+                    if (newValue in goalRange.min..goalRange.max) {
+                        onGoalChange(newValue)
+                    }
+                },
+                range = goalRange,
+                unit = "회",
+                onClickMinus = {
+                    // 범위를 벗어나면 아예 호출하지 않음
+                    val newValue = safeGoal - 1
+                    if (newValue >= goalRange.min) {
+                        onGoalChange(newValue)
+                    }
+                },
+                onClickPlus = {
+                    // 범위를 벗어나면 아예 호출하지 않음
+                    val newValue = safeGoal + 1
+                    if (newValue <= goalRange.max) {
+                        onGoalChange(newValue)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                accentColor = SemanticColor.textBorderPrimary
             )
-            Text(text = "목표 확인 후 다음을 눌러주세요", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 걸음 수 목표 설정
+            GoalSettingCard(
+                title = "걸음 수 목표",
+                currentNumber = safeSteps,
+                onNumberChange = { newValue ->
+                    // 범위를 벗어난 값은 아예 설정하지 않음
+                    if (newValue in stepRange.min..stepRange.max) {
+                        onStepsChange(newValue)
+                    }
+                },
+                range = stepRange,
+                unit = "보",
+                onClickMinus = {
+                    // 범위를 벗어나면 아예 호출하지 않음
+                    val newValue = safeSteps - 1000
+                    if (newValue >= stepRange.min) {
+                        onStepsChange(newValue)
+                    }
+                },
+                onClickPlus = {
+                    // 범위를 벗어나면 아예 호출하지 않음
+                    val newValue = safeSteps + 1000
+                    if (newValue <= stepRange.max) {
+                        onStepsChange(newValue)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                accentColor = SemanticColor.textBorderPrimary,
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
             // 버튼 영역
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
+                CtaButton(
+                    text = "이전으로",
+                    textColor = SemanticColor.buttonPrimaryDefault,
+                    buttonColor = SemanticColor.backgroundWhitePrimary,
                     onClick = onPrev,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Text("이전", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                    modifier = Modifier.width(96.dp)
+                )
 
-                Button(
+                CtaButton(
+                    text = "다음으로",
+                    textColor = SemanticColor.textBorderPrimaryInverse,
                     onClick = onNext,
                     modifier = Modifier.weight(1f),
-                    enabled = canProceed,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
-                ) {
-                    Text("다음", color = Color.White)
-                }
-            }
-        }
-
-        // 목표 횟수 선택 바텀시트
-        if (showGoalPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = (1..100).map { it.toString() },
-                initialIndex = (goal - 1).coerceIn(0, 99),
-                title = "목표 횟수 선택",
-                onConfirm = { idx, _ ->
-                    onGoalChange(idx + 1)
-                    showGoalPicker = false
-                },
-                onDismiss = { showGoalPicker = false },
-            )
-        }
-
-        // 걸음수 선택 바텀시트
-        if (showStepsPicker) {
-            WheelPickerOverlay(
-                visible = true,
-                items = (1..20).map { (it * 1000).toString() },
-                initialIndex = 0,
-                title = "${unit}에 몇 보 설정",
-                onConfirm = { _, value ->
-                    onStepsChange(value.toInt())
-                    showStepsPicker = false
-                },
-                onDismiss = { showStepsPicker = false },
-            )
-        }
-    }
-}
-
-@Composable
-private fun WheelPickerOverlay(
-    visible: Boolean,
-    items: List<String>,
-    initialIndex: Int,
-    onConfirm: (Int, String) -> Unit,
-    onDismiss: () -> Unit,
-    title: String,
-) {
-    if (!visible) return
-
-    var index by remember { mutableStateOf(initialIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) }
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .background(Color.Black.copy(alpha = 0.35f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onDismiss,
-                ),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.weight(1f))
-            Surface(
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                tonalElevation = 4.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_forward),
+                            contentDescription = "arrow forward",
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(24.dp)
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onDismiss) { Text("취소") }
-                            TextButton(onClick = { onConfirm(index, items[index]) }) { Text("확인") }
-                        }
                     }
-                    WheelPicker(
-                        items = items,
-                        initialIndex = index,
-                        onSelected = { i, _ -> index = i },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp),
-                    )
-                }
+                )
             }
         }
     }
 }
 
+@Preview(showBackground = true, name = "기본 상태 - 목표 미설정")
 @Composable
-private fun ChipButton(
-    text: String,
-    onClick: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF6F6F6),
-        modifier = Modifier.clickable { onClick() },
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
-
-@Composable
-private fun ClickField(
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelLarge)
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onClick() },
-            color = Color(0xFFF6F6F6),
-        ) {
-            Text(
-                text = value,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GoalStepPreview() {
+private fun GoalStepEmptyPreview() {
     WalkItTheme {
         GoalStep(
-            unit = "달",
-            unitMenuExpanded = false,
-            onUnitClick = {},
-            onUnitDismiss = {},
-            onUnitSelect = {},
-            goal = 10,
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState("홍길동"),
+                goalCount = 1,
+                stepTarget = 1000,
+            ),
+            goal = 1,
             onGoalChange = {},
-            steps = 0,
+            steps = 1000,
             onStepsChange = {},
             onNext = {},
             onPrev = {},
         )
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-private fun GoalStepFilledPreview() {
-    WalkItTheme {
-        GoalStep(
-            unit = "주",
-            unitMenuExpanded = false,
-            onUnitClick = {},
-            onUnitDismiss = {},
-            onUnitSelect = {},
-            goal = 5,
-            onGoalChange = {},
-            steps = 10000,
-            onStepsChange = {},
-            onNext = {},
-            onPrev = {},
-        )
-    }
-}
-

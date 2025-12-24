@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.ui.friend.FriendViewModel
 import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.SearchBar
 import team.swyp.sdu.ui.friend.component.FriendCard
 
 @Composable
@@ -33,7 +34,7 @@ fun FriendSearchScreen(
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val searchUiState by viewModel.searchUiState.collectAsStateWithLifecycle()
-
+    val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
     Column(
         modifier =
@@ -43,16 +44,36 @@ fun FriendSearchScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        AppHeader("", onNavigateBack = {
+        AppHeader(title = "친구 찾기", onNavigateBack = {
             viewModel.clearQuery()
             onNavigateBack()
         })
 
+        // 검색 바 (서버 검색)
+        SearchBar(
+            query = query,
+            onQueryChange = viewModel::updateQuery,
+            onClear = {
+                viewModel.clearQuery()
+            },
+            onSearch = {
+                val trimmedQuery = query.trim()
+                if (trimmedQuery.isNotBlank()) {
+                    viewModel.searchUser(trimmedQuery)
+                }
+            },
+            placeholder = "친구의 닉네임을 검색해보세요.",
+        )
+
         // 검색 결과 화면 표시
         SearchResultScreen(
             searchUiState = searchUiState,
+            isFollowing = isFollowing,
             onFollowClick = {
-                // TODO: 팔로우 API 호출
+                // 검색 결과가 Success 상태일 때만 팔로우 가능
+                if (searchUiState is SearchUiState.Success) {
+                    viewModel.followUser((searchUiState as SearchUiState.Success).result.nickname)
+                }
             },
             contentPaddingBottom =
                 with(LocalDensity.current) {
@@ -68,6 +89,7 @@ fun FriendSearchScreen(
 @Composable
 private fun SearchResultScreen(
     searchUiState: SearchUiState,
+    isFollowing: Boolean,
     onFollowClick: () -> Unit,
     contentPaddingBottom: Dp,
 ) {
@@ -113,6 +135,7 @@ private fun SearchResultScreen(
                             imageName = searchUiState.result.imageName,
                             followStatus = searchUiState.result.followStatus,
                             onFollowClick = onFollowClick,
+                            enabled = !isFollowing,
                         )
                     }
                 }

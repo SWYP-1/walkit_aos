@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,6 +32,8 @@ import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.presentation.viewmodel.CosmeticItemViewModel
 import team.swyp.sdu.presentation.viewmodel.CosmeticItemUiState
 import team.swyp.sdu.presentation.viewmodel.PurchaseState
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 
 /**
  * 상점 화면
@@ -71,7 +72,8 @@ fun ShopScreen(
         ) {
             when (val state = uiState) {
                 is CosmeticItemUiState.Loading -> {
-                    CircularProgressIndicator(
+                    CustomProgressIndicator(
+                        size = ProgressIndicatorSize.Medium,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
@@ -119,7 +121,7 @@ fun ShopScreen(
                                 modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                CircularProgressIndicator()
+                                CustomProgressIndicator(size = ProgressIndicatorSize.Small)
                                 Text(
                                     text = "구매 처리 중...",
                                     modifier = Modifier.padding(top = 8.dp),
@@ -145,7 +147,7 @@ fun ShopScreen(
                                 modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                CircularProgressIndicator()
+                                CustomProgressIndicator(size = ProgressIndicatorSize.Small)
                                 Text(
                                     text = "결제 처리 중...",
                                     style = MaterialTheme.typography.titleMedium,
@@ -282,6 +284,11 @@ private fun ItemCard(
         }
     }
 }
+
+
+
+
+
 
 
 

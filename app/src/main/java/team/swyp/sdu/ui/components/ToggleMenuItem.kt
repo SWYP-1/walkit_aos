@@ -82,7 +82,7 @@ fun ToggleMenuItem(
  * - Thumb 색상: White
  */
 @Composable
-private fun CustomSwitch(
+fun CustomSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,

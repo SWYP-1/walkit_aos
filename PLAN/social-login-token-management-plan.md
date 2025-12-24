@@ -335,3 +335,8 @@ app/src/main/java/team/swyp/sdu/
 4. **에러 처리**: 서버 로그인 실패 시 적절한 에러 메시지 표시
 5. **토큰 갱신**: 향후 refresh token을 사용한 자동 갱신 로직 추가 고려
 
+
+
+
+
+

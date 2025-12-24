@@ -36,6 +36,8 @@ class FcmTokenManager @Inject constructor(
     /**
      * 앱 실행 시 FCM 토큰 확인 및 로그 출력
      * 저장된 토큰이 있으면 출력하고, 없으면 새로 발급
+     * 
+     * 주의: 서버 전송은 하지 않습니다. 서버 전송은 onNewToken에서만 처리됩니다.
      */
     suspend fun logCurrentToken() {
         try {
@@ -51,15 +53,11 @@ class FcmTokenManager @Inject constructor(
             val currentToken = firebaseMessaging.token.await()
             Timber.d("FCM 토큰 (현재 토큰): $currentToken")
             
-            // 저장된 토큰과 다르면 업데이트
+            // 저장된 토큰과 다르면 로컬에만 업데이트 (서버 전송은 onNewToken에서 처리)
             if (savedToken != currentToken) {
-                Timber.d("FCM 토큰 변경 감지, 업데이트: $savedToken -> $currentToken")
+                Timber.d("FCM 토큰 변경 감지, 로컬 업데이트: $savedToken -> $currentToken")
                 fcmTokenDataStore.saveToken(currentToken)
-                
-                // 로그인 상태라면 서버에 등록
-                if (isLoggedIn()) {
-                    syncTokenToServer(currentToken)
-                }
+                // 서버 전송은 onNewToken에서 자동으로 처리되므로 여기서는 하지 않음
             }
         } catch (e: Exception) {
             Timber.e(e, "FCM 토큰 확인 실패")
@@ -69,6 +67,9 @@ class FcmTokenManager @Inject constructor(
     /**
      * 앱 최초 실행 시 FCM 토큰 발급 및 로컬 저장
      * 재시도 로직 포함 (최대 3회, 지수 백오프)
+     * 
+     * 주의: 서버 전송은 하지 않습니다. 서버 전송은 onNewToken에서만 처리됩니다.
+     * 로그인 후 서버에 전송하려면 syncTokenToServer()를 별도로 호출하세요.
      */
     suspend fun initializeToken() {
         val maxRetries = 3
@@ -79,11 +80,7 @@ class FcmTokenManager @Inject constructor(
                 val token = firebaseMessaging.token.await()
                 Timber.d("FCM 토큰 발급 성공: $token")
                 fcmTokenDataStore.saveToken(token)
-
-                // 로그인 상태라면 서버에 등록
-                if (isLoggedIn()) {
-                    syncTokenToServer(token)
-                }
+                // 서버 전송은 onNewToken에서 자동으로 처리되므로 여기서는 하지 않음
                 return // 성공 시 종료
             } catch (e: Exception) {
                 val isLastAttempt = attempt == maxRetries - 1

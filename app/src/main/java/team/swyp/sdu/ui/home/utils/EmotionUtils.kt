@@ -17,6 +17,17 @@ fun getEmotionDrawableRes(emotionType: EmotionType): Int {
     }
 }
 
+fun getEmotionFaceDrawableRes(emotionType: EmotionType): Int {
+    return when (emotionType) {
+        EmotionType.HAPPY -> R.drawable.ic_face_happy
+        EmotionType.JOYFUL -> R.drawable.ic_face_joyfull
+        EmotionType.CONTENT -> R.drawable.ic_face_content
+        EmotionType.DEPRESSED -> R.drawable.ic_face_depressed
+        EmotionType.TIRED -> R.drawable.ic_face_tired
+        EmotionType.ANXIOUS -> R.drawable.ic_face_anxious
+    }
+}
+
 /**
  * 감정 타입을 한글 이름으로 변환
  */
@@ -30,4 +41,9 @@ fun getEmotionName(emotionType: EmotionType): String {
         EmotionType.ANXIOUS -> "짜증남"
     }
 }
+
+
+
+
+
 
