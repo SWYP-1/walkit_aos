@@ -315,8 +315,10 @@ class WalkingViewModel @Inject constructor(
             _uiState.value = WalkingUiState.SessionSaved
         } catch (e: Exception) {
             Timber.e(e, "부분 세션 저장 실패")
-            // 에러 발생 시 Idle 상태로 변경 (재시도 가능하도록)
-            _uiState.value = WalkingUiState.Idle
+            // 에러 발생 시 Error 상태로 변경 (사용자에게 에러 표시)
+            _uiState.value = WalkingUiState.Error(
+                message = e.message ?: "세션 저장에 실패했습니다. 다시 시도해주세요."
+            )
             throw e // 에러를 다시 던져서 호출자가 처리할 수 있도록 함
         }
     }

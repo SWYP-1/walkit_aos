@@ -1,6 +1,7 @@
 package team.swyp.sdu.ui.walking
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,20 +81,20 @@ fun WalkingResultRoute(
             Timber.d("  📊 uiState: ${viewModel.uiState.value}")
         }
 
-    // Goal 데이터 추출
-    val goal: Goal? = when (val goal = goalState) {
-        is team.swyp.sdu.core.Result.Success -> goal.data
-        else -> null
-    }
-
-    // 이번주 동기화된 세션 목록 추출
-    val syncedSessionsThisWeek = (resultUiState as? WalkingResultUiState.Success)
-        ?.sessionsThisWeek
-        ?.filter { session ->
-            // TODO: SYNCED 상태인 세션만 필터링 (현재는 모든 세션 사용)
-            true // 임시로 모든 세션 사용
+        // Goal 데이터 추출
+        val goal: Goal? = when (val goal = goalState) {
+            is team.swyp.sdu.core.Result.Success -> goal.data
+            else -> null
         }
-        .orEmpty()
+
+        // 이번주 동기화된 세션 목록 추출
+        val syncedSessionsThisWeek = (resultUiState as? WalkingResultUiState.Success)
+            ?.sessionsThisWeek
+            ?.filter { session ->
+                // TODO: SYNCED 상태인 세션만 필터링 (현재는 모든 세션 사용)
+                true // 임시로 모든 세션 사용
+            }
+            .orEmpty()
 
         WalkingResultScreen(
             modifier = modifier,
@@ -116,5 +117,6 @@ fun WalkingResultRoute(
                 viewModel.deleteSessionNote(localId)
             },
         )
+    }
 }
 
