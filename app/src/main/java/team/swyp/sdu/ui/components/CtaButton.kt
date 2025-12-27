@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import team.swyp.sdu.ui.theme.Green4
 import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.White
 import team.swyp.sdu.ui.theme.walkItTypography
 
@@ -48,8 +49,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun CtaButton(
     text: String,
-    textColor : Color = White,
-    buttonColor : Color = Green4,
+    textColor: Color = White,
+    buttonColor: Color = Green4,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -63,7 +64,9 @@ fun CtaButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(51.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(51.dp),
         enabled = enabled,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(8.dp),
@@ -111,58 +114,69 @@ fun CtaButton(
 @Preview(name = "흰색 글자 + 초록 바탕 (아이콘 없음)")
 @Composable
 fun CtaButtonPreview1() {
-    CtaButton(
-        text = "CTA button",
-        textColor = White,
-        buttonColor = Green4,
-        onClick = {},
-    )
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            textColor = White,
+            buttonColor = Green4,
+            onClick = {},
+        )
+    }
+
 }
 
 @Preview(name = "초록 글자 + 흰색 바탕 (아이콘 없음)")
 @Composable
 fun CtaButtonPreview2() {
-    CtaButton(
-        text = "CTA button",
-        textColor = Green4,
-        buttonColor = White,
-        onClick = {},
-    )
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            textColor = Green4,
+            buttonColor = White,
+            onClick = {},
+        )
+    }
+
 }
 
 @Preview(name = "흰색 글자 + 초록 바탕 (아이콘 있음)")
 @Composable
 fun CtaButtonPreview3() {
-    CtaButton(
-        text = "CTA button",
-        textColor = White,
-        buttonColor = Green4,
-        onClick = {},
-        icon = {
-            Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = null,
-                tint = White,
-            )
-        },
-    )
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            textColor = White,
+            buttonColor = Green4,
+            onClick = {},
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = White,
+                )
+            },
+        )
+    }
+
 }
 
 @Preview(name = "초록 글자 + 흰색 바탕 (아이콘 있음)")
 @Composable
 fun CtaButtonPreview4() {
-    CtaButton(
-        text = "CTA button",
-        textColor = Green4,
-        buttonColor = White,
-        onClick = {},
-        icon = {
-            Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = null,
-                tint = Green4,
-            )
-        },
-    )
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            textColor = Green4,
+            buttonColor = White,
+            onClick = {},
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = Green4,
+                )
+            },
+        )
+    }
 }
 

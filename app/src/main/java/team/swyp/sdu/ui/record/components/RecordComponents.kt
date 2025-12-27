@@ -17,16 +17,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,11 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,13 +50,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
+import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
-import team.swyp.sdu.ui.components.WheelDatePickerDialog
 import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.theme.Grey10
-import team.swyp.sdu.ui.theme.Grey2
-import team.swyp.sdu.ui.theme.Grey7
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -255,106 +249,108 @@ fun WeekSection(
     }
 }
 
-/**
- * 일간 섹션 컴포넌트
- */
-@Composable
-fun DaySection(
-    stats: WalkAggregate,
-    sessions: List<WalkingSession>,
-    dateLabel: String,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    val currentIndex by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex.coerceAtMost(
-                (sessions.size - 1).coerceAtLeast(
-                    0
-                )
-            )
-        }
-    }
-    val totalDistanceMeters by remember(sessions) {
-        mutableStateOf(
-            sessions.fold(0.0) { acc, session ->
-                acc + computeRouteDistanceMeters(session.locations).coerceAtLeast(session.totalDistance.toDouble())
-            },
-        )
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // 날짜 네비게이터
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onPrev) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "이전 날짜")
-            }
-
-            Text(
-                text = dateLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-
-            IconButton(onClick = onNext) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, "다음 날짜")
-            }
-        }
-
-        // 일간 통계 카드 (평균 걸음, 산책 시간)
-        WalkingStatsCard(
-            sessions = sessions,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // 세션 목록 (좌우 스크롤)
-        if (sessions.isNotEmpty()) {
+///**
+// * 일간 섹션 컴포넌트
+// */
+//@Composable
+//fun DaySection(
+//    stats: WalkAggregate,
+//    sessions: List<WalkingSession>,
+//    dateLabel: String,
+//    onPrev: () -> Unit,
+//    onNext: () -> Unit,
+//) {
+//    val listState = rememberLazyListState()
+//    val scope = rememberCoroutineScope()
+//    val currentIndex by remember {
+//        derivedStateOf {
+//            listState.firstVisibleItemIndex.coerceAtMost(
+//                (sessions.size - 1).coerceAtLeast(
+//                    0
+//                )
+//            )
+//        }
+//    }
+//    val totalDistanceMeters by remember(sessions) {
+//        mutableStateOf(
+//            sessions.fold(0.0) { acc, session ->
+//                acc + computeRouteDistanceMeters(session.locations).coerceAtLeast(session.totalDistance.toDouble())
+//            },
+//        )
+//    }
+//
+//    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+//        // 날짜 네비게이터
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween,
+//            verticalAlignment = Alignment.CenterVertically,
+//        ) {
+//            IconButton(onClick = onPrev) {
+//                Icon(Icons.AutoMirrored.Filled.ArrowBack, "이전 날짜")
+//            }
+//
+//            Text(
+//                text = dateLabel,
+//                style = MaterialTheme.typography.titleMedium,
+//                fontWeight = FontWeight.Bold,
+//            )
+//
+//            IconButton(onClick = onNext) {
+//                Icon(Icons.AutoMirrored.Filled.ArrowForward, "다음 날짜")
+//            }
+//        }
+//
+//        // 일간 통계 카드 (평균 걸음, 산책 시간)
+//        WalkingStatsCard(
+//            sessions = sessions,
+//            modifier = Modifier.fillMaxWidth(),
+//        )
+//
+//        // 세션 목록 (좌우 스크롤)
+//        if (sessions.isNotEmpty()) {
+////            LazyRow(
+////                state = listState,
+////                horizontalArrangement = Arrangement.spacedBy(8.dp),
+////                modifier = Modifier.fillMaxWidth(),
+////            ) {
+////                items(sessions.size) { index ->
+////                    val session = sessions[index]
+////                    WalkingDiaryCard(session = session)
+////                }
+////            }
 //            LazyRow(
 //                state = listState,
 //                horizontalArrangement = Arrangement.spacedBy(8.dp),
 //                modifier = Modifier.fillMaxWidth(),
 //            ) {
 //                items(sessions.size) { index ->
-//                    val session = sessions[index]
-//                    WalkingDiaryCard(session = session)
+//                    WalkingDiaryCard(
+//                        session = sessions[index],
+//                        onEditClick = {},
+//                        onDeleteClick = {},
+//                        modifier = Modifier
+//                            .fillParentMaxWidth()
+//                    )
 //                }
 //            }
-            LazyRow(
-                state = listState,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                items(sessions.size) { index ->
-                    WalkingDiaryCard(
-                        session = sessions[index],
-                        modifier = Modifier
-                            .fillParentMaxWidth()
-                    )
-                }
-            }
-
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "이 날짜에 산책 기록이 없습니다.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                )
-            }
-        }
-    }
-}
+//
+//        } else {
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(200.dp),
+//                contentAlignment = Alignment.Center,
+//            ) {
+//                Text(
+//                    text = "이 날짜에 산책 기록이 없습니다.",
+//                    style = MaterialTheme.typography.bodyMedium,
+//                    color = Color.Gray,
+//                )
+//            }
+//        }
+//    }
+//}
 
 /**
  * 월 네비게이터 컴포넌트
@@ -723,88 +719,6 @@ fun EmotionCard(
     }
 }
 
-/**
- * 통계 행 컴포넌트
- */
-@Composable
-fun StatsRow(items: List<StatItem>) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items.forEach { item ->
-            Card(
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 12.dp),
-                    horizontalAlignment = Alignment.Start,
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = item.value,
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 세션 아이템 컴포넌트 (좌우 스크롤용)
- */
-@Composable
-private fun SessionItem(
-    session: WalkingSession,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    Card(
-        modifier = Modifier
-            .width(280.dp) // 가로 스크롤을 위한 고정 너비
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "산책 세션",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "걸음 수: ${session.stepCount}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = "거리: %.2f km".format(session.totalDistance / 1000),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-    }
-}
 
 /**
  * 섹션 카드 컴포넌트
@@ -965,20 +879,6 @@ private fun getEmotionKoreanName(emotionType: team.swyp.sdu.data.model.EmotionTy
     }
 
 /**
- * 감정 타입에 따른 색상과 이모지 반환
- */
-fun getMoodColorAndEmojiRecord(emotionType: team.swyp.sdu.data.model.EmotionType?): Pair<Color, String> =
-    when (emotionType) {
-        team.swyp.sdu.data.model.EmotionType.HAPPY -> Color(0xFFFFF59D) to "😊"
-        team.swyp.sdu.data.model.EmotionType.JOYFUL -> Color(0xFFFFD54F) to "🤩"
-        team.swyp.sdu.data.model.EmotionType.CONTENT -> Color(0xFF81C784) to "😄"
-        team.swyp.sdu.data.model.EmotionType.DEPRESSED -> Color(0xFF90A4AE) to "😔"
-        team.swyp.sdu.data.model.EmotionType.TIRED -> Color(0xFFB0BEC5) to "😴"
-        team.swyp.sdu.data.model.EmotionType.ANXIOUS -> Color(0xFF80DEEA) to "😰"
-        null -> Color.White to "-"
-    }
-
-/**
  * 산책 시간 포맷팅 함수
  * 0시간보다 작으면 분으로 표시, 그 외에는 시간과 분으로 표시
  */
@@ -1032,17 +932,19 @@ private fun computeRouteDistanceMeters(locations: List<team.swyp.sdu.data.model.
 @Composable
 fun WalkingDiaryCard(
     session: WalkingSession,
+    note: String,
+    isEditMode: Boolean,
+    setEditing :(Boolean) ->Unit,
+    onNoteChange: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    onEditClick: () -> Unit = {},
-    onDeleteClick: () -> Unit = {},
 ) {
     var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White,
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
@@ -1051,100 +953,45 @@ fun WalkingDiaryCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 상단: 감정 아이콘들 + 더보기 버튼
+            // 상단: 감정 아이콘 + 더보기
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 감정 아이콘들
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // 산책 전 감정
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
-                    ) {
-                        Card(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                EmotionIcon(emotionType = session.preWalkEmotion)
-                            }
-                        }
-                    }
-
+                    EmotionCircleIcon(session.preWalkEmotion)
                     // 산책 후 감정
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
-                    ) {
-                        Card(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                EmotionIcon(emotionType = session.postWalkEmotion)
-                            }
-                        }
-                    }
+                    EmotionCircleIcon(session.postWalkEmotion)
                 }
 
-                // 더보기 버튼
                 Box {
-                    IconButton(
-                        onClick = { showMenu = true },
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "더보기",
-                            modifier = Modifier.size(24.dp),
-                        )
+                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "더보기")
                     }
 
-                    // 더보기 메뉴
                     DiaryMoreMenu(
                         expanded = showMenu,
                         onDismiss = { showMenu = false },
                         onEditClick = {
                             showMenu = false
-                            onEditClick()
+                            setEditing(true) // ✅ 함수 호출로 바꿔야 함
+                            // 상위에서 isEditMode true로 관리
                         },
                         onDeleteClick = {
                             showMenu = false
-                            onDeleteClick()
-                        },
+                            onDeleteClick(session.id)
+                        }
                     )
                 }
             }
 
-            // 구분선
-            HorizontalDivider(
-                color = Color(0xFFF3F3F5),
-                thickness = 1.dp,
-            )
+            HorizontalDivider(color = Color(0xFFF3F3F5), thickness = 1.dp)
 
-            // 산책 일기 제목
             Text(
                 text = "산책 일기",
                 style = MaterialTheme.walkItTypography.bodyS,
@@ -1152,18 +999,21 @@ fun WalkingDiaryCard(
                 color = Color.Black,
             )
 
-            // 일기 내용 영역
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(138.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SemanticColor.backgroundWhiteSecondary)
-                    .padding(10.dp),
-                contentAlignment = Alignment.TopStart,
-            ) {
+            // 일기 내용
+            if (isEditMode) {
+                BasicTextField(
+                    value = note,
+                    onValueChange = onNoteChange,
+                    textStyle = MaterialTheme.walkItTypography.captionM.copy(
+                        color = SemanticColor.textBorderSecondary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(138.dp) // 기존 높이 유지
+                )
+            } else {
                 Text(
-                    text = session.note ?: "감정 일기 내용",
+                    text = note.ifEmpty { "감정 일기 내용" },
                     style = MaterialTheme.walkItTypography.captionM,
                     color = SemanticColor.textBorderSecondary,
                     maxLines = Int.MAX_VALUE,
@@ -1172,6 +1022,30 @@ fun WalkingDiaryCard(
         }
     }
 }
+
+@Composable
+private fun EmotionCircleIcon(emotion: EmotionType) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(Color.White),
+    ) {
+        Card(
+            modifier = Modifier.fillMaxSize(),
+            shape = CircleShape,
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                EmotionIcon(emotionType = emotion)
+            }
+        }
+    }
+}
+
 
 
 /**

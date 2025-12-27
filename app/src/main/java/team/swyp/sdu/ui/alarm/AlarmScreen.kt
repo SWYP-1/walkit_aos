@@ -35,6 +35,7 @@ import team.swyp.sdu.ui.components.ProgressIndicatorSize
  */
 @Composable
 fun AlarmScreen(
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
     viewModel: AlarmViewModel = hiltViewModel(),
 ) {
@@ -42,6 +43,7 @@ fun AlarmScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     AlarmScreenContent(
+        modifier = modifier,
         alarms = alarms,
         isLoading = isLoading,
         onNavigateBack = onNavigateBack,

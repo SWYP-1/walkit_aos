@@ -28,6 +28,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 fun GoalManagementRoute(
     viewModel: GoalManagementViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -36,6 +37,7 @@ fun GoalManagementRoute(
         onNavigateBack = onNavigateBack,
         onUpdateGoal = viewModel::updateGoal,
         onResetGoal = viewModel::resetGoal,
+        modifier = modifier,
     )
 }
 
@@ -66,7 +68,6 @@ fun GoalManagementScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .systemBarsPadding()
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {

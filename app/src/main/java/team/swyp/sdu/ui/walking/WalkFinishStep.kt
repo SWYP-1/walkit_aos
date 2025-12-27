@@ -26,12 +26,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun WalkingFinishStep(
+    modifier: Modifier = Modifier,
     onClose: () -> Unit,
     onSkip: () -> Unit,
     onRecordEmotion: () -> Unit,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
@@ -95,7 +96,7 @@ fun WalkingFinishStep(
 @Composable
 fun WalkFinishPreView(modifier: Modifier = Modifier) {
     MaterialTheme {
-        WalkingFinishStep({},{},{})
+        WalkingFinishStep(modifier = Modifier,{},{},{})
     }
 
 }

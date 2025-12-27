@@ -49,6 +49,7 @@ import team.swyp.sdu.ui.login.terms.TermsAgreementUiState
  */
 @Composable
 fun LoginRoute(
+    modifier: Modifier = Modifier,
     onNavigateToTermsAgreement: () -> Unit,
     onNavigateToMain: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
@@ -76,6 +77,7 @@ fun LoginRoute(
     }
 
     LoginScreen(
+        modifier = modifier,
         uiState = uiState,
         onKakaoLogin = { viewModel.loginWithKakaoTalk(context) },
         onNaverLogin = { viewModel.loginWithNaver(context, naverLoginLauncher) },
@@ -240,7 +242,7 @@ private fun LoginScreenWithTermsDialogPreview() {
                 onKakaoLogin = {},
                 onNaverLogin = {},
             )
-            
+
             // 약관 동의 다이얼로그 내용 표시 (프리뷰용 - Dialog 없이 직접 표시)
             Box(
                 modifier = Modifier.fillMaxSize(),

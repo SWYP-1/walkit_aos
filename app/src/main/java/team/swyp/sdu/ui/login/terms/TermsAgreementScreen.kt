@@ -43,6 +43,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
  */
 @Composable
 fun TermsAgreementRoute(
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
     onNavigateNext: () -> Unit = {},
     viewModel: TermsAgreementViewModel = hiltViewModel(),
@@ -50,6 +51,7 @@ fun TermsAgreementRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     TermsAgreementScreen(
+        modifier = modifier,
         uiState = uiState,
         onTermsAgreedChange = viewModel::updateTermsAgreed,
         onPrivacyAgreedChange = viewModel::updatePrivacyAgreed,

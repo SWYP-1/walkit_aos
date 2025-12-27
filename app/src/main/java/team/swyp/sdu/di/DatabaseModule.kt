@@ -29,6 +29,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import team.swyp.sdu.data.remote.cosmetic.CosmeticItemRemoteDataSource
 import javax.inject.Singleton
 
 /**
@@ -76,11 +77,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideCosmeticItemRepository(
-        purchasedItemDao: PurchasedItemDao,
-        appliedItemDao: AppliedItemDao,
-        billingManager: team.swyp.sdu.data.remote.billing.BillingManager,
+        cosmeticItemRemoteDataSource: CosmeticItemRemoteDataSource
     ): CosmeticItemRepository =
-        CosmeticItemRepositoryImpl(purchasedItemDao, appliedItemDao, billingManager)
+        CosmeticItemRepositoryImpl(cosmeticItemRemoteDataSource = cosmeticItemRemoteDataSource)
 
     @Provides
     @Singleton

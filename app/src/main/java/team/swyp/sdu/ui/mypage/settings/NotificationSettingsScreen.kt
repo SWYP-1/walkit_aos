@@ -13,7 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -42,6 +41,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
  */
 @Composable
 fun NotificationSettingsRoute(
+    modifier : Modifier = Modifier,
     viewModel: NotificationSettingsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
 ) {
@@ -56,6 +56,7 @@ fun NotificationSettingsRoute(
     // 패턴 B: Ready 상태일 때만 뷰 표시
     if (uiState is NotificationSettingsUiState.Ready) {
         NotificationSettingsScreen(
+            modifier = modifier,
             uiState = uiState as NotificationSettingsUiState.Ready,
             onNotificationEnabledChange = viewModel::setNotificationEnabled,
             onGoalNotificationEnabledChange = viewModel::setGoalNotificationEnabled,
@@ -102,7 +103,6 @@ fun NotificationSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .systemBarsPadding()
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
         AppHeader(

@@ -16,8 +16,8 @@ import team.swyp.sdu.domain.service.ActivityType
 @Entity(tableName = "walking_sessions")
 @TypeConverters(Converters::class)
 data class WalkingSessionEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: String,
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,

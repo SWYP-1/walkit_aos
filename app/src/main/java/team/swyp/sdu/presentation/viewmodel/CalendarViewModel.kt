@@ -161,10 +161,17 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun updateSessionNote(localId: Long, note: String) {
+    fun updateSessionNote(id: String, note: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                walkingSessionRepository.updateSessionNote(localId, note)
+                walkingSessionRepository.updateSessionNote(id, note)
+            }
+        }
+    }
+    fun deleteSessionNote(id: String){
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                walkingSessionRepository.updateSessionNote(id, "")
             }
         }
     }

@@ -124,8 +124,8 @@ class WalkRemoteDataSource @Inject constructor(
 
         // WalkSaveRequest 생성 (서버 요구사항: preWalkEmotion, postWalkEmotion, note, points, endTime, startTime, totalDistance, stepCount)
         val request = WalkingSessionRequest(
-            preWalkEmotion = session.preWalkEmotion.en,
-            postWalkEmotion = session.postWalkEmotion.en,
+            preWalkEmotion = session.preWalkEmotion.name,
+            postWalkEmotion = session.postWalkEmotion.name,
             note = session.note,
             points = walkPoints,
             endTime = session.endTime ?: System.currentTimeMillis(), // endTime이 null이면 현재 시간 사용

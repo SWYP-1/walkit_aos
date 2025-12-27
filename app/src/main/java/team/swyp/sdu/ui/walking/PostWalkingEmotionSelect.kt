@@ -60,6 +60,7 @@ fun PostWalkingEmotionSelectRoute(
     viewModel: WalkingViewModel,
     onNext: () -> Unit = {},
     onClose: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     // ViewModel 인스턴스 확인 로그
     LaunchedEffect(Unit) {
@@ -78,6 +79,7 @@ fun PostWalkingEmotionSelectRoute(
             }
         },
         onClose = onClose,
+        modifier = modifier,
     )
 }
 
@@ -91,10 +93,11 @@ private fun PostWalkingEmotionSelectScreen(
     onEmotionSelected: (EmotionType) -> Unit,
     onNextClick: () -> Unit,
     onClose: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     var showWarningDialog by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {

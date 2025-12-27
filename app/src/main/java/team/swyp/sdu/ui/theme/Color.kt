@@ -28,6 +28,7 @@ val Green1 = Color(0xFFF3FFF8)
 val Green3 = Color(0xFF86E27E)
 val Green4 = Color(0xFF52CE4B)
 val Green5 = Color(0xFF2ABB42)
+val Green6 = Color(0xFF22A04C)
 
 val Blue1 = Color(0xFFE9F2FF)
 val Blue6 = Color(0xFF1D7AFC)

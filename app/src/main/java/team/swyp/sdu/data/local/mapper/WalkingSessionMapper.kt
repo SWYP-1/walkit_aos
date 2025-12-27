@@ -25,15 +25,15 @@ object WalkingSessionMapper {
         syncState: SyncState,
     ): WalkingSessionEntity =
         WalkingSessionEntity(
-            id = 0,
+            id = session.id,
             startTime = session.startTime,
             endTime = session.endTime ?: 0L,
             stepCount = session.stepCount,
             locationsJson = json.encodeToString(session.locations),
             totalDistance = session.totalDistance,
             syncState = syncState,
-            preWalkEmotion = session.preWalkEmotion.en,
-            postWalkEmotion = session.postWalkEmotion.en,
+            preWalkEmotion = session.preWalkEmotion.name,
+            postWalkEmotion = session.postWalkEmotion.name,
             note = session.note,
             imageUrl = session.imageUrl, // Deprecated 필드 (하위 호환성 유지)
             localImagePath = session.localImagePath,
@@ -68,8 +68,8 @@ object WalkingSessionMapper {
      */
     fun WalkingSession.toRequest(): WalkingSessionRequest =
         WalkingSessionRequest(
-            preWalkEmotion = preWalkEmotion.en,
-            postWalkEmotion = postWalkEmotion.en,
+            preWalkEmotion = preWalkEmotion.name,
+            postWalkEmotion = postWalkEmotion.name,
             note = note,
             points = locations.toWalkPoints(),
             endTime = endTime ?: System.currentTimeMillis(), // endTime이 null이면 현재 시간 사용

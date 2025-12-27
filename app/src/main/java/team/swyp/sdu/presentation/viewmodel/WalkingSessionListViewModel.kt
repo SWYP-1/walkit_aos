@@ -52,7 +52,7 @@ class WalkingSessionListViewModel
         /**
          * 세션 삭제
          */
-        fun deleteSession(sessionId: Long) {
+        fun deleteSession(sessionId: String) {
             viewModelScope.launch {
                 try {
                     walkingSessionRepository.deleteSession(sessionId)

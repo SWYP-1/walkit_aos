@@ -29,6 +29,7 @@ import team.swyp.sdu.ui.friend.component.FriendCard
 
 @Composable
 fun FriendSearchScreen(
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     viewModel: FriendViewModel = hiltViewModel(),
@@ -39,7 +40,7 @@ fun FriendSearchScreen(
 
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                ,

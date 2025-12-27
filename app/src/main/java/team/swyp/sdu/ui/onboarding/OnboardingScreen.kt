@@ -23,6 +23,7 @@ import timber.log.Timber
 
 @Composable
 fun OnboardingScreen(
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
     onFinish: () -> Unit = {},
     viewModel: OnboardingViewModel = hiltViewModel(),
@@ -32,9 +33,7 @@ fun OnboardingScreen(
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier =
-                    Modifier
-                        .windowInsetsPadding(WindowInsets.navigationBars),
+                modifier = modifier,
             ) {
                 when (uiState.currentStep) {
                     0 -> NicknameStep(

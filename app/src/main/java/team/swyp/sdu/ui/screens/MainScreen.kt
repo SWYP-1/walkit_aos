@@ -1,8 +1,10 @@
 package team.swyp.sdu.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -57,7 +59,9 @@ fun MainScreen(
         }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
+        contentWindowInsets = WindowInsets.systemBars,
         floatingActionButton = {
             if (currentTabIndex == 0) {
                 // 홈 화면에서만 FloatingActionButton 표시
@@ -152,7 +156,9 @@ fun MainScreen(
                         onNavigateGoalManagement = {
                             navController.navigate(Screen.GoalManagement.route)
                         },
-                        onNavigateCharacterEdit = {},
+                        onNavigateCharacterEdit = {
+                            navController.navigate(Screen.DressingRoom.route)
+                        },
                         onNavigateNotificationSetting = {
                             navController.navigate(Screen.NotificationSettings.route)
                         },

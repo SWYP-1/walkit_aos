@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.record.dailyrecord
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,7 +44,6 @@ import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 import timber.log.Timber
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -100,6 +98,8 @@ fun DailyRecordRoute(
         selectedDate = selectedDate,
         sessionsForDate = sessionsForDate,
         modifier = modifier,
+        onDeleteClick = { localId -> viewModel.deleteSessionNote(localId) },
+        onUpdateNote = { localId, note -> viewModel.updateSessionNote(localId, note) },
         onNavigateBack = onNavigateBack,
     )
 }
@@ -121,21 +121,25 @@ fun DailyRecordScreen(
     selectedDate: LocalDate,
     sessionsForDate: List<WalkingSession>,
     modifier: Modifier = Modifier,
+    onUpdateNote: (String, String) -> Unit,
+    onDeleteClick: (String) -> Unit,
     onNavigateBack: () -> Unit = {},
 ) {
-    // 현재 선택된 세션 인덱스
-    var selectedSessionIndex by remember(sessionsForDate) {
-        mutableIntStateOf(if (sessionsForDate.isNotEmpty()) 0 else -1)
-    }
+    var selectedSessionIndex by remember(sessionsForDate) { mutableIntStateOf(if (sessionsForDate.isNotEmpty()) 0 else -1) }
+    val selectedSession = remember(selectedSessionIndex, sessionsForDate) { sessionsForDate.getOrNull(selectedSessionIndex) }
 
-    val selectedSession = remember(selectedSessionIndex, sessionsForDate) {
-        sessionsForDate.getOrNull(selectedSessionIndex)
-    }
-
+    // 상위에서 편집 상태와 note 관리
+    var isEditing by remember { mutableStateOf(false) }
+    var editedNote by remember { mutableStateOf(selectedSession?.note ?: "") }
     var showConfirmDialog by remember { mutableStateOf(false) }
 
-    val dateLabel = remember(selectedDate) {
-        selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일"))
+    // 시스템/물리 뒤로가기 처리
+    BackHandler(enabled = true) {
+        if (isEditing) {
+            showConfirmDialog = true
+        } else {
+            onNavigateBack()
+        }
     }
 
     Box(
@@ -145,10 +149,15 @@ fun DailyRecordScreen(
             .windowInsetsPadding(WindowInsets.systemBars),
     ) {
         Column(modifier = modifier) {
+            val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일"))
+
             // 헤더
             AppHeader(
                 title = dateLabel,
-                onNavigateBack = onNavigateBack,
+                onNavigateBack = {
+                    if (isEditing) showConfirmDialog = true
+                    else onNavigateBack()
+                },
             )
 
             if (selectedSession == null) {
@@ -157,8 +166,13 @@ fun DailyRecordScreen(
                 DailyRecordContent(
                     sessionsForDate = sessionsForDate,
                     selectedSessionIndex = selectedSessionIndex,
+                    selectedSession = selectedSession,
+                    editedNote = editedNote,
+                    onNoteChange = { editedNote = it },
                     onSessionSelected = { selectedSessionIndex = it },
-                    selectedSession = selectedSession
+                    onDeleteClick = onDeleteClick,
+                    isEditing = isEditing,
+                    setEditing = { isEditing = it }
                 )
             }
         }
@@ -168,10 +182,16 @@ fun DailyRecordScreen(
                 title = "변경된 사항이 있습니다.",
                 message = "저장하시겠습니까?",
                 onPositive = {
+                    onUpdateNote(selectedSession!!.id, editedNote)
+                    isEditing = false
                     showConfirmDialog = false
                     onNavigateBack()
                 },
-                onNegative = { showConfirmDialog = false },
+                onNegative = {
+                    isEditing = false
+                    showConfirmDialog = false
+                    onNavigateBack()
+                },
                 onDismiss = { showConfirmDialog = false }
             )
         }
@@ -182,8 +202,13 @@ fun DailyRecordScreen(
 fun DailyRecordContent(
     sessionsForDate: List<WalkingSession>,
     selectedSessionIndex: Int,
+    selectedSession: WalkingSession,
+    editedNote: String,
+    onNoteChange: (String) -> Unit,
     onSessionSelected: (Int) -> Unit,
-    selectedSession: WalkingSession
+    onDeleteClick: (String) -> Unit,
+    isEditing: Boolean,
+    setEditing: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -191,7 +216,6 @@ fun DailyRecordContent(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // 세션 썸네일 목록
         SessionThumbnailList(
             sessions = sessionsForDate,
             selectedIndex = selectedSessionIndex,
@@ -199,14 +223,12 @@ fun DailyRecordContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        // 원형 indicator
         SessionIndicatorRow(
             totalCount = sessionsForDate.size,
             selectedIndex = selectedSessionIndex,
             modifier = Modifier.fillMaxWidth(),
         )
 
-        // 선택된 세션의 통계 및 일기
         WalkingStatsCard(
             sessions = listOf(selectedSession),
             modifier = Modifier.fillMaxWidth(),
@@ -214,9 +236,11 @@ fun DailyRecordContent(
 
         WalkingDiaryCard(
             session = selectedSession,
-            modifier = Modifier.fillMaxWidth(),
-            onEditClick = {},
-            onDeleteClick = {}
+            note = editedNote,
+            onNoteChange = onNoteChange,
+            onDeleteClick = onDeleteClick,
+            isEditMode = isEditing,
+            setEditing = setEditing
         )
     }
 }
@@ -295,7 +319,9 @@ fun DailyRecordScreenWithSessionsPreview() {
         DailyRecordScreen(
             selectedDate = selectedDate,
             sessionsForDate = mockSessions,
-            onNavigateBack = {}
+            onNavigateBack = {},
+            onUpdateNote = { _, _ -> },
+            onDeleteClick = {}
         )
     }
 }
@@ -309,7 +335,9 @@ fun DailyRecordScreenEmptyPreview() {
         DailyRecordScreen(
             selectedDate = selectedDate,
             sessionsForDate = emptyList(),
-            onNavigateBack = {}
+            onNavigateBack = {},
+            onUpdateNote = { _, _ -> },
+            onDeleteClick = {}
         )
     }
 }

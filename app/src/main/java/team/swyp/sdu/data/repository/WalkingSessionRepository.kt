@@ -44,36 +44,36 @@ constructor(
     suspend fun saveSession(
         session: WalkingSession,
         imageUri: Uri? = null,
-    ): Long {
+    ): String {
         // 1. 로컬 저장 (PENDING)
         val entity = WalkingSessionMapper.toEntity(
             session,
             syncState = SyncState.PENDING
         )
-        val localId = walkingSessionDao.insert(entity)
+        val sessionUUID = session.id
 
         // 2. 서버 동기화 시도
         try {
             walkingSessionDao.updateSyncState(
-                localId,
+                sessionUUID,
                 SyncState.SYNCING
             )
 
-            syncToServer(session, imageUri, localId)
+            syncToServer(session, imageUri)
 
             walkingSessionDao.updateSyncState(
-                localId,
+                sessionUUID,
                 SyncState.SYNCED
             )
         } catch (e: Exception) {
             walkingSessionDao.updateSyncState(
-                localId,
+                sessionUUID,
                 SyncState.FAILED
             )
             Timber.w(e, "서버 동기화 실패")
         }
 
-        return localId
+        return sessionUUID
     }
 
 
@@ -99,15 +99,22 @@ constructor(
             .map { entities -> entities.map { WalkingSessionMapper.toDomain(it) } }
 
     /**
+     * ID로 세션 관찰 (Flow로 실시간 업데이트)
+     */
+    fun observeSessionById(id: String): Flow<WalkingSession?> =
+        walkingSessionDao.observeSessionById(id)
+            .map { entity -> entity?.let { WalkingSessionMapper.toDomain(it) } }
+
+    /**
      * ID로 세션 조회
      */
-    suspend fun getSessionById(id: Long): WalkingSession? =
+    suspend fun getSessionById(id: String): WalkingSession? =
         walkingSessionDao.getSessionById(id)?.let { WalkingSessionMapper.toDomain(it) }
 
     /**
      * 세션 삭제
      */
-    suspend fun deleteSession(id: Long) {
+    suspend fun deleteSession(id: String) {
         try {
             walkingSessionDao.deleteById(id)
             Timber.d("세션 삭제 완료: ID=$id")
@@ -127,7 +134,6 @@ constructor(
     private suspend fun syncToServer(
         session: WalkingSession,
         imageUri: Uri?,
-        localId: Long,
     ) = withContext(Dispatchers.IO) {
         val imageUriString = imageUri?.toString()
         val result = walkRemoteDataSource.saveWalk(session, imageUriString)
@@ -141,7 +147,7 @@ constructor(
                     val serverImageUrl = responseBody?.imageUrl
 
                     // Entity 업데이트 (serverImageUrl 저장)
-                    val entity = walkingSessionDao.getSessionById(localId)
+                    val entity = walkingSessionDao.getSessionById(session.id)
                     if (entity != null && serverImageUrl != null) {
                         val updatedEntity = entity.copy(
                             serverImageUrl = serverImageUrl
@@ -225,18 +231,18 @@ constructor(
      *   - note: null (나중에 업데이트)
      * @return 저장된 세션의 로컬 ID
      */
-    suspend fun createSessionPartial(session: WalkingSession): Long {
+    suspend fun createSessionPartial(session: WalkingSession): String {
         // 1. 로컬 저장 (PENDING 상태)
         val entity = WalkingSessionMapper.toEntity(
             session = session,
             syncState = SyncState.PENDING
         )
-        val localId = walkingSessionDao.insert(entity)
+        walkingSessionDao.insert(entity)
 
         // 서버 동기화는 하지 않음 (아직 완료되지 않았으므로)
 
-        Timber.d("부분 세션 저장 완료: localId=$localId")
-        return localId
+        Timber.d("부분 세션 저장 완료: Id=${session.id}")
+        return session.id
     }
 
     /**
@@ -246,14 +252,14 @@ constructor(
      * @param postWalkEmotion 선택된 산책 후 감정
      */
     suspend fun updatePostWalkEmotion(
-        localId: Long,
+        localId: String,
         postWalkEmotion: EmotionType
     ) {
         val entity = walkingSessionDao.getSessionById(localId)
             ?: throw IllegalStateException("세션을 찾을 수 없습니다: ID=$localId")
 
         val updatedEntity = entity.copy(
-            postWalkEmotion = postWalkEmotion.en
+            postWalkEmotion = postWalkEmotion.name
         )
 
         walkingSessionDao.update(updatedEntity)
@@ -332,7 +338,7 @@ constructor(
      * @param note 노트 텍스트 (선택사항, null이면 기존 값 유지)
      */
     suspend fun updateSessionImageAndNote(
-        localId: Long,
+        localId: String,
         imageUri: Uri? = null,
         note: String? = null
     ) {
@@ -359,7 +365,7 @@ constructor(
      *
      * @param localId 동기화할 세션의 로컬 ID
      */
-    suspend fun syncSessionToServer(localId: Long) {
+    suspend fun syncSessionToServer(localId: String) {
         val entity = walkingSessionDao.getSessionById(localId)
             ?: throw IllegalStateException("세션을 찾을 수 없습니다: ID=$localId")
 
@@ -468,14 +474,14 @@ constructor(
         }
     }
 
-    suspend fun updateSessionNote(localId: Long, newNote: String) {
-        val entity = walkingSessionDao.getSessionById(localId)
-            ?: throw IllegalStateException("세션을 찾을 수 없습니다: ID=$localId")
+    suspend fun updateSessionNote(id: String, newNote: String) {
+        val entity = walkingSessionDao.getSessionById(id)
+            ?: throw IllegalStateException("세션을 찾을 수 없습니다: ID=$id")
 
         val updatedEntity = entity.copy(note = newNote)
         walkingSessionDao.update(updatedEntity)
 
-        Timber.d("세션 노트 업데이트 완료: localId: $localId : note : $newNote)")
+        Timber.d("세션 노트 업데이트 완료: localId: $id : note : $newNote)")
 
     }
 }

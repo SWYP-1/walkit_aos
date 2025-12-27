@@ -37,7 +37,6 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -291,7 +290,6 @@ fun UserInfoManagementScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .systemBarsPadding()
             .background(SemanticColor.backgroundWhitePrimary)
             .padding(horizontal = 16.dp)
     ) {

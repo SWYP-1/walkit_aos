@@ -68,6 +68,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun FriendRoute(
     onNavigateBack: () -> Unit,
     onNavigateToSearch: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: FriendViewModel = hiltViewModel(),
 ) {
     val filteredFriends by viewModel.filteredFriends.collectAsStateWithLifecycle()
@@ -81,6 +82,7 @@ fun FriendRoute(
         onQueryChange = viewModel::updateQuery,
         onClearQuery = viewModel::clearQuery,
         onBlockFriend = viewModel::blockFriend,
+        modifier = modifier,
     )
 }
 
@@ -98,6 +100,7 @@ private fun FriendScreenContent(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onBlockFriend: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var menuTargetId by remember { mutableStateOf<String?>(null) }
     var confirmTarget by remember { mutableStateOf<Friend?>(null) }
@@ -320,6 +323,7 @@ private fun FriendScreenPreview() {
             onQueryChange = {},
             onClearQuery = {},
             onBlockFriend = {},
+            modifier = Modifier,
         )
     }
 }

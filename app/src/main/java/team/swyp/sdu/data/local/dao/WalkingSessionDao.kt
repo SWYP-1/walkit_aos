@@ -21,7 +21,7 @@ interface WalkingSessionDao {
      * 세션 삽입
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(session: WalkingSessionEntity): Long
+    suspend fun insert(session: WalkingSessionEntity)
 
     /**
      * 모든 세션 조회 (Flow로 실시간 업데이트)
@@ -45,10 +45,16 @@ interface WalkingSessionDao {
     ): Flow<List<WalkingSessionEntity>>
 
     /**
+     * ID로 세션 조회 (Flow로 실시간 관찰)
+     */
+    @Query("SELECT * FROM walking_sessions WHERE id = :id")
+    fun observeSessionById(id: String): Flow<WalkingSessionEntity?>
+
+    /**
      * ID로 세션 조회
      */
     @Query("SELECT * FROM walking_sessions WHERE id = :id")
-    suspend fun getSessionById(id: Long): WalkingSessionEntity?
+    suspend fun getSessionById(id: String): WalkingSessionEntity?
 
     /**
      * 세션 삭제
@@ -60,7 +66,7 @@ interface WalkingSessionDao {
      * ID로 세션 삭제
      */
     @Query("DELETE FROM walking_sessions WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: String)
 
     /**
      * 세션 업데이트
@@ -79,7 +85,7 @@ interface WalkingSessionDao {
      */
     @Query("UPDATE walking_sessions SET syncState = :syncState WHERE id = :id")
     suspend fun updateSyncState(
-        id: Long,
+        id: String,
         syncState: SyncState,
     )
 
@@ -90,7 +96,7 @@ interface WalkingSessionDao {
     @Deprecated("Use updateSyncState instead", ReplaceWith("updateSyncState(id, if (isSynced) SyncState.SYNCED else SyncState.PENDING)"))
     @Query("UPDATE walking_sessions SET syncState = CASE WHEN :isSynced = 1 THEN 'SYNCED' ELSE 'PENDING' END WHERE id = :id")
     suspend fun updateSyncStatus(
-        id: Long,
+        id: String,
         isSynced: Boolean,
     )
 

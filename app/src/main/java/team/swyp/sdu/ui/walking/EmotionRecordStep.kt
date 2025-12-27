@@ -92,6 +92,7 @@ fun EmotionRecordStepRoute(
     viewModel: WalkingViewModel,
     onNext: () -> Unit,
     onPrev: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val emotionPhotoUri by viewModel.emotionPhotoUri.collectAsStateWithLifecycle()
     val emotionText by viewModel.emotionText.collectAsStateWithLifecycle()
@@ -167,6 +168,7 @@ fun EmotionRecordStepRoute(
         galleryLauncher = galleryLauncher,
         cameraPermissionLauncher = cameraPermissionLauncher,
         galleryPermissionLauncher = galleryPermissionLauncher,
+        modifier = modifier,
     )
 }
 
@@ -187,11 +189,12 @@ private fun EmotionRecordStepScreen(
     galleryLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     cameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     galleryPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+    modifier: Modifier = Modifier,
 ) {
     when (uiState) {
         is EmotionRecordStepUiState.Loading -> {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
@@ -236,6 +239,7 @@ private fun EmotionRecordStepScreen(
                 galleryLauncher = galleryLauncher,
                 cameraPermissionLauncher = cameraPermissionLauncher,
                 galleryPermissionLauncher = galleryPermissionLauncher,
+                modifier = modifier,
             )
         }
     }
@@ -257,6 +261,7 @@ private fun EmotionRecordStepScreenContent(
     cameraImageUri: Uri?,
     cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>,
     galleryLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+    modifier: Modifier = Modifier,
     cameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     galleryPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
 ) {
@@ -264,7 +269,7 @@ private fun EmotionRecordStepScreenContent(
     val coroutineScope = rememberCoroutineScope()
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
     ) {

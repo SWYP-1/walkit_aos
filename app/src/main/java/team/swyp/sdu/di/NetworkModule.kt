@@ -1,6 +1,7 @@
 package team.swyp.sdu.di
 
 import team.swyp.sdu.data.api.auth.AuthApi
+import team.swyp.sdu.data.api.cosmetic.CosmeticItemApi
 import team.swyp.sdu.data.api.follower.FollowerApi
 import team.swyp.sdu.data.api.goal.GoalApi
 import team.swyp.sdu.data.api.mission.MissionApi
@@ -144,4 +145,10 @@ object NetworkModule {
     fun provideFollowerApi(
         @Named("walkit") retrofit: Retrofit,
     ): FollowerApi = retrofit.create(FollowerApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCosmeticItemApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): CosmeticItemApi = retrofit.create(CosmeticItemApi::class.java)
 }

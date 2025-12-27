@@ -13,9 +13,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
@@ -47,7 +52,22 @@ class WalkingViewModel @Inject constructor(
     private var lastRawStepCount = 0
     
     // 현재 세션의 로컬 ID 저장
-    private var currentSessionLocalId: Long? = null
+    private val _currentSessionLocalId = MutableStateFlow<String?>(null)
+
+    // 현재 세션을 Flow로 관찰 (DB 변경 시 자동 업데이트)
+    val currentSession: StateFlow<WalkingSession?> = _currentSessionLocalId
+        .flatMapLatest { id ->
+            if (id != null) {
+                walkingSessionRepository.observeSessionById(id)
+            } else {
+                flowOf(null)
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
     
     // 산책 전 감정을 저장 (StateFlow로 통일하여 일관성 유지)
     private val _preWalkingEmotion = MutableStateFlow<EmotionType?>(null)
@@ -285,18 +305,18 @@ class WalkingViewModel @Inject constructor(
         
         // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
         try {
-            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$currentSessionLocalId")
-            currentSessionLocalId = walkingSessionRepository.createSessionPartial(completedSession)
-            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$currentSessionLocalId, postEmotion=${completedSession.postWalkEmotion}")
-            Timber.d("부분 세션 저장 완료: localId=$currentSessionLocalId, postEmotion=${completedSession.postWalkEmotion}")
-            
-            // 세션 저장 완료 후 Completed 상태로 변경
-            _uiState.value = WalkingUiState.Completed(completedSession)
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=${_currentSessionLocalId.value}")
+            val sessionId = walkingSessionRepository.createSessionPartial(completedSession)
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
+            Timber.d("부분 세션 저장 완료: localId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
+
+            // 세션 저장 완료 후 SessionSaved 상태로 변경 (세션 데이터는 Flow로 관찰)
+            _currentSessionLocalId.value = sessionId
+            _uiState.value = WalkingUiState.SessionSaved
         } catch (e: Exception) {
             Timber.e(e, "부분 세션 저장 실패")
-            // 에러 발생해도 Completed 상태로 변경 (메모리에 세션 있음)
-            // 사용자는 정상적으로 결과 화면을 볼 수 있음
-            _uiState.value = WalkingUiState.Completed(completedSession)
+            // 에러 발생 시 Idle 상태로 변경 (재시도 가능하도록)
+            _uiState.value = WalkingUiState.Idle
             throw e // 에러를 다시 던져서 호출자가 처리할 수 있도록 함
         }
     }
@@ -457,17 +477,15 @@ class WalkingViewModel @Inject constructor(
     fun updatePostWalkEmotion(postWalkEmotion: EmotionType) {
         viewModelScope.launch {
             try {
-                val localId = currentSessionLocalId
+                val localId = _currentSessionLocalId.value
                     ?: throw IllegalStateException("저장된 세션이 없습니다")
-                
+
+                // DB만 업데이트 (Flow가 자동으로 UI 갱신)
                 walkingSessionRepository.updatePostWalkEmotion(
                     localId = localId,
                     postWalkEmotion = postWalkEmotion
                 )
-                
-                // ViewModel 상태도 업데이트
-                _postWalkingEmotion.value = postWalkEmotion
-                
+
                 Timber.d("산책 후 감정 업데이트 완료: localId=$localId, emotion=$postWalkEmotion")
             } catch (e: Exception) {
                 Timber.e(e, "산책 후 감정 업데이트 실패")
@@ -487,7 +505,7 @@ class WalkingViewModel @Inject constructor(
      */
      fun updateSessionImageAndNote() {
          viewModelScope.launch {
-             val localId = currentSessionLocalId
+             val localId = _currentSessionLocalId.value
                  ?: throw IllegalStateException("저장된 세션이 없습니다. 산책을 먼저 완료해주세요.")
 
              val imageUri = _emotionPhotoUri.value // URI 그대로 전달
@@ -509,7 +527,7 @@ class WalkingViewModel @Inject constructor(
      * @param localId 업데이트할 세션의 로컬 ID
      * @param note 업데이트할 노트 텍스트
      */
-    fun updateSessionNote(localId: Long, note: String) {
+    fun updateSessionNote(localId: String, note: String) {
         viewModelScope.launch {
             try {
                 walkingSessionRepository.updateSessionImageAndNote(
@@ -529,7 +547,7 @@ class WalkingViewModel @Inject constructor(
      * 
      * @param localId 삭제할 세션의 로컬 ID
      */
-    fun deleteSessionNote(localId: Long) {
+    fun deleteSessionNote(localId: String) {
         viewModelScope.launch {
             try {
                 walkingSessionRepository.updateSessionImageAndNote(
@@ -554,7 +572,7 @@ class WalkingViewModel @Inject constructor(
             try {
                 _snapshotState.value = SnapshotState.Syncing
                 
-                val localId = currentSessionLocalId
+                val localId = _currentSessionLocalId.value
                     ?: throw IllegalStateException("저장된 세션이 없습니다")
                 
                 // nonCancellable 컨텍스트를 사용하여 화면을 벗어나도 네트워크 요청이 계속 진행되도록 함
@@ -568,7 +586,7 @@ class WalkingViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 // nonCancellable을 사용했으므로 이 경우는 발생하지 않아야 하지만, 안전을 위해 처리
                 _snapshotState.value = SnapshotState.Error("서버 동기화 취소됨")
-                Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${currentSessionLocalId}")
+                Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${_currentSessionLocalId.value}")
             } catch (e: Exception) {
                 // 실제 서버 에러인 경우에만 로깅 및 사용자 알림
                 _snapshotState.value = SnapshotState.Error(e.message ?: "서버 동기화 실패")
@@ -611,14 +629,14 @@ class WalkingViewModel @Inject constructor(
     /**
      * 현재 세션의 로컬 ID 노출 (WalkingResultScreen에서 사용)
      */
-    val currentSessionLocalIdValue: Long?
-        get() = currentSessionLocalId
+    val currentSessionLocalIdValue: String?
+        get() = _currentSessionLocalId.value
     
     /**
      * ID로 세션 조회 (WalkingResultScreen에서 사용)
      */
-    suspend fun getSessionById(localId: Long): WalkingSession? {
-        return walkingSessionRepository.getSessionById(localId)
+    suspend fun getSessionById(id: String): WalkingSession? {
+        return walkingSessionRepository.getSessionById(id)
     }
     
     /**
@@ -627,7 +645,7 @@ class WalkingViewModel @Inject constructor(
      * @param imagePath 스냅샷 파일 경로
      */
     suspend fun saveSnapshotToSession(imagePath: String?) {
-        val localId = currentSessionLocalId
+        val localId = _currentSessionLocalId.value
             ?: throw IllegalStateException("저장된 세션이 없습니다")
         
         if (imagePath != null) {
@@ -722,16 +740,12 @@ sealed interface WalkingUiState {
     /**
      * 세션 저장 중 (로딩 화면 표시)
      */
-    data class SavingSession(
-        val session: WalkingSession,
-    ) : WalkingUiState
+    data object SavingSession : WalkingUiState
 
     /**
-     * 산책 완료
+     * 세션 저장 완료 (DB에 저장됨, Flow로 데이터 관찰)
      */
-    data class Completed(
-        val session: WalkingSession, // TODO: Add proper session type
-    ) : WalkingUiState
+    data object SessionSaved : WalkingUiState
 
     /**
      * 오류 상태

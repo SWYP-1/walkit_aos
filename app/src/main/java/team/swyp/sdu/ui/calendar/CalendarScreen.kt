@@ -57,6 +57,7 @@ import team.swyp.sdu.data.model.Emotion
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.presentation.viewmodel.WalkingSessionListViewModel
+import team.swyp.sdu.utils.NumberUtils
 
 @Composable
 fun CalendarScreen(
@@ -450,7 +451,7 @@ private fun StatisticsCards(
     ) {
         StatisticCard(
             title = "Activity",
-            value = formatNumber(totalSteps),
+            value = NumberUtils.formatNumber(totalSteps),
             unit = "Steps",
             modifier = Modifier.weight(1f),
         )
@@ -523,9 +524,6 @@ fun getMoodColorAndEmoji(emotionType: EmotionType?): Pair<Color, String> =
         EmotionType.ANXIOUS -> Color(0xFFF48FB1) to "😰"
         null -> Color.White to "-"
     }
-
-private fun formatNumber(number: Int): String =
-    number.toString().reversed().chunked(3).joinToString(",").reversed()
 
 private fun getMoodEmoji(mood: String): String =
     when (mood.lowercase()) {

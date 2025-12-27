@@ -20,10 +20,10 @@ object EnumConverter {
      * @return EmotionType의 en 문자열
      */
     fun fromEmotionType(value: EmotionType?): String =
-        value?.en ?: EmotionType.CONTENT.en
+        value?.name ?: EmotionType.CONTENT.name
 
     /**
-     * String을 EmotionType으로 안전하게 변환 (en 값으로 매칭)
+     * String을 EmotionType으로 안전하게 변환 (name 값으로 매칭)
      *
      * 변환이 실패하는 경우:
      * 1. 빈 문자열인 경우
@@ -32,7 +32,7 @@ object EnumConverter {
      *
      * 이 경우 기본값(CONTENT)을 반환합니다.
      *
-     * @param value 변환할 문자열 (en 값 또는 name)
+     * @param value 변환할 문자열 (name 값)
      * @return 변환된 EmotionType (실패 시 CONTENT)
      */
     fun toEmotionType(value: String?): EmotionType =
@@ -41,10 +41,7 @@ object EnumConverter {
                 Timber.w("빈 문자열을 EmotionType으로 변환 시도, 기본값(CONTENT) 사용")
                 EmotionType.CONTENT
             } else {
-                // 먼저 en 값으로 매칭 시도
-                EmotionType.values().find { it.en.equals(value, ignoreCase = true) }
-                    // en 값으로 찾지 못하면 name으로 시도 (하위 호환성)
-                    ?: EmotionType.valueOf(value.uppercase())
+                EmotionType.valueOf(value.uppercase())
             }
         } catch (e: IllegalArgumentException) {
             Timber.w(e, "유효하지 않은 EmotionType 값: '$value', 기본값(CONTENT) 사용")

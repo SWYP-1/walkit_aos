@@ -79,6 +79,7 @@ import java.util.concurrent.TimeUnit
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WalkingScreen(
+    modifier : Modifier = Modifier,
     viewModel: WalkingViewModel = hiltViewModel(),
     onNavigateToFinish: () -> Unit = {},
 ) {
@@ -104,7 +105,7 @@ fun WalkingScreen(
 
     LaunchedEffect(Unit) {
         val currentState = viewModel.uiState.value
-        if (currentState is WalkingUiState.Completed) {
+        if (currentState is WalkingUiState.SessionSaved) {
 //            viewModel.reset()
         }
     }
@@ -112,7 +113,7 @@ fun WalkingScreen(
     DisposableEffect(Unit) {
         onDispose {
             val currentState = viewModel.uiState.value
-            if (currentState !is WalkingUiState.Completed &&
+            if (currentState !is WalkingUiState.SessionSaved &&
                 currentState !is WalkingUiState.Walking
             ) {
 //                viewModel.reset()
@@ -122,7 +123,7 @@ fun WalkingScreen(
 
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -196,7 +197,7 @@ fun WalkingScreen(
                 }
             }
 
-            is WalkingUiState.Completed -> {
+            is WalkingUiState.SessionSaved -> {
                 // 세션 저장 완료 후 자동으로 다음 화면으로 이동
                 LaunchedEffect(Unit) {
                     onNavigateToFinish()

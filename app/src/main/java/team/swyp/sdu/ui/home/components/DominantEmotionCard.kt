@@ -88,7 +88,7 @@ fun DominantEmotionCard(
                     )
                 } else {
                     Text(
-                        text = "${emotionType.name} 감정을 7일 동안 ${emotionCnt}회 경험했어요!\n남은 일상도 워킷과 함께 기쁘게 보내볼까요?",
+                        text = "${emotionType.ko} 감정을 7일 동안 ${emotionCnt}회 경험했어요!\n남은 일상도 워킷과 함께 기쁘게 보내볼까요?",
                         // caption M/regular
                         style = MaterialTheme.walkItTypography.captionM.copy(
                             fontWeight = FontWeight.Normal

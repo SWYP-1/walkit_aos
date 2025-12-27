@@ -11,21 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -58,25 +51,18 @@ import team.swyp.sdu.ui.components.KakaoMapView
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.components.captureMapViewSnapshot
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import timber.log.Timber
 import team.swyp.sdu.data.model.EmotionType
-import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.presentation.viewmodel.KakaoMapViewModel
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.walking.components.GoalProgressCard
-import team.swyp.sdu.ui.walking.components.StatItem
-import team.swyp.sdu.ui.walking.components.WeekCompletionRow
 import team.swyp.sdu.ui.walking.components.PathThumbnail
-import team.swyp.sdu.ui.walking.components.formatDuration
-import team.swyp.sdu.ui.walking.components.formatDistance
 import team.swyp.sdu.ui.walking.components.WalkingResultCompletionDialog
 import team.swyp.sdu.ui.walking.components.WalkingResultLoadingOverlay
 import team.swyp.sdu.ui.walking.viewmodel.SnapshotState
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
@@ -204,6 +190,7 @@ private fun saveSnapshotToFile(
  */
 @Composable
 fun WalkingResultScreen(
+    modifier : Modifier = Modifier,
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
     currentSession: WalkingSession?,
@@ -215,16 +202,14 @@ fun WalkingResultScreen(
     snapshotState: SnapshotState,
     onCaptureSnapshot: suspend (suspend () -> String?) -> Boolean,
     onSyncSessionToServer: () -> Unit,
-    onUpdateNote: (Long, String) -> Unit,
-    onDeleteNote: (Long) -> Unit,
-    currentSessionLocalId: Long?,
+    onDeleteNote: (String) -> Unit,
     mapViewModel: KakaoMapViewModel = hiltViewModel(),
 ) {
     when {
         isLoadingSession -> {
             // 로딩 상태
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
@@ -234,7 +219,7 @@ fun WalkingResultScreen(
         currentSession == null -> {
             // 에러 상태
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
@@ -255,6 +240,7 @@ fun WalkingResultScreen(
         else -> {
             // 성공 상태
             WalkingResultScreenContent(
+                modifier = modifier,
                 onNavigateToPrevious = onNavigateToPrevious,
                 onNavigateToHome = onNavigateToHome,
                 currentSession = currentSession,
@@ -264,9 +250,7 @@ fun WalkingResultScreen(
                 snapshotState = snapshotState,
                 onCaptureSnapshot = onCaptureSnapshot,
                 onSyncSessionToServer = onSyncSessionToServer,
-                onUpdateNote = onUpdateNote,
                 onDeleteNote = onDeleteNote,
-                currentSessionLocalId = currentSessionLocalId,
                 mapViewModel = mapViewModel,
             )
         }
@@ -280,6 +264,7 @@ fun WalkingResultScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WalkingResultScreenContent(
+    modifier : Modifier = Modifier,
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
     currentSession: WalkingSession,
@@ -289,9 +274,7 @@ private fun WalkingResultScreenContent(
     snapshotState: SnapshotState,
     onCaptureSnapshot: suspend (suspend () -> String?) -> Boolean,
     onSyncSessionToServer: () -> Unit,
-    onUpdateNote: (Long, String) -> Unit,
-    onDeleteNote: (Long) -> Unit,
-    currentSessionLocalId: Long?,
+    onDeleteNote: (String) -> Unit,
     mapViewModel: KakaoMapViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -305,9 +288,8 @@ private fun WalkingResultScreenContent(
     // 완료 팝업 표시 여부
     var showCompletionDialog by remember { mutableStateOf(false) }
 
-    // 노트 수정 다이얼로그 표시 여부
-    var showEditNoteDialog by remember { mutableStateOf(false) }
-    var editNoteText by remember { mutableStateOf(currentSession.note ?: "") }
+    var editedNote by remember { mutableStateOf(currentSession.note ?: "") }
+    var isEditing by remember { mutableStateOf(false) }
 
     // 서버 동기화 완료 시 팝업 표시
     LaunchedEffect(snapshotState) {
@@ -316,7 +298,7 @@ private fun WalkingResultScreenContent(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
@@ -474,16 +456,11 @@ private fun WalkingResultScreenContent(
             item {
                 WalkingDiaryCard(
                     session = currentSession,
-                    modifier = Modifier.fillMaxWidth(),
-                    onEditClick = {
-                        editNoteText = currentSession.note ?: ""
-                        showEditNoteDialog = true
-                    },
-                    onDeleteClick = {
-                        currentSessionLocalId?.let { localId ->
-                            onDeleteNote(localId)
-                        }
-                    },
+                    note = editedNote,
+                    isEditMode = isEditing,
+                    setEditing = { isEditing = it },
+                    onNoteChange = { editedNote = it },
+                    onDeleteClick = { onDeleteNote("") },
                 )
             }
 
@@ -573,49 +550,6 @@ private fun WalkingResultScreenContent(
                 },
             )
         }
-
-        // 노트 수정 다이얼로그
-        if (showEditNoteDialog) {
-            AlertDialog(
-                onDismissRequest = { showEditNoteDialog = false },
-                title = {
-                    Text(text = "노트 수정")
-                },
-                text = {
-                    OutlinedTextField(
-                        value = editNoteText,
-                        onValueChange = { editNoteText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("노트를 입력하세요") },
-                        maxLines = 5,
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            currentSessionLocalId?.let { localId ->
-                                val noteToSave = editNoteText.ifEmpty { null }
-                                if (noteToSave != null) {
-                                    onUpdateNote(localId, noteToSave)
-                                } else {
-                                    onDeleteNote(localId)
-                                }
-                            }
-                            showEditNoteDialog = false
-                        },
-                    ) {
-                        Text("저장")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showEditNoteDialog = false },
-                    ) {
-                        Text("취소")
-                    }
-                },
-            )
-        }
     }
 }
 
@@ -652,8 +586,6 @@ private fun WalkingResultScreenPreview() {
             onCaptureSnapshot = { false },
             onSyncSessionToServer = {},
             onDeleteNote = {},
-            onUpdateNote = { _, _ -> },
-            currentSessionLocalId = null,
         )
     }
 }
