@@ -35,7 +35,6 @@ object WalkingSessionMapper {
             preWalkEmotion = session.preWalkEmotion.name,
             postWalkEmotion = session.postWalkEmotion.name,
             note = session.note,
-            imageUrl = session.imageUrl, // Deprecated 필드 (하위 호환성 유지)
             localImagePath = session.localImagePath,
             serverImageUrl = session.serverImageUrl,
             createdDate = session.createdDate.orEmpty()
@@ -56,7 +55,6 @@ object WalkingSessionMapper {
             preWalkEmotion = EnumConverter.toEmotionType(entity.preWalkEmotion),
             postWalkEmotion = EnumConverter.toEmotionType(entity.postWalkEmotion),
             note = entity.note,
-            imageUrl = entity.imageUrl, // Deprecated 필드 (하위 호환성 유지)
             localImagePath = entity.localImagePath,
             serverImageUrl = entity.serverImageUrl,
             createdDate = entity.createdDate

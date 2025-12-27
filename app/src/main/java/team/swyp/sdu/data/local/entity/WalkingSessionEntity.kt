@@ -28,8 +28,6 @@ data class WalkingSessionEntity(
     val preWalkEmotion: String, // EmotionType을 String으로 저장
     val postWalkEmotion: String, // EmotionType을 String으로 저장
     val note: String? = null,
-    @Deprecated("Use localImagePath and serverImageUrl instead")
-    val imageUrl: String? = null, // Deprecated: localImagePath와 serverImageUrl 사용
     val localImagePath: String? = null, // 로컬 파일 경로
     val serverImageUrl: String? = null, // 서버 URL
     val createdDate: String,

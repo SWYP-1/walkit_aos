@@ -446,7 +446,7 @@ class WalkingViewModel @Inject constructor(
         val collectedLocations = _locations.value
         val totalDistance = calculateTotalDistance(collectedLocations)
         
-        // 완료된 세션 생성 (imageUrl과 note는 null, 나중에 업데이트됨)
+        // 완료된 세션 생성 (note, localImagePath, serverImageUrl은 null, 나중에 업데이트됨)
         return WalkingSession(
             startTime = startTimeMillis,
             endTime = endTime,
@@ -456,7 +456,6 @@ class WalkingViewModel @Inject constructor(
             preWalkEmotion = preEmotion,
             postWalkEmotion = postEmotion, // 기본값은 preWalkEmotion과 동일
             note = null, // 나중에 업데이트
-            imageUrl = null, // Deprecated 필드
             localImagePath = null, // 나중에 업데이트
             serverImageUrl = null, // 서버 동기화 후 업데이트
             createdDate = DateUtils.formatToIsoDateTime(startTimeMillis)
