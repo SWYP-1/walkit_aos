@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,6 +34,7 @@ import team.swyp.sdu.presentation.viewmodel.LoginUiState
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 import team.swyp.sdu.ui.onboarding.OnboardingViewModel
 import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.login.components.LoginButton
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -40,6 +43,8 @@ import team.swyp.sdu.ui.theme.naverGreen
 import team.swyp.sdu.ui.login.terms.TermsAgreementDialogContent
 import team.swyp.sdu.ui.login.terms.TermsAgreementDialogRoute
 import team.swyp.sdu.ui.login.terms.TermsAgreementUiState
+import team.swyp.sdu.ui.theme.Blue3
+import team.swyp.sdu.ui.theme.Red5
 
 
 /**
@@ -124,7 +129,8 @@ fun LoginScreen(
         Image(
             painter = painterResource(R.drawable.bg_login),
             contentDescription = "bg login",
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
         )
 
         Column(
@@ -136,11 +142,13 @@ fun LoginScreen(
 
             when {
                 uiState is LoginUiState.Loading -> {
-                    CustomProgressIndicator(
-                        size = ProgressIndicatorSize.Medium,
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CustomProgressIndicator()
+                    }
                 }
-
                 else -> {
                     Spacer(Modifier.weight(1f))
 

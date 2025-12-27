@@ -34,7 +34,6 @@ import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementScreen
 import team.swyp.sdu.ui.onboarding.OnboardingScreen
 import team.swyp.sdu.ui.alarm.AlarmScreen
 import team.swyp.sdu.ui.dressroom.DressingRoomRoute
-import team.swyp.sdu.ui.login.terms.TermsAgreementRoute
 import team.swyp.sdu.ui.record.dailyrecord.DailyRecordRoute
 
 /* ----------------------- */
@@ -44,7 +43,6 @@ sealed class Screen(val route: String) {
 
     data object Splash : Screen("splash")
     data object Login : Screen("login")
-    data object TermsAgreement : Screen("terms_agreement")
     data object Main : Screen("main")
 
     // 🔥 Walking Graph
@@ -62,14 +60,12 @@ sealed class Screen(val route: String) {
         }
     }
 
-    data object Shop : Screen("shop")
     data object Onboarding : Screen("onboarding")
     data object Friends : Screen("friends")
     data object FriendSearch : Screen("friend_search")
     data object FriendSearchDetail : Screen("friend_search_detail")
     data object GoalManagement : Screen("goal_management")
     data object Mission : Screen("mission")
-    data object MyPage : Screen("mypage")
     data object DressingRoom : Screen("dressing_room")
     data object UserInfoManagement : Screen("user_info_management")
     data object NotificationSettings : Screen("notification_settings")
@@ -106,32 +102,13 @@ fun NavGraph(
                 LoginRoute(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateToTermsAgreement = {
-                        navController.navigate(Screen.TermsAgreement.route) {
+                        navController.navigate(Screen.Onboarding.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
                     },
                     onNavigateToMain = {
                         navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
-                        }
-                    },
-                )
-            }
-        }
-
-        /* Terms Agreement */
-        composable(Screen.TermsAgreement.route) {
-            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                TermsAgreementRoute(
-                    modifier = Modifier.padding(paddingValues),
-                    onNavigateBack = {
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.TermsAgreement.route) { inclusive = true }
-                        }
-                    },
-                    onNavigateNext = {
-                        navController.navigate(Screen.Onboarding.route) {
-                            popUpTo(Screen.TermsAgreement.route) { inclusive = true }
                         }
                     },
                 )
@@ -158,6 +135,9 @@ fun NavGraph(
                         onNavigateToFinish = {
                             navController.navigate(Screen.WalkingFinishStep.route)
                         },
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        }
                     )
                 }
             }

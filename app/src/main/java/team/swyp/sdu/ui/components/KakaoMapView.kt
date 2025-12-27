@@ -212,7 +212,6 @@ fun KakaoMapView(
             ) {
                 CustomProgressIndicator(
                     size = ProgressIndicatorSize.Medium,
-                    color = Color.White,
                 )
             }
         }

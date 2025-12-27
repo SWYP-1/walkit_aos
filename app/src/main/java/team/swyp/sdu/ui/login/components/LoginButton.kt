@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,27 +47,33 @@ fun LoginButton(
         "네이버" -> SemanticColor.iconWhite
         else -> SemanticColor.iconWhite
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = backgroundColor, shape = RoundedCornerShape(size = 12.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable(onClick = { onClick() }),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Image(
-            painter = painterResource(iconDrawable), contentDescription = "login provider",
-            Modifier.size(18.dp)
-        )
-        Text(
-            text = "$provider 로그인",
-            style = MaterialTheme.walkItTypography.bodyXL,
-            color = fontColor
-        )
-        Text("")
-    }
 
+    Surface(
+        modifier = modifier
+            .fillMaxWidth(),
+        color = backgroundColor,
+        shape = RoundedCornerShape(12.dp),
+        onClick = onClick // Surface의 onClick은 ripple을 자동 적용
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Image(
+                painter = painterResource(iconDrawable),
+                contentDescription = "login provider",
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "$provider 로그인",
+                style = MaterialTheme.walkItTypography.bodyXL,
+                color = fontColor
+            )
+            Text("")
+        }
+    }
 }
 
 @Preview

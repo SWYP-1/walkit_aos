@@ -327,7 +327,6 @@ fun RouteThumbnailMap(
                         // 로딩 인디케이터 표시 (배경색 없음)
                         CustomProgressIndicator(
                             size = ProgressIndicatorSize.Medium,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                         )
                     }
                 }

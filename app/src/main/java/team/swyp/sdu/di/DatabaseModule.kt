@@ -50,7 +50,7 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 AppDatabase.DATABASE_NAME,
-            ).fallbackToDestructiveMigration() // 마이그레이션 없이 스키마 변경 시 데이터 삭제 (개발 단계)
+            ).fallbackToDestructiveMigration() // TODO : 반드시 배포전에 지워!!! 마이그레이션 없이 스키마 변경 시 데이터 삭제 (개발 단계)
             .build()
 
     @Provides

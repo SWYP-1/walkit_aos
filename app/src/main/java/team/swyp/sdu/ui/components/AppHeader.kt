@@ -73,18 +73,21 @@ fun AppHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // 왼쪽: 뒤로가기 버튼
-            IconButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.size(24.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "뒤로가기",
-                    tint = Color(0xFF191919), // color/icon/black
+            if (showBackButton) {
+                IconButton(
+                    onClick = onNavigateBack,
                     modifier = Modifier.size(24.dp),
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "뒤로가기",
+                        tint = Color(0xFF191919), // color/icon/black
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            } else {
+                Box(modifier = Modifier.size(24.dp))
             }
-
             // 중앙: 제목 (가운데 정렬)
             Text(
                 text = title,

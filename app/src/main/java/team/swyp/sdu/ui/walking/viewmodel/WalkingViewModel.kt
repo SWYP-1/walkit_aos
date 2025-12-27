@@ -301,7 +301,7 @@ class WalkingViewModel @Inject constructor(
         val completedSession = createCompletedSession()
         
         // SavingSession 상태로 변경 (로딩 화면 표시)
-        _uiState.value = WalkingUiState.SavingSession(completedSession)
+        _uiState.value = WalkingUiState.SavingSession
         
         // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
         try {

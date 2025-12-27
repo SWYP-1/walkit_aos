@@ -133,33 +133,33 @@ fun BirthYearStep(
         yearText.text.length == 4 && monthText.text.length == 2 && dayText.text.length == 2
     }
 
-    // 일자가 유효 범위를 벗어나면 자동으로 조정
-    LaunchedEffect(currentYear, currentMonth, currentDay, daysInMonth) {
-        if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
-            val safeDay = currentDay.coerceIn(1, daysInMonth)
-            if (safeDay != currentDay) {
-                onDayChange(safeDay)
-                dayText = TextFieldValue(String.format("%02d", safeDay))
-            }
-        }
-    }
+//    // 일자가 유효 범위를 벗어나면 자동으로 조정
+//    LaunchedEffect(currentYear, currentMonth, currentDay, daysInMonth) {
+//        if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
+//            val safeDay = currentDay.coerceIn(1, daysInMonth)
+//            if (safeDay != currentDay) {
+//                onDayChange(safeDay)
+//                dayText = TextFieldValue(String.format("%02d", safeDay))
+//            }
+//        }
+//    }
 
-    // 모든 필드가 채워졌을 때 유효성 검사 실행
-    LaunchedEffect(allFieldsFilled, currentYear, currentMonth, currentDay) {
-        if (allFieldsFilled && !isValidDate) {
-            // 유효하지 않은 날짜인 경우, 일자를 자동 조정
-            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
-                try {
-                    LocalDate.of(currentYear, currentMonth, currentDay)
-                } catch (e: Exception) {
-                    // 유효하지 않은 날짜인 경우, 해당 월의 마지막 날로 조정
-                    val safeDay = daysInMonth.coerceAtMost(28)
-                    onDayChange(safeDay)
-                    dayText = TextFieldValue(String.format("%02d", safeDay))
-                }
-            }
-        }
-    }
+//    // 모든 필드가 채워졌을 때 유효성 검사 실행
+//    LaunchedEffect(allFieldsFilled, currentYear, currentMonth, currentDay) {
+//        if (allFieldsFilled && !isValidDate) {
+//            // 유효하지 않은 날짜인 경우, 일자를 자동 조정
+//            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
+//                try {
+//                    LocalDate.of(currentYear, currentMonth, currentDay)
+//                } catch (e: Exception) {
+//                    // 유효하지 않은 날짜인 경우, 해당 월의 마지막 날로 조정
+//                    val safeDay = daysInMonth.coerceAtMost(31)
+//                    onDayChange(safeDay)
+//                    dayText = TextFieldValue(String.format("%02d", safeDay))
+//                }
+//            }
+//        }
+//    }
 
     // 년도 입력 처리
     fun handleYearInput(newValue: TextFieldValue) {

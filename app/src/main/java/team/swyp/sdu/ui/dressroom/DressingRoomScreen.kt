@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -95,6 +96,7 @@ fun DressingRoomScreen(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
+            .navigationBarsPadding() // 하단 네비바만 자동 패딩
     ) {
         when (uiState) {
             is DressingRoomUiState.Loading -> LoadingContent()
@@ -303,7 +305,7 @@ private fun LoadingContent() {
         modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         CustomProgressIndicator(
-            size = ProgressIndicatorSize.Medium, color = SemanticColor.stateBluePrimary
+            size = ProgressIndicatorSize.Medium
         )
     }
 }

@@ -77,15 +77,18 @@ fun NicknameStep(
     val focusRequester = remember { FocusRequester() }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhiteSecondary)
     ) {
-        AppHeader("", onNavigateBack = onPrev) {
-            Icon(
-                painter = painterResource(R.drawable.ic_action_clear),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
-            )
+
+        AppHeader("", showBackButton = false) {
+//            Icon(
+//                painter = painterResource(R.drawable.ic_action_clear),
+//                contentDescription = null,
+//                tint = SemanticColor.iconBlack,
+//                modifier = Modifier.size(24.dp),
+//            )
         }
 
         Column(
@@ -94,7 +97,6 @@ fun NicknameStep(
                 .weight(1f)
                 .imePadding()
                 .padding(horizontal = 16.dp)
-                .background(SemanticColor.backgroundWhiteSecondary)
         ) {
             Spacer(Modifier.height(24.dp))
 

@@ -79,8 +79,9 @@ import java.util.concurrent.TimeUnit
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WalkingScreen(
-    modifier : Modifier = Modifier,
+    modifier: Modifier = Modifier,
     viewModel: WalkingViewModel = hiltViewModel(),
+    onNavigateBack : () -> Unit = {},
     onNavigateToFinish: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -133,10 +134,13 @@ fun WalkingScreen(
                 // 산책 전 감정 선택
                 PreWalkingEmotionSelectScreen(
                     viewModel = viewModel,
-                    onNextClick = {
+                    onNext = {
                         if (permissionsState.allPermissionsGranted) {
                             viewModel.startWalking()
                         }
+                    },
+                    onPrev = {
+                        onNavigateBack()
                     },
                     permissionsGranted = permissionsState.allPermissionsGranted,
                 )
@@ -460,28 +464,28 @@ private fun WalkingView(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                
+
                 SensorStatusRow(
                     icon = Icons.Default.DirectionsWalk,
                     label = "걸음 수 센서",
                     isActive = sensorStatus.isStepCounterActive,
                     isAvailable = sensorStatus.isStepCounterAvailable,
                 )
-                
+
                 SensorStatusRow(
                     icon = Icons.Default.Speed,
                     label = "가속도계",
                     isActive = sensorStatus.isAccelerometerActive,
                     isAvailable = sensorStatus.isAccelerometerAvailable,
                 )
-                
+
                 SensorStatusRow(
                     icon = Icons.Default.Sensors,
                     label = "활동 인식",
                     isActive = sensorStatus.isActivityRecognitionActive,
                     isAvailable = sensorStatus.isActivityRecognitionAvailable,
                 )
-                
+
                 SensorStatusRow(
                     icon = Icons.Default.LocationOn,
                     label = "위치 추적",
@@ -540,8 +544,19 @@ private fun WalkingView(
                 if (currentLocation != null) {
                     SensorValueRow(
                         label = "위치",
-                        value = String.format("%.6f, %.6f", currentLocation!!.latitude, currentLocation!!.longitude),
-                        subValue = currentLocation!!.accuracy?.let { "정확도: ${String.format("%.1f", it)}m" } ?: "정확도: 측정 중",
+                        value = String.format(
+                            "%.6f, %.6f",
+                            currentLocation!!.latitude,
+                            currentLocation!!.longitude
+                        ),
+                        subValue = currentLocation!!.accuracy?.let {
+                            "정확도: ${
+                                String.format(
+                                    "%.1f",
+                                    it
+                                )
+                            }m"
+                        } ?: "정확도: 측정 중",
                     )
                 } else {
                     SensorValueRow(
@@ -918,7 +933,7 @@ private fun SensorStatusRow(
                 },
             )
         }
-        
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -34,7 +34,6 @@ fun LoadingOverlay(
         ) {
             CustomProgressIndicator(
                 size = ProgressIndicatorSize.Medium,
-                color = SemanticColor.buttonPrimaryDefault,
             )
         }
     }
