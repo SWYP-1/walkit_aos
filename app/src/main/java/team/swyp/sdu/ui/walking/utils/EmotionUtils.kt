@@ -37,13 +37,15 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
             textColor = SemanticColor.stateYellowPrimary,
             value = 5
         )
+
         EmotionType.JOYFUL -> EmotionOption(
             imageResId = R.drawable.ic_circle_joyful,
             label = "즐겁다",
-            boxColor = SemanticColor.stateGreenTertiary,
-            textColor = SemanticColor.stateGreenPrimary,
+            boxColor = SemanticColor.stateGreenPrimary,
+            textColor = SemanticColor.stateGreenTertiary,
             value = 4
         )
+
         EmotionType.CONTENT -> EmotionOption(
             imageResId = R.drawable.ic_circle_content,
             label = "행복하다",
@@ -51,6 +53,7 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
             textColor = SemanticColor.statePinkPrimary,
             value = 3
         )
+
         EmotionType.DEPRESSED -> EmotionOption(
             imageResId = R.drawable.ic_circle_depressed,
             label = "우울하다",
@@ -58,6 +61,7 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
             textColor = SemanticColor.stateBluePrimary,
             value = 2
         )
+
         EmotionType.TIRED -> EmotionOption(
             imageResId = R.drawable.ic_circle_tired,
             label = "지친다",
@@ -65,11 +69,12 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
             textColor = SemanticColor.statePurplePrimary,
             value = 1
         )
+
         EmotionType.ANXIOUS -> EmotionOption(
             imageResId = R.drawable.ic_circle_anxious,
             label = "짜증난다",
             boxColor = SemanticColor.stateRedTertiary,
-            textColor = SemanticColor.stateRedTertiary,
+            textColor = SemanticColor.stateRedPrimary,
             value = 0
         )
     }

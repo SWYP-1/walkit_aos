@@ -43,7 +43,7 @@ object SemanticColor {
 
 
     val stateGreenPrimary = Green4
-    val stateGreenTertiary = Green6
+    val stateGreenTertiary = Green1
     val stateGreenSecondary = Green3
 
     val statePurplePrimary = Purple6

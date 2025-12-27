@@ -75,6 +75,13 @@ fun WalkingResultRoute(
         // ViewModel 정보 로깅 (디버깅용)
         LaunchedEffect(viewModel, emotionPhotoUri, session) {
             Timber.d("🚶 WalkingResultRoute ViewModel 상태:")
+            Timber.d("session id : ${session?.id}")
+            Timber.d("session note : ${session?.note}")
+            Timber.d("session pre emo : ${session?.preWalkEmotion?.name}")
+            Timber.d("session post emo : ${session?.preWalkEmotion?.name}")
+            Timber.d("session localImagePath : ${session?.localImagePath}")
+            Timber.d("session locations : ${session?.locations}")
+            Timber.d("session stepCount : ${session?.stepCount}")
             Timber.d("  📸 emotionPhotoUri: $emotionPhotoUri")
             Timber.d("  📍 session.locations: ${session?.locations?.size ?: 0}개")
             Timber.d("  🎯 emotionText: ${viewModel.emotionText.value}")
@@ -100,9 +107,7 @@ fun WalkingResultRoute(
             modifier = modifier,
             onNavigateToPrevious = onNavigateToPrevious,
             onNavigateToHome = onNavigateToHome,
-            currentSession = session!!, // Flow에서 자동으로 최신 데이터 제공
-            isLoadingSession = false, // Flow 사용으로 로딩 불필요
-            sessionError = null, // 에러는 Flow에서 null로 처리
+            currentSession = session, // Flow에서 제공하는 값 (null 가능성 고려)
             emotionPhotoUri = emotionPhotoUri,
             goal = goal,
             syncedSessionsThisWeek = syncedSessionsThisWeek,

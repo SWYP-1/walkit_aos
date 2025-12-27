@@ -126,13 +126,11 @@ fun WalkingScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         when (val state = uiState) {
             is WalkingUiState.PreWalkingEmotionSelection -> {
                 // 산책 전 감정 선택
-                PreWalkingEmotionSelectScreen(
+                PreWalkingEmotionSelectRoute(
                     viewModel = viewModel,
                     onNext = {
                         if (permissionsState.allPermissionsGranted) {

@@ -193,9 +193,7 @@ fun WalkingResultScreen(
     modifier : Modifier = Modifier,
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
-    currentSession: WalkingSession?,
-    isLoadingSession: Boolean,
-    sessionError: String?,
+    currentSession: WalkingSession?, // Flow에서 제공 (null이면 로딩/에러 상태)
     emotionPhotoUri: android.net.Uri?,
     goal: Goal?,
     syncedSessionsThisWeek: List<WalkingSession>,
@@ -205,19 +203,9 @@ fun WalkingResultScreen(
     onDeleteNote: (String) -> Unit,
     mapViewModel: KakaoMapViewModel = hiltViewModel(),
 ) {
-    when {
-        isLoadingSession -> {
-            // 로딩 상태
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-            }
-        }
-
-        currentSession == null -> {
-            // 에러 상태
+    when (currentSession) {
+        null -> {
+            // 로딩/에러 상태 (Flow에서 아직 데이터가 로드되지 않음)
             Box(
                 modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -226,8 +214,9 @@ fun WalkingResultScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
                     Text(
-                        text = sessionError ?: "세션 정보를 불러올 수 없습니다.",
+                        text = "세션 정보를 불러오는 중...",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Button(onClick = onNavigateToPrevious) {

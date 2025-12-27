@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.ui.walking.utils.createDefaultEmotionOptions
 import kotlin.math.roundToInt
 
 /**
@@ -104,7 +105,7 @@ fun EmotionSlider(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(500.dp)
+            .height(414.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -174,7 +175,7 @@ fun EmotionSlider(
                             Image(
                                 painter = painterResource(id = emotion.imageResId),
                                 contentDescription = emotion.label,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(50.dp)
                             )
                         }
 
@@ -209,14 +210,7 @@ fun EmotionSlider(
 @Composable
 fun EmotionSliderPreview() {
     WalkItTheme {
-        val emotions = listOf(
-            EmotionOption(R.drawable.ic_circle_happy, "기쁘다", SemanticColor.stateYellowTertiary, SemanticColor.stateYellowTertiary, 5),
-            EmotionOption(R.drawable.ic_circle_joyful, "즐겁다", SemanticColor.stateGreenTertiary, SemanticColor.stateGreenTertiary, 4),
-            EmotionOption(R.drawable.ic_circle_content, "행복하다", SemanticColor.statePinkTertiary, SemanticColor.statePinkTertiary, 3),
-            EmotionOption(R.drawable.ic_circle_depressed, "우울하다", SemanticColor.stateBlueTertiary, SemanticColor.stateBlueTertiary, 2),
-            EmotionOption(R.drawable.ic_circle_tired, "지친다", SemanticColor.statePurpleTertiary, SemanticColor.statePurpleTertiary, 1),
-            EmotionOption(R.drawable.ic_circle_anxious, "짜증난다", SemanticColor.stateRedPrimary, SemanticColor.stateRedTertiary, 0)
-        )
+        val emotions = createDefaultEmotionOptions()
 
         var selectedIndex by remember { mutableStateOf(3) }
 

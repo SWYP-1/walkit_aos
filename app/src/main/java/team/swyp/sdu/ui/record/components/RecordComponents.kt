@@ -721,28 +721,6 @@ fun EmotionCard(
 
 
 /**
- * 섹션 카드 컴포넌트
- */
-@Composable
-fun SectionCard(content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-        ) {
-            content()
-        }
-    }
-}
-
-/**
  * 목표 체크 행 컴포넌트
  */
 @Composable

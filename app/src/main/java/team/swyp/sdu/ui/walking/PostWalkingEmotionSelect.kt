@@ -117,34 +117,36 @@ private fun PostWalkingEmotionSelectScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             )
             SectionCard {
-                Text(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = "산책 후 나의 마음은 어떤가요?",
-                    style = MaterialTheme.walkItTypography.headingS.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.textBorderPrimary,
-                    textAlign = TextAlign.Center,
-                )
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "산책 후 나의 마음은 어떤가요?",
+                        style = MaterialTheme.walkItTypography.headingS.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = SemanticColor.textBorderPrimary,
+                        textAlign = TextAlign.Center,
+                    )
 
-                Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                Text(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = "산책 후 감정이 어떻게 변했는지 기록해주세요.",
-                    // body S/regular
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Normal
-                    ), color = SemanticColor.textBorderSecondary,
-                    textAlign = TextAlign.Center,
-                )
+                    Text(
+                        text = "산책 후 감정이 어떻게 변했는지 기록해주세요",
+                        style = MaterialTheme.walkItTypography.bodyS,
+                        color = SemanticColor.textBorderSecondary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                    .padding(horizontal = 16.dp, vertical = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {

@@ -24,19 +24,50 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.EmotionSlider
-import team.swyp.sdu.ui.record.components.SectionCard
+import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.ui.walking.utils.createDefaultEmotionOptions
 import team.swyp.sdu.ui.walking.utils.findSelectedEmotionIndex
 import team.swyp.sdu.ui.walking.utils.valueToEmotionType
+import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
+import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 
+
+/**
+ * 산책 전 감정 선택 화면 Route
+ *
+ * ViewModel 주입 및 상태 수집을 담당합니다.
+ */
+@Composable
+fun PreWalkingEmotionSelectRoute(
+    viewModel: WalkingViewModel = hiltViewModel(),
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    permissionsGranted: Boolean,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedEmotion = when (uiState) {
+        is WalkingUiState.PreWalkingEmotionSelection -> (uiState as WalkingUiState.PreWalkingEmotionSelection).preWalkingEmotion
+        else -> null
+    }
+
+    PreWalkingEmotionSelectScreen(
+        selectedEmotion = selectedEmotion,
+        permissionsGranted = permissionsGranted,
+        onEmotionSelected = viewModel::selectPreWalkingEmotion,
+        onPrev = onPrev,
+        onNext = onNext,
+    )
+}
 /**
  * 산책 전 감정 선택 화면
  *
@@ -62,87 +93,81 @@ fun PreWalkingEmotionSelectScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SemanticColor.backgroundWhitePrimary)
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .background(SemanticColor.backgroundWhitePrimary),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
 
         AppHeader(title = "", showBackButton = true, onNavigateBack = onPrev)
-        Spacer(Modifier.height(22.dp))
+        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
+            SectionCard {
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "산책 전 나의 마음은 어떤가요?",
+                        style = MaterialTheme.walkItTypography.headingS.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = SemanticColor.textBorderPrimary,
+                        textAlign = TextAlign.Center,
+                    )
 
-        SectionCard {
-            Text(
-                text = "산책 전 나의 마음은 어떤가요?",
-                style = MaterialTheme.walkItTypography.headingS.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = SemanticColor.textBorderPrimary,
-                textAlign = TextAlign.Center,
-            )
+                    Spacer(Modifier.height(4.dp))
 
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                text = "산책하기 전 지금 어떤 감정을 느끼는지 선택해주세요",
-                style = MaterialTheme.walkItTypography.bodyS,
-                color = SemanticColor.textBorderSecondary,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        // EmotionSlider를 사용한 감정 선택
-        EmotionSlider(
-            modifier = Modifier.fillMaxWidth(),
-            emotions = emotionOptions,
-            selectedIndex = selectedIndex,
-            onEmotionSelected = { index ->
-                if (index in emotionOptions.indices) {
-                    val emotionType = valueToEmotionType(emotionOptions[index].value)
-                    onEmotionSelected(emotionType)
-                }
-            }
-        )
-
-        // 권한 안내 메시지
-        if (!permissionsGranted) {
-            Text(
-                text = "걸음 수 측정과 위치 추적을 위해 권한이 필요합니다",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
-            )
-        }
-        Spacer(Modifier.weight(1f))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            CtaButton(
-                text = "이전으로",
-                textColor = SemanticColor.buttonPrimaryDefault,
-                buttonColor = SemanticColor.backgroundWhitePrimary,
-                onClick = onPrev,
-                modifier = Modifier.width(96.dp)
-            )
-
-            CtaButton(
-                text = "다음으로",
-                textColor = SemanticColor.textBorderPrimaryInverse,
-                onClick = onNext,
-                modifier = Modifier.weight(1f),
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_forward),
-                        contentDescription = "arrow forward",
-                        tint = SemanticColor.iconWhite,
-                        modifier = Modifier.size(24.dp)
+                    Text(
+                        text = "산책하기 전 지금 어떤 감정을 느끼는지 선택해주세요",
+                        style = MaterialTheme.walkItTypography.bodyS,
+                        color = SemanticColor.textBorderSecondary,
+                        textAlign = TextAlign.Center,
                     )
                 }
+
+            }
+            Spacer(Modifier.height(40.dp))
+
+            // EmotionSlider를 사용한 감정 선택
+            EmotionSlider(
+                modifier = Modifier.fillMaxWidth(),
+                emotions = emotionOptions,
+                selectedIndex = selectedIndex,
+                onEmotionSelected = { index ->
+                    if (index in emotionOptions.indices) {
+                        val emotionType = valueToEmotionType(emotionOptions[index].value)
+                        onEmotionSelected(emotionType)
+                    }
+                }
             )
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CtaButton(
+                    text = "이전으로",
+                    textColor = SemanticColor.buttonPrimaryDefault,
+                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    onClick = onPrev,
+                    modifier = Modifier.width(96.dp)
+                )
+
+                CtaButton(
+                    text = "다음으로",
+                    textColor = SemanticColor.textBorderPrimaryInverse,
+                    onClick = onNext,
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_forward),
+                            contentDescription = "arrow forward",
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            }
         }
-        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -167,20 +192,6 @@ private fun PreWalkingEmotionSelectScreenPreview_WithSelection() {
         PreWalkingEmotionSelectScreen(
             selectedEmotion = EmotionType.HAPPY,
             permissionsGranted = true,
-            onEmotionSelected = {},
-            onPrev = {},
-            onNext = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PreWalkingEmotionSelectScreenPreview_NoPermissions() {
-    WalkItTheme {
-        PreWalkingEmotionSelectScreen(
-            selectedEmotion = EmotionType.CONTENT,
-            permissionsGranted = false,
             onEmotionSelected = {},
             onPrev = {},
             onNext = {},
