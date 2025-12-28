@@ -1,5 +1,7 @@
 package team.swyp.sdu.ui.home.utils
 
+import androidx.annotation.DrawableRes
+import team.swyp.sdu.R
 import team.swyp.sdu.data.remote.home.dto.PrecipType
 import team.swyp.sdu.data.remote.home.dto.Sky
 
@@ -12,6 +14,20 @@ enum class WeatherIcon {
     RAINY,
     SNOW
 }
+
+@DrawableRes
+fun resolveWeatherIconRes(
+    precipType: PrecipType,
+    sky: Sky
+): Int {
+    return when (resolveWeatherIcon(precipType, sky)) {
+        WeatherIcon.SUNNY -> R.drawable.ic_weather_sunny
+        WeatherIcon.CLOUDY -> R.drawable.ic_weather_cloud
+        WeatherIcon.RAINY -> R.drawable.ic_weather_rainy
+        WeatherIcon.SNOW -> R.drawable.ic_weather_snow
+    }
+}
+
 
 /**
  * 강수 형태와 하늘 상태를 기반으로 날씨 아이콘을 결정합니다.

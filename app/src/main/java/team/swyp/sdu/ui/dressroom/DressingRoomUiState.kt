@@ -27,7 +27,7 @@ sealed interface DressingRoomUiState {
         val selectedItemId: Int? = null,
         val selectedItemIdSet : LinkedHashSet<Int> = LinkedHashSet(),
         val currentPosition: String? = null,
-        val myPoint : Int = 500,
+        val myPoint : Int = 0,
         val availablePositions: List<String> = listOf("HEAD", "BODY", "FEET"),
     ) : DressingRoomUiState
 
@@ -38,3 +38,4 @@ sealed interface DressingRoomUiState {
      */
     data class Error(val message: String) : DressingRoomUiState
 }
+

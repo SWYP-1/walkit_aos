@@ -22,12 +22,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.Pretendard
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.TypeScale
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -59,11 +62,7 @@ fun AppHeader(
             .fillMaxWidth()
             .height(56.dp) // Material Design 표준 헤더 높이
             .background(Color(0xFFFFFFFF)) // color/background/whtie-primary
-            .border(
-                width = 1.dp,
-                color = Color(0xFFF3F3F5), // color/text-border/disabled
-                shape = RectangleShape,
-            ),
+        ,
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -79,9 +78,9 @@ fun AppHeader(
                     modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(R.drawable.ic_arrow_backward),
                         contentDescription = "뒤로가기",
-                        tint = Color(0xFF191919), // color/icon/black
+                        tint = SemanticColor.iconBlack,
                         modifier = Modifier.size(24.dp),
                     )
                 }

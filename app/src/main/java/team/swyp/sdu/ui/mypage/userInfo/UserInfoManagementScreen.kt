@@ -29,11 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,11 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import timber.log.Timber
-import java.io.File
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState
@@ -68,7 +64,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.ConfirmDialog
+import team.swyp.sdu.ui.mypage.userInfo.component.DateDropdown
 import team.swyp.sdu.ui.mypage.userInfo.component.FilledTextField
+import team.swyp.sdu.ui.mypage.userInfo.component.ImageUploadMenu
+import team.swyp.sdu.ui.mypage.userInfo.component.UserInfoDisplaySection
+import team.swyp.sdu.ui.mypage.userInfo.component.UserInfoFormSection
 import team.swyp.sdu.ui.theme.Grey10
 import team.swyp.sdu.ui.theme.Grey2
 import team.swyp.sdu.ui.theme.Grey3
@@ -76,6 +76,11 @@ import team.swyp.sdu.ui.theme.Grey7
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.utils.createCameraImageUri
+import team.swyp.sdu.utils.formatBirthDate
+import team.swyp.sdu.utils.hasUserInfoChanges
+import team.swyp.sdu.utils.parseBirthDate
+import team.swyp.sdu.utils.ProfileImageState
 
 /**
  * 내 정보 관리 화면
@@ -93,6 +98,13 @@ import team.swyp.sdu.ui.theme.walkItTypography
  * @param onSave 저장 버튼 클릭 핸들러
  * @param onBack 뒤로가기 버튼 클릭 핸들러
  */
+// 상수 정의
+private object UserInfoConstants {
+    const val MAX_FILE_SIZE_MB = 10
+    const val SUCCESS_MESSAGE_DURATION_MS = 3000L
+    const val FILE_SIZE_GUIDE_TEXT = "10MB 이내의 파일만 업로드 가능합니다."
+}
+
 @Composable
 fun UserInfoManagementScreen(
     modifier: Modifier = Modifier,
@@ -107,56 +119,45 @@ fun UserInfoManagementScreen(
     
     // GoalRepository에서 Goal 가져오기 (ViewModel을 통해)
     val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
-
     // 로컬 상태
     var name by remember { mutableStateOf(userInput.name) }
     var birthYear by remember { mutableStateOf("") }
     var birthMonth by remember { mutableStateOf("") }
     var birthDay by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf(userInput.nickname) }
-    var profileImageUrl by remember { mutableStateOf<String?>(userInput.selectedImageUri ?: userInput.imageName) }
+    var profileImageState by remember {
+        mutableStateOf(
+            ProfileImageState.fromUserInput(userInput.imageName, userInput.selectedImageUri)
+        )
+    }
+
+    // userInput에서 로컬 상태로 데이터 복사하는 함수
+    fun updateLocalStateFromUserInput() {
+        nickname = userInput.nickname
+        name = userInput.name
+        profileImageState = ProfileImageState.fromUserInput(userInput.imageName, userInput.selectedImageUri)
+        parseBirthDate(userInput.birthDate)?.let { (year, month, day) ->
+            birthYear = year
+            birthMonth = month
+            birthDay = day
+        }
+    }
 
     // userInput이 변경될 때 로컬 상태 업데이트
     LaunchedEffect(userInput) {
-        // 닉네임 업데이트
-        nickname = userInput.nickname
-        
-        // 이름 업데이트
-        name = userInput.name
-        
-        // 프로필 이미지 업데이트
-        profileImageUrl = userInput.selectedImageUri ?: userInput.imageName
-        
-        // 생년월일 업데이트
-        if (userInput.birthDate.isNotBlank()) {
-            userInput.birthDate.split("-").let { parts ->
-                if (parts.size == 3) {
-                    birthYear = parts[0]
-                    birthMonth = parts[1]
-                    birthDay = parts[2]
-                }
-            }
-        }
+        updateLocalStateFromUserInput()
     }
 
     // 카메라 촬영용 Uri 생성
-    val cameraImageUri = remember {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "camera_image_${System.currentTimeMillis()}.jpg")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/*")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/Camera")
-            }
-        }
-        context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-    }
+    val cameraImageUri = remember { createCameraImageUri(context) }
 
     // 카메라 촬영 Activity Result Launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
         if (success && cameraImageUri != null) {
-            profileImageUrl = cameraImageUri.toString()
+            profileImageState = profileImageState.copy(selectedImageUri = cameraImageUri)
+            viewModel.updateProfileImageUri(cameraImageUri)
         }
     }
 
@@ -166,8 +167,9 @@ fun UserInfoManagementScreen(
     ) { uri: Uri? ->
         Timber.d("갤러리 결과 수신: $uri")
         if (uri != null) {
-            profileImageUrl = uri.toString()
-            Timber.d("프로필 이미지 URL 설정됨: $profileImageUrl")
+            profileImageState = profileImageState.copy(selectedImageUri = uri)
+            viewModel.updateProfileImageUri(uri)
+            Timber.d("프로필 이미지 URL 설정됨: ${profileImageState.currentDisplayUrl}")
         } else {
             Timber.d("갤러리에서 이미지를 선택하지 않음")
         }
@@ -201,9 +203,11 @@ fun UserInfoManagementScreen(
         }
     }
 
-    val greenPrimary = Color(0xFF52CE4B)
-    val redPrimary = Color(0xFFE65C4A)
-    val tertiaryText = Color(0xFFC2C3CA)
+    val (greenPrimary, redPrimary, tertiaryText) = Triple(
+        SemanticColor.stateGreenPrimary,
+        SemanticColor.stateRedPrimary,
+        SemanticColor.textBorderTertiary
+    )
 
     // 에러 메시지 표시
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -219,23 +223,18 @@ fun UserInfoManagementScreen(
     
     // 변경사항이 있는지 확인하는 함수
     fun hasChanges(): Boolean {
-        val originalBirthDate = userInput.birthDate
-        val currentBirthDate = if (birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank()) {
-            String.format("%04d-%02d-%02d", 
-                birthYear.toIntOrNull() ?: 0,
-                birthMonth.toIntOrNull() ?: 0,
-                birthDay.toIntOrNull() ?: 0
-            )
-        } else {
-            ""
-        }
-        
-        val originalImageUrl = userInput.selectedImageUri ?: userInput.imageName
-        val currentImageUrl = profileImageUrl
-        
-        return nickname != userInput.nickname ||
-                currentBirthDate != originalBirthDate ||
-                currentImageUrl != originalImageUrl
+        return hasUserInfoChanges(
+            originalName = userInput.name,
+            currentName = name,
+            originalNickname = userInput.nickname,
+            currentNickname = nickname,
+            originalBirthDate = userInput.birthDate,
+            currentBirthYear = birthYear,
+            currentBirthMonth = birthMonth,
+            currentBirthDay = birthDay,
+            originalImageUrl = userInput.selectedImageUri ?: userInput.imageName,
+            currentImageUrl = profileImageState.currentDisplayUrl
+        )
     }
 
     // UI 상태에 따른 처리
@@ -260,10 +259,10 @@ fun UserInfoManagementScreen(
         previousState = uiState
     }
     
-    // 성공 메시지 자동 숨김 (3초 후)
+    // 성공 메시지 자동 숨김
     LaunchedEffect(successMessage) {
         if (successMessage != null) {
-            kotlinx.coroutines.delay(3000)
+            kotlinx.coroutines.delay(UserInfoConstants.SUCCESS_MESSAGE_DURATION_MS)
             successMessage = null
         }
     }
@@ -309,12 +308,12 @@ fun UserInfoManagementScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFFFEBEE), RoundedCornerShape(8.dp))
+                    .background(SemanticColor.stateRedTertiary, RoundedCornerShape(8.dp))
                     .padding(16.dp),
             ) {
                 Text(
                     text = message,
-                    color = Color(0xFFC62828),
+                    color = SemanticColor.stateRedPrimary,
                     style = MaterialTheme.walkItTypography.bodyM,
                 )
             }
@@ -326,12 +325,12 @@ fun UserInfoManagementScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFE8F5E9), RoundedCornerShape(8.dp))
+                    .background(SemanticColor.stateGreenTertiary, RoundedCornerShape(8.dp))
                     .padding(16.dp),
             ) {
                 Text(
                     text = message,
-                    color = Color(0xFF2E7D32),
+                    color = SemanticColor.stateGreenPrimary,
                     style = MaterialTheme.walkItTypography.bodyM,
                 )
             }
@@ -356,9 +355,9 @@ fun UserInfoManagementScreen(
                 modifier = Modifier.size(80.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (profileImageUrl != null) {
+                if (!profileImageState.currentDisplayUrl.isNullOrBlank()) {
                     Image(
-                        painter = rememberAsyncImagePainter(profileImageUrl),
+                        painter = rememberAsyncImagePainter(profileImageState.currentDisplayUrl),
                         contentDescription = "프로필 이미지",
                         modifier = Modifier
                             .fillMaxSize()
@@ -388,111 +387,57 @@ fun UserInfoManagementScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // 이미지 업로드 버튼 및 드랍다운 메뉴
-                Box {
-                    var showImageMenu by remember { mutableStateOf(false) }
-
-                    // 이미지 업로드 버튼
-                    Row(
-                        modifier = Modifier
-                            .clickable(onClick = { showImageMenu = true })
-                            .border(
-                                width = 1.dp,
-                                color = greenPrimary,
-                                shape = RoundedCornerShape(8.dp),
-                            )
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = greenPrimary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = "이미지 업로드",
-                            style = MaterialTheme.walkItTypography.bodyS.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = greenPrimary,
-                        )
-                    }
-
-                    // 이미지 선택 드랍다운 메뉴
-                    DropdownMenu(
-                        expanded = showImageMenu,
-                        onDismissRequest = { showImageMenu = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "촬영하기",
-                                    style = MaterialTheme.walkItTypography.bodyM,
-                                )
-                            },
-                            onClick = {
-                                showImageMenu = false
-                                if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        android.Manifest.permission.CAMERA
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    cameraImageUri?.let { uri ->
-                                        cameraLauncher.launch(uri)
-                                    }
-                                } else {
-                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                                }
+                ImageUploadMenu(
+                    onCameraClick = {
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                android.Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            cameraImageUri?.let { uri ->
+                                cameraLauncher.launch(uri)
                             }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "갤러리에서 가져오기",
-                                    style = MaterialTheme.walkItTypography.bodyM,
-                                )
-                            },
-                            onClick = {
-                                showImageMenu = false
-                                Timber.d("갤러리 선택 클릭됨")
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
-                                    val hasPermission = ContextCompat.checkSelfPermission(
-                                        context,
-                                        android.Manifest.permission.READ_MEDIA_IMAGES
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                    Timber.d("Android 13+ 권한 상태: $hasPermission")
-                                    if (hasPermission) {
-                                        Timber.d("갤러리 Launcher 실행")
-                                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                    } else {
-                                        Timber.d("READ_MEDIA_IMAGES 권한 요청")
-                                        galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                                    }
-                                } else {
-                                    // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
-                                    val hasPermission = ContextCompat.checkSelfPermission(
-                                        context,
-                                        android.Manifest.permission.READ_EXTERNAL_STORAGE
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                    Timber.d("Android 12 이하 권한 상태: $hasPermission")
-                                    if (hasPermission) {
-                                        Timber.d("갤러리 Launcher 실행")
-                                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                    } else {
-                                        Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
-                                        galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                                    }
-                                }
+                        } else {
+                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        }
+                    },
+                    onGalleryClick = {
+                        Timber.d("갤러리 선택 클릭됨")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                android.Manifest.permission.READ_MEDIA_IMAGES
+                            ) == PackageManager.PERMISSION_GRANTED
+                            Timber.d("Android 13+ 권한 상태: $hasPermission")
+                            if (hasPermission) {
+                                Timber.d("갤러리 Launcher 실행")
+                                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            } else {
+                                Timber.d("READ_MEDIA_IMAGES 권한 요청")
+                                galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
                             }
-                        )
+                        } else {
+                            // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                android.Manifest.permission.READ_EXTERNAL_STORAGE
+                            ) == PackageManager.PERMISSION_GRANTED
+                            Timber.d("Android 12 이하 권한 상태: $hasPermission")
+                            if (hasPermission) {
+                                Timber.d("갤러리 Launcher 실행")
+                                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            } else {
+                                Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
+                                galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                            }
+                        }
                     }
-                }
+                )
 
                 // 안내 텍스트
                 Text(
-                    text = "10MB 이내의 파일만 업로드 가능합니다.",
+                    text = UserInfoConstants.FILE_SIZE_GUIDE_TEXT,
                     style = MaterialTheme.walkItTypography.captionM.copy(
                         fontWeight = FontWeight.Bold,
                     ),
@@ -503,189 +448,26 @@ fun UserInfoManagementScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 이름 입력 필드
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "*",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = redPrimary,
-                )
-            }
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
-                    .background(Grey2, RoundedCornerShape(8.dp)),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = Grey10,
-                    unfocusedTextColor = Grey10,
-                    disabledTextColor = tertiaryText,
-                    disabledBorderColor = Color.Transparent,
-                ),
-                shape = RoundedCornerShape(8.dp),
-                textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Bold,
-                ),
-                singleLine = true,
-                enabled = true,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 생년월일 선택 필드
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "생년월일",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = Grey10,
-                )
-                Text(
-                    text = "*",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = redPrimary,
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // 년도 선택
-                DateDropdown(
-                    value = birthYear,
-                    onValueChange = { birthYear = it },
-                    placeholder = "년도",
-                    modifier = Modifier.weight(1f),
-                )
-
-                // 월 선택
-                DateDropdown(
-                    value = birthMonth,
-                    onValueChange = { birthMonth = it },
-                    placeholder = "월",
-                    modifier = Modifier.weight(1f),
-                )
-
-                // 일 선택
-                DateDropdown(
-                    value = birthDay,
-                    onValueChange = { birthDay = it },
-                    placeholder = "일",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 닉네임 입력 필드
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "닉네임",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = Grey10,
-                )
-                Text(
-                    text = "*",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = redPrimary,
-                )
-            }
-            FilledTextField(
-                value = nickname,
-                onValueChange = { nickname = it },
-                placeholder = "닉네임을 입력해주세요.",
-            )
-        }
+        // 사용자 정보 입력 폼
+        UserInfoFormSection(
+            name = name,
+            onNameChange = { name = it },
+            nickname = nickname,
+            onNicknameChange = { nickname = it },
+            birthYear = birthYear,
+            onBirthYearChange = { birthYear = it },
+            birthMonth = birthMonth,
+            onBirthMonthChange = { birthMonth = it },
+            birthDay = birthDay,
+            onBirthDayChange = { birthDay = it },
+        )
 
 
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 유저 ID 표시 필드 (비활성화)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "유저 ID",
-                style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = Grey7,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 연동된 계정 표시 필드 (비활성화)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "연동된 계정",
-                style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = Grey7,
-            )
-
-            OutlinedTextField(
-                value =  "카카오",
-                onValueChange = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Grey2, RoundedCornerShape(8.dp)),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = tertiaryText,
-                    disabledBorderColor = Color.Transparent,
-                ),
-                shape = RoundedCornerShape(8.dp),
-                textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Bold,
-                ),
-                singleLine = true,
-            )
-        }
+        // 사용자 정보 표시 섹션
+        UserInfoDisplaySection()
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -774,127 +556,6 @@ fun UserInfoManagementScreen(
         )
     }
 }
-
-/**
- * 생년월일 드롭다운 컴포넌트
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DateDropdown(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val tertiaryText = Color(0xFFC2C3CA)
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = modifier,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(4.dp))
-                .border(1.dp, Grey3, RoundedCornerShape(4.dp)),
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                placeholder = {
-                    Text(
-                        text = placeholder,
-                        style = MaterialTheme.walkItTypography.bodyS.copy(
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        color = tertiaryText,
-                    )
-                },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = Grey10,
-                    unfocusedTextColor = Grey10,
-                ),
-                shape = RoundedCornerShape(4.dp),
-                textStyle = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium,
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-            )
-        }
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            // 년도/월/일 목록 생성
-            when (placeholder) {
-                "년도" -> {
-                    // 최근 100년
-                    (1924..2024).reversed().forEach { year ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "$year",
-                                    style = MaterialTheme.walkItTypography.bodyS,
-                                )
-                            },
-                            onClick = {
-                                onValueChange("$year")
-                                expanded = false
-                            },
-                        )
-                    }
-                }
-
-                "월" -> {
-                    (1..12).forEach { month ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "$month",
-                                    style = MaterialTheme.walkItTypography.bodyS,
-                                )
-                            },
-                            onClick = {
-                                onValueChange("$month")
-                                expanded = false
-                            },
-                        )
-                    }
-                }
-
-                "일" -> {
-                    (1..31).forEach { day ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "$day",
-                                    style = MaterialTheme.walkItTypography.bodyS,
-                                )
-                            },
-                            onClick = {
-                                onValueChange("$day")
-                                expanded = false
-                            },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 
 @Composable
 @Preview

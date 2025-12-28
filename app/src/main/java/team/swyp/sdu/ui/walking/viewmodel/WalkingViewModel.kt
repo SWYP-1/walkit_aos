@@ -70,7 +70,8 @@ class WalkingViewModel @Inject constructor(
         )
     
     // 산책 전 감정을 저장 (StateFlow로 통일하여 일관성 유지)
-    private val _preWalkingEmotion = MutableStateFlow<EmotionType?>(null)
+    // 초기값을 HAPPY로 설정하여 에러 방지
+    private val _preWalkingEmotion = MutableStateFlow<EmotionType?>(EmotionType.HAPPY)
     val preWalkingEmotion: StateFlow<EmotionType?> = _preWalkingEmotion.asStateFlow()
     
     // 산책 후 감정을 저장 (별도 화면에서 사용)

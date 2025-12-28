@@ -1,10 +1,5 @@
 package team.swyp.sdu.domain.model
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
 
 enum class EquipSlot(val value: String) {
     HEAD("HEAD"),
@@ -18,7 +13,7 @@ data class CosmeticItem(
     val name: String,
     val owned: Boolean,
     val position: EquipSlot,
-    val price : Int
+    val point : Int
 )
 
 

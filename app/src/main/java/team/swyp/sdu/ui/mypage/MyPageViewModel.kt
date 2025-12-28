@@ -47,75 +47,59 @@ constructor(
     val uiState: StateFlow<MyPageUiState> = _uiState.asStateFlow()
 
     init {
-        loadData()
-    }
-
-    /**
-     * 데이터 로드 (사용자 정보 + 캐릭터 정보 + 누적 통계)
-     * 각각 독립적으로 로드되어 하나가 실패해도 다른 것들은 계속 동작
-     */
-    fun loadData() {
-        loadUserInfo()
+        // 사용자 정보 변경을 실시간으로 구독 (초기 데이터도 처리)
+        observeUserChanges()
+        // 통계 데이터 로드
         loadStats()
     }
 
     /**
-     * 사용자 정보와 캐릭터 정보를 함께 로드
+     * 사용자 정보 변경을 실시간으로 관찰
+     * Room 데이터가 변경되면 자동으로 UI 업데이트 (초기 데이터도 처리)
      */
-    private fun loadUserInfo() {
+    private fun observeUserChanges() {
         viewModelScope.launch {
-            try {
-                // 1. 사용자 정보 로드
-                var nickname: String? = null
-                var profileImageUrl: String? = null
-                var grade: Grade? = null
-
-                userRepository.getUser()
-                    .onSuccess { user ->
-                        nickname = user.nickname
-                        profileImageUrl = user.imageName
+            userRepository.userFlow.collect { user ->
+                if (user != null) {
+                    // 캐릭터 정보도 함께 로드 (비동기로 처리)
+                    var grade: Grade? = null
+                    try {
+                        characterRepository.getCharacter(user.nickname ?: "")
+                            .onSuccess { character ->
+                                grade = character.grade
+                            }
+                            .onError { exception, message ->
+                                Timber.w(exception, "캐릭터 정보 로드 실패: $message")
+                                // 캐릭터 정보는 선택적이므로 실패해도 계속 진행
+                            }
+                    } catch (e: Exception) {
+                        Timber.w(e, "캐릭터 정보 로드 중 예외 발생")
                     }
-                    .onError { exception, message ->
-                        Timber.e(exception, "사용자 정보 로드 실패: $message")
-                        throw exception ?: Exception(message)
-                    }
 
-                // 2. 캐릭터 정보 로드 (nickname이 있을 때만)
-                if (nickname != null) {
-                    characterRepository.getCharacter(nickname!!)
-                        .onSuccess { character ->
-                            grade = character.grade
-                        }
-                        .onError { exception, message ->
-                            Timber.w(exception, "캐릭터 정보 로드 실패: $message")
-                            // 캐릭터 정보는 선택적이므로 실패해도 계속 진행
-                        }
-                }
-
-                // 3. UI 상태 업데이트
-                _uiState.update {
-                    it.copy(
-                        userInfo = DataState.Success(
-                            UserInfoData(
-                                nickname = nickname ?: "게스트",
-                                profileImageUrl = profileImageUrl,
-                                grade = grade
+                    // UI 상태 업데이트
+                    _uiState.update {
+                        it.copy(
+                            userInfo = DataState.Success(
+                                UserInfoData(
+                                    nickname = user.nickname,
+                                    profileImageUrl = user.imageName,
+                                    grade = grade
+                                )
                             )
                         )
-                    )
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 정보 로드 중 오류 발생")
-                _uiState.update {
-                    it.copy(
-                        userInfo = DataState.Error(
-                            e.message ?: "사용자 정보를 불러올 수 없습니다"
+                    }
+                } else {
+                    // 사용자 데이터가 없을 때는 에러 상태로 설정
+                    _uiState.update {
+                        it.copy(
+                            userInfo = DataState.Error("사용자 정보를 불러올 수 없습니다")
                         )
-                    )
+                    }
                 }
             }
         }
     }
+
 
     /**
      * 누적 통계 로드

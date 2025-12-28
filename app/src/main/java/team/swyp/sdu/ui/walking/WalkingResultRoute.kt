@@ -1,11 +1,16 @@
 package team.swyp.sdu.ui.walking
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -15,6 +20,8 @@ import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.presentation.viewmodel.GoalViewModel
 import team.swyp.sdu.presentation.viewmodel.KakaoMapViewModel
+import team.swyp.sdu.ui.walking.components.CustomProgressIndicator
+import team.swyp.sdu.ui.walking.components.WalkingResultCompletionDialog
 import team.swyp.sdu.ui.walking.viewmodel.WalkingResultUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingResultViewModel
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
@@ -44,15 +51,33 @@ fun WalkingResultRoute(
     // ✅ Flow로 세션 관찰 (자동 갱신)
     val session by viewModel.currentSession.collectAsStateWithLifecycle()
 
+    // 산책 완료 다이얼로그 표시 상태
+    var showWalkingCompleteDialog by remember { mutableStateOf(false) }
+
     // 저장 중일 때만 로딩 표시
     if (uiState is WalkingUiState.SavingSession) {
         Box(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            CustomProgressIndicator()
         }
         return
+    }
+
+    // 동기화 완료 시 다이얼로그 표시, 실패 시 바로 홈 이동
+    LaunchedEffect(snapshotState) {
+        when (snapshotState) {
+            SnapshotState.Complete -> {
+                Timber.d("🚶 산책 동기화 성공: 다이얼로그 표시")
+                showWalkingCompleteDialog = true
+            }
+            is SnapshotState.Error -> {
+                Timber.d("🚶 산책 동기화 실패로 홈으로 이동: $snapshotState")
+                onNavigateToHome()
+            }
+            else -> Unit // 다른 상태에서는 아무 동작도 하지 않음
+        }
     }
 
     // ✅ session이 null이면 로딩, 있으면 화면 표시
@@ -61,7 +86,7 @@ fun WalkingResultRoute(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            CustomProgressIndicator()
         }
     } else {
         // 사진이 없을 때만 맵뷰에 session.locations 전달
@@ -78,7 +103,7 @@ fun WalkingResultRoute(
             Timber.d("session id : ${session?.id}")
             Timber.d("session note : ${session?.note}")
             Timber.d("session pre emo : ${session?.preWalkEmotion?.name}")
-            Timber.d("session post emo : ${session?.preWalkEmotion?.name}")
+            Timber.d("session post emo : ${session?.postWalkEmotion?.name}")
             Timber.d("session localImagePath : ${session?.localImagePath}")
             Timber.d("session locations : ${session?.locations}")
             Timber.d("session stepCount : ${session?.stepCount}")
@@ -107,7 +132,8 @@ fun WalkingResultRoute(
             modifier = modifier,
             onNavigateToPrevious = onNavigateToPrevious,
             onNavigateToHome = onNavigateToHome,
-            currentSession = session, // Flow에서 제공하는 값 (null 가능성 고려)
+            currentSession = session,
+            weekWalkOrder = syncedSessionsThisWeek.size,
             emotionPhotoUri = emotionPhotoUri,
             goal = goal,
             syncedSessionsThisWeek = syncedSessionsThisWeek,
@@ -122,6 +148,15 @@ fun WalkingResultRoute(
                 viewModel.deleteSessionNote(localId)
             },
         )
+
+        // 산책 완료 다이얼로그
+        if (showWalkingCompleteDialog) {
+            WalkingResultCompletionDialog(
+                onConfirm = {
+                    showWalkingCompleteDialog = false
+                    onNavigateToHome()
+                }
+            )
+        }
     }
 }
-

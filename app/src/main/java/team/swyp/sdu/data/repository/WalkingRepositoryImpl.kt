@@ -160,19 +160,19 @@ class WalkingRepositoryImpl @Inject constructor(
 
     override suspend fun stopTracking() {
         try {
-            // Service 중지
-            locationTrackingService?.stopTracking()
+            // Service 중지 (Intent를 통해 중지 신호 전송)
+            stopLocationTrackingService()
 
             // 센서 관리자들 중지
             stepCounterManager.stopTracking()
             activityRecognitionManager.stopTracking()
             accelerometerManager.stopTracking()
-            
+
             // BroadcastReceiver 해제
             unregisterLocationReceiver()
 
             _isTracking.value = false
-            
+
             // Raw event emit
             _rawEvents.emit(WalkingRawEvent.TrackingStopped)
 

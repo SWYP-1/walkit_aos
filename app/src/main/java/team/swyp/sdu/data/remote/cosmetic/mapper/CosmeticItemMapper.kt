@@ -19,7 +19,7 @@ object CosmeticItemMapper {
             position = EquipSlot.valueOf(dto.position),
             name = dto.name,
             owned = dto.owned,
-            price = 200,
+            point = dto.point,
         )
     }
 

@@ -15,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.record.friendrecord.LikeUiState
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.ui.theme.walkItTypography
 
 @Composable
 fun LikeButton(
@@ -34,7 +36,6 @@ fun LikeButton(
         modifier = modifier
             .background(SemanticColor.stateYellowTertiary, shape = RoundedCornerShape(size = 16.dp))
             .padding(horizontal = 8.dp, vertical = 6.dp)
-
             .clickable { onToggleLike() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -52,11 +53,14 @@ fun LikeButton(
         if (state.count > 0) {
             Text(
                 text = state.count.toString(),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.walkItTypography.captionM.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
                 color = if (state.isLiked)
                     SemanticColor.stateRedPrimary
                 else
-                    SemanticColor.textBorderSecondary
+                    SemanticColor.textBorderSecondary,
+                modifier = Modifier.align(Alignment.CenterVertically) // Row 안에서 수직 중앙 정렬
             )
         }
 

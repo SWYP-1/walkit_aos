@@ -12,6 +12,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import team.swyp.sdu.data.api.user.TermsAgreementRequest
 import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
+import team.swyp.sdu.data.remote.home.dto.UserPointDto
 import team.swyp.sdu.data.remote.user.dto.RemoteUserDto
 import team.swyp.sdu.data.remote.user.dto.UserSearchResultDto
 
@@ -86,5 +87,13 @@ interface UserApi {
     suspend fun agreeToTerms(
         @Body body: TermsAgreementRequest
     ): Response<Unit>
+
+    /**
+     * 유저 포인트 조회
+     *
+     * @return 유저 포인트 정보
+     */
+    @GET("/users/point")
+    suspend fun getUserPoint(): UserPointDto
 }
 

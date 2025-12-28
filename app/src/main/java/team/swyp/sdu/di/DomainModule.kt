@@ -8,8 +8,11 @@ import dagger.hilt.components.SingletonComponent
 import team.swyp.sdu.domain.calculator.DistanceCalculator
 import team.swyp.sdu.domain.estimator.StepEstimator
 import team.swyp.sdu.domain.movement.MovementStateStabilizer
+import team.swyp.sdu.domain.service.ImageDownloader
+import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.domain.validator.DefaultStepCountValidator
 import team.swyp.sdu.domain.validator.StepCountValidator
+import team.swyp.sdu.data.remote.image.OkHttpImageDownloader
 import javax.inject.Singleton
 
 /**
@@ -25,6 +28,12 @@ abstract class DomainModule {
     abstract fun bindStepCountValidator(
         defaultStepCountValidator: DefaultStepCountValidator,
     ): StepCountValidator
+
+    @Binds
+    @Singleton
+    abstract fun bindImageDownloader(
+        okHttpImageDownloader: OkHttpImageDownloader,
+    ): ImageDownloader
 }
 
 /**
@@ -49,5 +58,10 @@ object DomainProviderModule {
     @Singleton
     fun provideDistanceCalculator(): DistanceCalculator =
         DistanceCalculator()
+
+    @Provides
+    @Singleton
+    fun provideLottieImageProcessor(imageDownloader: ImageDownloader): LottieImageProcessor =
+        LottieImageProcessor(imageDownloader)
 }
 

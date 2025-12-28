@@ -128,26 +128,9 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun updateUserProfileImage(imageUri: Uri): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                // 1. 서버에 이미지 업로드
+                // 서버에 이미지 업로드만 수행, Room 업데이트는 ViewModel에서 refreshUser()로 처리
                 remoteDataSource.updateUserProfileImage(imageUri)
-                
-                // 2. 현재 사용자 정보 가져오기 (nickname 확인)
-                val currentUser = userDao.getUser()
-                if (currentUser == null) {
-                    Timber.w("현재 사용자 정보가 없어 refreshUser() 호출")
-                    refreshUser()
-                    return@withContext Result.Success(Unit)
-                }
-                
-                // 3. 서버에서 최신 사용자 정보를 가져와서 imageName 업데이트
-                val updatedUser = remoteDataSource.fetchUser()
-                userDao.updateImageNameByNickname(
-                    nickname = currentUser.nickname,
-                    imageName = updatedUser.imageName
-                )
-                
-                Timber.d("프로필 이미지 업데이트 완료: nickname=${currentUser.nickname}, imageName=${updatedUser.imageName}")
-                
+                Timber.d("프로필 이미지 서버 업로드 완료: $imageUri")
                 Result.Success(Unit)
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 이미지 업데이트 실패: $imageUri")
@@ -165,8 +148,9 @@ class UserRepositoryImpl @Inject constructor(
                     nickname = nickname,
                     birthDate = birthDate,
                 )
-                // ✅ 서버 반영 후 → 다시 fetch → Room 저장
-                refreshUser()
+                // 서버에만 업데이트하고 Room은 ViewModel에서 refreshUser()로 처리
+                val updatedUser = remoteDataSource.fetchUser()
+                Result.Success(updatedUser)
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
                 Result.Error(e, e.message)

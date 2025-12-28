@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -39,6 +43,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -63,11 +68,15 @@ import team.swyp.sdu.ui.walking.components.WalkingResultCompletionDialog
 import team.swyp.sdu.ui.walking.components.WalkingResultLoadingOverlay
 import team.swyp.sdu.ui.walking.viewmodel.SnapshotState
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.components.WalkingDiaryCard
 import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.walking.components.CoilBitmapImage
 import team.swyp.sdu.ui.walking.components.WalkingProgressBar
 import java.io.File
 import java.io.FileOutputStream
@@ -190,11 +199,12 @@ private fun saveSnapshotToFile(
  */
 @Composable
 fun WalkingResultScreen(
-    modifier : Modifier = Modifier,
+    modifier: Modifier = Modifier,
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
     currentSession: WalkingSession?, // Flow에서 제공 (null이면 로딩/에러 상태)
     emotionPhotoUri: android.net.Uri?,
+    weekWalkOrder: Int,
     goal: Goal?,
     syncedSessionsThisWeek: List<WalkingSession>,
     snapshotState: SnapshotState,
@@ -234,6 +244,7 @@ fun WalkingResultScreen(
                 onNavigateToHome = onNavigateToHome,
                 currentSession = currentSession,
                 emotionPhotoUri = emotionPhotoUri,
+                weekWalkOrder = weekWalkOrder,
                 goal = goal,
                 syncedSessionsThisWeek = syncedSessionsThisWeek,
                 snapshotState = snapshotState,
@@ -253,12 +264,13 @@ fun WalkingResultScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WalkingResultScreenContent(
-    modifier : Modifier = Modifier,
+    modifier: Modifier = Modifier,
     onNavigateToPrevious: () -> Unit,
     onNavigateToHome: () -> Unit,
     currentSession: WalkingSession,
     emotionPhotoUri: android.net.Uri?,
     goal: Goal?,
+    weekWalkOrder: Int,
     syncedSessionsThisWeek: List<WalkingSession>,
     snapshotState: SnapshotState,
     onCaptureSnapshot: suspend (suspend () -> String?) -> Boolean,
@@ -277,8 +289,14 @@ private fun WalkingResultScreenContent(
     // 완료 팝업 표시 여부
     var showCompletionDialog by remember { mutableStateOf(false) }
 
-    var editedNote by remember { mutableStateOf(currentSession.note ?: "") }
     var isEditing by remember { mutableStateOf(false) }
+    var editedNote by remember { mutableStateOf(currentSession.note ?: "") }
+
+    LaunchedEffect(currentSession.note) {
+        if (!isEditing) { // 사용자가 편집 중이 아닐 때만 업데이트
+            editedNote = currentSession.note ?: ""
+        }
+    }
 
     // 서버 동기화 완료 시 팝업 표시
     LaunchedEffect(snapshotState) {
@@ -289,10 +307,10 @@ private fun WalkingResultScreenContent(
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
             // 진행 바 (1번째 칸 채워짐)
             item {
                 WalkingProgressBar(
@@ -328,7 +346,7 @@ private fun WalkingResultScreenContent(
                         withStyle(
                             style = SpanStyle(color = SemanticColor.stateAquaBluePrimary)
                         ) {
-                            append("N번째")
+                            append("${weekWalkOrder}번째")
                         }
 
                         append(" 산책을 완료했어요.")
@@ -374,11 +392,13 @@ private fun WalkingResultScreenContent(
                                 }
                             }
                             bitmap?.let {
-                                Image(
-                                    bitmap = it.asImageBitmap(),
-                                    contentDescription = "산책 사진",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
+                                CoilBitmapImage(
+                                    context = context,
+                                    bitmap = bitmap,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
 
@@ -404,6 +424,38 @@ private fun WalkingResultScreenContent(
                                 },
                             )
                         }
+
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .align(Alignment.TopStart),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "코스 / 지도",
+
+                                // body S/semibold
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = SemanticColor.textBorderPrimaryInverse
+                            )
+                        }
+
+                        IconButton(onClick = {
+                            // TODO : 공유
+                        }, modifier = Modifier
+                            .padding(4.dp)
+                            .align(Alignment.TopEnd)) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_external),
+                                tint = SemanticColor.iconWhite,
+                                contentDescription = "external",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
                     }
                 }
             }
@@ -574,6 +626,7 @@ private fun WalkingResultScreenPreview() {
             snapshotState = SnapshotState.Idle,
             onCaptureSnapshot = { false },
             onSyncSessionToServer = {},
+            weekWalkOrder = 2,
             onDeleteNote = {},
         )
     }

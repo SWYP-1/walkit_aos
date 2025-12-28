@@ -15,7 +15,9 @@ import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.CosmeticItemRepository
+import team.swyp.sdu.domain.repository.PointRepository
 import team.swyp.sdu.domain.repository.UserRepository
+import team.swyp.sdu.domain.service.LottieImageProcessor
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -28,7 +30,9 @@ import javax.inject.Inject
 class DressingRoomViewModel @Inject constructor(
     private val cosmeticItemRepository: CosmeticItemRepository,
     private val characterRepository: CharacterRepository,
+    private val pointRepository: PointRepository,
     private val userRepository: UserRepository,
+    val lottieImageProcessor: LottieImageProcessor,
 ) : ViewModel() {
 
     // UI 상태
@@ -69,12 +73,14 @@ class DressingRoomViewModel @Inject constructor(
                 return@launch
             }
 
-            // 캐릭터 & 아이템 병렬 로딩
+            // 캐릭터 & 아이템 & 포인트 병렬 로딩
             val characterDeferred = async { characterRepository.getCharacter(nickname) }
             val itemsDeferred = async { cosmeticItemRepository.getCosmeticItems(position) }
+            val pointDeferred = async { pointRepository.getUserPoint() }
 
             var character: Character? = null
             var items: List<CosmeticItem> = emptyList()
+            var userPoint: Int = 0
 
             // 캐릭터 처리
             characterDeferred.await()
@@ -97,6 +103,22 @@ class DressingRoomViewModel @Inject constructor(
                 Result.Loading -> {}
             }
 
+            // 포인트 처리
+            when (val pointResult = pointDeferred.await()) {
+                is Result.Success -> {
+                    userPoint = pointResult.data
+                    Timber.d("포인트 정보 로드 성공: $userPoint")
+                }
+                is Result.Error -> {
+                    Timber.w(pointResult.exception, "포인트 정보 로드 실패: ${pointResult.message} - 기본값 0 사용")
+                    userPoint = 0 // 실패 시 기본값 사용
+                }
+                Result.Loading -> {
+                    // Loading 상태는 무시
+                    userPoint = 0
+                }
+            }
+
             // UI 업데이트
             _uiState.value = DressingRoomUiState.Success(
                 items = items,
@@ -104,26 +126,68 @@ class DressingRoomViewModel @Inject constructor(
                 selectedItemIdSet = LinkedHashSet(),
                 currentPosition = position,
                 availablePositions = listOf("HEAD", "BODY", "FEET"),
-                character = character
+                character = character,
+                myPoint = userPoint
             )
         }
     }
 
     /**
-     * 드레싱룸 선택 UI (ID Set) 업데이트
+     * 드레싱룸 선택 UI (ID Set) 업데이트 + 장바구니 자동 담기
+     * 선택하는 즉시 장바구니에 담김 (이미 소유한 아이템 제외)
      */
     fun selectItem(itemId: Int) {
         val currentState = _uiState.value
         if (currentState is DressingRoomUiState.Success) {
-            val newSelectedSet = currentState.selectedItemIdSet
-            if (!newSelectedSet.add(itemId)) {
-                newSelectedSet.remove(itemId) // 이미 선택돼 있으면 제거
+            val newSelectedSet = currentState.selectedItemIdSet.toMutableSet()
+            val wasSelected = newSelectedSet.contains(itemId)
+
+            if (wasSelected) {
+                // 선택 해제: Set에서 제거 + 장바구니에서도 제거
+                newSelectedSet.remove(itemId)
+                removeFromCart(itemId)
+            } else {
+                // 선택: Set에 추가 + 장바구니에 담기 (미소유 아이템만)
+                newSelectedSet.add(itemId)
+                addToCartIfNotOwned(itemId, currentState.items)
             }
+
             _uiState.value = currentState.copy(
                 selectedItemId = newSelectedSet.lastOrNull(),
-                selectedItemIdSet = newSelectedSet
+                selectedItemIdSet = LinkedHashSet(newSelectedSet)
             )
-            Timber.d("아이템 선택: $itemId, 현재 선택 Set: $newSelectedSet")
+            Timber.d("아이템 선택: $itemId, 선택됨: ${!wasSelected}, 현재 선택 Set: $newSelectedSet")
+        }
+    }
+
+    /**
+     * 장바구니에 추가 (미소유 아이템만)
+     */
+    private fun addToCartIfNotOwned(itemId: Int, items: List<CosmeticItem>) {
+        val item = items.find { it.itemId == itemId }
+        if (item != null && !item.owned) {
+            // 미소유 아이템만 장바구니에 담기
+            val currentCart = _cartItems.value
+            if (!currentCart.contains(item)) {
+                currentCart.add(item)
+                _cartItems.value = currentCart
+                Timber.d("장바구니 추가: ${item.name} (ID: $itemId)")
+            }
+        } else if (item?.owned == true) {
+            Timber.d("이미 소유한 아이템은 장바구니에 담지 않음: ${item.name} (ID: $itemId)")
+        }
+    }
+
+    /**
+     * 장바구니에서 제거
+     */
+    private fun removeFromCart(itemId: Int) {
+        val currentCart = _cartItems.value
+        val itemToRemove = currentCart.find { it.itemId == itemId }
+        if (itemToRemove != null) {
+            currentCart.remove(itemToRemove)
+            _cartItems.value = currentCart
+            Timber.d("장바구니 제거: ${itemToRemove.name} (ID: $itemId)")
         }
     }
 

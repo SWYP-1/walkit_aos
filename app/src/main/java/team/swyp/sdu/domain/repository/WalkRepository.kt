@@ -53,3 +53,4 @@ interface WalkRepository {
     suspend fun unlikeWalk(walkId: Long): Result<Unit>
 }
 
+

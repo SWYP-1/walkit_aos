@@ -18,4 +18,7 @@ data class CosmeticItemDto(
     val owned: Boolean,
     @SerialName("position")
     val position: String,
+    @SerialName("point")
+    val point: Int
 )
+

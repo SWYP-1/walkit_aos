@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import team.swyp.sdu.core.DataState
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
@@ -59,6 +61,37 @@ sealed interface HomeUiState {
     data class Error(val message: String) : HomeUiState
 }
 
+// Profile Section UiState
+sealed interface ProfileUiState {
+    data object Loading : ProfileUiState
+    data class Success(
+        val nickname: String,
+        val character: Character,
+        val walkProgressPercentage: String,
+        val goal: Goal?,
+        val weather: Weather?
+    ) : ProfileUiState
+    data class Error(val message: String) : ProfileUiState
+}
+
+// Mission Section UiState
+sealed interface MissionUiState {
+    data object Loading : MissionUiState
+    data class Success(
+        val missions: List<WeeklyMission>
+    ) : MissionUiState
+    data object Empty : MissionUiState
+    data class Error(val message: String) : MissionUiState
+}
+
+// Walking Session 데이터 모델 (API 독립적)
+data class WalkingSessionData(
+    val sessionsThisWeek: List<WalkingSession>,
+    val dominantEmotion: EmotionType?,
+    val recentEmotions: List<EmotionType?>
+)
+
+
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -74,11 +107,44 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    // Section별 UiState 관리 (토스/배민 스타일)
+    private val _profileUiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
+    val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
+
+    private val _missionUiState = MutableStateFlow<MissionUiState>(MissionUiState.Loading)
+    val missionUiState: StateFlow<MissionUiState> = _missionUiState.asStateFlow()
+
+    // Goal 정보를 별도 StateFlow로 관리
+    private val _goalState = MutableStateFlow<Goal?>(null)
+
+    // Walking Session 정보를 API 독립적으로 관리
+    private val _walkingSessionDataState = MutableStateFlow<DataState<WalkingSessionData>>(DataState.Loading)
+    val walkingSessionDataState: StateFlow<DataState<WalkingSessionData>> = _walkingSessionDataState.asStateFlow()
+
     private val today = MutableStateFlow(LocalDate.now())
 
     init {
         loadHomeData()
+        loadWalkingSessionsFromRoom()  // API 독립적 로드
     }
+    val goalUiState: StateFlow<DataState<Goal>> =
+        goalRepository.goalFlow
+            .map { goal ->
+                if (goal != null) {
+                    DataState.Success(goal)
+                } else {
+                    DataState.Loading
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = DataState.Loading
+            )
+
+
+
+
 
     companion object {
         private const val TAG_PERFORMANCE = "HomePerformance"
@@ -91,6 +157,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val totalStartTime = System.currentTimeMillis()
             _uiState.value = HomeUiState.Loading
+
+            // Section별 로딩 상태 초기화
+            _profileUiState.value = ProfileUiState.Loading
+            _missionUiState.value = MissionUiState.Loading
 
             // 위치 획득 시도
             val locationStartTime = System.currentTimeMillis()
@@ -111,7 +181,10 @@ class HomeViewModel @Inject constructor(
                     val homeData = homeResult.data
                     val totalElapsedTime = System.currentTimeMillis() - totalStartTime
                     Timber.tag(TAG_PERFORMANCE).d("Home 데이터 로드 완료 (전체): ${totalElapsedTime}ms (위치: ${locationElapsedTime}ms, API: ${apiElapsedTime}ms)")
-                    
+
+                    Timber.d("API 응답 데이터 확인 - weeklyMission: ${homeData.weeklyMission}")
+                    Timber.d("API 응답 데이터 확인 - character: ${homeData.character}")
+
                     // Home API에서 받은 Character 정보를 Room에 저장
                     homeData.character.nickName?.let { nickname ->
                         characterRepository.saveCharacter(nickname, homeData.character)
@@ -119,16 +192,25 @@ class HomeViewModel @Inject constructor(
                                 Timber.w(exception, "캐릭터 정보 저장 실패: $message")
                             }
                     }
-                    
+
+                    // Section별 UiState 업데이트
+                    updateProfileSection(homeData)
+                    updateMissionSection(homeData)
+
                     // 기존 로직 유지 (세션 정보 등)
                     loadSessionsWithHomeData(homeData)
                 }
                 is Result.Error -> {
                     val totalElapsedTime = System.currentTimeMillis() - totalStartTime
                     Timber.tag(TAG_PERFORMANCE).w("Home 데이터 로드 실패 (전체): ${totalElapsedTime}ms (위치: ${locationElapsedTime}ms, API: ${apiElapsedTime}ms)")
-                    // API 실패 시 기존 로직으로 Fallback
-                    Timber.w("홈 API 호출 실패, 기존 로직으로 Fallback")
-                    loadDataFallback()
+                    Timber.w("홈 API 호출 실패 - 서버 문제로 판단하여 Error 상태 유지")
+
+                    // Home API가 모든 데이터를 담당하므로 실패 시 서버 문제로 간주
+                    // fallback 로직 제거 - 일관성 없는 데이터로 Success 표시하지 않음
+                    _profileUiState.value = ProfileUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
+                    _missionUiState.value = MissionUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
+
+                    // 기존 세션 로드 로직도 호출하지 않음 (API 기반이므로)
                 }
                 Result.Loading -> {
                     // 이미 Loading 상태
@@ -137,17 +219,92 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+
+    /**
+     * Walking Session을 Room에서 API 독립적으로 로드
+     */
+    private fun loadWalkingSessionsFromRoom() {
+        viewModelScope.launch {
+            try {
+                walkingSessionRepository
+                    .getAllSessions()
+                    .catch { e ->
+                        _walkingSessionDataState.value = DataState.Error(e.message ?: "세션을 불러오지 못했습니다.")
+                    }
+                    .collect { sessions ->
+                        val thisWeekSessions = sessions.filterThisWeek()
+                        val recentEmotions = sessions
+                            .sortedByDescending { it.startTime }
+                            .take(7)
+                            .map { it.postWalkEmotion }
+                        val dominantEmotion = findDominantEmotion(thisWeekSessions)
+
+                        val walkingSessionData = WalkingSessionData(
+                            sessionsThisWeek = thisWeekSessions,
+                            dominantEmotion = dominantEmotion,
+                            recentEmotions = recentEmotions
+                        )
+
+                        _walkingSessionDataState.value = DataState.Success(walkingSessionData)
+                    }
+            } catch (e: Exception) {
+                _walkingSessionDataState.value = DataState.Error(e.message ?: "세션 로드 중 오류가 발생했습니다.")
+            }
+        }
+    }
+
     /**
      * 홈 API 데이터와 함께 세션 정보 로드
      */
+    /**
+     * 프로필 섹션 UiState 업데이트
+     */
+    private fun updateProfileSection(homeData: team.swyp.sdu.domain.model.HomeData) {
+        Timber.d("프로필 섹션 업데이트 - character: ${homeData.character}, nickname: ${homeData.character.nickName}")
+
+        // 닉네임은 로직상 항상 존재하므로 Success로 처리
+        val goal = _goalState.value
+
+        _profileUiState.value = ProfileUiState.Success(
+            nickname = homeData.character.nickName ?: "사용자",
+            character = homeData.character,
+            walkProgressPercentage = homeData.walkProgressPercentage,
+            goal = goal,
+            weather = homeData.weather
+        )
+        Timber.d("프로필 상태: Success")
+    }
+
+    /**
+     * 미션 섹션 UiState 업데이트
+     */
+    private fun updateMissionSection(homeData: team.swyp.sdu.domain.model.HomeData) {
+        Timber.d("미션 섹션 업데이트 - weeklyMission: ${homeData.weeklyMission}")
+
+        val missions = homeData.weeklyMission?.let {
+            Timber.d("미션 데이터 존재: $it")
+            listOf(it)
+        } ?: run {
+            Timber.d("미션 데이터 없음 (null)")
+            emptyList()
+        }
+
+        Timber.d("최종 missions 리스트 크기: ${missions.size}")
+
+        if (missions.isEmpty()) {
+            Timber.d("미션 상태: Empty")
+            _missionUiState.value = MissionUiState.Empty
+        } else {
+            Timber.d("미션 상태: Success, 개수: ${missions.size}")
+            _missionUiState.value = MissionUiState.Success(missions = missions)
+        }
+    }
+
+
     private fun loadSessionsWithHomeData(homeData: team.swyp.sdu.domain.model.HomeData) {
         viewModelScope.launch {
-            // 목표 정보 가져오기
-            val goalResult = goalRepository.getGoal()
-            val goal = when (goalResult) {
-                is Result.Success -> goalResult.data
-                else -> null
-            }
+            // 목표 정보는 별도 StateFlow에서 가져옴 (flow로 관리)
+            val goal = _goalState.value
 
             val (start, end) = weekRange(today.value)
 
@@ -188,63 +345,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 기존 로직으로 Fallback (API 실패 시)
-     */
-    private fun loadDataFallback() {
-        viewModelScope.launch {
-            // 사용자 정보와 목표 정보, 미션 정보 동시에 로드
-            val userResult = userRepository.refreshUser()
-            val goalResult = goalRepository.getGoal()
-            val missionResult = missionRepository.getActiveWeeklyMission()
-
-            // refreshUser 실패 시 Room의 기존 데이터 사용
-            val nickname = when (userResult) {
-                is Result.Success -> {
-                    Timber.d("사용자 정보 갱신 성공: ${userResult.data.nickname}")
-                    userResult.data.nickname ?: "사용자"
-                }
-                is Result.Error -> {
-                    Timber.w(userResult.exception, "사용자 정보 갱신 실패, Room의 기존 데이터 사용")
-                    // Room에서 기존 사용자 정보 가져오기
-                    when (val cachedUserResult = userRepository.getUser()) {
-                        is Result.Success -> cachedUserResult.data.nickname ?: "사용자"
-                        else -> {
-                            Timber.w("Room에 사용자 정보 없음, 기본값 사용")
-                            "사용자"
-                        }
-                    }
-                }
-                Result.Loading -> {
-                    Timber.w("사용자 정보 갱신 중, Room의 기존 데이터 사용")
-                    when (val cachedUserResult = userRepository.getUser()) {
-                        is Result.Success -> cachedUserResult.data.nickname ?: "사용자"
-                        else -> "사용자"
-                    }
-                }
-            }
-
-            val goal = when (goalResult) {
-                is Result.Success -> goalResult.data
-                else -> null
-            }
-
-            val missions = when (missionResult) {
-                is Result.Success -> missionResult.data
-                else -> {
-                    Timber.w("주간 미션 조회 실패")
-                    emptyList()
-                }
-            }
-
-            // 레벨과 오늘 걸음 수 계산
-            val levelLabel = calculateLevelLabel(goal)
-            val todaySteps = calculateTodaySteps()
-
-            // 세션 정보 로드
-            loadSessions(nickname, levelLabel, todaySteps, missions, goal)
-        }
-    }
 
 
     /**

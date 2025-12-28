@@ -53,6 +53,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.theme.Grey10
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -912,7 +913,7 @@ fun WalkingDiaryCard(
     session: WalkingSession,
     note: String,
     isEditMode: Boolean,
-    setEditing :(Boolean) ->Unit,
+    setEditing: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -929,8 +930,14 @@ fun WalkingDiaryCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Text(
+                text = "감정 기록",
+                style = MaterialTheme.walkItTypography.bodyS,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black,
+            )
             // 상단: 감정 아이콘 + 더보기
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -949,7 +956,11 @@ fun WalkingDiaryCard(
 
                 Box {
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_more),
+                            contentDescription = "더보기",
+                            tint = SemanticColor.iconBlack
+                        )
                     }
 
                     DiaryMoreMenu(
@@ -970,32 +981,33 @@ fun WalkingDiaryCard(
 
             HorizontalDivider(color = Color(0xFFF3F3F5), thickness = 1.dp)
 
-            Text(
-                text = "산책 일기",
-                style = MaterialTheme.walkItTypography.bodyS,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black,
-            )
-
             // 일기 내용
-            if (isEditMode) {
-                BasicTextField(
-                    value = note,
-                    onValueChange = onNoteChange,
-                    textStyle = MaterialTheme.walkItTypography.captionM.copy(
-                        color = SemanticColor.textBorderSecondary
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(138.dp) // 기존 높이 유지
-                )
-            } else {
-                Text(
-                    text = note.ifEmpty { "감정 일기 내용" },
-                    style = MaterialTheme.walkItTypography.captionM,
-                    color = SemanticColor.textBorderSecondary,
-                    maxLines = Int.MAX_VALUE,
-                )
+            val innerPadding = 10.dp
+            SectionCard {
+                if (isEditMode) {
+                    BasicTextField(
+                        value = note,
+                        onValueChange = onNoteChange,
+                        textStyle = MaterialTheme.walkItTypography.captionM.copy(
+                            color = SemanticColor.textBorderSecondary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(138.dp)
+                            .padding(10.dp) // 기존 높이 유지
+                    )
+                } else {
+                    Text(
+                        text = note.ifEmpty { "감정 일기 내용" },
+                        style = MaterialTheme.walkItTypography.captionM,
+                        color = SemanticColor.textBorderSecondary,
+                        maxLines = Int.MAX_VALUE,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(138.dp)
+                            .padding(10.dp)
+                    )
+                }
             }
         }
     }
@@ -1015,7 +1027,9 @@ private fun EmotionCircleIcon(emotion: EmotionType) {
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 EmotionIcon(emotionType = emotion)
@@ -1023,7 +1037,6 @@ private fun EmotionCircleIcon(emotion: EmotionType) {
         }
     }
 }
-
 
 
 /**
@@ -1236,8 +1249,36 @@ fun DropMenuItem(
 }
 
 @Composable
-@Preview
-fun WalkingDiaryCardPreview(modifier: Modifier = Modifier) {
+@Preview(showBackground = true)
+fun WalkingDiaryCardPreview() {
     WalkItTheme {
+        // 더미 세션 데이터
+        val dummySession = WalkingSession(
+            id = "session_01",
+            startTime = System.currentTimeMillis() - 3600_000, // 1시간 전
+            stepCount = 3500,
+            preWalkEmotion = EmotionType.JOYFUL,
+            postWalkEmotion = EmotionType.HAPPY,
+            locations = emptyList(), // 좌표 생략
+            note = "오늘은 날씨가 좋아서 산책이 즐거웠어요.",
+            endTime = 12314556L,
+            createdDate = "24112556",
+        )
+
+        // 상태 관리용 remember
+        var isEditMode by remember { mutableStateOf(false) }
+        var noteText by remember { mutableStateOf(dummySession.note) }
+
+        WalkingDiaryCard(
+            session = dummySession,
+            note = noteText.toString(),
+            isEditMode = isEditMode,
+            setEditing = { isEditMode = it },
+            onNoteChange = { noteText = it },
+            onDeleteClick = { id -> println("삭제 클릭: $id") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
     }
 }

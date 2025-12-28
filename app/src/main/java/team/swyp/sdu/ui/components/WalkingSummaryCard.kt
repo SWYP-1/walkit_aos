@@ -134,6 +134,7 @@ fun WalkingSummaryCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // shadow로 처리
     ) {
+        val topPadding = if (header != null) 4.dp else 16.dp
         Column(
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -152,7 +153,7 @@ fun WalkingSummaryCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = cardHorizontalPadding, vertical = cardVerticalPadding),
+                    .padding(horizontal = cardHorizontalPadding, vertical = topPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // 왼쪽 섹션
@@ -162,6 +163,7 @@ fun WalkingSummaryCard(
                     unit = leftUnit?.unit,
                 )
 
+                Spacer(Modifier.width(cardHorizontalPadding))
                 // 세로 구분선
                 Box(
                     modifier = Modifier

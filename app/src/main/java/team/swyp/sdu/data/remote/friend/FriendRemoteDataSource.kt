@@ -1,0 +1,36 @@
+package team.swyp.sdu.data.remote.friend
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import team.swyp.sdu.data.api.follower.FollowerApi
+import team.swyp.sdu.domain.model.Friend
+import timber.log.Timber
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * 친구 목록 원격 데이터 소스
+ */
+@Singleton
+class FriendRemoteDataSource @Inject constructor(
+    private val followerApi: FollowerApi
+) {
+    /**
+     * 친구 목록 조회
+     */
+    suspend fun getFriends(): List<Friend> = withContext(Dispatchers.IO) {
+        try {
+            val response = followerApi.getFriends()
+            response.map { dto ->
+                Friend(
+                    id = dto.userId.toString(),
+                    nickname = dto.nickname,
+                    avatarUrl = dto.userImageUrl
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "친구 목록 조회 실패")
+            throw e
+        }
+    }
+}

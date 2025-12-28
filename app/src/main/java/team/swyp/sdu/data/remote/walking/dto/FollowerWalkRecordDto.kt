@@ -25,7 +25,7 @@ data class FollowerWalkRecordDto(
     val stepCount: Int = 0,
 
     @SerialName("totalDistance")
-    val totalDistance: Int = 0,
+    val totalDistance: Double = 0.0,
 
     @SerialName("likeCount")
     val likeCount: Int = 0,

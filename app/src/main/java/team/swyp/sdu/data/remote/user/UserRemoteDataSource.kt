@@ -11,6 +11,7 @@ import team.swyp.sdu.data.api.follower.FollowerApi
 import team.swyp.sdu.data.api.user.TermsAgreementRequest
 import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.api.user.UserApi
+import team.swyp.sdu.data.remote.home.dto.UserPointDto
 import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.model.User
 import timber.log.Timber
@@ -239,6 +240,19 @@ class UserRemoteDataSource @Inject constructor(
         }
     }
 
+    /**
+     * 유저 포인트 조회
+     */
+    suspend fun getUserPoint(): UserPointDto {
+        return try {
+            val data = userApi.getUserPoint()
+            Timber.d("유저 포인트 조회 성공: ${data.point}")
+            data
+        } catch (e: Exception) {
+            Timber.e(e, "유저 포인트 조회 실패")
+            throw e
+        }
+    }
 
 }
 

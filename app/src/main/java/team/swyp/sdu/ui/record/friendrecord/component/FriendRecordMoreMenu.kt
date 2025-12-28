@@ -31,7 +31,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 fun FriendRecordMoreMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
-    onDeleteClick: () -> Unit,
+    onBlockClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     DropdownMenu(
@@ -55,7 +55,7 @@ fun FriendRecordMoreMenu(
                 iconColor = SemanticColor.iconBlack, // 검은색
                 textColor = SemanticColor.iconBlack, // 검은색
                 backgroundColor = SemanticColor.backgroundWhitePrimary,
-                onClick = onDeleteClick,
+                onClick = onBlockClick,
             )
         }
     }

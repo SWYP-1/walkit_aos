@@ -21,3 +21,4 @@ interface CosmeticItemApi {
         @Query("position") position: String? = null
     ): Response<List<CosmeticItemDto>>
 }
+

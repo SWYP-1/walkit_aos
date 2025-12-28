@@ -19,6 +19,7 @@ object SemanticColor {
     val textBorderDisabled = Grey3
     val textBorderGreenPrimary = Green4
     val textBorderGreenSecondary = Green5
+    val textBorderGreenTertiary = Green6
 
 
 

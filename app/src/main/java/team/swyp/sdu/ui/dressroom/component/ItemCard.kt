@@ -1,6 +1,5 @@
 package team.swyp.sdu.ui.dressroom.component
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,8 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +41,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun ItemCard(
     itemImageUrl: String,
     name: String,
-    price: Int,
+    point: Int,
     isMine: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -123,7 +120,7 @@ fun ItemCard(
 
             Row {
                 Text(
-                    text = "$price P",
+                    text = "$point",
                     // body S/medium
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Medium
@@ -178,7 +175,7 @@ fun ItemCardPreview() {
         ItemCard(
             itemImageUrl = "https://picsum.photos/200", // 임시 이미지
             name = "모자",
-            price = 1200,
+            point = 1200,
             isMine = true,
             isSelected = true,
             onClick = {},

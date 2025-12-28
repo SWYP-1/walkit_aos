@@ -168,9 +168,8 @@ fun FriendSearchDetailScreenContent(
                             FriendRecordMoreMenu(
                                 expanded = isMoreMenuExpanded,
                                 onDismiss = { isMoreMenuExpanded = false },
-                                onDeleteClick = {
+                                onBlockClick = {
                                     isMoreMenuExpanded = false
-                                    // TODO: 차단 기능 구현
                                 },
                             )
                         }

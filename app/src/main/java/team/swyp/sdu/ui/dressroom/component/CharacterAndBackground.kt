@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,28 +20,40 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
+import org.json.JSONObject
 import team.swyp.sdu.R
 import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.DateUtils
 import team.swyp.sdu.utils.Season
+import timber.log.Timber
 
 @Composable
 fun CharacterAndBackground(
     modifier: Modifier = Modifier,
     character: Character,
     points: Int,
+    lottieImageProcessor: LottieImageProcessor? = null,
     onBackClick: () -> Unit = {},
     onQuestionClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {}
@@ -54,6 +67,43 @@ fun CharacterAndBackground(
             Season.AUTUMN -> R.drawable.bg_autom_cropped
             Season.WINTER -> R.drawable.bg_winter_cropped
         }
+
+    // Lottie 구성 및 이미지 교체 로직
+    val context = LocalContext.current
+    // 1️⃣ Base Lottie (fallback 용)
+    val baseComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.character2)
+    )
+
+// 2️⃣ 서버 이미지 반영된 JSON 생성
+    val processedJsonString by produceState<String?>(null, character.headImageName) {
+        value = try {
+            val inputStream = context.resources.openRawResource(R.raw.character2)
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            val originalJson = JSONObject(jsonString)
+
+            if (lottieImageProcessor != null) {
+                Timber.d("Lottie 이미지 교체: ${character.headImageName}")
+                lottieImageProcessor
+                    .replaceAssetWithImageUrl(
+                        lottieJson = originalJson,
+                        assetId = "Group 212_209b93c3-be87-4e55-a26a-57b71292675c",
+                        imageUrl = "https://img.freepik.com/premium-photo/yellow-flower-png-gradient-holographic-transparent-background_53876-1040799.jpg"
+                    )
+                    .toString()
+            } else {
+                originalJson.toString()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Lottie JSON 처리 실패")
+            null
+        }
+    }
+    val processedComposition by rememberLottieComposition(
+        processedJsonString?.let {
+            LottieCompositionSpec.JsonString(it)
+        } ?: LottieCompositionSpec.RawRes(R.raw.character2)
+    )
 
     Box(modifier = modifier.fillMaxWidth()) {
         // 1️⃣ 배경
@@ -78,6 +128,37 @@ fun CharacterAndBackground(
                 onBack = onBackClick,
                 onClickQuestion = onQuestionClick
             )
+        }
+
+        // 중앙에 캐릭터 Lottie 애니메이션 표시
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(200.dp), // 캐릭터 크기 조정
+            contentAlignment = Alignment.Center
+        ) {
+            if (processedComposition != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    processedComposition?.let {
+                        LottieAnimation(
+                            composition = it,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            } else {
+                LottieAnimation(
+                    composition = baseComposition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         // 3️⃣ start / bottom 버튼
@@ -136,11 +217,13 @@ fun CharacterAndBackgroundPreview() {
     val dummyCharacter = Character(
         nickName = "승우",
         grade = Grade.TREE,
+        headImageName = "https://example.com/head.png" // 프리뷰용 더미 URL
     )
     WalkItTheme {
         CharacterAndBackground(
             character = dummyCharacter,
             points = 500,
+            lottieImageProcessor = null, // 프리뷰에서는 null로 처리
             onBackClick = { /* 프리뷰용 클릭 */ },
             onQuestionClick = { /* 프리뷰용 클릭 */ },
             onRefreshClick = { /* 프리뷰용 클릭 */ }

@@ -18,3 +18,4 @@ interface FriendRepository {
     suspend fun blockUser(nickname: String) : Result<Unit>
 }
 
+

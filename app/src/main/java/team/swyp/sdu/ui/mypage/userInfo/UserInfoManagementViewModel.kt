@@ -94,6 +94,12 @@ class UserInfoManagementViewModel @Inject constructor(
     fun updateUserInput(input: UserInput) {
         _userInput.value = input
     }
+    /**
+     * 사용자 입력 상태 업데이트
+     */
+    fun updateProfileImageUri(uri: Uri) {
+        _uploadedImageUri.value = uri
+    }
 
     /**
      * _uploadedImageUri를 사용하여 프로필 저장/업데이트
@@ -173,17 +179,30 @@ class UserInfoManagementViewModel @Inject constructor(
                     }
 
                     imageResult is Result.Success && profileResult is Result.Success -> {
-                        val updatedUser = profileResult.data
-                        _userInput.value = UserInput(
-                            nickname = updatedUser.nickname ?: "",
-                            birthDate = updatedUser.birthDate ?: "",
-                            sex = updatedUser.sex ?: Sex.MALE,
-                            imageName = updatedUser.imageName
-                        )
-                        // 성공 시 _uploadedImageUri 초기화
-                        _uploadedImageUri.value = Uri.EMPTY
-                        _uiState.value = UserInfoUiState.Success(updatedUser)
-                        Timber.d("프로필 저장 완료: nickname=$nickname, hasImage=$hasImage")
+                        // ✅ 둘 다 성공한 후 최신 데이터를 가져와서 Room 업데이트
+                        val refreshResult = userRepository.refreshUser()
+                        when (refreshResult) {
+                            is Result.Success -> {
+                                val updatedUser = refreshResult.data
+                                _userInput.value = UserInput(
+                                    nickname = updatedUser.nickname ?: "",
+                                    birthDate = updatedUser.birthDate ?: "",
+                                    sex = updatedUser.sex ?: Sex.MALE,
+                                    imageName = updatedUser.imageName,
+                                    selectedImageUri = null // 저장 성공 시 선택된 이미지 URI 초기화
+                                )
+                                // 성공 시 _uploadedImageUri 초기화
+                                _uploadedImageUri.value = Uri.EMPTY
+                                _uiState.value = Success(updatedUser)
+                                Timber.d("프로필 저장 완료: nickname=$nickname, hasImage=$hasImage, imageName=${updatedUser.imageName}")
+                            }
+                            is Result.Error -> {
+                                _uiState.value = Error("프로필 데이터 동기화 실패")
+                                Timber.e("프로필 저장 후 데이터 동기화 실패")
+                            }
+
+                            Result.Loading -> {}
+                        }
                     }
                 }
 
@@ -193,6 +212,7 @@ class UserInfoManagementViewModel @Inject constructor(
             }
         }
     }
+
 }
 
 /**

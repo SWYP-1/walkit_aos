@@ -15,6 +15,8 @@ import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.remote.walking.mapper.FollowerWalkRecordMapper
 import team.swyp.sdu.domain.model.FollowerWalkRecord
 import team.swyp.sdu.domain.repository.WalkRepository
+import team.swyp.sdu.domain.service.LocationManager
+import team.swyp.sdu.utils.LocationConstants
 import timber.log.Timber
 import java.util.LinkedHashMap
 import javax.inject.Inject
@@ -30,6 +32,7 @@ data class FriendRecordState(
 @HiltViewModel
 class FriendRecordViewModel @Inject constructor(
     private val walkRepository: WalkRepository,
+    private val locationManager: LocationManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FriendRecordUiState>(FriendRecordUiState.Loading)
@@ -54,7 +57,10 @@ class FriendRecordViewModel @Inject constructor(
             friendStateCache[nickname]?.let { cachedState ->
                 _uiState.value = FriendRecordUiState.Success(
                     data = cachedState.record,
-                    like = LikeUiState.EMPTY
+                    like = LikeUiState(
+                        count = cachedState.record.likeCount,
+                        isLiked = cachedState.record.liked
+                    )
                 )
                 return@launch
             }
@@ -62,9 +68,21 @@ class FriendRecordViewModel @Inject constructor(
             // 2️⃣ 로딩 상태
             _uiState.value = FriendRecordUiState.Loading
 
-            // 3️⃣ 서버 요청
+            // 3️⃣ 현재 위치 가져오기
+            val currentLocation = try {
+                locationManager.getCurrentLocationOrLast()
+            } catch (e: Exception) {
+                Timber.w(e, "현재 위치를 가져올 수 없음 - 서울 시청 좌표 사용")
+                null
+            }
+
+            // 4️⃣ 서버 요청 (위치 정보 포함)
             val result = withContext(Dispatchers.IO) {
-                walkRepository.getFollowerWalkRecord(nickname)
+                walkRepository.getFollowerWalkRecord(
+                    nickname = nickname,
+                    lat = currentLocation?.latitude ?: LocationConstants.DEFAULT_LATITUDE,
+                    lon = currentLocation?.longitude ?: LocationConstants.DEFAULT_LONGITUDE
+                )
             }
 
             when (result) {
@@ -77,7 +95,10 @@ class FriendRecordViewModel @Inject constructor(
                     // 5️⃣ UI 업데이트
                     _uiState.value = FriendRecordUiState.Success(
                         data = record,
-                        like = LikeUiState.EMPTY
+                        like = LikeUiState(
+                            count = record.likeCount,
+                            isLiked = record.liked
+                        )
                     )
                 }
                 is Result.Error -> _uiState.value = FriendRecordUiState.Error(result.message)

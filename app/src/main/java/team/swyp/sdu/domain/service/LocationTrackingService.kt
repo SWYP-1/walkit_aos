@@ -324,7 +324,12 @@ class LocationTrackingService : Service() {
         // 위치 데이터를 Broadcast로 전송
         sendLocationDataBroadcast()
 
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        // API 레벨에 따라 foreground 제거 방법 선택
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            stopForeground(true) // API 23 이하에서는 boolean 파라미터 사용
+        }
         stopSelf()
         Timber.d("위치 추적 중지")
     }

@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.domain.model.Friend
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
+import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.record.components.*
 import team.swyp.sdu.ui.record.friendrecord.FriendRecordScreen
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -127,7 +128,7 @@ private fun RecordScreenContent(
                         .height(120.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CustomProgressIndicator()
                 }
             }
 

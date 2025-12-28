@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,7 +27,10 @@ fun ItemHeader(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        Modifier
+            .padding(16.dp)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
@@ -36,7 +40,7 @@ fun ItemHeader(
             color = SemanticColor.textBorderPrimary,
         )
 
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "보유한 아이템만 보기",
                 // body S/regular
@@ -51,7 +55,7 @@ fun ItemHeader(
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun ItemHeaderPreview(modifier: Modifier = Modifier) {
     WalkItTheme {

@@ -84,7 +84,7 @@ fun MyPageScreen(
                 is DataState.Success -> {
                     MyPageUserInfo(
                         nickname = userState.data.nickname,
-                        profileImageUrl = userState.data.nickname,
+                        profileImageUrl = userState.data.profileImageUrl,
                         grade = userState.data.grade
                     )
                 }

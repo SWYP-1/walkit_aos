@@ -7,8 +7,11 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
+import team.swyp.sdu.data.local.datastore.LocationAgreementDataStore
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
+import team.swyp.sdu.data.repository.PointRepositoryImpl
 import team.swyp.sdu.data.repository.UserRepositoryImpl
+import team.swyp.sdu.domain.repository.PointRepository
 import team.swyp.sdu.domain.repository.UserRepository
 
 /**
@@ -24,7 +27,14 @@ object UserModule {
         userRemoteDataSource: UserRemoteDataSource,
         authDataStore: AuthDataStore,
     ): UserRepository = UserRepositoryImpl(userDao, userRemoteDataSource, authDataStore)
+
+    @Provides
+    @Singleton
+    fun providePointRepository(
+        userRemoteDataSource: UserRemoteDataSource,
+    ): PointRepository = PointRepositoryImpl(userRemoteDataSource)
 }
+
 
 
 

@@ -13,6 +13,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 import javax.inject.Singleton
 import team.swyp.sdu.data.local.datastore.AuthDataStore
+import team.swyp.sdu.data.local.datastore.LocationAgreementDataStore
 import team.swyp.sdu.data.local.datastore.NotificationDataStore
 import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 
@@ -60,6 +61,16 @@ object DataStoreModule {
     ): DataStore<Preferences> =
         PreferenceDataStoreFactory.create(
             produceFile = { context.preferencesDataStoreFile("fcm_prefs") },
+        )
+
+    @Provides
+    @Singleton
+    @Named("location_agreement")
+    fun provideLocationAgreementPreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("location_agreement_prefs") },
         )
 }
 

@@ -1,5 +1,9 @@
 package team.swyp.sdu.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,17 +18,32 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import team.swyp.sdu.ui.home.components.WalkingFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import kotlinx.coroutines.launch
 import team.swyp.sdu.navigation.Screen
+import team.swyp.sdu.ui.home.HomeRoute
 import team.swyp.sdu.ui.home.HomeScreen
+import team.swyp.sdu.ui.home.LocationAgreementUiState
+import team.swyp.sdu.ui.home.LocationAgreementViewModel
+import team.swyp.sdu.ui.home.components.WalkingFloatingActionButton
+import team.swyp.sdu.ui.home.components.LocationAgreementDialog
 import team.swyp.sdu.ui.mypage.MyPageRoute
 import team.swyp.sdu.ui.record.RecordRoute
 
@@ -38,7 +57,39 @@ fun MainScreen(
 ) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    // 위치 동의 ViewModel
+    val locationViewModel: LocationAgreementViewModel = hiltViewModel()
+    val locationUiState by locationViewModel.uiState.collectAsStateWithLifecycle()
+
+    // 위치 권한 요청 Launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        locationViewModel.handlePermissionResult(isGranted)
+        if (isGranted) {
+            // 권한 승인 시 Walking 화면으로 이동
+            navController.navigate(Screen.Walking.route)
+        } else {
+            // 권한 거부 시 사용자에게 안내 및 재요청 옵션 제공
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = "산책 기능을 사용하려면 위치 권한이 필요합니다",
+                    actionLabel = "설정에서 허용"
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    // 설정 앱으로 이동하여 권한 설정
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                    context.startActivity(intent)
+                }
+            }
+        }
+    }
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
@@ -62,12 +113,18 @@ fun MainScreen(
         modifier = modifier
             .fillMaxSize(),
         contentWindowInsets = WindowInsets.systemBars,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (currentTabIndex == 0) {
                 // 홈 화면에서만 FloatingActionButton 표시
                 WalkingFloatingActionButton(
                     onClick = {
-                        navController.navigate(Screen.Walking.route)
+                        // 위치 권한 확인 후 처리
+                        if (locationViewModel.hasLocationPermission()) {
+                            navController.navigate(Screen.Walking.route)
+                        } else {
+                            locationViewModel.checkShouldShowDialog()
+                        }
                     },
 //                    modifier = Modifier.padding(bottom = 40.dp), // NavigationBar 위에 표시
                 )
@@ -124,12 +181,15 @@ fun MainScreen(
                     .fillMaxSize()
         ) {
             when (currentTabIndex) {
-                0 -> HomeScreen(
+                0 -> HomeRoute(
                     onClickWalk = { navController.navigate(Screen.Walking.route) }, // FloatingActionButton에서 처리하므로 빈 함수
                     onClickAlarm = { navController.navigate(Screen.Alarm.route) },
                     onClickMission = {
                         navController.navigate(Screen.Mission.route)
                     },
+                    onClickMissionMore = {
+                        navController.navigate(Screen.Mission.route)
+                    }
                 )
 
                 1 -> RecordRoute(
@@ -174,6 +234,22 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    // 위치 동의 다이얼로그
+    if (locationUiState == LocationAgreementUiState.ShouldShowDialog) {
+        LocationAgreementDialog(
+            onDismiss = {
+                locationViewModel.dismissDialog()
+            },
+            onGrantPermission = {
+                locationViewModel.grantPermission()
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            },
+            onDenyPermission = {
+                locationViewModel.denyPermission()
+            }
+        )
     }
 }
 

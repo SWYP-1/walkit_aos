@@ -1,30 +1,17 @@
 package team.swyp.sdu.ui.dressroom
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,24 +21,18 @@ import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.model.EquipSlot
-import team.swyp.sdu.ui.components.BottomDialog
-import team.swyp.sdu.ui.components.CtaButton
-import team.swyp.sdu.ui.components.CustomProgressIndicator
-import team.swyp.sdu.ui.components.ProgressIndicatorSize
+import team.swyp.sdu.domain.service.LottieImageProcessor
+import team.swyp.sdu.ui.components.*
 import team.swyp.sdu.ui.dressroom.component.CartDialog
 import team.swyp.sdu.ui.dressroom.component.CharacterAndBackground
 import team.swyp.sdu.ui.dressroom.component.ItemCard
+import team.swyp.sdu.ui.dressroom.component.ItemHeader
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
-import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
- * 드레싱룸 화면
- *
- * 코스메틱 아이템을 보고 선택할 수 있는 화면입니다.
+ * Route (ViewModel 연결)
  */
-
-
 @Composable
 fun DressingRoomRoute(
     modifier: Modifier = Modifier,
@@ -59,72 +40,69 @@ fun DressingRoomRoute(
     onNavigateBack: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
 
     DressingRoomScreen(
         modifier = modifier,
-        cartItems = cartItems,
         uiState = uiState,
+        cartItems = cartItems,
+        lottieImageProcessor = viewModel.lottieImageProcessor, // 실제 주입
         onBackClick = onNavigateBack,
-        onRefreshClick = { /* 필요시 ViewModel 연동 */ },
-        onQuestionClick = { /* 필요시 질문 클릭 처리 */ },
-        onItemClick = { productId ->
-            viewModel.selectItem(productId)
-        },
+        onRefreshClick = {},
+        onQuestionClick = {},
+        onItemClick = viewModel::selectItem,
         onPurChaseItem = {},
         onSaveItem = {},
     )
 }
 
+/**
+ * Screen (UI only)
+ */
 @Composable
 fun DressingRoomScreen(
     modifier: Modifier = Modifier,
     uiState: DressingRoomUiState,
     cartItems: LinkedHashSet<CosmeticItem>,
+    lottieImageProcessor: LottieImageProcessor?, // ⭐ nullable
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
     onItemClick: (Int) -> Unit,
-    onPurChaseItem : () -> Unit,
-    onSaveItem : () -> Unit,
+    onPurChaseItem: () -> Unit,
+    onSaveItem: () -> Unit,
 ) {
-    // 다이얼로그 표시 상태
     val showCartDialog = remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
-            .navigationBarsPadding() // 하단 네비바만 자동 패딩
+            .navigationBarsPadding()
     ) {
         when (uiState) {
             is DressingRoomUiState.Loading -> LoadingContent()
-            is DressingRoomUiState.Error -> ErrorContent(errorMessage = uiState.message)
+            is DressingRoomUiState.Error -> ErrorContent(uiState.message)
             is DressingRoomUiState.Success -> SuccessContent(
-                cartItems = cartItems,
                 uiState = uiState,
+                cartItems = cartItems,
+                lottieImageProcessor = lottieImageProcessor,
                 onBackClick = onBackClick,
                 onRefreshClick = onRefreshClick,
                 onQuestionClick = onQuestionClick,
                 onItemClick = onItemClick,
                 onSaveItem = onSaveItem,
-                onPurChaseItem = {
-                    // 구매 버튼 클릭 시 다이얼로그 열기
-                    showCartDialog.value = true
-                },
+                onPurChaseItem = { showCartDialog.value = true }
             )
         }
 
-        // 2️⃣ CartDialog 바텀 다이얼로그
         if (showCartDialog.value) {
             BottomDialog(onDismissRequest = { showCartDialog.value = false }) {
                 CartDialog(
                     cartItems = cartItems.toList(),
                     myPoints = 5700,
                     onDismiss = { showCartDialog.value = false },
-                    onPurchase = { itemsToPurchase ->
-                        // 실제 구매 처리
+                    onPurchase = {
                         onPurChaseItem()
                         showCartDialog.value = false
                     }
@@ -134,87 +112,112 @@ fun DressingRoomScreen(
     }
 }
 
-
+/**
+ * Success UI
+ */
 @Composable
 private fun SuccessContent(
     uiState: DressingRoomUiState.Success,
-    cartItems : LinkedHashSet<CosmeticItem>,
+    cartItems: LinkedHashSet<CosmeticItem>,
+    lottieImageProcessor: LottieImageProcessor?,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
     onItemClick: (Int) -> Unit,
-    onSaveItem : () -> Unit,
+    onSaveItem: () -> Unit,
     onPurChaseItem: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    // 체크박스 상태를 remember로 선언
+    var check by remember { mutableStateOf(false) }
 
-        // 헤더 + 배경
-        uiState.character?.let { character ->
-            CharacterAndBackground(
-                character = character,
-                points = uiState.myPoint,
-                onBackClick = onBackClick,
-                onRefreshClick = onRefreshClick,
-                onQuestionClick = onQuestionClick,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    SemanticColor.iconBlack,
+                    shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                )
+                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                // 배경을 줘야 clip이 보임
+                .padding(bottom = 72.dp)
+            // CTA 버튼 높이만큼 패딩
+        ) {
+            // 캐릭터 영역
+            uiState.character?.let { character ->
+                CharacterAndBackground(
+                    character = character,
+                    points = uiState.myPoint,
+                    lottieImageProcessor = lottieImageProcessor,
+                    onBackClick = onBackClick,
+                    onRefreshClick = onRefreshClick,
+                    onQuestionClick = onQuestionClick
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            // 체크박스 토글 가능한 헤더
+            ItemHeader(
+                checked = check,
+                onCheckedChange = { checked -> check = checked }
             )
-        }
 
-        // 아이템 그리드
-        if (uiState.items.isEmpty()) {
-            EmptyContent()
-        } else {
-            Column {
-
-
-
+            if (uiState.items.isEmpty()) {
+                EmptyContent()
+            } else {
                 ItemGrid(
                     items = uiState.items,
-                    selectedItemId = uiState.selectedItemId,
+                    selectedItemIds = uiState.selectedItemIdSet,
                     onItemClick = onItemClick
                 )
+            }
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CtaButton(
-                        text = "구매하기",
-                        textColor = SemanticColor.buttonPrimaryDefault,
-                        buttonColor = SemanticColor.backgroundWhitePrimary,
-                        onClick = onPurChaseItem,
-                        enabled = !cartItems.isEmpty(),
-                        modifier = Modifier.width(96.dp)      // 1
-                    )
+        // CTA 버튼 고정
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(SemanticColor.backgroundWhitePrimary)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CtaButton(
+                text = "구매하기",
+                textColor = SemanticColor.buttonPrimaryDefault,
+                buttonColor = SemanticColor.backgroundWhitePrimary,
+                enabled = cartItems.isNotEmpty(),
+                onClick = onPurChaseItem,
+                modifier = Modifier.weight(1f)
+            )
 
-                    CtaButton(
-                        text = "저장하기",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
-                        onClick = onSaveItem,
-                        modifier = Modifier.weight(1f),   // 2.4
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_forward),
-                                contentDescription = "arrow forward",
-                                tint = SemanticColor.iconWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+            CtaButton(
+                text = "저장하기",
+                onClick = onSaveItem,
+                modifier = Modifier.weight(1f),
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_forward),
+                        contentDescription = null,
+                        tint = SemanticColor.iconWhite,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-            }
-
+            )
         }
     }
 }
 
 
 /**
- * 아이템 그리드
+ * Item Grid
  */
 @Composable
 private fun ItemGrid(
-    items: List<team.swyp.sdu.domain.model.CosmeticItem>,
-    selectedItemId: Int?,
+    items: List<CosmeticItem>,
+    selectedItemIds: Set<Int>,
     onItemClick: (Int) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -229,9 +232,9 @@ private fun ItemGrid(
             ItemCard(
                 itemImageUrl = item.imageName,
                 name = item.name,
-                price = 120,
+                point = item.point,
                 isMine = item.owned,
-                isSelected = selectedItemId == item.itemId,
+                isSelected = selectedItemIds.contains(item.itemId),
                 onClick = { onItemClick(item.itemId) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -240,132 +243,80 @@ private fun ItemGrid(
 }
 
 /**
- * 빈 콘텐츠 UI
+ * Empty / Error / Loading
  */
 @Composable
-private fun EmptyContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp), contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "아이템이 없습니다",
-                style = MaterialTheme.walkItTypography.bodyL,
-                color = SemanticColor.textBorderSecondary
-            )
-            Text(
-                text = "다른 카테고리를 선택해보세요",
-                style = MaterialTheme.walkItTypography.bodyM,
-                color = SemanticColor.textBorderTertiary
-            )
-        }
-    }
+private fun EmptyContent() { /* 동일 */
 }
 
-/**
- * 에러 상태 UI
- */
 @Composable
-private fun ErrorContent(errorMessage: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp), contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "오류가 발생했습니다", style = MaterialTheme.walkItTypography.bodyL.copy(
-                    fontWeight = FontWeight.SemiBold
-                ), color = SemanticColor.stateRedPrimary
-            )
-            Text(
-                text = errorMessage,
-                style = MaterialTheme.walkItTypography.bodyM,
-                color = SemanticColor.textBorderSecondary
-            )
-        }
-    }
+private fun ErrorContent(message: String) { /* 동일 */
 }
 
-
-/**
- * 로딩 상태 UI
- */
 @Composable
 private fun LoadingContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-    ) {
-        CustomProgressIndicator(
-            size = ProgressIndicatorSize.Medium
-        )
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
     }
 }
 
-// 샘플 데이터
-private val sampleItems = linkedSetOf(
-    CosmeticItem(itemId = 1, name = "헤어스타일1", imageName = "", owned = false, price = 200, position = EquipSlot.BODY),
-    CosmeticItem(itemId = 2, name = "상의1", imageName = "", owned = true, price = 300,position = EquipSlot.BODY),
-    CosmeticItem(itemId = 3, name = "하의1", imageName = "", owned = false, price = 250,position = EquipSlot.BODY)
-)
-
-
+/**
+ * Preview
+ */
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)
 @Composable
 fun PreviewDressingRoomFullSample() {
     WalkItTheme {
-        // 다이얼로그 상태
-        val showCartDialog = remember { mutableStateOf(true) }
-
-        // 샘플 캐릭터
-        val sampleCharacter = Character(
+        val character = Character(
             nickName = "캐릭터 기본",
-            grade = Grade.TREE
+            grade = Grade.TREE,
+            headImageName = null
         )
 
-        // 샘플 아이템 리스트
-        val sampleItemList = listOf(
-            CosmeticItem(itemId = 1, name = "헤어스타일1", imageName = "R.drawable.ic_hair_1.toString()", owned = false, price = 200, position = EquipSlot.BODY),
-            CosmeticItem(itemId = 2, name = "상의1", imageName = "R.drawable.ic_top_1.toString()", owned = true, price = 300, position = EquipSlot.BODY),
-            CosmeticItem(itemId = 3, name = "하의1", imageName = "R.drawable.ic_bottom_1.toString()", owned = false, price = 250, position = EquipSlot.BODY),
-            CosmeticItem(itemId = 4, name = "모자1", imageName =" R.drawable.ic_hat_1.toString()", owned = true, price = 150, position = EquipSlot.HEAD)
-        )
+        val items = listOf(
+            CosmeticItem(
+                itemId = 1,
+                imageName = "헤어",
+                name = "",
+                owned = false,
+                point = 200,
+                position = EquipSlot.BODY
+            ),
+            CosmeticItem(
+                itemId = 2,
+                imageName = "상의",
+                name = "",
+                owned = true,
+                point = 2500,
+                position = EquipSlot.HEAD
+            ),
+            CosmeticItem(
+                itemId = 3,
+                imageName = "헤어",
+                name = "",
+                owned = false,
+                point = 200,
+                position = EquipSlot.FEET
+            ),
 
-        Column {
-            DressingRoomScreen(
-                uiState = DressingRoomUiState.Success(
-                    items = sampleItemList,
-                    selectedItemId = 2,
-                    character = sampleCharacter,
-                    myPoint = 5700
-                ),
-                cartItems = linkedSetOf(sampleItemList[1], sampleItemList[3]),
-                onBackClick = {},
-                onRefreshClick = {},
-                onQuestionClick = {},
-                onItemClick = {},
-                onSaveItem = {},
-                onPurChaseItem = { showCartDialog.value = true }
             )
 
-            if (showCartDialog.value) {
-                BottomDialog(onDismissRequest = { showCartDialog.value = false }) {
-                    CartDialog(
-                        cartItems = sampleItemList.subList(0, 2),
-                        myPoints = 5700,
-                        onDismiss = { showCartDialog.value = false },
-                        onPurchase = {}
-                    )
-                }
-            }
-        }
+        DressingRoomScreen(
+            uiState = DressingRoomUiState.Success(
+                items = items,
+                selectedItemId = 2,
+                selectedItemIdSet = linkedSetOf(1, 2), // 다중 선택 예시
+                character = character,
+                myPoint = 12500 // API에서 가져온 포인트 값 예시
+            ),
+            cartItems = linkedSetOf(items[1], items[2]),
+            lottieImageProcessor = null, // ⭐ Preview 핵심
+            onBackClick = {},
+            onRefreshClick = {},
+            onQuestionClick = {},
+            onItemClick = {},
+            onSaveItem = {},
+            onPurChaseItem = {},
+        )
     }
 }

@@ -31,7 +31,7 @@ sealed interface FriendRecordUiState {
      */
     data class Success(
         val data: FollowerWalkRecord,
-        val like: LikeUiState = LikeUiState.EMPTY,
+        val like: LikeUiState,
     ) : FriendRecordUiState
 
     /**

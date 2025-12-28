@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -54,6 +55,7 @@ import team.swyp.sdu.ui.theme.Grey7
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.utils.DateUtils.formatIsoToKoreanDate
 
 /**
  * 친구 기록 화면 Route
@@ -72,6 +74,7 @@ fun FriendRecordScreen(
     viewModel: FriendRecordViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showMenu by remember { mutableStateOf(false) }
 
     // 화면 진입 시 데이터 로드
     LaunchedEffect(nickname) {
@@ -81,6 +84,9 @@ fun FriendRecordScreen(
         uiState = uiState,
         onBlockUser = onBlockUser,
         onLikeClick = viewModel::toggleLike,
+        onClickMore = { showMenu = true },
+        showMenu = showMenu,
+        onDismissMenu = { showMenu = false },
         modifier = modifier
             .fillMaxSize(),
     )
@@ -100,6 +106,9 @@ fun FriendRecordScreenContent(
     modifier: Modifier = Modifier,
     onBlockUser: (String) -> Unit = {},
     onLikeClick: () -> Unit = {},
+    onClickMore: () -> Unit = {},
+    showMenu: Boolean = false,
+    onDismissMenu: () -> Unit = {},
 ) {
     when (val state = uiState) {
         is FriendRecordUiState.Loading -> {
@@ -117,6 +126,9 @@ fun FriendRecordScreenContent(
                 likeState = state.like,
                 onLikeClick = onLikeClick,
                 onBlockUser = onBlockUser,
+                onClickMore = onClickMore,
+                showMenu = showMenu,
+                onDismissMenu = onDismissMenu,
                 modifier = modifier,
             )
         }
@@ -155,6 +167,9 @@ private fun FriendRecordContent(
     likeState: LikeUiState,
     onLikeClick: () -> Unit,
     onBlockUser: (String) -> Unit,
+    onClickMore: () -> Unit,
+    showMenu: Boolean,
+    onDismissMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -164,7 +179,10 @@ private fun FriendRecordContent(
         CharacterInfoSection(
             character = data.character,
             walkProgressPercentage = data.walkProgressPercentage ?: "0",
-            onBlockUser = onBlockUser
+            onClickMore = onClickMore,
+            onBlockUser = onBlockUser,
+            showMenu = showMenu,
+            onDismissMenu = onDismissMenu
         )
         Spacer(Modifier.height(16.dp))
 
@@ -175,9 +193,9 @@ private fun FriendRecordContent(
             rightLabel = "이동거리",
             rightUnit = SummaryUnit.Distance(data.totalDistance.toFloat()),
             header = {
-                data.createdDate?.let { date ->
+                data.createdDate.let { date ->
                     Text(
-                        text = date,
+                        text = formatIsoToKoreanDate(date),
                         // caption M/regular
                         style = MaterialTheme.walkItTypography.captionM.copy(
                             fontWeight = FontWeight.Normal
@@ -197,64 +215,61 @@ private fun FriendRecordContent(
     }
 }
 
-/**
- * 캐릭터 정보 섹션
- */
 @Composable
 private fun CharacterInfoSection(
     character: Character,
     walkProgressPercentage: String = "",
     onClickMore: () -> Unit = {},
     onBlockUser: (String) -> Unit = {},
+    showMenu: Boolean = false,
+    onDismissMenu: () -> Unit = {},
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
-            .border(
-                width = 1.dp,
-                color = SemanticColor.textBorderSecondaryInverse,
-                shape = RoundedCornerShape(size = 12.dp)
-            )
             .fillMaxWidth()
             .aspectRatio(343f / 404f)
-            .padding(16.dp)
     ) {
-
-        // 1. 배경
+        // 1️⃣ 배경 이미지: Box 전체에 채움
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(character.backgroundImageName)
                 .build(),
             contentDescription = "배경",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
         )
 
+        // 2️⃣ 콘텐츠: padding + border 적용
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 1.dp,
+                    color = SemanticColor.textBorderSecondaryInverse,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp)
         ) {
-
+            // Top Row: Grade + Nickname + More 버튼
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row {
-                    // Grade 배지
-                    GradeBadge(
-                        grade = character.grade,
-                    )
+                    GradeBadge(grade = character.grade)
                     Spacer(Modifier.width(8.dp))
-
                     Text(
                         text = character.nickName,
-                        // heading M/semibold
                         style = MaterialTheme.walkItTypography.headingM.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
                         color = SemanticColor.textBorderPrimary
                     )
                 }
-                Box() {
+                Box {
                     IconButton(
                         onClick = { onClickMore() },
                         modifier = Modifier.size(24.dp),
@@ -266,22 +281,21 @@ private fun CharacterInfoSection(
                     }
                     FriendRecordMoreMenu(
                         expanded = showMenu,
-                        onDismiss = { showMenu = false },
-                        onDeleteClick = {
-                            showMenu = false
+                        onDismiss = onDismissMenu,
+                        onBlockClick = {
+                            onDismissMenu()
                             onBlockUser(character.nickName)
                         },
                     )
                 }
-
             }
+
             Spacer(Modifier.height(4.dp))
 
+            // 누적 목표 달성
             Row {
                 Text(
                     text = "누적 목표 달성",
-
-                    // body S/regular
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Normal
                     ),
@@ -290,7 +304,6 @@ private fun CharacterInfoSection(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = "00",
-                    // body S/medium
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Medium
                     ),
@@ -299,22 +312,22 @@ private fun CharacterInfoSection(
                 Spacer(Modifier.width(2.dp))
                 Text(
                     text = "일",
-                    // body S/medium
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Medium
                     ),
                     color = SemanticColor.textBorderPrimary
-
                 )
             }
+
             Spacer(Modifier.weight(1f))
 
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            // 목표 달성률
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
                     text = "목표 달성률",
-
-                    // body M/medium
                     style = MaterialTheme.walkItTypography.bodyM.copy(
                         fontWeight = FontWeight.Medium
                     ),
@@ -322,22 +335,23 @@ private fun CharacterInfoSection(
                 )
                 Text(
                     text = "${walkProgressPercentage}%",
-                    // body M/medium
                     style = MaterialTheme.walkItTypography.bodyM.copy(
                         fontWeight = FontWeight.Medium
                     ),
                     color = SemanticColor.backgroundWhitePrimary
                 )
             }
+
             Spacer(Modifier.height(6.5.dp))
+
             WalkProgressBar(
                 progressPercentage = walkProgressPercentage,
                 modifier = Modifier.fillMaxWidth()
             )
         }
     }
-
 }
+
 
 @Preview(showBackground = true)
 @Composable
@@ -355,7 +369,7 @@ private fun FriendRecordScreenPreview() {
                     ),
                     walkProgressPercentage = "75",
                     stepCount = 8500,
-                    totalDistance = 6500,
+                    totalDistance = 6500.0,
                     createdDate = "2024-01-15",
                     walkId = 0L
                 ),
@@ -381,7 +395,7 @@ private fun FriendRecordScreenLikedPreview() {
                     ),
                     walkProgressPercentage = "75",
                     stepCount = 8500,
-                    totalDistance = 6500,
+                    totalDistance = 6500.0,
                     createdDate = "2024-01-15",
                     walkId = 0L
                 ),

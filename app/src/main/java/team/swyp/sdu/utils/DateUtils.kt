@@ -2,6 +2,7 @@ package team.swyp.sdu.utils
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -93,5 +94,41 @@ object DateUtils {
             else -> Season.SPRING       // 기본값 (실제로 발생하지 않음)
         }
     }
+
+    /**
+     * ISO 8601 형식의 날짜+시간 문자열을 한국어 날짜 형식으로 변환
+     *
+     * @param isoDateTime ISO 8601 형식의 날짜+시간 문자열 (예: "2025-12-28T00:37:57.180871")
+     * @return 한국어 형식의 날짜 문자열 (예: "2025년 12월 28일")
+     */
+    fun formatIsoToKorean(isoDateTime: String): String {
+        return try {
+            val instant = Instant.parse(isoDateTime)
+            val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
+            val koreanFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
+            dateTime.format(koreanFormatter)
+        } catch (e: Exception) {
+            // 파싱 실패 시 원본 문자열 반환
+            isoDateTime
+        }
+    }
+
+    /**
+     * ISO 8601 형식의 날짜+시간 문자열을 간단한 한국어 날짜 형식으로 변환
+     *
+     * @param isoDateTime ISO 8601 형식의 날짜+시간 문자열 (예: "2025-12-28T00:37:57.180871")
+     * @return 한국어 형식의 날짜 문자열 (예: "2025.12.28")
+     */
+    fun formatIsoToKoreanDate(isoDateTime: String): String {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+            val dateTime = LocalDateTime.parse(isoDateTime, formatter)
+            val koreanFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
+            dateTime.format(koreanFormatter)
+        } catch (e: Exception) {
+            isoDateTime
+        }
+    }
+
 }
 
