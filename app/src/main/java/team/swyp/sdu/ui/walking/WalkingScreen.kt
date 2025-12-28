@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import androidx.compose.runtime.*
@@ -49,6 +53,7 @@ fun WalkingScreenRoute(
     viewModel: WalkingViewModel = hiltViewModel(),
     onNavigateToFinish: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
+    onStopClick: (() -> Unit)? = null, // 집중모드용 커스텀 스탑 핸들러
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -63,6 +68,14 @@ fun WalkingScreenRoute(
                     android.Manifest.permission.POST_NOTIFICATIONS,
                 ),
         )
+
+    // 백버튼 다이얼로그 상태
+    val showBackDialog = remember { mutableStateOf(false) }
+
+    // Walking 상태에서 백버튼 처리
+    BackHandler(enabled = uiState is WalkingUiState.Walking) {
+        showBackDialog.value = true
+    }
 
     Column(
         modifier = modifier.fillMaxSize()
@@ -83,17 +96,21 @@ fun WalkingScreenRoute(
             }
 
             is WalkingUiState.Walking -> {
+                // 기본 스탑 핸들러 (함수형 스타일)
+                val defaultStopHandler: () -> Unit = remember {
+                    {
+                        coroutineScope.launch {
+                            viewModel.stopWalking()
+                        }
+                    }
+                }
+
                 WalkingScreenContent(
                     modifier = modifier,
                     uiState = uiState,
                     onPauseClick = viewModel::pauseWalking,
                     onResumeClick = viewModel::resumeWalking,
-                    onStopClick = {
-                        // 스탑워치 기능 연결 - 산책 종료
-                        coroutineScope.launch {
-                            viewModel.stopWalking()
-                        }
-                    },
+                    onStopClick = onStopClick ?: defaultStopHandler,
                     onNextClick = onNavigateToFinish,
                 )
             }
@@ -145,6 +162,23 @@ fun WalkingScreenRoute(
                     }
                 }
             }
+        }
+
+        // 백버튼 확인 다이얼로그
+        if (showBackDialog.value) {
+            ConfirmDialog(
+                title = "산책 종료",
+                message = "정말 산책을 종료하시겠습니까?\n진행 중인 데이터가 저장됩니다.",
+                onDismiss = { showBackDialog.value = false },
+                onNegative = { showBackDialog.value = false },
+                onPositive = {
+                    showBackDialog.value = false
+                    // 산책 종료 처리
+                    coroutineScope.launch {
+                        viewModel.stopWalking()
+                    }
+                }
+            )
         }
     }
 }
