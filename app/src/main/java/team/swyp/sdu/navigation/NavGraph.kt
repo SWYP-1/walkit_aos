@@ -129,7 +129,7 @@ fun NavGraph(
             composable(Screen.Walking.route) { entry ->
                 val viewModel = entry.sharedViewModel<WalkingViewModel>(navController)
                 Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                    WalkingScreen(
+                    WalkingScreenRoute(
                         modifier = Modifier.padding(paddingValues),
                         viewModel = viewModel,
                         onNavigateToFinish = {
