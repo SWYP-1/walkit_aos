@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.domain.contract.WalkingRawEvent
 import team.swyp.sdu.domain.contract.WalkingTrackingContract
+import team.swyp.sdu.domain.model.StepValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -29,15 +30,36 @@ import team.swyp.sdu.domain.service.ActivityType
 import team.swyp.sdu.domain.service.LocationManager
 import team.swyp.sdu.domain.service.MovementState
 import team.swyp.sdu.utils.DateUtils
+import android.content.Context
 import android.location.Location
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import javax.inject.Inject
+
+// DataStore 키 정의
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "walking_prefs")
+
+private object PreferencesKeys {
+    val IS_WALKING_ACTIVE = booleanPreferencesKey("is_walking_active")
+    val WALKING_START_TIME = longPreferencesKey("walking_start_time")
+    val WALKING_STEP_COUNT = intPreferencesKey("walking_step_count")
+    val WALKING_DURATION = longPreferencesKey("walking_duration")
+    val WALKING_IS_PAUSED = booleanPreferencesKey("walking_is_paused")
+    val PRE_WALKING_EMOTION = stringPreferencesKey("pre_walking_emotion")
+    val POST_WALKING_EMOTION = stringPreferencesKey("post_walking_emotion")
+}
 
 @HiltViewModel
 class WalkingViewModel @Inject constructor(
     private val tracking: WalkingTrackingContract,
     private val walkingSessionRepository: WalkingSessionRepository,
     private val locationManager: LocationManager,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState =
@@ -118,6 +140,10 @@ class WalkingViewModel @Inject constructor(
     private val _currentLocation = MutableStateFlow<LocationPoint?>(null)
     val currentLocation: StateFlow<LocationPoint?> = _currentLocation.asStateFlow()
 
+    // 최신 걸음 수 검증 결과
+    private val _latestValidationResult = MutableStateFlow<StepValidationResult?>(null)
+    val latestValidationResult: StateFlow<StepValidationResult?> = _latestValidationResult.asStateFlow()
+
     // 스냅샷 생성 및 서버 동기화 상태
     private val _snapshotState = MutableStateFlow<SnapshotState>(SnapshotState.Idle)
     val snapshotState: StateFlow<SnapshotState> = _snapshotState.asStateFlow()
@@ -167,6 +193,152 @@ class WalkingViewModel @Inject constructor(
         observeRawEvents()
         observeTrackingStatus()
         updateSensorAvailability()
+        restoreWalkingStateFromDataStore() // DataStore에서 산책 상태 복원
+    }
+
+    /**
+     * 산책 상태를 DataStore에 저장
+     */
+    private fun saveWalkingStateToDataStore() {
+        viewModelScope.launch {
+            try {
+                context.dataStore.edit { preferences ->
+                    val currentState = _uiState.value
+                    if (currentState is WalkingUiState.Walking) {
+                        preferences[PreferencesKeys.IS_WALKING_ACTIVE] = true
+                        preferences[PreferencesKeys.WALKING_START_TIME] = startTimeMillis
+                        preferences[PreferencesKeys.WALKING_STEP_COUNT] = currentState.stepCount
+                        preferences[PreferencesKeys.WALKING_DURATION] = currentState.duration
+                        preferences[PreferencesKeys.WALKING_IS_PAUSED] = currentState.isPaused
+                        preferences[PreferencesKeys.PRE_WALKING_EMOTION] = _preWalkingEmotion.value?.name ?: ""
+                        preferences[PreferencesKeys.POST_WALKING_EMOTION] = _postWalkingEmotion.value?.name ?: ""
+                    } else {
+                        preferences[PreferencesKeys.IS_WALKING_ACTIVE] = false
+                        // 다른 키들은 유지 (다음 복원을 위해)
+                    }
+                }
+                Timber.d("산책 상태 DataStore에 저장됨: ${_uiState.value}")
+            } catch (e: Exception) {
+                Timber.e(e, "DataStore 저장 실패")
+            }
+        }
+    }
+
+    /**
+     * DataStore에서 산책 상태 복원
+     */
+    private fun restoreWalkingStateFromDataStore() {
+        viewModelScope.launch {
+            try {
+                val preferences = context.dataStore.data.firstOrNull()
+                val isWalkingActive = preferences?.get(PreferencesKeys.IS_WALKING_ACTIVE) ?: false
+
+                if (isWalkingActive) {
+                    val startTime = preferences.get(PreferencesKeys.WALKING_START_TIME) ?: 0L
+                    val stepCount = preferences.get(PreferencesKeys.WALKING_STEP_COUNT) ?: 0
+                    val savedDuration = preferences.get(PreferencesKeys.WALKING_DURATION) ?: 0L
+                    val isPaused = preferences.get(PreferencesKeys.WALKING_IS_PAUSED) ?: false
+                    val preEmotionName = preferences.get(PreferencesKeys.PRE_WALKING_EMOTION) ?: ""
+                    val postEmotionName = preferences.get(PreferencesKeys.POST_WALKING_EMOTION) ?: ""
+
+                    // 시간 경과 계산 (앱 종료 후 재시작까지의 시간)
+                    val currentTime = System.currentTimeMillis()
+                    val elapsedSinceSave = currentTime - startTime - savedDuration
+                    val currentDuration = savedDuration + (if (!isPaused) elapsedSinceSave else 0L)
+
+                    // Walking 상태로 복원
+                    _uiState.value = WalkingUiState.Walking(
+                        stepCount = stepCount,
+                        duration = currentDuration,
+                        isPaused = true // 재시작 시 일시정지 상태로 시작
+                    )
+
+                    // 감정 상태 복원
+                    if (preEmotionName.isNotEmpty()) {
+                        _preWalkingEmotion.value = try {
+                            EmotionType.valueOf(preEmotionName)
+                        } catch (e: Exception) {
+                            EmotionType.HAPPY
+                        }
+                    }
+                    if (postEmotionName.isNotEmpty()) {
+                        _postWalkingEmotion.value = try {
+                            EmotionType.valueOf(postEmotionName)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+
+                    // 시간 변수 복원
+                    startTimeMillis = startTime
+                    elapsedBeforePause = if (isPaused) currentDuration else 0L
+
+                    Timber.d("DataStore에서 산책 상태 복원됨: stepCount=$stepCount, duration=$currentDuration")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "DataStore 복원 실패")
+            }
+        }
+    }
+
+    /**
+     * DataStore에서 산책 상태 초기화 (산책 완료/취소 시)
+     */
+    private fun clearWalkingStateFromDataStore() {
+        viewModelScope.launch {
+            try {
+                context.dataStore.edit { preferences ->
+                    preferences.remove(PreferencesKeys.IS_WALKING_ACTIVE)
+                    preferences.remove(PreferencesKeys.WALKING_START_TIME)
+                    preferences.remove(PreferencesKeys.WALKING_STEP_COUNT)
+                    preferences.remove(PreferencesKeys.WALKING_DURATION)
+                    preferences.remove(PreferencesKeys.WALKING_IS_PAUSED)
+                    preferences.remove(PreferencesKeys.PRE_WALKING_EMOTION)
+                    preferences.remove(PreferencesKeys.POST_WALKING_EMOTION)
+                }
+                Timber.d("DataStore에서 산책 상태 초기화됨")
+            } catch (e: Exception) {
+                Timber.e(e, "DataStore 초기화 실패")
+            }
+        }
+    }
+
+    /**
+     * 앱 재시작 시 저장된 세션 상태 복원 (DB 기반)
+     */
+    private fun restoreSessionState() {
+        viewModelScope.launch {
+            try {
+                // 가장 최근의 미완료 세션 조회 (endTime이 null인 세션)
+                val latestIncompleteSession = walkingSessionRepository.getAllSessions()
+                    .firstOrNull()
+                    ?.firstOrNull { it.endTime == null }
+
+                if (latestIncompleteSession != null) {
+                    Timber.d("미완료 세션 발견, Walking 상태로 복원: ${latestIncompleteSession.id}")
+
+                    // 세션 ID 설정 (Flow가 자동으로 세션 데이터를 로드)
+                    _currentSessionLocalId.value = latestIncompleteSession.id
+
+                    // Walking 상태로 복원
+                    _uiState.value = WalkingUiState.Walking(
+                        stepCount = latestIncompleteSession.stepCount,
+                        duration = System.currentTimeMillis() - latestIncompleteSession.startTime,
+                        isPaused = false // 재시작 시 일시정지 해제
+                    )
+
+                    // 기존 감정 상태 복원
+                    _preWalkingEmotion.value = latestIncompleteSession.preWalkEmotion
+                    _postWalkingEmotion.value = latestIncompleteSession.postWalkEmotion
+
+                    // 트래킹 재시작 (포그라운드 서비스 재개)
+                    tracking.startTracking()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "세션 상태 복원 실패")
+                // 복원 실패 시 기본 상태 유지
+            }
+        }
     }
 
     /**
@@ -213,7 +385,7 @@ class WalkingViewModel @Inject constructor(
             is WalkingRawEvent.TrackingPaused -> handleTrackingPaused()
             is WalkingRawEvent.TrackingResumed -> handleTrackingResumed()
             is WalkingRawEvent.StepCountUpdate ->
-                handleStepCountUpdate(event.rawStepCount)
+                handleStepCountUpdate(event.rawStepCount, event.validationResult)
             is WalkingRawEvent.LocationUpdate ->
                 handleLocationUpdate(event.locations)
             is WalkingRawEvent.ActivityStateChange ->
@@ -230,16 +402,16 @@ class WalkingViewModel @Inject constructor(
         // 산책 전 감정이 선택되었는지 확인 (UI에서 이미 체크하지만, 안전장치)
         val preEmotion = _preWalkingEmotion.value
         require(preEmotion != null) { "산책 전 감정을 선택해야 합니다" }
-        
+
         startTimeMillis = System.currentTimeMillis()
         elapsedBeforePause = 0L
         lastStepCount = 0
         lastRawStepCount = 0
-        
+
         // 위치 리스트 초기화 및 현재 위치를 첫 번째에 추가
         viewModelScope.launch {
             val initialLocations = mutableListOf<LocationPoint>()
-            
+
             // 현재 위치 가져오기 (권한 체크 포함)
             // 실패하면 빈 배열로 시작하고, LocationTrackingService가 위치를 추적하여 추가함
             val currentLocation = locationManager.getCurrentLocation()
@@ -251,7 +423,7 @@ class WalkingViewModel @Inject constructor(
             } else {
                 Timber.d("산책 시작: 현재 위치를 가져올 수 없음. LocationTrackingService가 위치를 추적하여 추가할 예정")
             }
-            
+
             _locations.value = initialLocations
         }
 
@@ -272,18 +444,25 @@ class WalkingViewModel @Inject constructor(
 
         startDurationUpdates()
         updateSensorStatus()
+
+        // DataStore에 산책 상태 저장
+        saveWalkingStateToDataStore()
     }
 
     fun pauseWalking() {
         viewModelScope.launch {
             tracking.pauseTracking()
         }
+        // DataStore에 일시정지 상태 저장
+        saveWalkingStateToDataStore()
     }
 
     fun resumeWalking() {
         viewModelScope.launch {
             tracking.resumeTracking()
         }
+        // DataStore에 재개 상태 저장
+        saveWalkingStateToDataStore()
     }
 
     /**
@@ -314,6 +493,9 @@ class WalkingViewModel @Inject constructor(
             // 세션 저장 완료 후 SessionSaved 상태로 변경 (세션 데이터는 Flow로 관찰)
             _currentSessionLocalId.value = sessionId
             _uiState.value = WalkingUiState.SessionSaved
+
+            // DataStore에서 산책 상태 초기화 (산책이 완료되었으므로)
+            clearWalkingStateFromDataStore()
         } catch (e: Exception) {
             Timber.e(e, "부분 세션 저장 실패")
             // 에러 발생 시 Error 상태로 변경 (사용자에게 에러 표시)
@@ -355,12 +537,17 @@ class WalkingViewModel @Inject constructor(
         }
     }
 
-    private fun handleStepCountUpdate(raw: Int) {
-        lastRawStepCount = raw
+    private fun handleStepCountUpdate(validatedStepCount: Int, validationResult: StepValidationResult? = null) {
+        lastRawStepCount = validatedStepCount
+
+        // 검증 결과를 저장 (UI 표시용)
+        _latestValidationResult.value = validationResult
+
         val state = _uiState.value
         if (state is WalkingUiState.Walking && !state.isPaused) {
-            lastStepCount = raw
-            _uiState.value = state.copy(stepCount = raw)
+            // 검증된 걸음 수만 사용 (검증 실패 시 증가하지 않음)
+            lastStepCount = validatedStepCount
+            _uiState.value = state.copy(stepCount = validatedStepCount)
         }
     }
     
