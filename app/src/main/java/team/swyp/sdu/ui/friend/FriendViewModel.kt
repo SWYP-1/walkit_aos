@@ -6,10 +6,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.remote.friend.FollowRemoteDataSource
 import team.swyp.sdu.data.remote.user.AlreadyFollowingException
 import team.swyp.sdu.data.remote.user.FollowRequestAlreadyExistsException
@@ -20,8 +22,18 @@ import team.swyp.sdu.data.remote.user.UserRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserSearchResult
 import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.model.Friend
+import team.swyp.sdu.domain.repository.FriendRepository
 import timber.log.Timber
 import javax.inject.Inject
+
+/**
+ * 친구 목록 UI 상태
+ */
+sealed interface FriendUiState {
+    data object Loading : FriendUiState
+    data class Success(val friends: List<Friend>) : FriendUiState
+    data class Error(val message: String?) : FriendUiState
+}
 
 /**
  * 검색 UI 상태
@@ -39,19 +51,13 @@ class FriendViewModel
 constructor(
     private val userRemoteDataSource: UserRemoteDataSource,
     private val followRemoteDataSource: FollowRemoteDataSource,
+    private val friendRepository: FriendRepository,
 ) : ViewModel() {
 
-    private val _friends =
-        MutableStateFlow(
-            listOf(
-                Friend("1", "닉네임"),
-                Friend("2", "닉네임02"),
-                Friend("3", "닉네임03"),
-                Friend("4", "닉네임04"),
-                Friend("5", "닉네임05"),
-                Friend("6", "닉네임06"),
-            ),
-        )
+    private val _uiState = MutableStateFlow<FriendUiState>(FriendUiState.Loading)
+    val uiState: StateFlow<FriendUiState> = _uiState.asStateFlow()
+
+    private val _friends = MutableStateFlow<List<Friend>>(emptyList())
     val friends: StateFlow<List<Friend>> = _friends
 
     private val _query = MutableStateFlow("")
@@ -73,8 +79,32 @@ constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Companion.WhileSubscribed(5_000),
-            initialValue = _friends.value,
+            initialValue = emptyList(),
         )
+
+    init {
+        loadFriends()
+    }
+
+    /**
+     * 친구 목록 로드
+     */
+    fun loadFriends() {
+        viewModelScope.launch {
+            _uiState.value = FriendUiState.Loading
+            when (val result = friendRepository.getFriends()) {
+                is Result.Success -> {
+                    _friends.value = result.data
+                    _uiState.value = FriendUiState.Success(result.data)
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "친구 목록 로드 실패")
+                    _uiState.value = FriendUiState.Error(result.message)
+                }
+                Result.Loading -> {} // 이미 Loading 상태
+            }
+        }
+    }
 
     fun updateQuery(newQuery: String) {
         _query.value = newQuery
@@ -111,7 +141,20 @@ constructor(
     }
 
     fun blockFriend(friendId: String) {
-        _friends.update { current -> current.filterNot { it.id == friendId } }
+        viewModelScope.launch {
+            when (val result = friendRepository.blockUser(friendId)) {
+                is Result.Success -> {
+                    // 차단 성공 시 목록 새로고침
+                    loadFriends()
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "친구 차단 실패: $friendId")
+                    // 차단 실패 시 로컬에서만 제거 (Optimistic UI)
+                    _friends.update { current -> current.filterNot { it.id == friendId } }
+                }
+                Result.Loading -> {} // 처리 중
+            }
+        }
     }
 
     /**

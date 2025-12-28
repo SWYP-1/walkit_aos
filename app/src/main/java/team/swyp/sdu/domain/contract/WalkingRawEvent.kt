@@ -1,6 +1,7 @@
 package team.swyp.sdu.domain.contract
 
 import team.swyp.sdu.data.model.LocationPoint
+import team.swyp.sdu.domain.model.StepValidationResult
 import team.swyp.sdu.domain.service.ActivityType
 import team.swyp.sdu.domain.service.MovementState
 
@@ -15,6 +16,7 @@ sealed interface WalkingRawEvent {
      */
     data class StepCountUpdate(
         val rawStepCount: Int,
+        val validationResult: StepValidationResult? = null,
         val timestamp: Long = System.currentTimeMillis()
     ) : WalkingRawEvent
 

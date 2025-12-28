@@ -49,9 +49,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Friend
 import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.components.SearchBar
 import team.swyp.sdu.ui.theme.Pretendard
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -71,19 +74,68 @@ fun FriendRoute(
     modifier: Modifier = Modifier,
     viewModel: FriendViewModel = hiltViewModel(),
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredFriends by viewModel.filteredFriends.collectAsStateWithLifecycle()
-    val query by viewModel.query.collectAsStateWithLifecycle()
 
-    FriendScreenContent(
+    FriendScreen(
+        uiState = uiState,
         filteredFriends = filteredFriends,
-        query = query,
+        query = viewModel.query,
         onNavigateBack = onNavigateBack,
         onNavigateToSearch = onNavigateToSearch,
         onQueryChange = viewModel::updateQuery,
         onClearQuery = viewModel::clearQuery,
         onBlockFriend = viewModel::blockFriend,
+        onRetry = viewModel::loadFriends,
         modifier = modifier,
     )
+}
+
+/**
+ * 친구 목록 화면
+ *
+ * 로딩 상태 및 UI 상태에 따른 화면 분기 처리
+ */
+@Composable
+private fun FriendScreen(
+    uiState: FriendUiState,
+    filteredFriends: List<Friend>,
+    query: StateFlow<String>,
+    onNavigateBack: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    onBlockFriend: (String) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        when (uiState) {
+            is FriendUiState.Loading -> {
+                // 로딩 중일 때는 빈 화면 표시 (LoadingOverlay가 오버레이로 표시됨)
+                Box(modifier = Modifier.fillMaxSize())
+            }
+            is FriendUiState.Success -> {
+                FriendScreenContent(
+                    filteredFriends = filteredFriends,
+                    query = query,
+                    onNavigateBack = onNavigateBack,
+                    onNavigateToSearch = onNavigateToSearch,
+                    onQueryChange = onQueryChange,
+                    onClearQuery = onClearQuery,
+                    onBlockFriend = onBlockFriend,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            is FriendUiState.Error -> {
+                // 에러 상태일 때는 빈 화면 표시 (나중에 에러 화면 추가 가능)
+                Box(modifier = Modifier.fillMaxSize())
+            }
+        }
+
+        // 로딩 오버레이 (로딩 중일 때만 표시)
+        LoadingOverlay(isLoading = uiState is FriendUiState.Loading)
+    }
 }
 
 /**
@@ -94,7 +146,7 @@ fun FriendRoute(
 @Composable
 private fun FriendScreenContent(
     filteredFriends: List<Friend>,
-    query: String,
+    query: StateFlow<String>,
     onNavigateBack: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
@@ -102,14 +154,15 @@ private fun FriendScreenContent(
     onBlockFriend: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val queryValue by query.collectAsStateWithLifecycle()
     var menuTargetId by remember { mutableStateOf<String?>(null) }
     var confirmTarget by remember { mutableStateOf<Friend?>(null) }
 
     Column(
         modifier =
-            Modifier
-                .fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier
+                .fillMaxSize()
+                .background(SemanticColor.backgroundWhitePrimary),
     ) {
         AppHeader(title = "친구목록", onNavigateBack = onNavigateBack, rightAction = {
             IconButton(
@@ -126,7 +179,7 @@ private fun FriendScreenContent(
         })
 
         SearchBar(
-            query = query,
+            query = queryValue,
             onQueryChange = onQueryChange,
             onClear = onClearQuery,
             modifier = Modifier.padding(16.dp)
@@ -308,21 +361,25 @@ private fun FriendRow(
 @Preview(showBackground = true)
 @Composable
 private fun FriendScreenPreview() {
+    val mockFriends = listOf(
+        Friend("1", "닉네임 01"),
+        Friend("2", "닉네임 02"),
+        Friend("3", "닉네임 03"),
+        Friend("4", "닉네임 04"),
+        Friend("5", "닉네임 05"),
+    )
+
     WalkItTheme {
-        FriendScreenContent(
-            filteredFriends = listOf(
-                Friend("1", "닉네임 01"),
-                Friend("2", "닉네임 02"),
-                Friend("3", "닉네임 03"),
-                Friend("4", "닉네임 04"),
-                Friend("5", "닉네임 05"),
-            ),
-            query = "",
+        FriendScreen(
+            uiState = FriendUiState.Success(mockFriends),
+            filteredFriends = mockFriends,
+            query = flowOf("") as StateFlow<String>,
             onNavigateBack = {},
             onNavigateToSearch = {},
             onQueryChange = {},
             onClearQuery = {},
             onBlockFriend = {},
+            onRetry = {},
             modifier = Modifier,
         )
     }

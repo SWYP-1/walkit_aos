@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.domain.model.Friend
@@ -22,9 +23,10 @@ fun FriendListRow(
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
-        modifier = modifier.height(80.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), // 아이템 간격 추가
+        verticalAlignment = Alignment.CenterVertically
     ) {
         items(friends) { friend ->
             FriendAvatarItem(
@@ -35,5 +37,6 @@ fun FriendListRow(
         }
     }
 }
+
 
 

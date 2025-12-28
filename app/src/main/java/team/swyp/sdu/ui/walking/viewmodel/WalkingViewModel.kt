@@ -148,6 +148,10 @@ class WalkingViewModel @Inject constructor(
     private val _snapshotState = MutableStateFlow<SnapshotState>(SnapshotState.Idle)
     val snapshotState: StateFlow<SnapshotState> = _snapshotState.asStateFlow()
 
+    // 세션 저장 완료 상태 추적
+    private val _isSessionSaved = MutableStateFlow(false)
+    val isSessionSaved: StateFlow<Boolean> = _isSessionSaved.asStateFlow()
+
     /**
      * 감정 기록 사진 URI 설정
      */
@@ -194,6 +198,9 @@ class WalkingViewModel @Inject constructor(
         observeTrackingStatus()
         updateSensorAvailability()
         restoreWalkingStateFromDataStore() // DataStore에서 산책 상태 복원
+
+        // 세션 저장 상태 초기화
+        _isSessionSaved.value = false
     }
 
     /**
@@ -284,22 +291,20 @@ class WalkingViewModel @Inject constructor(
     /**
      * DataStore에서 산책 상태 초기화 (산책 완료/취소 시)
      */
-    private fun clearWalkingStateFromDataStore() {
-        viewModelScope.launch {
-            try {
-                context.dataStore.edit { preferences ->
-                    preferences.remove(PreferencesKeys.IS_WALKING_ACTIVE)
-                    preferences.remove(PreferencesKeys.WALKING_START_TIME)
-                    preferences.remove(PreferencesKeys.WALKING_STEP_COUNT)
-                    preferences.remove(PreferencesKeys.WALKING_DURATION)
-                    preferences.remove(PreferencesKeys.WALKING_IS_PAUSED)
-                    preferences.remove(PreferencesKeys.PRE_WALKING_EMOTION)
-                    preferences.remove(PreferencesKeys.POST_WALKING_EMOTION)
-                }
-                Timber.d("DataStore에서 산책 상태 초기화됨")
-            } catch (e: Exception) {
-                Timber.e(e, "DataStore 초기화 실패")
+    private suspend fun clearWalkingStateFromDataStore() {
+        try {
+            context.dataStore.edit { preferences ->
+                preferences.remove(PreferencesKeys.IS_WALKING_ACTIVE)
+                preferences.remove(PreferencesKeys.WALKING_START_TIME)
+                preferences.remove(PreferencesKeys.WALKING_STEP_COUNT)
+                preferences.remove(PreferencesKeys.WALKING_DURATION)
+                preferences.remove(PreferencesKeys.WALKING_IS_PAUSED)
+                preferences.remove(PreferencesKeys.PRE_WALKING_EMOTION)
+                preferences.remove(PreferencesKeys.POST_WALKING_EMOTION)
             }
+            Timber.d("DataStore에서 산책 상태 초기화됨")
+        } catch (e: Exception) {
+            Timber.e(e, "DataStore 초기화 실패")
         }
     }
 
@@ -398,10 +403,17 @@ class WalkingViewModel @Inject constructor(
 
     /* ---------------- Actions ---------------- */
 
-    fun startWalking() {
+    suspend fun startWalking() {
         // 산책 전 감정이 선택되었는지 확인 (UI에서 이미 체크하지만, 안전장치)
         val preEmotion = _preWalkingEmotion.value
         require(preEmotion != null) { "산책 전 감정을 선택해야 합니다" }
+
+        // 새로운 산책 시작 전 DataStore 초기화 (이전 잔여 데이터 제거)
+        clearWalkingStateFromDataStore()
+
+        // 세션 저장 상태 초기화
+        _isSessionSaved.value = false
+        _currentSessionLocalId.value = null
 
         startTimeMillis = System.currentTimeMillis()
         elapsedBeforePause = 0L
@@ -453,6 +465,9 @@ class WalkingViewModel @Inject constructor(
         viewModelScope.launch {
             tracking.pauseTracking()
         }
+        // 타이머 업데이트 일시정지 (일시정지 시 불필요한 타이머 업데이트 중단)
+        durationJob?.cancel()
+        durationJob = null
         // DataStore에 일시정지 상태 저장
         saveWalkingStateToDataStore()
     }
@@ -461,28 +476,30 @@ class WalkingViewModel @Inject constructor(
         viewModelScope.launch {
             tracking.resumeTracking()
         }
+        // 타이머 업데이트 재개 (일시정지 해제 시 타이머를 다시 시작)
+        startDurationUpdates()
         // DataStore에 재개 상태 저장
         saveWalkingStateToDataStore()
     }
 
     /**
      * 산책 종료 및 세션 저장
-     * 
+     *
      * 세션 저장이 완료될 때까지 기다린 후 Completed 상태로 변경합니다.
      */
     suspend fun stopWalking() {
         tracking.stopTracking()
         durationJob?.cancel()
-        
+
         // 센서 상태 업데이트
         updateSensorStatus()
-        
+
         // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
         val completedSession = createCompletedSession()
-        
+
         // SavingSession 상태로 변경 (로딩 화면 표시)
         _uiState.value = WalkingUiState.SavingSession
-        
+
         // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
         try {
             Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=${_currentSessionLocalId.value}")
@@ -490,19 +507,23 @@ class WalkingViewModel @Inject constructor(
             Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
             Timber.d("부분 세션 저장 완료: localId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
 
-            // 세션 저장 완료 후 SessionSaved 상태로 변경 (세션 데이터는 Flow로 관찰)
+            // ⭐ DB 저장이 완료된 후에만 세션 ID와 UI 상태 변경
             _currentSessionLocalId.value = sessionId
+            _isSessionSaved.value = true  // 세션 저장 완료 플래그 설정
             _uiState.value = WalkingUiState.SessionSaved
 
             // DataStore에서 산책 상태 초기화 (산책이 완료되었으므로)
             clearWalkingStateFromDataStore()
+
+            Timber.d("🚶 WalkingViewModel.stopWalking - 모든 작업 완료: sessionId=$sessionId")
         } catch (e: Exception) {
             Timber.e(e, "부분 세션 저장 실패")
             // 에러 발생 시 Error 상태로 변경 (사용자에게 에러 표시)
+            _isSessionSaved.value = false  // 세션 저장 실패 플래그
             _uiState.value = WalkingUiState.Error(
                 message = e.message ?: "세션 저장에 실패했습니다. 다시 시도해주세요."
             )
-            throw e // 에러를 다시 던져서 호출자가 처리할 수 있도록 함
+            // 에러를 다시 던지지 않고 로그만 남김 (UI에서 에러 상태 표시)
         }
     }
 

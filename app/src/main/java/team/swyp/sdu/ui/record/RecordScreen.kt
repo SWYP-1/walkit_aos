@@ -3,11 +3,16 @@ package team.swyp.sdu.ui.record
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +38,8 @@ import team.swyp.sdu.ui.record.friendrecord.FriendRecordScreen
 import team.swyp.sdu.ui.theme.SemanticColor
 import java.time.LocalDate
 import team.swyp.sdu.ui.record.RecordViewModel.RecordUiState
+import team.swyp.sdu.ui.record.friendrecord.component.FriendRecordSkeletonRow
+import team.swyp.sdu.ui.theme.walkItTypography
 
 
 @Composable
@@ -117,19 +125,23 @@ private fun RecordScreenContent(
     ) {
 
         RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+            Text(
+                text = "친구목록",
+                // caption M/regular
+                style = MaterialTheme.walkItTypography.captionM,
+                color = SemanticColor.textBorderPrimary,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
         // ==============================
         // 상단 API 기반 영역
         // ==============================
         when (recordUiState) {
             is RecordUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CustomProgressIndicator()
-                }
+                RecordTopSectionSkeleton()
             }
 
             is RecordUiState.Error -> {
@@ -152,6 +164,7 @@ private fun RecordScreenContent(
                     onFriendSelected = onFriendSelected,
                     onNavigateToFriend = onNavigateToFriend
                 )
+                }
             }
         }
 

@@ -56,6 +56,7 @@ fun WalkingScreenRoute(
     onStopClick: (() -> Unit)? = null, // 집중모드용 커스텀 스탑 핸들러
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isSessionSaved by viewModel.isSessionSaved.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     val permissionsState =
@@ -87,7 +88,9 @@ fun WalkingScreenRoute(
                     viewModel = viewModel,
                     onNext = {
                         if (permissionsState.allPermissionsGranted) {
-                            viewModel.startWalking()
+                            coroutineScope.launch {
+                                viewModel.startWalking()
+                            }
                         }
                     },
                     onPrev = onNavigateBack,
@@ -136,8 +139,28 @@ fun WalkingScreenRoute(
 
             is WalkingUiState.SessionSaved -> {
                 // 세션 저장 완료 후 자동으로 다음 화면으로 이동
-                androidx.compose.runtime.LaunchedEffect(Unit) {
-                    onNavigateToFinish()
+                // isSessionSaved 플래그가 true인 경우에만 이동 (DB 저장 완료 확인)
+                if (isSessionSaved) {
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        onNavigateToFinish()
+                    }
+                } else {
+                    // 세션 저장이 아직 완료되지 않은 경우 로딩 유지
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                            Text(
+                                text = "세션 저장 완료 대기 중...",
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -167,16 +190,19 @@ fun WalkingScreenRoute(
         // 백버튼 확인 다이얼로그
         if (showBackDialog.value) {
             ConfirmDialog(
-                title = "산책 종료",
-                message = "정말 산책을 종료하시겠습니까?\n진행 중인 데이터가 저장됩니다.",
+                title = "산책 중단",
+                message = "산책을 중단하시겠습니까?",
+                negativeButtonText = "중단하기",
+                positiveButtonText = "계속하기",
                 onDismiss = { showBackDialog.value = false },
-                onNegative = { showBackDialog.value = false },
+                onNegative = {
+                    showBackDialog.value = false
+                    // 세션 저장 없이 그냥 종료
+                    onNavigateBack()
+                },
                 onPositive = {
                     showBackDialog.value = false
-                    // 산책 종료 처리
-                    coroutineScope.launch {
-                        viewModel.stopWalking()
-                    }
+                    // 산책 계속 진행
                 }
             )
         }
