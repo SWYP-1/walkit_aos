@@ -52,10 +52,20 @@ interface CosmeticItemRepository {
     /**
      * 코스메틱 아이템 구매 (API)
      *
-     * @param position 아이템 위치 필터 (HEAD, BODY, FEET). null이면 전체 조회
-     * @return Result<List<CosmeticItem>>
+     * @param items 구매할 아이템 목록
+     * @param totalPrice 총 가격
+     * @return 구매 결과
      */
+    suspend fun purchaseItems(items: List<CosmeticItem>, totalPrice: Int): Result<Unit>
 
+    /**
+     * 코스메틱 아이템 착용/해제 (API)
+     *
+     * @param itemId 아이템 ID
+     * @param isWorn 착용 여부 (true: 착용, false: 해제)
+     * @return 착용/해제 결과
+     */
+    suspend fun wearItem(itemId: Int, isWorn: Boolean): Result<Unit>
 }
 
 

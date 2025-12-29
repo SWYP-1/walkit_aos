@@ -57,10 +57,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.room.util.TableInfo
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import team.swyp.sdu.data.model.EmotionType
@@ -82,7 +80,7 @@ import java.util.concurrent.TimeUnit
  */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun WalkingScreen(
+fun TestWalkingScreen(
     modifier: Modifier = Modifier,
     viewModel: WalkingViewModel = hiltViewModel(),
     onNavigateBack : () -> Unit = {},
@@ -138,7 +136,7 @@ fun WalkingScreen(
                     viewModel = viewModel,
                     onNext = {
                         if (permissionsState.allPermissionsGranted) {
-                            viewModel.startWalking()
+//                            viewModel.startWalking()
                         }
                     },
                     onPrev = {

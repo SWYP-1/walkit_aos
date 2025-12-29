@@ -119,9 +119,13 @@ fun MainScreen(
                 // 홈 화면에서만 FloatingActionButton 표시
                 WalkingFloatingActionButton(
                     onClick = {
-                        // 위치 권한 확인 후 처리
+                        // 위치 권한 확인 후 LocationService 시작
                         if (locationViewModel.hasLocationPermission()) {
-                            navController.navigate(Screen.Walking.route)
+                            val intent = android.content.Intent(context, team.swyp.sdu.domain.service.LocationTrackingService::class.java).apply {
+                                action = team.swyp.sdu.domain.service.LocationTrackingService.ACTION_START_TRACKING
+                            }
+                            context.startService(intent)
+                            // 네비게이션은 MainActivity의 LaunchedEffect에서 자동 처리
                         } else {
                             locationViewModel.checkShouldShowDialog()
                         }

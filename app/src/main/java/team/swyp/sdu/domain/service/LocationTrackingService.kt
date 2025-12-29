@@ -30,8 +30,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -73,6 +76,10 @@ class LocationTrackingService : Service() {
     companion object {
         private const val CHANNEL_ID = "location_tracking_channel"
         private const val NOTIFICATION_ID = 1
+
+        // 집중모드 상태 관리
+        private val _isRunning = MutableStateFlow(false)
+        val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
         // 활동 상태별 업데이트 간격 (밀리초) - 기본값
         // 경로 표시를 위해 더 자주 수집 (Strava, Nike Run Club 기준)
@@ -168,6 +175,8 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // 서비스 종료 시 상태 리셋
+        _isRunning.value = false
         unregisterActivityReceiver()
     }
 
@@ -178,12 +187,14 @@ class LocationTrackingService : Service() {
     ): Int {
         when (intent?.action) {
             ACTION_START_TRACKING -> {
+                _isRunning.value = true  // 상태 변경 추가
                 serviceScope.launch {
                     startTracking()
                 }
             }
 
             ACTION_STOP_TRACKING -> {
+                _isRunning.value = false  // 상태 변경 추가
                 serviceScope.launch {
                     stopTracking()
                 }

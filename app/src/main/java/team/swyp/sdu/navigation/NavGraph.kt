@@ -76,6 +76,7 @@ sealed class Screen(val route: String) {
             return "daily_record/$dateString"
         }
     }
+
 }
 
 /* ----------------------- */
@@ -137,7 +138,8 @@ fun NavGraph(
                         },
                         onNavigateBack = {
                             navController.popBackStack()
-                        }
+                        },
+                        onStopClick = null // 기본 핸들러 사용 (집중모드에서도 동일한 산책 종료 로직 적용)
                     )
                 }
             }
@@ -326,6 +328,7 @@ fun NavGraph(
                 )
             }
         }
+
     }
 }
 

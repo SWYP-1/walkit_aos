@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,8 @@ import team.swyp.sdu.ui.dressroom.component.ItemCard
 import team.swyp.sdu.ui.dressroom.component.ItemHeader
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
+import team.swyp.sdu.utils.DateUtils
+import team.swyp.sdu.utils.Season
 
 /**
  * Route (ViewModel 연결)
@@ -41,18 +44,25 @@ fun DressingRoomRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
+    val isWearLoading by viewModel.isWearLoading.collectAsStateWithLifecycle()
+    val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
 
     DressingRoomScreen(
         modifier = modifier,
         uiState = uiState,
         cartItems = cartItems,
         lottieImageProcessor = viewModel.lottieImageProcessor, // 실제 주입
+        isWearLoading = isWearLoading,
         onBackClick = onNavigateBack,
-        onRefreshClick = {},
+        onRefreshClick = viewModel::loadDressingRoom,
         onQuestionClick = {},
-        onItemClick = viewModel::selectItem,
-        onPurChaseItem = {},
-        onSaveItem = {},
+        onItemClick = { itemId ->
+            if (!isWearLoading) { // 로딩 중 클릭 방지
+                viewModel.selectItem(itemId)
+            }
+        },
+        onPurChaseItem = { viewModel.purchaseItems() },
+        onSaveItem = { viewModel.saveItems() },
     )
 }
 
@@ -65,6 +75,8 @@ fun DressingRoomScreen(
     uiState: DressingRoomUiState,
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?, // ⭐ nullable
+    isWearLoading: Boolean = false,
+    wornItemsByPosition: Map<EquipSlot, Int> = emptyMap(),
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
@@ -74,39 +86,54 @@ fun DressingRoomScreen(
 ) {
     val showCartDialog = remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
             .navigationBarsPadding()
     ) {
-        when (uiState) {
-            is DressingRoomUiState.Loading -> LoadingContent()
-            is DressingRoomUiState.Error -> ErrorContent(uiState.message)
-            is DressingRoomUiState.Success -> SuccessContent(
-                uiState = uiState,
-                cartItems = cartItems,
-                lottieImageProcessor = lottieImageProcessor,
-                onBackClick = onBackClick,
-                onRefreshClick = onRefreshClick,
-                onQuestionClick = onQuestionClick,
-                onItemClick = onItemClick,
-                onSaveItem = onSaveItem,
-                onPurChaseItem = { showCartDialog.value = true }
-            )
-        }
-
-        if (showCartDialog.value) {
-            BottomDialog(onDismissRequest = { showCartDialog.value = false }) {
-                CartDialog(
-                    cartItems = cartItems.toList(),
-                    myPoints = 5700,
-                    onDismiss = { showCartDialog.value = false },
-                    onPurchase = {
-                        onPurChaseItem()
-                        showCartDialog.value = false
-                    }
+        Column(modifier = Modifier.fillMaxSize()) {
+            when (uiState) {
+                is DressingRoomUiState.Loading -> LoadingContent()
+                is DressingRoomUiState.Error -> ErrorContent(uiState.message)
+                is DressingRoomUiState.Success -> SuccessContent(
+                    uiState = uiState,
+                    cartItems = cartItems,
+                    lottieImageProcessor = lottieImageProcessor,
+                    wornItemsByPosition = wornItemsByPosition,
+                    onBackClick = onBackClick,
+                    onRefreshClick = onRefreshClick,
+                    onQuestionClick = onQuestionClick,
+                    onItemClick = onItemClick,
+                    onSaveItem = onSaveItem,
+                    onPurChaseItem = { showCartDialog.value = true }
                 )
+            }
+
+            if (showCartDialog.value) {
+                BottomDialog(onDismissRequest = { showCartDialog.value = false }) {
+                    CartDialog(
+                        cartItems = cartItems.toList(),
+                        myPoints = (uiState as? DressingRoomUiState.Success)?.myPoint ?: 0,
+                        onDismiss = { showCartDialog.value = false },
+                        onPurchase = { itemsToPurchase ->
+                            onPurChaseItem()
+                            showCartDialog.value = false
+                        }
+                    )
+                }
+            }
+
+            // 로딩 오버레이 (착용 요청 중)
+            if (isWearLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SemanticColor.backgroundWhitePrimary.copy(alpha = 0.8f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CustomProgressIndicator()
+                }
             }
         }
     }
@@ -120,6 +147,7 @@ private fun SuccessContent(
     uiState: DressingRoomUiState.Success,
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?,
+    wornItemsByPosition: Map<EquipSlot, Int>,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
@@ -129,26 +157,28 @@ private fun SuccessContent(
 ) {
     // 체크박스 상태를 remember로 선언
     var check by remember { mutableStateOf(false) }
+    val currentSeason = DateUtils.getCurrentSeason()
+    val seasionBackgroundColor = when (currentSeason) {
+        Season.SPRING -> SemanticColor.stateGreenPrimary
+        Season.SUMMER -> SemanticColor.stateGreenPrimary
+        Season.AUTUMN -> SemanticColor.stateGreenPrimary
+        Season.WINTER -> SemanticColor.backgroundWhitePrimary
+    }
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .background(seasionBackgroundColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    SemanticColor.iconBlack,
-                    shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                )
-                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                // 배경을 줘야 clip이 보임
                 .padding(bottom = 72.dp)
             // CTA 버튼 높이만큼 패딩
         ) {
             // 캐릭터 영역
             uiState.character?.let { character ->
                 CharacterAndBackground(
+                    currentSeason = currentSeason,
                     character = character,
                     points = uiState.myPoint,
                     lottieImageProcessor = lottieImageProcessor,
@@ -157,7 +187,7 @@ private fun SuccessContent(
                     onQuestionClick = onQuestionClick
                 )
             }
-            Spacer(Modifier.height(4.dp))
+
             // 체크박스 토글 가능한 헤더
             ItemHeader(
                 checked = check,
@@ -170,42 +200,48 @@ private fun SuccessContent(
                 ItemGrid(
                     items = uiState.items,
                     selectedItemIds = uiState.selectedItemIdSet,
+                    wornItemsByPosition = wornItemsByPosition,
                     onItemClick = onItemClick
                 )
             }
         }
 
         // CTA 버튼 고정
-        Row(
+        Surface(
+            shadowElevation = 4.dp, // 그림자 높이
+            color = SemanticColor.backgroundWhitePrimary, // 배경색
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(SemanticColor.backgroundWhitePrimary)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .align(Alignment.BottomCenter)
         ) {
-            CtaButton(
-                text = "구매하기",
-                textColor = SemanticColor.buttonPrimaryDefault,
-                buttonColor = SemanticColor.backgroundWhitePrimary,
-                enabled = cartItems.isNotEmpty(),
-                onClick = onPurChaseItem,
-                modifier = Modifier.weight(1f)
-            )
+            Row(
+                modifier = Modifier
+                    .padding(16.dp), // 내부 여백
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CtaButton(
+                    text = "구매하기",
+                    textColor = SemanticColor.buttonPrimaryDefault,
+                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    enabled = cartItems.isNotEmpty(),
+                    onClick = onPurChaseItem,
+                    modifier = Modifier.weight(1f)
+                )
 
-            CtaButton(
-                text = "저장하기",
-                onClick = onSaveItem,
-                modifier = Modifier.weight(1f),
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_forward),
-                        contentDescription = null,
-                        tint = SemanticColor.iconWhite,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
+                CtaButton(
+                    text = "저장하기",
+                    onClick = onSaveItem,
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_forward),
+                            contentDescription = null,
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -218,6 +254,7 @@ private fun SuccessContent(
 private fun ItemGrid(
     items: List<CosmeticItem>,
     selectedItemIds: Set<Int>,
+    wornItemsByPosition: Map<EquipSlot, Int>,
     onItemClick: (Int) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -229,12 +266,14 @@ private fun ItemGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items) { item ->
+            val isWorn = wornItemsByPosition[item.position] == item.itemId
             ItemCard(
                 itemImageUrl = item.imageName,
                 name = item.name,
                 point = item.point,
                 isMine = item.owned,
                 isSelected = selectedItemIds.contains(item.itemId),
+                isWorn = isWorn,
                 onClick = { onItemClick(item.itemId) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -256,7 +295,7 @@ private fun ErrorContent(message: String) { /* 동일 */
 @Composable
 private fun LoadingContent() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+//        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
     }
 }
 
@@ -311,6 +350,11 @@ fun PreviewDressingRoomFullSample() {
             ),
             cartItems = linkedSetOf(items[1], items[2]),
             lottieImageProcessor = null, // ⭐ Preview 핵심
+            wornItemsByPosition = mapOf(
+                // 착용 상태 예시
+                EquipSlot.HEAD to 1, // 첫 번째 HEAD 아이템 착용
+                EquipSlot.BODY to 2, // 첫 번째 BODY 아이템 착용
+            ),
             onBackClick = {},
             onRefreshClick = {},
             onQuestionClick = {},

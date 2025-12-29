@@ -1,6 +1,7 @@
 package team.swyp.sdu.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import team.swyp.sdu.R
+import team.swyp.sdu.ui.theme.Green4
 import team.swyp.sdu.ui.theme.Pretendard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.TypeScale
@@ -57,9 +60,14 @@ fun SearchBar(
     onSearch: (() -> Unit)? = null,
     placeholder: String = "친구의 닉네임을 검색해보세요.",
     modifier: Modifier = Modifier,
+    backgroundColor: Color = SemanticColor.backgroundWhiteSecondary,
+    textColor: Color = SemanticColor.textBorderPrimary,
+    placeholderColor: Color = SemanticColor.textBorderTertiary,
+    iconColor: Color = SemanticColor.iconBlack,
+    borderColor: Color = Color.Transparent,
 ) {
     val textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-        color = SemanticColor.textBorderPrimary,
+        color = textColor,
     )
 
     BasicTextField(
@@ -71,26 +79,27 @@ fun SearchBar(
             imeAction = ImeAction.Search,
         ),
         keyboardActions = KeyboardActions(
-            onSearch = {
-                onSearch?.invoke()
-            },
+            onSearch = { onSearch?.invoke() },
         ),
         modifier = modifier.fillMaxWidth(),
         decorationBox = { innerTextField ->
             Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(SemanticColor.backgroundWhiteSecondary)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(backgroundColor)
+                    .then(
+                        if (borderColor != Color.Transparent) {
+                            Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                        } else Modifier
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // 텍스트 필드와 플레이스홀더
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterStart,
@@ -98,13 +107,12 @@ fun SearchBar(
                         if (query.isEmpty()) {
                             Text(
                                 text = placeholder,
-                                style = textStyle.copy(color = SemanticColor.textBorderTertiary),
+                                style = textStyle.copy(color = placeholderColor),
                             )
                         }
                         innerTextField()
                     }
 
-                    // 아이콘 (검색 또는 지우기)
                     if (query.isNotEmpty()) {
                         IconButton(
                             onClick = onClear,
@@ -113,7 +121,7 @@ fun SearchBar(
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "지우기",
-                                tint = SemanticColor.iconBlack,
+                                tint = iconColor,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -139,7 +147,7 @@ private fun SearchBarPreview() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 빈 상태
+            // 기본 색상
             SearchBar(
                 query = "",
                 onQueryChange = {},
@@ -154,7 +162,19 @@ private fun SearchBarPreview() {
                 onClear = {},
                 onSearch = {},
             )
+
+            // 커스텀 색상 + 테두리
+            SearchBar(
+                query = "커스텀 색상",
+                onQueryChange = {},
+                onClear = {},
+                onSearch = {},
+                backgroundColor = Color(0xFFFFF3E0),
+                textColor = Color(0xFFBF360C),
+                placeholderColor = Color(0xFFFFAB91),
+                iconColor = Green4,
+                borderColor = Color(0xFFD84315),
+            )
         }
     }
 }
-

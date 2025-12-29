@@ -48,7 +48,7 @@ interface FollowerApi {
      * @param nickname 팔로우할 사용자의 닉네임
      * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
-    @POST("/follows/nickname/{nickname}")
+    @POST("/follows/following/nickname/{nickname}")
     suspend fun followUserByNickname(
         @Path("nickname") nickname: String
     ): Response<Unit>

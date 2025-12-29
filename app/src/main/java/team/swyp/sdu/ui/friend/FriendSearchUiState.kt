@@ -1,6 +1,7 @@
 package team.swyp.sdu.ui.friend
 
 import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.UserSummary
 
 /**
  * 친구 검색 상세 화면 UI 상태
@@ -15,7 +16,7 @@ sealed interface FriendSearchUiState {
      * 성공 상태
      */
     data class Success(
-        val data: FollowerWalkRecord,
+        val data: UserSummary,
     ) : FriendSearchUiState
 
     /**
@@ -25,6 +26,7 @@ sealed interface FriendSearchUiState {
         val message: String? = null,
     ) : FriendSearchUiState
 }
+
 
 
 

@@ -67,5 +67,15 @@ class WalkRepositoryImpl @Inject constructor(
                 Result.Error(e, e.message)
             }
         }
+
+    override suspend fun updateWalkNote(walkId: Long, note: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                walkRemoteDataSource.updateWalkNote(walkId, note)
+            } catch (e: Exception) {
+                Timber.e(e, "산책 노트 업데이트 실패")
+                Result.Error(e, e.message)
+            }
+        }
 }
 

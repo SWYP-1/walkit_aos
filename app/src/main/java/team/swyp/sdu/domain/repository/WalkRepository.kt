@@ -51,6 +51,15 @@ interface WalkRepository {
      * @return API 호출 결과
      */
     suspend fun unlikeWalk(walkId: Long): Result<Unit>
+
+    /**
+     * 산책 노트 업데이트
+     *
+     * @param walkId 산책 ID
+     * @param note 업데이트할 노트 내용
+     * @return 업데이트 결과
+     */
+    suspend fun updateWalkNote(walkId: Long, note: String): Result<Unit>
 }
 
 

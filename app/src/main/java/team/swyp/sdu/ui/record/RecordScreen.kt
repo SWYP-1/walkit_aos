@@ -126,7 +126,9 @@ private fun RecordScreenContent(
 
         RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)) {
             Text(
                 text = "친구목록",
                 // caption M/regular
@@ -164,56 +166,55 @@ private fun RecordScreenContent(
                     onFriendSelected = onFriendSelected,
                     onNavigateToFriend = onNavigateToFriend
                 )
-                }
             }
         }
+    }
 
-        Divider()
+    Divider()
 
-        // ==============================
-        // 하단 Room 기반 영역 (항상 표시)
-        // ==============================
-        if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
-            FriendRecordScreen(
-                nickname = recordUiState.selectedFriendNickname,
-                onNavigateBack = onFriendDeselected,
-                onBlockUser = onBlockUser,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                item {
-                    HeaderRow(
-                        onDummyClick = { /*TODO*/ },
-                        onStartOnboarding = onStartOnboarding
-                    )
-                }
+    // ==============================
+    // 하단 Room 기반 영역 (항상 표시)
+    // ==============================
+    if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+        FriendRecordScreen(
+            nickname = recordUiState.selectedFriendNickname,
+            onNavigateBack = onFriendDeselected,
+            onBlockUser = onBlockUser,
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            item {
+                HeaderRow(
+                    onDummyClick = { /*TODO*/ },
+                    onStartOnboarding = onStartOnboarding
+                )
+            }
 
-                item {
-                    RecordTabRow(
-                        selectedTabIndex = tabIndex,
-                        onTabSelected = { tabIndex = it }
-                    )
-                }
+            item {
+                RecordTabRow(
+                    selectedTabIndex = tabIndex,
+                    onTabSelected = { tabIndex = it }
+                )
+            }
 
-                item {
-                    RecordTabContent(
-                        selectedTab = tabs[tabIndex],
-                        monthStats = monthStats,
-                        weekStats = weekStats,
-                        monthSessions = monthSessions,
-                        weekSessions = weekSessions,
-                        currentDate = currentDate,
-                        onPrevWeek = onPrevWeek,
-                        onNextWeek = onNextWeek,
-                        onNavigateToDailyRecord = onNavigateToDailyRecord,
-                        onMonthChanged = onMonthChanged
-                    )
-                }
+            item {
+                RecordTabContent(
+                    selectedTab = tabs[tabIndex],
+                    monthStats = monthStats,
+                    weekStats = weekStats,
+                    monthSessions = monthSessions,
+                    weekSessions = weekSessions,
+                    currentDate = currentDate,
+                    onPrevWeek = onPrevWeek,
+                    onNextWeek = onNextWeek,
+                    onNavigateToDailyRecord = onNavigateToDailyRecord,
+                    onMonthChanged = onMonthChanged
+                )
             }
         }
     }

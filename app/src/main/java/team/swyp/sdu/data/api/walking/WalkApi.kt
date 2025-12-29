@@ -3,10 +3,13 @@ package team.swyp.sdu.data.api.walking
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import team.swyp.sdu.data.remote.walking.dto.UpdateWalkNoteRequest
 import team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse
 
 /**
@@ -48,5 +51,18 @@ interface WalkApi {
     @DELETE("/walk-likes/{walkId}")
     suspend fun unlikeWalk(
         @Path("walkId") walkId: Long
+    ): Response<Unit>
+
+    /**
+     * 산책 노트 업데이트
+     *
+     * @param walkId 산책 ID
+     * @param request 노트 업데이트 요청
+     * @return 성공 시 빈 응답 (200 OK)
+     */
+    @PATCH("/walk/update/{walkId}")
+    suspend fun updateWalkNote(
+        @Path("walkId") walkId: Long,
+        @Body request: UpdateWalkNoteRequest
     ): Response<Unit>
 }

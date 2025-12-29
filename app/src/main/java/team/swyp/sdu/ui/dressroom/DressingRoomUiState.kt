@@ -39,3 +39,4 @@ sealed interface DressingRoomUiState {
     data class Error(val message: String) : DressingRoomUiState
 }
 
+

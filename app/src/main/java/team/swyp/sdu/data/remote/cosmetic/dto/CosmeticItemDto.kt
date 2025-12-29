@@ -22,3 +22,4 @@ data class CosmeticItemDto(
     val point: Int
 )
 
+

@@ -231,20 +231,21 @@ class WalkingRepositoryImpl @Inject constructor(
         // 검증 통과 시에만 걸음 수 업데이트
         val validatedStepCount = when (validationResult) {
             is StepValidationResult.Accepted -> {
+                Timber.tag("Walking Validator").w("정상 작동")
                 effectiveStepCount
             }
             is StepValidationResult.Rejected.StationaryWalking -> {
-                Timber.w("제자리 걷기 감지: 걸음수 증가 차단")
+                Timber.tag("Walking Validator").w("제자리 걷기 감지: 걸음수 증가 차단")
                 lastStepCount
             }
             else -> {
-                Timber.w("걸음 수 검증 실패: $validationResult")
+                Timber.tag("Walking Validator").w("걸음 수 검증 실패: $validationResult")
                 lastStepCount
             }
         }
 
         // Raw event emit - Repository의 _rawEvents로 직접 emit
-        _rawEvents.emit(WalkingRawEvent.StepCountUpdate(validatedStepCount))
+        _rawEvents.emit(WalkingRawEvent.StepCountUpdate(validatedStepCount, validationResult))
         
         // Service에도 알림 (Service가 시작된 경우)
         locationTrackingService?.onStepCountUpdate(validatedStepCount)

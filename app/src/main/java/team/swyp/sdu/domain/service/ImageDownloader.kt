@@ -15,3 +15,4 @@ interface ImageDownloader {
     suspend fun downloadPngImage(imageUrl: String): ByteArray
 }
 
+

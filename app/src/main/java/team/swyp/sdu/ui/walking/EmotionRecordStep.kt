@@ -37,6 +37,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -414,7 +415,7 @@ private fun EmotionRecordStepScreenContent(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                // 텍스트 입력 영역
+                              // 텍스트 입력 영역
                 Box(modifier = Modifier.fillMaxWidth()) {
                     BasicTextField(
                         value = emotionText,
@@ -433,8 +434,8 @@ private fun EmotionRecordStepScreenContent(
                             .padding(
                                 16.dp
                             ),
-                        textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                            color = SemanticColor.textBorderPrimary,
+                        textStyle = MaterialTheme.walkItTypography.captionM.copy(
+                            color = SemanticColor.textBorderSecondary,
                         ),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Default,
@@ -538,7 +539,11 @@ private fun PhotoInputArea(
         contentAlignment = Alignment.Center,
     ) {
         if (photoUri != null) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
                 Image(
                     painter = rememberAsyncImagePainter(
                         ImageRequest.Builder(LocalContext.current)
@@ -549,13 +554,15 @@ private fun PhotoInputArea(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-                Box(
+
+                // X 버튼
+                IconButton(
+                    onClick = { onPhotoUriChange(null) },
                     modifier = Modifier
+                        .align(Alignment.TopEnd)      // 상위 Box 기준 우측 상단
+                        .offset(x = 8.dp, y = (-8).dp) // 약간 튀어나오게
                         .size(24.dp)
-                        .offset(x = 12.dp, y = (-12).dp)
-                        .background(color = SemanticColor.iconDisabled, shape = CircleShape)
-                        .clickable(onClick = { onPhotoUriChange(null) }),
-                    contentAlignment = Alignment.TopEnd,
+                        .background(SemanticColor.iconDisabled, CircleShape)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_action_clear),
@@ -565,6 +572,7 @@ private fun PhotoInputArea(
                     )
                 }
             }
+
         } else {
             Icon(
                 painter = painterResource(R.drawable.ic_info_camera),

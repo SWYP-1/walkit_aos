@@ -33,6 +33,7 @@ fun JSONObject.replaceAssetP(assetId: String, dataUrl: String): JSONObject {
         // assets 배열에서 해당 assetId를 찾기
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
+            Timber.d("Lottie asset: $asset")
             val currentAssetId = asset.optString("id", "")
 
             if (currentAssetId == assetId) {
@@ -49,4 +50,5 @@ fun JSONObject.replaceAssetP(assetId: String, dataUrl: String): JSONObject {
         throw e
     }
 }
+
 

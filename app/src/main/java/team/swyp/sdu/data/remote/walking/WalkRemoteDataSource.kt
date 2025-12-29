@@ -25,6 +25,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Response
 import team.swyp.sdu.data.remote.walking.dto.ErrorResponseDto
 import team.swyp.sdu.data.remote.walking.dto.FollowerWalkRecordDto
+import team.swyp.sdu.data.remote.walking.dto.UpdateWalkNoteRequest
 import team.swyp.sdu.data.remote.walking.dto.WalkingSessionRequest
 import team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse
 import team.swyp.sdu.data.remote.walking.mapper.toWalkPoints
@@ -407,6 +408,35 @@ class WalkRemoteDataSource @Inject constructor(
             throw e
         } catch (e: Exception) {
             Timber.e(e, "산책 좋아요 취소 실패: walkId=$walkId")
+            Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
+        }
+    }
+
+    /**
+     * 산책 노트 업데이트
+     *
+     * @param walkId 산책 ID
+     * @param note 업데이트할 노트 내용
+     * @return 업데이트 결과 (성공 시 Unit)
+     */
+    suspend fun updateWalkNote(walkId: Long, note: String): Result<Unit> {
+        return try {
+            val request = UpdateWalkNoteRequest(note = note)
+            val response = walkApi.updateWalkNote(walkId, request)
+
+            if (response.isSuccessful) {
+                Timber.d("산책 노트 업데이트 성공: walkId=$walkId")
+                Result.Success(Unit)
+            } else {
+                val errorCode = parseErrorCode(response)
+                Timber.w("산책 노트 업데이트 실패: HTTP ${response.code()}, 에러 코드: $errorCode")
+                Result.Error(
+                    Exception("노트 업데이트 실패"),
+                    "노트 업데이트에 실패했습니다"
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "산책 노트 업데이트 실패: walkId=$walkId")
             Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
         }
     }

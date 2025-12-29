@@ -51,6 +51,7 @@ import timber.log.Timber
 @Composable
 fun CharacterAndBackground(
     modifier: Modifier = Modifier,
+    currentSeason : Season = Season.SPRING,
     character: Character,
     points: Int,
     lottieImageProcessor: LottieImageProcessor? = null,
@@ -59,7 +60,6 @@ fun CharacterAndBackground(
     onRefreshClick: () -> Unit = {}
 ) {
     // 오늘 날짜의 계절 확인
-    val currentSeason = DateUtils.getCurrentSeason()
     val backgroundRes =
         when (currentSeason) {
             Season.SPRING -> R.drawable.bg_spring_cropped
@@ -72,13 +72,13 @@ fun CharacterAndBackground(
     val context = LocalContext.current
     // 1️⃣ Base Lottie (fallback 용)
     val baseComposition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.character2)
+        LottieCompositionSpec.RawRes(R.raw.seedblueribbon)
     )
 
 // 2️⃣ 서버 이미지 반영된 JSON 생성
     val processedJsonString by produceState<String?>(null, character.headImageName) {
         value = try {
-            val inputStream = context.resources.openRawResource(R.raw.character2)
+            val inputStream = context.resources.openRawResource(R.raw.seedblueribbon)
             val jsonString = inputStream.bufferedReader().use { it.readText() }
             val originalJson = JSONObject(jsonString)
 
@@ -87,8 +87,8 @@ fun CharacterAndBackground(
                 lottieImageProcessor
                     .replaceAssetWithImageUrl(
                         lottieJson = originalJson,
-                        assetId = "Group 212_209b93c3-be87-4e55-a26a-57b71292675c",
-                        imageUrl = "https://img.freepik.com/premium-photo/yellow-flower-png-gradient-holographic-transparent-background_53876-1040799.jpg"
+                        assetId = "blueribbon",
+                        imageUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_HEAD_RED_RIBBON.png"
                     )
                     .toString()
             } else {

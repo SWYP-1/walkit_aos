@@ -2,7 +2,9 @@ package team.swyp.sdu.data.remote.mission
 
 import javax.inject.Inject
 import javax.inject.Singleton
+import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.api.mission.MissionApi
+import team.swyp.sdu.data.remote.mission.dto.MonthlyCompletedMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionListResponse
 import timber.log.Timber
@@ -43,6 +45,37 @@ class MissionRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "주간 미션 목록 조회 실패")
             throw e
+        }
+    }
+
+    /**
+     * 월간 미션 완료 목록 조회
+     *
+     * @param year 조회할 연도
+     * @param month 조회할 월 (1-12)
+     * @return 월간 미션 완료 날짜 목록
+     */
+    suspend fun getMonthlyCompletedMissions(year: Int, month: Int): Result<List<String>> {
+        return try {
+            val response = missionApi.getMonthlyCompletedMissions(year, month)
+
+            if (response.isSuccessful) {
+                val monthlyData = response.body()
+                if (monthlyData != null) {
+                    Timber.d("월간 미션 완료 목록 조회 성공: ${year}년 ${month}월, ${monthlyData.dates.size}개")
+                    Result.Success(monthlyData.dates)
+                } else {
+                    Timber.e("월간 미션 완료 목록 조회 실패: 응답 바디가 null")
+                    Result.Error(Exception("응답 데이터가 없습니다"))
+                }
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "월간 미션 완료 목록 조회 실패"
+                Timber.e("월간 미션 완료 목록 조회 실패: $errorMessage (코드: ${response.code()})")
+                Result.Error(Exception("월간 미션 완료 목록 조회 실패: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "월간 미션 완료 목록 조회 중 예외 발생")
+            Result.Error(e)
         }
     }
 }

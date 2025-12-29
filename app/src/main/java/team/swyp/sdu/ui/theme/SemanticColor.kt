@@ -59,6 +59,7 @@ object SemanticColor {
     val stateAquaBlueTertiary = AquaBlue1
 
 
+    val logoGreen = Green9
 
     // button
     val buttonPrimaryDefault = GreenPrimary

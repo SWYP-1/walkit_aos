@@ -27,6 +27,7 @@ class MissionRepositoryImpl @Inject constructor(
             Result.Error(e)
         }
     }
+
     override suspend fun getAllWeeklyMissions(): Result<List<WeeklyMission>> {
         return try {
             val response = missionRemoteDataSource.getAllWeeklyMissions()
@@ -36,6 +37,15 @@ class MissionRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "주간 미션 목록 조회 실패")
             Result.Error(e)
+        }
+    }
+
+    override suspend fun getMonthlyCompletedMissions(year: Int, month: Int): Result<List<String>> {
+        return try {
+            missionRemoteDataSource.getMonthlyCompletedMissions(year, month)
+        } catch (e: Exception) {
+            Timber.e(e, "월간 미션 완료 목록 조회 실패")
+            Result.Error(e, e.message)
         }
     }
 }

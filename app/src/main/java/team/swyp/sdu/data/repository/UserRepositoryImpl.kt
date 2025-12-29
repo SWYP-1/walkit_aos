@@ -17,7 +17,11 @@ import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.data.local.mapper.UserMapper
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
+import team.swyp.sdu.data.remote.user.UserSearchResult as RemoteUserSearchResult
+import team.swyp.sdu.data.remote.user.UserSummaryMapper
 import team.swyp.sdu.domain.model.User
+import team.swyp.sdu.domain.model.UserSearchResult
+import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.domain.repository.UserRepository
 import timber.log.Timber
 
@@ -194,6 +198,41 @@ class UserRepositoryImpl @Inject constructor(
                 userDao.clear() // 🔥 Room clear → Flow emit → StateFlow null
                 Result.Success(Unit)
             } catch (e: Exception) {
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun searchUserByNickname(nickname: String): Result<UserSearchResult> =
+        withContext(Dispatchers.IO) {
+            try {
+                val remoteResult = remoteDataSource.searchUserByNickname(nickname)
+                val domainResult = UserSearchResult(
+                    userId = remoteResult.userId,
+                    imageName = remoteResult.imageName,
+                    nickname = remoteResult.nickname,
+                    followStatus = remoteResult.followStatus,
+                )
+                Timber.d("사용자 검색 성공: ${domainResult.nickname}")
+                Result.Success(domainResult)
+            } catch (e: Exception) {
+                Timber.e(e, "사용자 검색 실패: $nickname")
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun getUserSummaryByNickname(
+        nickname: String,
+        lat: Double,
+        lon: Double,
+    ): Result<UserSummary> =
+        withContext(Dispatchers.IO) {
+            try {
+                val dto = remoteDataSource.getUserSummaryByNickname(nickname, lat, lon)
+                val domainResult = UserSummaryMapper.toDomain(dto)
+                Timber.d("사용자 요약 정보 조회 성공: ${domainResult.character.nickName}")
+                Result.Success(domainResult)
+            } catch (e: Exception) {
+                Timber.e(e, "사용자 요약 정보 조회 실패: $nickname")
                 Result.Error(e, e.message)
             }
         }

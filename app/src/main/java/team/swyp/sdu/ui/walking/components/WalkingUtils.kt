@@ -21,6 +21,20 @@ fun formatDuration(millis: Long): String {
     val remainingSeconds = seconds % 60
     return String.format("%02d:%02d", minutes, remainingSeconds)
 }
+fun formatDurationWithMillis(millis: Long): String {
+    val hours = TimeUnit.MILLISECONDS.toHours(millis)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+
+    return String.format(
+        "%02d:%02d:%02d",
+        hours,
+        minutes,
+        seconds,
+    )
+}
+
+
 
 
 

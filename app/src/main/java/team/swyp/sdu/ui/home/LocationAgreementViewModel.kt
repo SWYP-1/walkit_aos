@@ -133,3 +133,4 @@ class LocationAgreementViewModel @Inject constructor(
         return locationManager.hasLocationPermission()
     }
 }
+

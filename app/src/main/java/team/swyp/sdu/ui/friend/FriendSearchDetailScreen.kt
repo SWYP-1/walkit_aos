@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.GradeBadge
@@ -69,7 +70,7 @@ fun FriendSearchDetailRoute(
     // 화면 진입 시 데이터 로드
     LaunchedEffect(nickname) {
         if (nickname != null) {
-            viewModel.loadFollowerWalkRecord(nickname, lat, lon)
+            viewModel.loadFollowerWalkRecord(nickname)
         }
     }
 
@@ -128,7 +129,7 @@ fun FriendSearchDetailScreen(
 @Composable
 fun FriendSearchDetailScreenContent(
     modifier: Modifier = Modifier,
-    data: FollowerWalkRecord,
+    data: UserSummary,
     onNavigateBack: () -> Unit = {},
 ) {
     var isMoreMenuExpanded by remember { mutableStateOf(false) }
@@ -188,7 +189,7 @@ fun FriendSearchDetailScreenContent(
                 ) {
                     // 등급 배지
                     GradeBadge(
-                        grade = data.character.grade,
+                        grade = data.character.grade
                     )
 
                     // 닉네임
@@ -238,11 +239,10 @@ fun FriendSearchDetailScreenContent(
         ) {
             WalkingSummaryCard(
                 leftLabel = "누적 산책 횟수",
-                leftValue = "32",
+                leftValue = data.walkSummary.totalWalkCount.toString(),
                 leftUnit = SummaryUnit.Step("회"),
                 rightLabel = "누적 산책 시간",
-                rightValue = "46시간 33분",
-                rightUnit = SummaryUnit.Step("분"),
+                rightUnit = SummaryUnit.Time( data.walkSummary.totalWalkTimeMillis),
             )
         }
     }

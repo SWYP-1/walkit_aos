@@ -48,18 +48,18 @@ class DefaultStepCountValidator @Inject constructor() : StepCountValidator {
         }
 
         // 제자리 걸음 감지: 보폭 작음 + GPS 위치 분산 작음
-        if (input.stepDelta > 0 && input.locations.size >= MIN_LOCATIONS_FOR_VARIANCE) {
-            // 보폭 계산: GPS 이동 거리 / 걸음 수 증가량
-            val stride = input.gpsDistance / input.stepDelta
-
-            // GPS 위치 분산 계산
-            val locationVariance = calculateLocationVariance(input.locations)
-
-            // 제자리 걸음 조건: 보폭 < 30cm + GPS 위치 분산 < 0.0001
-            if (stride > 0f && stride < STATIONARY_STRIDE_THRESHOLD && locationVariance < MIN_LOCATION_VARIANCE) {
-                return StepValidationResult.Rejected.StationaryWalking
-            }
-        }
+//        if (input.stepDelta > 0 && input.locations.size >= MIN_LOCATIONS_FOR_VARIANCE) {
+//            // 보폭 계산: GPS 이동 거리 / 걸음 수 증가량
+//            val stride = input.gpsDistance / input.stepDelta
+//
+//            // GPS 위치 분산 계산
+//            val locationVariance = calculateLocationVariance(input.locations)
+//
+//            // 제자리 걸음 조건: 보폭 < 30cm + GPS 위치 분산 < 0.0001
+//            if (stride > 0f && stride < STATIONARY_STRIDE_THRESHOLD && locationVariance < MIN_LOCATION_VARIANCE) {
+//                return StepValidationResult.Rejected.StationaryWalking
+//            }
+//        }
 
         // 모든 검증 통과
         return StepValidationResult.Accepted(input.stepDelta)

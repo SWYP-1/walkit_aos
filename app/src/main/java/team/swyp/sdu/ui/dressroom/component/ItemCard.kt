@@ -44,6 +44,7 @@ fun ItemCard(
     point: Int,
     isMine: Boolean,
     isSelected: Boolean,
+    isWorn: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -55,7 +56,11 @@ fun ItemCard(
             )
             .border(
                 width = 1.5.dp,
-                color = if (isSelected) SemanticColor.stateGreenPrimary else SemanticColor.textBorderSecondaryInverse,
+                color = when {
+                    isWorn -> SemanticColor.stateBluePrimary // 착용됨: 파란색
+                    isSelected -> SemanticColor.stateGreenPrimary // 선택됨: 초록색
+                    else -> SemanticColor.textBorderSecondaryInverse // 기본
+                },
                 shape = RoundedCornerShape(12.dp)
             )
             .clip(RoundedCornerShape(12.dp))

@@ -332,6 +332,11 @@ private fun WalkingScreenContent(
 
 
 @Composable
+fun WalkitStepInfo(modifier: Modifier = Modifier) {
+
+}
+
+@Composable
 fun WalkingActionButtonRow(
     modifier: Modifier = Modifier,
     isPaused: Boolean = false,
@@ -345,9 +350,9 @@ fun WalkingActionButtonRow(
     ) {
         WalkingActionButton(
             textColor = SemanticColor.textBorderGreenSecondary,
-            iconRes = if (isPaused) R.drawable.ic_action_walk else R.drawable.ic_action_pause,
+            iconRes = if (isPaused) R.drawable.ic_action_restart else R.drawable.ic_action_pause,
             backgroundColor = SemanticColor.backgroundWhitePrimary,
-            text = if (isPaused) "재개" else "일시정지",
+            text = if (isPaused) "다시 시작" else "일시정지",
             onClick = onClickPause,
         )
         Spacer(Modifier.width(56.dp))

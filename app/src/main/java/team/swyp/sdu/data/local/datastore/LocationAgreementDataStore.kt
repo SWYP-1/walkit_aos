@@ -42,3 +42,4 @@ class LocationAgreementDataStore @Inject constructor(
         return dataStore.data.first()[hasShownLocationAgreementDialogKey] ?: false
     }
 }
+

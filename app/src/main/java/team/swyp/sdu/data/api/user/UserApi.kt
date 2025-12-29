@@ -15,6 +15,7 @@ import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.remote.home.dto.UserPointDto
 import team.swyp.sdu.data.remote.user.dto.RemoteUserDto
 import team.swyp.sdu.data.remote.user.dto.UserSearchResultDto
+import team.swyp.sdu.data.remote.user.dto.UserSummaryDto
 
 /**
  * 사용자 정보 API
@@ -95,5 +96,22 @@ interface UserApi {
      */
     @GET("/users/point")
     suspend fun getUserPoint(): UserPointDto
+
+    /**
+     * 닉네임으로 사용자 요약 정보 조회
+     *
+     * 친구 검색 결과에서 특정 사용자를 선택했을 때 상세 정보를 가져옵니다.
+     *
+     * @param nickname 검색할 닉네임
+     * @param lat 위도
+     * @param lon 경도
+     * @return 사용자 요약 정보 (캐릭터 정보 + 산책 요약 정보)
+     */
+    @GET("/users/summary/nickname")
+    suspend fun getUserSummaryByNickname(
+        @Query("nickname") nickname: String,
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+    ): UserSummaryDto
 }
 

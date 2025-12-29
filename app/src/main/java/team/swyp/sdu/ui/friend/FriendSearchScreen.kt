@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.friend
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import team.swyp.sdu.ui.friend.FriendViewModel
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.SearchBar
 import team.swyp.sdu.ui.friend.component.FriendCard
+import team.swyp.sdu.ui.theme.SemanticColor
 
 @Composable
 fun FriendSearchScreen(
@@ -38,14 +40,7 @@ fun FriendSearchScreen(
     val searchUiState by viewModel.searchUiState.collectAsStateWithLifecycle()
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-               ,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
+    Column(modifier = modifier.background(SemanticColor.backgroundWhitePrimary)) {
         AppHeader(title = "친구 찾기", onNavigateBack = {
             viewModel.clearQuery()
             onNavigateBack()
@@ -65,14 +60,18 @@ fun FriendSearchScreen(
                 }
             },
             placeholder = "친구의 닉네임을 검색해보세요.",
+            textColor = SemanticColor.textBorderSecondary,
+            borderColor = SemanticColor.textBorderSecondary,
+            iconColor = SemanticColor.iconGrey,
+            backgroundColor = SemanticColor.backgroundWhitePrimary,
+            modifier = Modifier.padding(16.dp)
         )
 
         // 검색 결과 화면 표시
         SearchResultScreen(
             searchUiState = searchUiState,
             isFollowing = isFollowing,
-            onNavigateToDetail = {
-                nickName ->
+            onNavigateToDetail = { nickName ->
                 onNavigateToDetail(nickName)
             },
             onFollowClick = {
@@ -81,13 +80,12 @@ fun FriendSearchScreen(
                     viewModel.followUser((searchUiState as SearchUiState.Success).result.nickname)
                 }
             },
-            contentPaddingBottom =
-                with(LocalDensity.current) {
-                    WindowInsets.navigationBars.getBottom(this).toDp()
-                },
         )
     }
+
+
 }
+
 
 /**
  * 검색 결과 화면
@@ -98,7 +96,6 @@ private fun SearchResultScreen(
     isFollowing: Boolean,
     onNavigateToDetail: (String) -> Unit,
     onFollowClick: () -> Unit,
-    contentPaddingBottom: Dp,
 ) {
     Surface(
         tonalElevation = 0.dp,
@@ -107,8 +104,7 @@ private fun SearchResultScreen(
                 .fillMaxSize(),
     ) {
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            contentPadding = PaddingValues(bottom = contentPaddingBottom + 12.dp),
+
         ) {
             when (searchUiState) {
                 SearchUiState.Idle -> {
@@ -119,10 +115,11 @@ private fun SearchResultScreen(
                                 .padding(vertical = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("검색어를 입력해주세요")
+//                            Text("검색어를 입력해주세요")
                         }
                     }
                 }
+
                 SearchUiState.Loading -> {
                     item {
                         Box(
@@ -135,6 +132,7 @@ private fun SearchResultScreen(
                         }
                     }
                 }
+
                 is SearchUiState.Success -> {
                     item {
                         FriendCard(
@@ -147,6 +145,7 @@ private fun SearchResultScreen(
                         )
                     }
                 }
+
                 is SearchUiState.Error -> {
                     item {
                         Box(

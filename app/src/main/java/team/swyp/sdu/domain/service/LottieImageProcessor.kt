@@ -93,3 +93,4 @@ enum class LottieImageSlot(val size: Int) {
     BODY(512),
     ACCESSORY(128)
 }
+

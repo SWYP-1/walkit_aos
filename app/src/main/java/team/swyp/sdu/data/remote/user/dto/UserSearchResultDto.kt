@@ -3,6 +3,7 @@ package team.swyp.sdu.data.remote.user.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import team.swyp.sdu.domain.model.FollowStatus
+import team.swyp.sdu.data.remote.walking.dto.Grade
 
 /**
  * 사용자 검색 결과 DTO
@@ -44,4 +45,52 @@ data class UserSearchResultDto(
         }
     }
 }
+
+/**
+ * 사용자 요약 정보 DTO
+ *
+ * 친구 검색 결과에서 사용자 선택 시 상세 정보를 가져올 때 사용됩니다.
+ * Kotlinx Serialization을 사용합니다.
+ */
+@Serializable
+data class UserSummaryDto(
+    @SerialName("responseCharacterDto")
+    val responseCharacterDto: ResponseCharacterDto,
+    @SerialName("walkTotalSummaryResponseDto")
+    val walkTotalSummaryResponseDto: WalkTotalSummaryResponseDto,
+)
+
+/**
+ * 캐릭터 응답 DTO
+ */
+@Serializable
+data class ResponseCharacterDto(
+    @SerialName("headImageName")
+    val headImageName: String,
+    @SerialName("bodyImageName")
+    val bodyImageName: String,
+    @SerialName("feetImageName")
+    val feetImageName: String,
+    @SerialName("characterImageName")
+    val characterImageName: String,
+    @SerialName("backgroundImageName")
+    val backgroundImageName: String,
+    @SerialName("level")
+    val level: Int,
+    @SerialName("grade")
+    val grade: Grade,
+    @SerialName("nickName")
+    val nickName: String,
+)
+
+/**
+ * 산책 총 요약 응답 DTO
+ */
+@Serializable
+data class WalkTotalSummaryResponseDto(
+    @SerialName("totalWalkCount")
+    val totalWalkCount: Int,
+    @SerialName("totalWalkTimeMillis")
+    val totalWalkTimeMillis: Long,
+)
 
