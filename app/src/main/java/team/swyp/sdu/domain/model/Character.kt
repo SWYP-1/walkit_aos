@@ -1,7 +1,5 @@
 package team.swyp.sdu.domain.model
 
-import team.swyp.sdu.data.remote.walking.dto.Grade
-
 /**
  * 캐릭터 도메인 모델
  */

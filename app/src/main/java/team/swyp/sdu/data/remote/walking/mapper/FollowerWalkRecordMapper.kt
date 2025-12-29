@@ -3,6 +3,7 @@ package team.swyp.sdu.data.remote.walking.mapper
 import team.swyp.sdu.data.remote.walking.dto.FollowerWalkRecordDto
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.Grade
 
 /**
  * FollowerWalkRecord DTO → Domain Model 변환 매퍼
@@ -35,7 +36,7 @@ object FollowerWalkRecordMapper {
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
-            grade = dto.grade,
+            grade = Grade.fromApiGrade(dto.grade), // API Grade → Domain Grade 변환
             nickName = dto.nickName ?: "게스트",
         )
     }

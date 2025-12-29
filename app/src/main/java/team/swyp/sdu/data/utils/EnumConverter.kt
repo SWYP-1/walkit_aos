@@ -2,7 +2,7 @@ package team.swyp.sdu.data.utils
 
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.local.entity.SyncState
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import timber.log.Timber
 
 /**

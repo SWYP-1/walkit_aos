@@ -2,6 +2,7 @@ package team.swyp.sdu.data.local.mapper
 
 import team.swyp.sdu.data.local.entity.CharacterEntity
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.Grade
 
 /**
  * 캐릭터 정보 매퍼
@@ -18,7 +19,7 @@ object CharacterMapper {
             characterImageName = domain.characterImageName,
             backgroundImageName = domain.backgroundImageName,
             level = domain.level,
-            grade = domain.grade,
+            grade = domain.grade, // domain Grade 사용
         )
 
     fun toDomain(entity: CharacterEntity): Character =
@@ -29,7 +30,7 @@ object CharacterMapper {
             characterImageName = entity.characterImageName,
             backgroundImageName = entity.backgroundImageName,
             level = entity.level,
-            grade = entity.grade,
+            grade = entity.grade, // domain Grade 사용
             nickName = entity.nickname,
         )
 }

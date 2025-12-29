@@ -10,7 +10,7 @@ import team.swyp.sdu.domain.service.ActivityType
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import team.swyp.sdu.data.local.entity.SyncState
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 
 /**
  * Room Type Converters

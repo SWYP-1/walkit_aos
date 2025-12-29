@@ -8,6 +8,7 @@ import team.swyp.sdu.data.remote.home.dto.WeatherDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.walking.dto.CharacterDto
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.HomeData as DomainHomeData
 import team.swyp.sdu.domain.model.WalkRecord
 import team.swyp.sdu.domain.model.Weather
@@ -42,7 +43,7 @@ object HomeMapper {
             characterImageName = characterImageName,
             backgroundImageName = backgroundImageName,
             level = level,
-            grade = grade,
+            grade = Grade.fromApiGrade(grade), // API Grade → Domain Grade 변환
             nickName = nickName ?: "게스트",
         )
     }

@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import team.swyp.sdu.data.local.database.Converters
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 
 /**
  * 캐릭터 정보 Entity
