@@ -124,6 +124,7 @@ private fun RecordScreenContent(
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
 
+        // 상단 영역 (고정 높이)
         RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
         Spacer(Modifier.height(16.dp))
         Row(Modifier
@@ -138,9 +139,8 @@ private fun RecordScreenContent(
         }
 
         Spacer(Modifier.height(8.dp))
-        // ==============================
+
         // 상단 API 기반 영역
-        // ==============================
         when (recordUiState) {
             is RecordUiState.Loading -> {
                 RecordTopSectionSkeleton()
@@ -168,26 +168,28 @@ private fun RecordScreenContent(
                 )
             }
         }
-    }
 
-    Divider()
+        Divider()
 
-    // ==============================
-    // 하단 Room 기반 영역 (항상 표시)
-    // ==============================
-    if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
-        FriendRecordScreen(
-            nickname = recordUiState.selectedFriendNickname,
-            onNavigateBack = onFriendDeselected,
-            onBlockUser = onBlockUser,
-            modifier = Modifier.weight(1f) // RecordScreen 내에서 남은 공간만 차지
-        )
-    } else {
-        LazyColumn(
+        // 하단 영역 (남은 공간 차지)
+        Box(
             modifier = Modifier
-                .weight(1f) // RecordTopSection 아래부터 남은 공간만 차지
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .fillMaxWidth()
+                .weight(1f) // 남은 공간 모두 차지
         ) {
+            if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+                FriendRecordScreen(
+                    nickname = recordUiState.selectedFriendNickname,
+                    onNavigateBack = onFriendDeselected,
+                    onBlockUser = onBlockUser,
+                    modifier = Modifier.fillMaxSize() // Box 내 전체 공간
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize() // Box 내 전체 공간
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
             item {
                 HeaderRow(
                     onDummyClick = { /*TODO*/ },
