@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,21 +29,24 @@ import team.swyp.sdu.ui.home.ProfileUiState
 import team.swyp.sdu.ui.home.utils.resolveWeatherIcon
 import team.swyp.sdu.ui.home.utils.resolveWeatherIconRes
 import team.swyp.sdu.ui.mypage.goal.model.GoalState
+import team.swyp.sdu.ui.components.InfoBadge
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.shimmer
 import androidx.compose.ui.tooling.preview.Preview
 import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.ui.components.TestCharacterWithAnchor
+import team.swyp.sdu.ui.components.createCharacterParts
+import team.swyp.sdu.utils.NumberUtils.formatNumber
+import kotlin.toString
 
 /**
  * 프로필 섹션 (사용자 정보, 캐릭터, 목표 진행률)
  */
 @Composable
 fun ProfileSection(
-    uiState: ProfileUiState,
-    goalState: DataState<Goal>,
-    modifier: Modifier = Modifier
+    uiState: ProfileUiState, goalState: DataState<Goal>, modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
@@ -64,9 +68,7 @@ fun ProfileSection(
  */
 @Composable
 private fun ProfileContent(
-    uiState: ProfileUiState.Success,
-    goalState: DataState<Goal>,
-    modifier: Modifier = Modifier
+    uiState: ProfileUiState.Success, goalState: DataState<Goal>, modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
@@ -74,45 +76,43 @@ private fun ProfileContent(
         // 배경 이미지
         uiState.character.backgroundImageName?.let { bgImageUrl ->
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(bgImageUrl)
-                    .crossfade(true)
-                    .build(),
+                model = ImageRequest.Builder(context).data(bgImageUrl).crossfade(true).build(),
                 contentDescription = "배경 이미지",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
         }
+        Row(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "${formatNumber(uiState.todaySteps)}",
+                style = MaterialTheme.walkItTypography.headingXL.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = SemanticColor.textBorderPrimary,
+                modifier = Modifier.alignBy { it[FirstBaseline] }
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = "걸음",
+                style = MaterialTheme.walkItTypography.bodyM.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = SemanticColor.textBorderPrimary,
+                modifier = Modifier.alignBy { it[FirstBaseline] } // 숫자와 베이스라인 맞춤
+            )
+        }
+
 
         // 우측 상단 날씨 텍스트
         uiState.weather?.let { weather ->
-            Row(
-                modifier
+            val weatherRes = resolveWeatherIconRes(precipType = weather.precipType, sky = weather.sky)
+            InfoBadge(
+                iconPainter = painterResource(weatherRes),
+                text = "${weather.tempC}",
+                modifier = modifier
                     .padding(vertical = 20.5.dp, horizontal = 16.dp)
-                    .background(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(size = 24.dp)
-                    )
-                    .padding(vertical = 4.dp, horizontal = 10.dp)
-                    .align(Alignment.TopEnd), verticalAlignment = Alignment.CenterVertically
-            ) {
-                val weatherRes =
-                    resolveWeatherIconRes(precipType = weather.precipType, sky = weather.sky)
-                Icon(
-                    painter = painterResource(weatherRes),
-                    contentDescription = "날씨 아이콘",
-                    tint = SemanticColor.iconWhite,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "${weather.tempC}",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.backgroundWhitePrimary
-                )
-            }
+                    .align(Alignment.TopEnd)
+            )
         }
 
         // 바텀 컨텐츠
@@ -124,14 +124,27 @@ private fun ProfileContent(
         ) {
             // 캐릭터 이미지
             uiState.character.characterImageName?.let { charImageUrl ->
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(charImageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "캐릭터 이미지",
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    modifier = Modifier.size(130.dp)
+//                AsyncImage(
+//                    model = ImageRequest.Builder(context)
+//                        .data(charImageUrl)
+//                        .crossfade(true)
+//                        .build(),
+//                    contentDescription = "캐릭터 이미지",
+//                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+//                    modifier = Modifier.size(130.dp)
+//                )
+                val (feetPart, bodyPart, headPart) = createCharacterParts(
+                    feetUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_FEET_BLACK_BOOTS.png",
+                    bodyUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_BODY_RED_SCARF.png",
+                    headUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_HEAD_BLUE_RIBBON.png",
+                )
+// Compose에서
+                TestCharacterWithAnchor(
+                    feet = feetPart,
+                    body = bodyPart,
+                    head = headPart,
+                    characterUrl = charImageUrl.toString(),
+                    modifier = Modifier.size(120.dp)
                 )
             }
 
@@ -164,8 +177,7 @@ private fun ProfileSkeleton(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    color = SemanticColor.backgroundWhiteTertiary,
-                    shape = RoundedCornerShape(0.dp)
+                    color = SemanticColor.backgroundWhiteTertiary, shape = RoundedCornerShape(0.dp)
                 )
                 .shimmer() // Shimmer 적용: 카드 단위
         )
@@ -177,8 +189,7 @@ private fun ProfileSkeleton(
                 .width(60.dp)
                 .height(24.dp)
                 .background(
-                    color = SemanticColor.backgroundWhiteTertiary,
-                    shape = RoundedCornerShape(4.dp)
+                    color = SemanticColor.backgroundWhiteTertiary, shape = RoundedCornerShape(4.dp)
                 )
                 .shimmer() // Shimmer 적용: 텍스트 영역 단위
         )
@@ -275,8 +286,7 @@ private fun ProfileEmpty(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         Image(
             painter = painterResource(R.drawable.bg_summer_cropped),
@@ -291,13 +301,10 @@ private fun ProfileEmpty(
  */
 @Composable
 private fun ProfileError(
-    message: String,
-    onRetry: () -> Unit = {},
-    modifier: Modifier = Modifier
+    message: String, onRetry: () -> Unit = {}, modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -311,12 +318,9 @@ private fun ProfileError(
 
             // 재시도 버튼 (간단한 텍스트로 구현)
             Text(
-                text = "다시 시도",
-                style = MaterialTheme.walkItTypography.bodyS.copy(
+                text = "다시 시도", style = MaterialTheme.walkItTypography.bodyS.copy(
                     fontWeight = FontWeight.SemiBold
-                ),
-                color = SemanticColor.buttonPrimaryDefault,
-                modifier = Modifier
+                ), color = SemanticColor.buttonPrimaryDefault, modifier = Modifier
                     .background(
                         color = SemanticColor.buttonPrimaryDisabled,
                         shape = RoundedCornerShape(8.dp)
@@ -337,8 +341,7 @@ private fun ProfileError(
 private fun ProfileSectionLoadingPreview() {
     WalkItTheme {
         ProfileSection(
-            uiState = ProfileUiState.Loading,
-            goalState = DataState.Loading
+            uiState = ProfileUiState.Loading, goalState = DataState.Loading
         )
     }
 }
@@ -349,8 +352,7 @@ private fun ProfileSectionSuccessPreview() {
     WalkItTheme {
         ProfileSection(
             uiState = ProfileUiState.Success(
-                nickname = "테스트사용자",
-                character = Character(
+                nickname = "테스트사용자", character = Character(
                     nickName = "테스트사용자",
                     level = 5,
                     grade = Grade.TREE,
@@ -359,20 +361,14 @@ private fun ProfileSectionSuccessPreview() {
                     feetImageName = null,
                     characterImageName = "https://example.com/character.png",
                     backgroundImageName = "https://example.com/background.png"
-                ),
-                walkProgressPercentage = "75",
-                goal = Goal(
-                    targetStepCount = 10000,
-                    targetWalkCount = 30
-                ),
-                weather = Weather(
+                ), walkProgressPercentage = "75", goal = Goal(
+                    targetStepCount = 10000, targetWalkCount = 30
+                ), weather = Weather(
                     tempC = 25.0,
-                )
-            ),
-            goalState = DataState.Success(
+                ), todaySteps = 8500
+            ), goalState = DataState.Success(
                 Goal(
-                    targetStepCount = 10000,
-                    targetWalkCount = 30
+                    targetStepCount = 10000, targetWalkCount = 30
                 )
             )
         )
@@ -384,8 +380,7 @@ private fun ProfileSectionSuccessPreview() {
 private fun ProfileSectionErrorPreview() {
     WalkItTheme {
         ProfileSection(
-            uiState = ProfileUiState.Error("서버 연결에 문제가 있습니다"),
-            goalState = DataState.Loading
+            uiState = ProfileUiState.Error("서버 연결에 문제가 있습니다"), goalState = DataState.Loading
         )
     }
 }
