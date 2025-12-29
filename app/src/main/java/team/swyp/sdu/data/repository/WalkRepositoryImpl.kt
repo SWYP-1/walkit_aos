@@ -29,13 +29,14 @@ class WalkRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val response = walkRemoteDataSource.saveWalk(session, imageUri)
-                if (response.isSuccessful) {
-                    response.body()?.let { apiResponse ->
-                        val domainResult = WalkSaveResult.fromApiResponse(apiResponse)
+                when (response) {
+                    is Result.Success -> {
+                        val domainResult = WalkSaveResult.toDomain(response.data)
                         Result.Success(domainResult)
-                    } ?: Result.Error(Exception("응답 데이터가 없습니다"))
-                } else {
-                    Result.Error(Exception("저장 실패: ${response.code()}"))
+                    }
+
+                    is Result.Error -> response
+                    Result.Loading -> Result.Loading
                 }
             } catch (e: Exception) {
                 Timber.e(e, "산책 저장 실패")
@@ -56,6 +57,7 @@ class WalkRepositoryImpl @Inject constructor(
                         val domainModel = FollowerWalkRecordMapper.toDomain(dtoResult.data)
                         Result.Success(domainModel)
                     }
+
                     is Result.Error -> dtoResult
                     Result.Loading -> Result.Loading
                 }

@@ -12,11 +12,11 @@ data class WalkSaveResult(
         /**
          * API DTO WalkSaveResponse를 도메인 WalkSaveResult로 변환
          */
-        fun fromApiResponse(apiResponse: team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse): WalkSaveResult {
+        fun toDomain(dto: team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse): WalkSaveResult {
             return WalkSaveResult(
-                id = apiResponse.id,
-                imageUrl = apiResponse.imageUrl,
-                createdAt = apiResponse.createdAt
+                id = dto.id,
+                imageUrl = dto.imageUrl,
+                createdAt = dto.createdAt
             )
         }
     }
