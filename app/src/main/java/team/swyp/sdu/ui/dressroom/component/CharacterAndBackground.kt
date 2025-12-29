@@ -38,7 +38,7 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import org.json.JSONObject
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.ui.theme.SemanticColor

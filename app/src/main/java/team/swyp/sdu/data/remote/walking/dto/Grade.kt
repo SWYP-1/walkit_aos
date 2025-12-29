@@ -1,5 +1,6 @@
 package team.swyp.sdu.data.remote.walking.dto
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -12,13 +13,13 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 enum class Grade(val level: Int) {
-    @kotlinx.serialization.SerialName("SEED")
+    @SerialName("SEED")
     SEED(1),
     
-    @kotlinx.serialization.SerialName("SPROUT")
+    @SerialName("SPROUT")
     SPROUT(2),
     
-    @kotlinx.serialization.SerialName("TREE")
+    @SerialName("TREE")
     TREE(3),
 }
 

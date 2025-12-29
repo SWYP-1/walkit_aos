@@ -28,12 +28,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.core.DataState
 import team.swyp.sdu.data.model.EmotionType
-import team.swyp.sdu.data.remote.home.dto.PrecipType
-import team.swyp.sdu.data.remote.home.dto.Sky
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.home.HomeUiState
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.ui.components.TestCharacterWithAnchor

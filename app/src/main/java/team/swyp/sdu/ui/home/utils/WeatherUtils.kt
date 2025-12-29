@@ -2,8 +2,8 @@ package team.swyp.sdu.ui.home.utils
 
 import androidx.annotation.DrawableRes
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.home.dto.PrecipType
-import team.swyp.sdu.data.remote.home.dto.Sky
+import team.swyp.sdu.domain.model.PrecipType
+import team.swyp.sdu.domain.model.Sky
 
 /**
  * 날씨 아이콘 타입

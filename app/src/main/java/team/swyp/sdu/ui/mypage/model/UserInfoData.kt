@@ -1,6 +1,6 @@
 package team.swyp.sdu.ui.mypage.model
 
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 
 /**
  * 사용자 정보 데이터

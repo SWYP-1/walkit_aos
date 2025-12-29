@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import team.swyp.sdu.core.DataState
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.UserRepository

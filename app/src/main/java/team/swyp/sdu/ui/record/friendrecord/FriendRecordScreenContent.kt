@@ -39,7 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.FollowerWalkRecord
 import team.swyp.sdu.ui.components.CustomProgressIndicator

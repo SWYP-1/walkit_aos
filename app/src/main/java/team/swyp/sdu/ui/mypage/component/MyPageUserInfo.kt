@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.GradeBadge
 import team.swyp.sdu.ui.theme.Grey10
 import team.swyp.sdu.ui.theme.Grey7

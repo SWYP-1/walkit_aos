@@ -35,7 +35,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.shimmer
 import androidx.compose.ui.tooling.preview.Preview
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.TestCharacterWithAnchor
 import team.swyp.sdu.ui.components.createCharacterParts
 import team.swyp.sdu.utils.NumberUtils.formatNumber

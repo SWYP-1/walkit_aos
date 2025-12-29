@@ -15,13 +15,13 @@ fun formatDistance(meters: Float): String =
 /**
  * 시간 포맷팅 유틸리티
  */
-fun formatDuration(millis: Long): String {
+fun formatToMinutesSeconds(millis: Long): String {
     val seconds = TimeUnit.MILLISECONDS.toSeconds(millis)
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format("%02d:%02d", minutes, remainingSeconds)
 }
-fun formatDurationWithMillis(millis: Long): String {
+fun formatToHoursMinutesSeconds(millis: Long): String {
     val hours = TimeUnit.MILLISECONDS.toHours(millis)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
     val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60

@@ -33,7 +33,7 @@ import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.domain.model.WalkRecord
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.utils.CalenderUtils.weekRange
 import team.swyp.sdu.utils.LocationConstants

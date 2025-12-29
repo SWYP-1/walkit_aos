@@ -20,14 +20,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.ui.components.GradeBadge
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 
 @Composable
 fun DressingRoomHeader(
-    grade: Grade,
+    grade: team.swyp.sdu.domain.model.Grade,
     nickName: String,
     onBack: () -> Unit = {},
     onClickQuestion: () -> Unit = {},

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.R
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.model.EquipSlot
@@ -308,7 +307,7 @@ fun PreviewDressingRoomFullSample() {
     WalkItTheme {
         val character = Character(
             nickName = "캐릭터 기본",
-            grade = Grade.TREE,
+            grade = team.swyp.sdu.domain.model.Grade.SEED,
             headImageName = null
         )
 

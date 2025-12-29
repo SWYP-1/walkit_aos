@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.core.DataState
-import team.swyp.sdu.data.remote.walking.dto.Grade
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.mypage.component.MyPageAccountActions
 import team.swyp.sdu.ui.mypage.component.MyPageCharacterEditButton

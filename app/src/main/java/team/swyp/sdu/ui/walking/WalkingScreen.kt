@@ -29,20 +29,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.MainScope
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.InfoBadge
+import team.swyp.sdu.ui.components.formatStepCount
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.ui.walking.components.WalkingActionButton
-import team.swyp.sdu.ui.walking.components.WalkitTimer
+import team.swyp.sdu.ui.walking.components.formatToHoursMinutesSeconds
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 
@@ -243,15 +244,24 @@ private fun WalkingScreenContent(
             )
         }[0].measure(Constraints())
 
-        /* ---------- Timer (isFinish == false) ---------- */
-        val timer = if (!isFinish && walkingState != null) {
-            subcompose("timer") {
-                WalkitTimer(duration = walkingState.duration)
+        /* ---------- StepCounter (isFinish == false) ---------- */
+        val stepCounter = if (!isFinish && walkingState != null) {
+            subcompose("stepCounter") {
+                WalkitStepInfo(stepCount = walkingState.stepCount)
             }[0].measure(Constraints())
         } else null
 
-        val finishText = if (isFinish) {
+        /* ---------- Timer (isFinish == false) ---------- */
+        val timer = if (!isFinish && walkingState != null) {
             subcompose("timer") {
+                val painterResource = painterResource(id = R.drawable.ic_info_timer)
+                InfoBadge(iconPainter = painterResource, text = formatToHoursMinutesSeconds(walkingState.duration))
+            }[0].measure(Constraints())
+        } else null
+
+
+        val finishText = if (isFinish) {
+            subcompose("finishText") {
                 FinishWalkingText()
             }[0].measure(Constraints())
         } else null
@@ -299,10 +309,16 @@ private fun WalkingScreenContent(
                 y = centerY - character.height
             )
 
-            // Timer (top = 94dp)
+            // stepCounter (top = 94dp)
+            stepCounter?.place(
+                x = (constraints.maxWidth - stepCounter.width) / 2,
+                y = 94.dp.roundToPx()
+            )
+
+            // timer (top and bottom)
             timer?.place(
                 x = (constraints.maxWidth - timer.width) / 2,
-                y = 94.dp.roundToPx()
+                y = 18.dp.roundToPx()
             )
 
             // Finish Text (top = 137.dp)
@@ -332,8 +348,31 @@ private fun WalkingScreenContent(
 
 
 @Composable
-fun WalkitStepInfo(modifier: Modifier = Modifier) {
+fun WalkitStepInfo(modifier: Modifier = Modifier, stepCount: Int) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "걸음 수 ",
 
+            // body M/medium
+            style = MaterialTheme.walkItTypography.bodyM.copy(
+                fontWeight = FontWeight.Medium
+            ),
+            color = SemanticColor.iconGrey,
+        )
+
+        Text(
+            text = formatStepCount(stepCount),
+            style = MaterialTheme.walkItTypography.headingXL.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 52.sp,
+                lineHeight = 67.6.sp,
+            ),
+            color = SemanticColor.logoGreen
+        )
+    }
 }
 
 @Composable

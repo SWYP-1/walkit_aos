@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -21,8 +21,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
  *
  * Grade enum에 따라 색상과 텍스트가 자동으로 변경됩니다.
  * 레벨은 Grade enum의 level 속성에서 자동으로 가져옵니다.
- * - SEED: "Lv.1 새싹" (초록색)
- * - SPROUT: "Lv.2 묘목" (청록색)
+ * - SEED: "Lv.1 씨앗" (초록색)
+ * - SPROUT: "Lv.2 새싹" (청록색)
  * - TREE: "Lv.3 나무" (보라색)
  */
 @Composable
@@ -32,12 +32,12 @@ fun GradeBadge(
 ) {
     val (text, backgroundColor, textColor) = when (grade) {
         Grade.SEED -> Triple(
-            "Lv.${grade.level} 새싹",
+            "Lv.${grade.level} 씨앗",
             SemanticColor.stateGreenTertiary,
             SemanticColor.stateGreenPrimary,
         )
         Grade.SPROUT -> Triple(
-            "Lv.${grade.level} 묘목",
+            "Lv.${grade.level} 새싹",
             SemanticColor.stateAquaBlueTertiary,
             SemanticColor.stateAquaBluePrimary,
         )

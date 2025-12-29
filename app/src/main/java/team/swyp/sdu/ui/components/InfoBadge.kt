@@ -40,7 +40,7 @@ fun InfoBadge(
                 color = backgroundColor,
                 shape = RoundedCornerShape(size = 24.dp)
             )
-            .padding(vertical = 4.dp, horizontal = 10.dp),
+            .padding(vertical = 7.dp, horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
