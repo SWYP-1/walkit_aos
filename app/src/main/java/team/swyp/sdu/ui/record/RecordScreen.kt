@@ -180,12 +180,12 @@ private fun RecordScreenContent(
             nickname = recordUiState.selectedFriendNickname,
             onNavigateBack = onFriendDeselected,
             onBlockUser = onBlockUser,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f) // RecordScreen 내에서 남은 공간만 차지
         )
     } else {
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f) // RecordTopSection 아래부터 남은 공간만 차지
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             item {

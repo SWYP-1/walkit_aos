@@ -41,6 +41,7 @@ import coil.request.ImageRequest
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.components.GradeBadge
@@ -86,8 +87,7 @@ fun FriendRecordScreen(
         onClickMore = { showMenu = true },
         showMenu = showMenu,
         onDismissMenu = { showMenu = false },
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier,
     )
 }
 
