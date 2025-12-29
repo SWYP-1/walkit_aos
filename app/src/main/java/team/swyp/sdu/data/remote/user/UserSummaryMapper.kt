@@ -4,6 +4,7 @@ import team.swyp.sdu.data.remote.user.dto.UserSummaryDto
 import team.swyp.sdu.data.remote.user.dto.ResponseCharacterDto
 import team.swyp.sdu.data.remote.user.dto.WalkTotalSummaryResponseDto
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.domain.model.WalkSummary
 
@@ -24,7 +25,7 @@ object UserSummaryMapper {
                 characterImageName = dto.responseCharacterDto.characterImageName,
                 backgroundImageName = dto.responseCharacterDto.backgroundImageName,
                 level = dto.responseCharacterDto.level,
-                grade = dto.responseCharacterDto.grade,
+                grade = Grade.fromApiGrade(dto.responseCharacterDto.grade), // API Grade → Domain Grade 변환
                 nickName = dto.responseCharacterDto.nickName,
             ),
             walkSummary = WalkSummary(
@@ -45,7 +46,7 @@ object UserSummaryMapper {
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
-            grade = dto.grade,
+            grade = Grade.fromApiGrade(dto.grade), // API Grade → Domain Grade 변환
             nickName = dto.nickName,
         )
     }
