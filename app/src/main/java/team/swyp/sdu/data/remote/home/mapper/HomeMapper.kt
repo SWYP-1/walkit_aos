@@ -10,6 +10,8 @@ import team.swyp.sdu.data.remote.walking.dto.CharacterDto
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.HomeData as DomainHomeData
+import team.swyp.sdu.domain.model.PrecipType
+import team.swyp.sdu.domain.model.Sky
 import team.swyp.sdu.domain.model.WalkRecord
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.domain.model.WeeklyMission
@@ -58,8 +60,8 @@ object HomeMapper {
             generatedAt = generatedAt,
             tempC = tempC,
             rain1hMm = rain1hMm,
-            precipType = precipType,
-            sky = sky,
+            precipType = PrecipType.fromApiPrecipType(precipType), // API → Domain 변환
+            sky = Sky.fromApiSky(sky), // API → Domain 변환
         )
     }
 

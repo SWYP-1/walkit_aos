@@ -1,7 +1,5 @@
 package team.swyp.sdu.domain.model
 
-import team.swyp.sdu.data.remote.walking.dto.Grade
-
 data class Friend(
     val id: String,
     val nickname: String,

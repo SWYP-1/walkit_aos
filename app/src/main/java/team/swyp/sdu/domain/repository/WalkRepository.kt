@@ -3,8 +3,8 @@ package team.swyp.sdu.domain.repository
 import retrofit2.Response
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.model.WalkingSession
-import team.swyp.sdu.data.remote.walking.dto.FollowerWalkRecordDto
-import team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse
+import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.WalkSaveResult
 
 /**
  * 산책 관련 Repository 인터페이스
@@ -20,7 +20,7 @@ interface WalkRepository {
     suspend fun saveWalk(
         session: WalkingSession,
         imageUri: String? = null
-    ): Result<Response<WalkSaveResponse>>
+    ): Result<WalkSaveResult>
 
     /**
      * 팔로워 산책 기록 조회
@@ -34,7 +34,7 @@ interface WalkRepository {
         nickname: String,
         lat: Double? = null,
         lon: Double? = null,
-    ): Result<FollowerWalkRecordDto>
+    ): Result<FollowerWalkRecord>
 
     /**
      * 산책 좋아요 누르기

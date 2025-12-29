@@ -6,9 +6,10 @@ import retrofit2.Response
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
-import team.swyp.sdu.data.remote.walking.dto.FollowerWalkRecordDto
-import team.swyp.sdu.data.remote.walking.dto.WalkSaveResponse
+import team.swyp.sdu.domain.model.FollowerWalkRecord
+import team.swyp.sdu.domain.model.WalkSaveResult
 import team.swyp.sdu.domain.repository.WalkRepository
+import team.swyp.sdu.data.remote.walking.mapper.FollowerWalkRecordMapper
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,10 +25,18 @@ class WalkRepositoryImpl @Inject constructor(
     override suspend fun saveWalk(
         session: WalkingSession,
         imageUri: String?
-    ): Result<Response<WalkSaveResponse>> =
+    ): Result<WalkSaveResult> =
         withContext(Dispatchers.IO) {
             try {
-                walkRemoteDataSource.saveWalk(session, imageUri)
+                val response = walkRemoteDataSource.saveWalk(session, imageUri)
+                if (response.isSuccessful) {
+                    response.body()?.let { apiResponse ->
+                        val domainResult = WalkSaveResult.fromApiResponse(apiResponse)
+                        Result.Success(domainResult)
+                    } ?: Result.Error(Exception("응답 데이터가 없습니다"))
+                } else {
+                    Result.Error(Exception("저장 실패: ${response.code()}"))
+                }
             } catch (e: Exception) {
                 Timber.e(e, "산책 저장 실패")
                 Result.Error(e, e.message)
@@ -38,10 +47,18 @@ class WalkRepositoryImpl @Inject constructor(
         nickname: String,
         lat: Double?,
         lon: Double?
-    ): Result<FollowerWalkRecordDto> =
+    ): Result<FollowerWalkRecord> =
         withContext(Dispatchers.IO) {
             try {
-                walkRemoteDataSource.getFollowerWalkRecord(nickname, lat, lon)
+                val dtoResult = walkRemoteDataSource.getFollowerWalkRecord(nickname, lat, lon)
+                when (dtoResult) {
+                    is Result.Success -> {
+                        val domainModel = FollowerWalkRecordMapper.toDomain(dtoResult.data)
+                        Result.Success(domainModel)
+                    }
+                    is Result.Error -> dtoResult
+                    Result.Loading -> Result.Loading
+                }
             } catch (e: Exception) {
                 Timber.e(e, "팔로워 산책 기록 조회 실패")
                 Result.Error(e, e.message)
