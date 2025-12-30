@@ -3,6 +3,7 @@ package team.swyp.sdu.ui.splash
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,44 +28,57 @@ import timber.log.Timber
 fun SplashScreen(
     navController: NavHostController,
     loginViewModel: LoginViewModel = hiltViewModel(),
-    splashViewModel: SplashViewModel = hiltViewModel(),
 ) {
     val isLoggedIn by loginViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val isLoginChecked by loginViewModel.isLoginChecked.collectAsStateWithLifecycle()
-    val onboardingCompleted by splashViewModel.onboardingCompleted.collectAsStateWithLifecycle()
     var navigated by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isLoginChecked, isLoggedIn, onboardingCompleted) {
-        if (!isLoginChecked || navigated || onboardingCompleted == null) return@LaunchedEffect
+    // 디버깅을 위한 로그
+    LaunchedEffect(Unit) {
+        Timber.d("SplashScreen 컴포넌트 시작")
+        // 앱 데이터 완전 초기화 활성화 시 주석 해제
+//        loginViewModel.forceCompleteReset()
+    }
 
-        val targetRoute =
-            when {
-                !isLoggedIn -> Screen.Login.route
-                onboardingCompleted == false -> Screen.Onboarding.route
-                else -> Screen.Main.route
-            }
+    LaunchedEffect(isLoginChecked, isLoggedIn) {
+        Timber.d("스플래시 LaunchedEffect 실행 - loginChecked:$isLoginChecked, loggedIn:$isLoggedIn, navigated:$navigated")
+
+        if (!isLoginChecked || navigated) {
+            Timber.d("스플래시 네비게이션 스킵 - loginChecked:$isLoginChecked, navigated:$navigated")
+            return@LaunchedEffect
+        }
+
+        val targetRoute = if (isLoggedIn) {
+            Screen.Main.route
+        } else {
+            Screen.Login.route  // 로그인 실패 시 로그인 화면으로 이동
+        }
 
         Timber.i(
-            "스플래시 분기 - loginChecked:%s, loggedIn:%s, onboardingCompleted:%s, target:%s",
+            "스플래시 분기 결정 - loginChecked:%s, loggedIn:%s, target:%s",
             isLoginChecked,
             isLoggedIn,
-            onboardingCompleted,
             targetRoute,
         )
 
         navigated = true
+        Timber.i("스플래시 네비게이션 실행: $targetRoute")
+
         navController.navigate(targetRoute) {
             popUpTo(Screen.Splash.route) { inclusive = true }
         }
+
+        Timber.i("스플래시 네비게이션 완료")
     }
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        LottieAnimationView(
-            modifier = Modifier.size(260.dp),
-        )
+//        LottieAnimationView(
+//            modifier = Modifier.size(260.dp),
+//        )
+        Text(text = "스플래쉬 화면")
     }
 }
 

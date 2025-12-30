@@ -30,6 +30,8 @@ object WalkingSessionMapper {
             endTime = session.endTime ?: 0L,
             stepCount = session.stepCount,
             locationsJson = json.encodeToString(session.locations),
+            filteredLocationsJson = session.filteredLocations?.let { json.encodeToString(it) },
+            smoothedLocationsJson = session.smoothedLocations?.let { json.encodeToString(it) },
             totalDistance = session.totalDistance,
             syncState = syncState,
             preWalkEmotion = session.preWalkEmotion.name,
@@ -37,7 +39,8 @@ object WalkingSessionMapper {
             note = session.note,
             localImagePath = session.localImagePath,
             serverImageUrl = session.serverImageUrl,
-            createdDate = session.createdDate.orEmpty()
+            createdDate = session.createdDate.orEmpty(),
+            targetStepCount = session.targetStepCount
         )
 
     /** Entity → Domain */
@@ -46,18 +49,33 @@ object WalkingSessionMapper {
             json.decodeFromString<List<LocationPoint>>(entity.locationsJson)
         }.getOrDefault(emptyList())
 
+        val filteredLocations = entity.filteredLocationsJson?.let { jsonString ->
+            runCatching {
+                json.decodeFromString<List<LocationPoint>>(jsonString)
+            }.getOrNull()
+        }
+
+        val smoothedLocations = entity.smoothedLocationsJson?.let { jsonString ->
+            runCatching {
+                json.decodeFromString<List<LocationPoint>>(jsonString)
+            }.getOrNull()
+        }
+
         return WalkingSession(
             startTime = entity.startTime,
             endTime = entity.endTime,
             stepCount = entity.stepCount,
             locations = locations,
+            filteredLocations = filteredLocations,
+            smoothedLocations = smoothedLocations,
             totalDistance = entity.totalDistance,
             preWalkEmotion = EnumConverter.toEmotionType(entity.preWalkEmotion),
             postWalkEmotion = EnumConverter.toEmotionType(entity.postWalkEmotion),
             note = entity.note,
             localImagePath = entity.localImagePath,
             serverImageUrl = entity.serverImageUrl,
-            createdDate = entity.createdDate
+            createdDate = entity.createdDate,
+            targetStepCount = entity.targetStepCount
         )
     }
 

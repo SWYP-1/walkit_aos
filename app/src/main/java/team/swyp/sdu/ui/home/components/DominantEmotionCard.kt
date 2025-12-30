@@ -34,12 +34,13 @@ import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
- * 이번주 주요 감정을 표시하는 카드
+ * 주요 감정을 표시하는 카드 (이번주/이번달)
  */
 @Composable
 fun DominantEmotionCard(
     emotionType: EmotionType?,
     emotionCnt: String = "4",
+    periodText: String = "이번주",
     modifier: Modifier = Modifier,
 ) {
     val backgroundColor = getEmotionBackgroundColor(emotionType)
@@ -48,7 +49,6 @@ fun DominantEmotionCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor,
         ),
@@ -64,7 +64,7 @@ fun DominantEmotionCard(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
-                    text = "이번주 나의 주요 감정은?",
+                    text = "${periodText} 나의 주요 감정은?",
                     style = MaterialTheme.walkItTypography.bodyS,
                     color = textColor,
                 )
@@ -88,7 +88,7 @@ fun DominantEmotionCard(
                     )
                 } else {
                     Text(
-                        text = "${emotionType.ko} 감정을 7일 동안 ${emotionCnt}회 경험했어요!\n남은 일상도 워킷과 함께 기쁘게 보내볼까요?",
+                        text = "${emotionType.ko} 감정을 ${if (periodText == "이번주") "7일 동안" else "이번 달에"} ${emotionCnt}회 경험했어요!\n남은 일상도 워킷과 함께 기쁘게 보내볼까요?",
                         // caption M/regular
                         style = MaterialTheme.walkItTypography.captionM.copy(
                             fontWeight = FontWeight.Normal
@@ -160,12 +160,13 @@ fun EmotionIcon(emotionType: EmotionType?) {
     )
 }
 
-@Preview(showBackground = true, name = "기쁨 (HAPPY)")
+@Preview(showBackground = true, name = "기쁨 (이번달)")
 @Composable
 private fun DominantEmotionCardHappyPreview() {
     WalkItTheme {
         DominantEmotionCard(
             emotionType = EmotionType.HAPPY,
+            periodText = "이번달",
             modifier = Modifier.padding(16.dp),
         )
     }

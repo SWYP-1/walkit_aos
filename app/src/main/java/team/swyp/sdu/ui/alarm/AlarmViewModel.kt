@@ -12,6 +12,7 @@ import team.swyp.sdu.data.remote.friend.FollowRemoteDataSource
 import team.swyp.sdu.data.remote.notification.NotificationRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
 import team.swyp.sdu.domain.model.AlarmType
+import team.swyp.sdu.domain.repository.FriendRepository
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -27,6 +28,7 @@ class AlarmViewModel
 constructor(
     private val notificationRemoteDataSource: NotificationRemoteDataSource,
     private val followRemoteDataSource: FollowRemoteDataSource,
+    private val friendRepository: FriendRepository,
 ) : ViewModel() {
 
     private val _alarms = MutableStateFlow<List<AlarmItem>>(emptyList())
@@ -140,7 +142,11 @@ constructor(
                 Timber.d("팔로우 요청 수락 시작: ${alarm.senderNickname}")
                 followRemoteDataSource.acceptFollowRequest(alarm.senderNickname)
                 Timber.d("팔로우 요청 수락 성공: ${alarm.senderNickname}")
-                
+
+                // 친구 목록 캐시 무효화 및 이벤트 발행
+                friendRepository.invalidateCache()
+                friendRepository.emitFriendUpdated()
+
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }
             } catch (e: Exception) {
@@ -165,7 +171,11 @@ constructor(
                 Timber.d("팔로우 요청 거절 시작: ${alarm.senderNickname}")
                 followRemoteDataSource.rejectFollowRequest(alarm.senderNickname)
                 Timber.d("팔로우 요청 거절 성공: ${alarm.senderNickname}")
-                
+
+                // 친구 목록 캐시 무효화 및 이벤트 발행 (거절의 경우도 목록 변경 가능성 대비)
+                friendRepository.invalidateCache()
+                friendRepository.emitFriendUpdated()
+
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }
             } catch (e: Exception) {

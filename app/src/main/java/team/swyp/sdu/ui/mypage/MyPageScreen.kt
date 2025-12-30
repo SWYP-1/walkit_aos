@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.core.DataState
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.mypage.component.MyPageAccountActions
 import team.swyp.sdu.ui.mypage.component.MyPageCharacterEditButton
@@ -53,6 +54,7 @@ fun MyPageScreen(
     onNavigateNotificationSetting: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateMission: () -> Unit,
+    onNavigateCustomTest: () -> Unit,
     onLogout: () -> Unit = {},
     onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -140,7 +142,8 @@ fun MyPageScreen(
                     onNavigateNotificationSetting = onNavigateNotificationSetting,
                     onNavigateUserInfoEdit = onNavigateUserInfoEdit,
                     onNavigateGoalManagement = onNavigateGoalManagement,
-                    onNavigateMission = onNavigateMission
+                    onNavigateMission = onNavigateMission,
+                    onNavigateCustomTest = onNavigateCustomTest
                 )
 
                 Spacer(Modifier.height(32.dp))
@@ -182,6 +185,7 @@ private fun MyPageScreenPreview() {
             onNavigateBack = {},
             onLogout = {},
             onNavigateMission = {},
+            onNavigateCustomTest = {},
             onWithdraw = {},
         )
     }
@@ -203,6 +207,7 @@ private fun MyPageScreenErrorPreview() {
             onNavigateBack = {},
             onLogout = {},
             onNavigateMission = {},
+            onNavigateCustomTest = {},
             onWithdraw = {},
         )
     }

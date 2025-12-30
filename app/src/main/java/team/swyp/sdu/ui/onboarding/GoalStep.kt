@@ -2,6 +2,7 @@ package team.swyp.sdu.ui.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.goal.GoalRange
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.mypage.goal.component.GoalSettingCard
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
@@ -46,6 +48,8 @@ fun GoalStep(
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
+    // 목표 설정 API 호출 시 로딩 표시
+    val isLoading = uiState.isLoading && uiState.currentStep == 2
     // 주간 산책 횟수 범위: 1~7회 (미만, 초과 불가)
     val goalRange = remember { GoalRange(min = 1, max = 7) }
 
@@ -62,125 +66,132 @@ fun GoalStep(
     val isStepsMinReached = safeSteps <= stepRange.min
     val isStepsMaxReached = safeSteps >= stepRange.max
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhiteSecondary)
     ) {
-        Spacer(modifier = Modifier.height(56.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Spacer(modifier = Modifier.height(56.dp))
+            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    OnBoardingStepTag(text = "목표 설정")
+                    Spacer(modifier = Modifier.height(14.dp))
 
-        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                OnBoardingStepTag(text = "목표 설정")
-                Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "${uiState.nicknameState.value}님,\n" + "함께 걸어봐요",
+                        style = MaterialTheme.walkItTypography.headingM.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = Black,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = "${uiState.nicknameState.value}님,\n" + "함께 걸어봐요",
-                    style = MaterialTheme.walkItTypography.headingM.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = Black,
-                    textAlign = TextAlign.Center
+                    Spacer(modifier = Modifier.height(42.dp))
+                }
+
+                // 주간 산책 횟수 설정
+                GoalSettingCard(
+                    title = "주간 산책 횟수",
+                    currentNumber = safeGoal,
+                    onNumberChange = { newValue ->
+                        // 범위를 벗어난 값은 아예 설정하지 않음
+                        if (newValue in goalRange.min..goalRange.max) {
+                            onGoalChange(newValue)
+                        }
+                    },
+                    range = goalRange,
+                    unit = "회",
+                    onClickMinus = {
+                        // 범위를 벗어나면 아예 호출하지 않음
+                        val newValue = safeGoal - 1
+                        if (newValue >= goalRange.min) {
+                            onGoalChange(newValue)
+                        }
+                    },
+                    onClickPlus = {
+                        // 범위를 벗어나면 아예 호출하지 않음
+                        val newValue = safeGoal + 1
+                        if (newValue <= goalRange.max) {
+                            onGoalChange(newValue)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    accentColor = SemanticColor.textBorderPrimary
                 )
 
-                Spacer(modifier = Modifier.height(42.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // 걸음 수 목표 설정
+                GoalSettingCard(
+                    title = "걸음 수 목표",
+                    currentNumber = safeSteps,
+                    onNumberChange = { newValue ->
+                        // 범위를 벗어난 값은 아예 설정하지 않음
+                        if (newValue in stepRange.min..stepRange.max) {
+                            onStepsChange(newValue)
+                        }
+                    },
+                    range = stepRange,
+                    unit = "보",
+                    onClickMinus = {
+                        // 범위를 벗어나면 아예 호출하지 않음
+                        val newValue = safeSteps - 1000
+                        if (newValue >= stepRange.min) {
+                            onStepsChange(newValue)
+                        }
+                    },
+                    onClickPlus = {
+                        // 범위를 벗어나면 아예 호출하지 않음
+                        val newValue = safeSteps + 1000
+                        if (newValue <= stepRange.max) {
+                            onStepsChange(newValue)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    accentColor = SemanticColor.textBorderPrimary,
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 버튼 영역
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CtaButton(
+                        text = "이전으로",
+                        textColor = SemanticColor.buttonPrimaryDefault,
+                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        onClick = onPrev,
+                        modifier = Modifier.width(96.dp)
+                    )
+
+                    CtaButton(
+                        text = "다음으로",
+                        textColor = SemanticColor.textBorderPrimaryInverse,
+                        onClick = onNext,
+                        modifier = Modifier.weight(1f),
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_arrow_forward),
+                                contentDescription = "arrow forward",
+                                tint = SemanticColor.iconWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    )
+                }
             }
 
-            // 주간 산책 횟수 설정
-            GoalSettingCard(
-                title = "주간 산책 횟수",
-                currentNumber = safeGoal,
-                onNumberChange = { newValue ->
-                    // 범위를 벗어난 값은 아예 설정하지 않음
-                    if (newValue in goalRange.min..goalRange.max) {
-                        onGoalChange(newValue)
-                    }
-                },
-                range = goalRange,
-                unit = "회",
-                onClickMinus = {
-                    // 범위를 벗어나면 아예 호출하지 않음
-                    val newValue = safeGoal - 1
-                    if (newValue >= goalRange.min) {
-                        onGoalChange(newValue)
-                    }
-                },
-                onClickPlus = {
-                    // 범위를 벗어나면 아예 호출하지 않음
-                    val newValue = safeGoal + 1
-                    if (newValue <= goalRange.max) {
-                        onGoalChange(newValue)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                accentColor = SemanticColor.textBorderPrimary
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 걸음 수 목표 설정
-            GoalSettingCard(
-                title = "걸음 수 목표",
-                currentNumber = safeSteps,
-                onNumberChange = { newValue ->
-                    // 범위를 벗어난 값은 아예 설정하지 않음
-                    if (newValue in stepRange.min..stepRange.max) {
-                        onStepsChange(newValue)
-                    }
-                },
-                range = stepRange,
-                unit = "보",
-                onClickMinus = {
-                    // 범위를 벗어나면 아예 호출하지 않음
-                    val newValue = safeSteps - 1000
-                    if (newValue >= stepRange.min) {
-                        onStepsChange(newValue)
-                    }
-                },
-                onClickPlus = {
-                    // 범위를 벗어나면 아예 호출하지 않음
-                    val newValue = safeSteps + 1000
-                    if (newValue <= stepRange.max) {
-                        onStepsChange(newValue)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                accentColor = SemanticColor.textBorderPrimary,
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // 버튼 영역
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CtaButton(
-                    text = "이전으로",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
-                    onClick = onPrev,
-                    modifier = Modifier.width(96.dp)
-                )
-
-                CtaButton(
-                    text = "다음으로",
-                    textColor = SemanticColor.textBorderPrimaryInverse,
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_forward),
-                            contentDescription = "arrow forward",
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
-            }
+            // API 요청 시 로딩 오버레이 표시
+            LoadingOverlay(isLoading = isLoading)
         }
     }
 }

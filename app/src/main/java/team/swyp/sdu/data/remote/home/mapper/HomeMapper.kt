@@ -6,6 +6,7 @@ import team.swyp.sdu.data.remote.home.dto.PointDto
 import team.swyp.sdu.data.remote.home.dto.WalkResponseDto
 import team.swyp.sdu.data.remote.home.dto.WeatherDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
+import team.swyp.sdu.data.remote.mission.mapper.WeeklyMissionMapper
 import team.swyp.sdu.data.remote.walking.dto.CharacterDto
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Grade
@@ -69,21 +70,7 @@ object HomeMapper {
      * WeeklyMissionDto → WeeklyMission Domain Model
      */
     private fun WeeklyMissionDto.toDomain(): WeeklyMission {
-        return WeeklyMission(
-            userWeeklyMissionId = userWeeklyMissionId,
-            missionId = missionId,
-            title = title,
-            description = description,
-            category = category,
-            type = type,
-            status = status,
-            rewardPoints = rewardPoints,
-            assignedConfigJson = assignedConfigJson,
-            weekStart = weekStart,
-            weekEnd = weekEnd,
-            completedAt = completedAt,
-            failedAt = failedAt,
-        )
+        return WeeklyMissionMapper.toDomain(this)
     }
 
     /**

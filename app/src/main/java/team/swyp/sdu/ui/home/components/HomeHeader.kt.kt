@@ -30,7 +30,7 @@ import team.swyp.sdu.ui.theme.White
 
 @Composable
 fun HomeHeader(
-    profileImageUrl: String,
+    profileImageUrl: String?,
     onClickAlarm : () -> Unit,
 ) {
     Box(
@@ -70,6 +70,8 @@ fun HomeHeader(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(profileImageUrl)
+                        .error(R.drawable.ic_face_default) // 프로필 이미지 로드 실패 시 기본 아이콘
+                        .placeholder(R.drawable.ic_face_default) // 로딩 중 기본 아이콘
                         .build(),
                     contentDescription = "프로필 이미지",
                     modifier = Modifier.size(32.dp),

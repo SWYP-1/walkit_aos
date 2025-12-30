@@ -36,7 +36,9 @@ data class WalkingSession(
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,
-    val locations: List<LocationPoint> = emptyList(),
+    val locations: List<LocationPoint> = emptyList(),  // 원본 GPS 데이터
+    val filteredLocations: List<LocationPoint>? = null, // 실시간 필터링된 데이터 (nullable)
+    val smoothedLocations: List<LocationPoint>? = null, // 최종 스무딩된 데이터 (nullable)
     val totalDistance: Float = 0f,
     val preWalkEmotion: EmotionType,
     val postWalkEmotion: EmotionType,
@@ -44,6 +46,7 @@ data class WalkingSession(
     val localImagePath: String? = null, // 로컬 파일 경로
     val serverImageUrl: String? = null, // 서버 URL
     val createdDate: String,
+    val targetStepCount: Int = 0, // 산책 당시 설정된 목표 걸음 수
 ) : Parcelable {
     /**
      * 산책 시간 (초)
@@ -98,13 +101,42 @@ data class WalkingSession(
     }
     
     /**
+     * 표시용 위치 데이터 반환 (우선순위: 스무딩 → 필터링 → 원본)
+     *
+     * UI 표시나 경로 그리기에 사용할 최적의 좌표 데이터 반환
+     *
+     * @return 표시할 LocationPoint 리스트
+     */
+    fun getDisplayLocations(): List<LocationPoint> {
+        return when {
+            smoothedLocations?.isNotEmpty() == true -> smoothedLocations!!
+            filteredLocations?.isNotEmpty() == true -> filteredLocations!!
+            else -> locations
+        }
+    }
+
+    /**
+     * GPS 필터링 적용 여부 확인
+     */
+    fun hasFilteredData(): Boolean {
+        return filteredLocations?.isNotEmpty() == true
+    }
+
+    /**
+     * 경로 스무딩 적용 여부 확인
+     */
+    fun hasSmoothedData(): Boolean {
+        return smoothedLocations?.isNotEmpty() == true
+    }
+
+    /**
      * 이미지 로딩 전략 (스마트 Fallback)
-     * 
+     *
      * 우선순위:
      * 1. 로컬 파일 존재 확인 → 사용
      * 2. 로컬 파일 없음 + 서버 URL 있음 → 서버 URL 사용 (조용한 Fallback)
      * 3. 둘 다 없음 → null 반환
-     * 
+     *
      * @return 이미지 URI (로컬 파일 경로 또는 서버 URL)
      */
     fun getImageUri(): String? {
@@ -119,7 +151,7 @@ data class WalkingSession(
                 Timber.d("로컬 이미지 파일 없음: $localImagePath → 서버 URL로 Fallback")
             }
         }
-        
+
         // 2순위: 서버 URL 사용 (다중 기기 지원, 캐시 삭제 대응)
         return serverImageUrl
     }

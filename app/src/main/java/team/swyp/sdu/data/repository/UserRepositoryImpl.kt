@@ -20,6 +20,7 @@ import team.swyp.sdu.data.remote.user.UserRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserSearchResult as RemoteUserSearchResult
 import team.swyp.sdu.data.remote.user.UserSummaryMapper
 import team.swyp.sdu.domain.model.User
+import team.swyp.sdu.domain.model.UserProfile
 import team.swyp.sdu.domain.model.UserSearchResult
 import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.domain.repository.UserRepository
@@ -75,7 +76,7 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun refreshUser(): Result<User> =
         withContext(Dispatchers.IO) {
             try {
-                val user = remoteDataSource.fetchUser()
+                val user = remoteDataSource.fetchUser() // DTO 직접 가져오기
                 Timber.d("사용자 정보 API 응답: nickname=${user.nickname}, imageName=${user.imageName}")
 
                 // ✅ 이전 사용자 데이터 삭제 후 새 사용자 데이터 저장

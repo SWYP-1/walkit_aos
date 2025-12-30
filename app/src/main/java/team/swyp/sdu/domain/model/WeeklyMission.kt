@@ -8,9 +8,9 @@ data class WeeklyMission(
     val missionId: Long = 0,
     val title: String = "",
     val description: String = "",
-    val category: String = "",
-    val type: String = "",
-    val status: String? = null,
+    val category: MissionCategory = MissionCategory.CHALLENGE,
+    val type: MissionType = MissionType.PHOTO_COLOR,
+    val status: MissionStatus? = null,
     val rewardPoints: Int = 0,
     val assignedConfigJson: String? = null,
     val weekStart: String? = null,
@@ -19,10 +19,10 @@ data class WeeklyMission(
     val failedAt: String? = null,
 ) {
     /**
-     * 미션 타입 enum으로 변환
+     * 미션 타입 반환
      */
-    fun getMissionType(): MissionType? {
-        return MissionType.fromApiValue(type)
+    fun getMissionType(): MissionType {
+        return type
     }
 
     /**
@@ -56,9 +56,9 @@ data class WeeklyMission(
             missionId = 0L,
             title = "",
             description = "",
-            category = "",
-            type = "",
-            status = "",
+            category = MissionCategory.CHALLENGE,
+            type = MissionType.PHOTO_COLOR,
+            status = MissionStatus.IN_PROGRESS,
             rewardPoints = 0,
             assignedConfigJson = "{}",
             weekStart = "",

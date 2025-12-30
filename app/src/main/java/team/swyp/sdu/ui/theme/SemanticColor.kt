@@ -28,6 +28,7 @@ object SemanticColor {
     val iconWhite = White
     val iconDisabled = Grey4
     val iconGrey = Grey7
+    val iconGreen = Green4
 
     // state
     val stateRedTertiary = Red1
@@ -56,13 +57,14 @@ object SemanticColor {
     val statePinkSecondary = Pink2
 
     val stateAquaBluePrimary = AquaBlue5
+    val stateAquaBlueSecondary = AquaBlue3
     val stateAquaBlueTertiary = AquaBlue1
 
 
     val logoGreen = Green9
 
     // button
-    val buttonPrimaryDefault = GreenPrimary
+    val buttonPrimaryDefault = Green4
     val buttonPrimaryActive = Green5
     val buttonPrimaryDisabled = Grey3
     val buttonDisabled = Grey6

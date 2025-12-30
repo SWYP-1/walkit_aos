@@ -35,6 +35,14 @@ object MissionConfigParser {
                     error("Failed to parse PhotoColorConfig: ${e.message}")
                 }
             }
+
+            MissionType.CHALLENGE_ATTENDANCE -> {
+                try {
+                    json.decodeFromString<MissionConfig.ChallengeAttendanceConfig>(jsonString)
+                } catch (e: Exception) {
+                    error("Failed to parse Challenge attendance: ${e.message}")
+                }
+            }
         }
     }
 }

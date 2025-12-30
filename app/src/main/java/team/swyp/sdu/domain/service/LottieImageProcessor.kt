@@ -5,6 +5,9 @@ import android.graphics.BitmapFactory
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import org.json.JSONObject
+import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.CosmeticItem
+import team.swyp.sdu.domain.model.EquipSlot
 import team.swyp.sdu.utils.replaceAssetP
 import team.swyp.sdu.utils.toBase64DataUrl
 import timber.log.Timber
@@ -56,6 +59,94 @@ class LottieImageProcessor @Inject constructor(
                 Timber.e(e, "Lottie asset 이미지 교체 실패: assetId=$assetId, imageUrl=$imageUrl")
                 throw e
             }
+        }
+    }
+
+    /**
+     * 착용된 아이템들을 기반으로 Lottie JSON의 모든 슬롯 asset을 업데이트
+     */
+    suspend fun updateAssetsForWornItems(
+        baseLottieJson: JSONObject,
+        wornItemsByPosition: Map<EquipSlot, Int>,
+        cosmeticItems: List<CosmeticItem>,
+        character: Character
+    ): JSONObject {
+        Timber.d("🎨 LottieImageProcessor.updateAssetsForWornItems 시작")
+        Timber.d("👤 캐릭터: ${character.nickName}")
+        Timber.d("🧷 착용 상태: $wornItemsByPosition")
+        Timber.d("📦 코스메틱 아이템 수: ${cosmeticItems.size}")
+
+        return withContext(Dispatchers.IO) {
+            try {
+                var modifiedJson = baseLottieJson
+
+                // 각 슬롯별 이미지 설정 생성 및 적용
+                EquipSlot.entries.forEach { slot ->
+                    Timber.d("🔍 슬롯 처리 시작: $slot")
+
+                    val assetId = getAssetIdForSlot(slot)
+                    val imageUrl = getImageUrlForSlot(slot, wornItemsByPosition, cosmeticItems, character)
+
+                    Timber.d("📋 슬롯 $slot - assetId: $assetId, imageUrl: $imageUrl")
+
+                    if (!imageUrl.isNullOrEmpty()) {
+                        Timber.d("✅ Lottie asset 교체 실행: slot=${slot}, assetId=$assetId")
+                        modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageUrl)
+                        Timber.d("✅ 슬롯 $slot asset 교체 완료")
+                    } else {
+                        Timber.d("⚠️ 슬롯 $slot 건너뜀 - imageUrl 없음")
+                    }
+                }
+
+                Timber.d("🎉 모든 슬롯 asset 교체 완료")
+                modifiedJson
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Lottie asset들 교체 실패")
+                baseLottieJson // 실패 시 원본 반환
+            }
+        }
+    }
+
+    /**
+     * 슬롯별 asset ID 매핑
+     */
+    private fun getAssetIdForSlot(slot: EquipSlot): String {
+        return when (slot) {
+            EquipSlot.HEAD -> "head_ribbon"
+            EquipSlot.BODY -> "body_cloth"
+            EquipSlot.FEET -> "feet_shoes"
+        }
+    }
+
+    /**
+     * 슬롯별 이미지 URL 결정 (착용된 아이템 우선, 없으면 캐릭터 기본값)
+     */
+    private fun getImageUrlForSlot(
+        slot: EquipSlot,
+        wornItemsByPosition: Map<EquipSlot, Int>,
+        cosmeticItems: List<CosmeticItem>,
+        character: Character
+    ): String? {
+        Timber.d("🔍 getImageUrlForSlot: slot=$slot")
+
+        val wornItemId = wornItemsByPosition[slot]
+        Timber.d("🎯 슬롯 $slot 착용 아이템 ID: $wornItemId")
+
+        return if (wornItemId != null) {
+            // 착용된 아이템이 있으면 해당 아이템의 이미지
+            val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
+            val imageUrl = cosmeticItem?.imageName
+            Timber.d("🧷 착용 아이템 이미지: $imageUrl (item: ${cosmeticItem?.name})")
+            imageUrl
+        } else {
+            // 착용된 아이템 없으면 캐릭터 기본값
+            val defaultImageUrl = when (slot) {
+                EquipSlot.HEAD -> character.headImageName
+                EquipSlot.BODY -> character.bodyImageName
+                EquipSlot.FEET -> character.feetImageName
+            }
+            Timber.d("🏠 캐릭터 기본 이미지: $defaultImageUrl")
+            defaultImageUrl
         }
     }
 

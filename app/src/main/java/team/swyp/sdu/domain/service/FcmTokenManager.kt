@@ -41,24 +41,40 @@ class FcmTokenManager @Inject constructor(
      */
     suspend fun logCurrentToken() {
         try {
+            Timber.d("=== FCM 토큰 상태 확인 시작 ===")
+
             // 저장된 토큰 확인
             val savedToken = fcmTokenDataStore.getToken()
             if (savedToken != null) {
-                Timber.d("FCM 토큰 (저장된 토큰): $savedToken")
+                Timber.d("FCM 토큰 (저장된 토큰): ${savedToken.take(50)}...") // 보안상 앞부분만 출력
             } else {
                 Timber.d("FCM 토큰: 저장된 토큰 없음, 새로 발급 시도")
             }
-            
+
             // Firebase에서 최신 토큰 가져오기
             val currentToken = firebaseMessaging.token.await()
-            Timber.d("FCM 토큰 (현재 토큰): $currentToken")
-            
+            Timber.d("FCM 토큰 (현재 Firebase 토큰): ${currentToken.take(50)}...")
+
+            // 토큰 비교
+            val tokensMatch = savedToken == currentToken
+            Timber.d("토큰 일치 여부: $tokensMatch")
+
             // 저장된 토큰과 다르면 로컬에만 업데이트 (서버 전송은 onNewToken에서 처리)
-            if (savedToken != currentToken) {
-                Timber.d("FCM 토큰 변경 감지, 로컬 업데이트: $savedToken -> $currentToken")
+            if (!tokensMatch) {
+                Timber.d("FCM 토큰 변경 감지, 로컬 업데이트 진행")
                 fcmTokenDataStore.saveToken(currentToken)
-                // 서버 전송은 onNewToken에서 자동으로 처리되므로 여기서는 하지 않음
+                Timber.d("토큰 로컬 저장 완료")
+
+                // 로그인 상태라면 서버에도 업데이트
+                if (isLoggedIn()) {
+                    Timber.d("로그인 상태이므로 변경된 토큰을 서버로 전송")
+                    syncTokenToServer(currentToken)
+                }
+            } else {
+                Timber.d("토큰이 최신 상태입니다")
             }
+
+            Timber.d("=== FCM 토큰 상태 확인 완료 ===")
         } catch (e: Exception) {
             Timber.e(e, "FCM 토큰 확인 실패")
         }
@@ -101,13 +117,21 @@ class FcmTokenManager @Inject constructor(
      */
     suspend fun refreshToken(newToken: String) {
         try {
-            Timber.d("FCM 토큰 갱신: $newToken")
+            Timber.d("=== FCM 토큰 갱신 시작 ===")
+            Timber.d("새 토큰: $newToken")
+            Timber.d("로그인 상태: ${isLoggedIn()}")
+
             fcmTokenDataStore.saveToken(newToken)
+            Timber.d("토큰 로컬 저장 완료")
 
             // 로그인 상태라면 서버에 업데이트
             if (isLoggedIn()) {
+                Timber.d("로그인 상태이므로 서버로 토큰 전송 시도")
                 syncTokenToServer(newToken)
+            } else {
+                Timber.d("로그아웃 상태이므로 서버 전송 생략 (로컬에만 저장)")
             }
+            Timber.d("=== FCM 토큰 갱신 완료 ===")
         } catch (e: Exception) {
             Timber.e(e, "FCM 토큰 갱신 처리 실패")
         }
@@ -118,28 +142,39 @@ class FcmTokenManager @Inject constructor(
      */
     suspend fun syncTokenToServer(token: String? = null) {
         try {
+            Timber.d("=== FCM 토큰 서버 동기화 시작 ===")
+
             val tokenToSync = token ?: fcmTokenDataStore.fcmToken.first()
+            Timber.d("동기화할 토큰: $tokenToSync")
+
             if (tokenToSync == null) {
                 Timber.w("동기화할 FCM 토큰이 없습니다")
                 return
             }
 
             val deviceId = getDeviceId()
+            Timber.d("기기 ID: $deviceId")
+
+            Timber.d("서버 API 호출 시작")
             val result = notificationRepository.registerFcmToken(tokenToSync, deviceId)
+            Timber.d("서버 API 호출 완료, 결과: ${result::class.simpleName}")
 
             when (result) {
                 is team.swyp.sdu.core.Result.Success -> {
-                    Timber.d("FCM 토큰 서버 동기화 성공")
+                    Timber.d("✅ FCM 토큰 서버 동기화 성공")
                 }
                 is team.swyp.sdu.core.Result.Error -> {
-                    Timber.e(result.exception, "FCM 토큰 서버 동기화 실패: ${result.message}")
+                    Timber.e(result.exception, "❌ FCM 토큰 서버 동기화 실패: ${result.message}")
+                    Timber.e("에러 상세: ${result.exception?.stackTraceToString()}")
                 }
                 team.swyp.sdu.core.Result.Loading -> {
-                    // 처리 불필요
+                    Timber.d("서버 동기화 로딩 중")
                 }
             }
+            Timber.d("=== FCM 토큰 서버 동기화 완료 ===")
         } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 서버 동기화 실패")
+            Timber.e(e, "FCM 토큰 서버 동기화 중 예외 발생")
+            Timber.e("예외 상세: ${e.stackTraceToString()}")
         }
     }
 

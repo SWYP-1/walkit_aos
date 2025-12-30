@@ -6,6 +6,8 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,6 +64,7 @@ import timber.log.Timber
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -105,7 +108,8 @@ fun EmotionRecordStepRoute(
         emotionText = emotionText,
     )
 
-    // 카메라 촬영용 Uri 생성
+    // 📸 개선된 미디어 선택: Photo Picker 우선 사용 (안전함)
+    // 카메라 촬영용 Uri 생성 (기존 방식 유지 - 사진 전용)
     val cameraImageUri = remember {
         val contentValues = ContentValues().apply {
             put(
@@ -125,11 +129,50 @@ fun EmotionRecordStepRoute(
         contract = ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
         if (success && cameraImageUri != null) {
-            viewModel.setEmotionPhotoUri(cameraImageUri)
+            // 🚨 영상 촬영 검증: 사용자가 영상 모드로 전환했는지 확인
+            val actualMimeType = try {
+                context.contentResolver.getType(cameraImageUri)
+            } catch (e: Exception) {
+                null
+            }
+
+            val isVideoFile = actualMimeType?.startsWith("video/") == true
+
+            if (isVideoFile) {
+                // ❌ 영상이 촬영된 경우: 사용자에게 알림 및 파일 정리
+                Timber.w("카메라에서 영상이 촬영되었습니다. 사진만 지원됩니다. MIME_TYPE: $actualMimeType")
+
+                // 영상 파일 삭제 (사용자에게 혼동 주지 않도록)
+                try {
+                    context.contentResolver.delete(cameraImageUri, null, null)
+                    Timber.d("영상 파일 정리 완료")
+                } catch (e: Exception) {
+                    Timber.e(e, "영상 파일 정리 실패")
+                }
+
+                // TODO: 사용자에게 토스트 메시지 표시
+                // Toast.makeText(context, "사진 촬영만 지원됩니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+
+            } else {
+                // ✅ 사진이 정상적으로 촬영됨
+                Timber.d("사진 촬영 성공: MIME_TYPE = $actualMimeType")
+                viewModel.setEmotionPhotoUri(cameraImageUri)
+            }
+        } else {
+            Timber.w("카메라 촬영 실패 또는 URI가 null")
         }
     }
 
-    // 갤러리 선택 Activity Result Launcher
+    // Photo Picker (Android 13+ 우선 사용)
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.setEmotionPhotoUri(uri)
+        }
+    }
+
+    // Intent 방식 (하위 호환성용)
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -169,6 +212,7 @@ fun EmotionRecordStepRoute(
         galleryLauncher = galleryLauncher,
         cameraPermissionLauncher = cameraPermissionLauncher,
         galleryPermissionLauncher = galleryPermissionLauncher,
+        photoPickerLauncher = photoPickerLauncher,
         modifier = modifier,
     )
 }
@@ -186,6 +230,7 @@ private fun EmotionRecordStepScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     cameraImageUri: Uri?,
+    photoPickerLauncher : androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>,
     cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>,
     galleryLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     cameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
@@ -238,6 +283,7 @@ private fun EmotionRecordStepScreen(
                 cameraImageUri = cameraImageUri,
                 cameraLauncher = cameraLauncher,
                 galleryLauncher = galleryLauncher,
+                photoPickerLauncher = photoPickerLauncher,
                 cameraPermissionLauncher = cameraPermissionLauncher,
                 galleryPermissionLauncher = galleryPermissionLauncher,
                 modifier = modifier,
@@ -265,6 +311,7 @@ private fun EmotionRecordStepScreenContent(
     modifier: Modifier = Modifier,
     cameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     galleryPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+    photoPickerLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -374,17 +421,13 @@ private fun EmotionRecordStepScreenContent(
                     },
                     galleryLauncher = {
                         // 갤러리 권한 체크 및 실행
+                        // Android 13+에서는 Photo Picker 우선 사용 (권한 불필요)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (androidx.core.content.ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.READ_MEDIA_IMAGES
-                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            ) {
-                                galleryLauncher.launch("image/*")
-                            } else {
-                                galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                            }
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         } else {
+                            // Android 12 이하에서는 기존 Intent 방식 사용
                             if (androidx.core.content.ContextCompat.checkSelfPermission(
                                     context,
                                     android.Manifest.permission.READ_EXTERNAL_STORAGE
@@ -472,6 +515,11 @@ private fun EmotionRecordStepScreenContent(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            //
+            InfoBanner(title = "산책 중 촬영한 사진만 업로드 가능합니다.")
+
+            Spacer(modifier = Modifier.height(16.dp))
             // 버튼 영역
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -650,6 +698,11 @@ private fun EmotionRecordStepScreenPreview() {
             contract = ActivityResultContracts.RequestPermission()
         ) { }
 
+        val photoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { }
+
+
         EmotionRecordStepScreen(
             uiState = EmotionRecordStepUiState.Success(
                 emotionPhotoUri = null,
@@ -665,58 +718,7 @@ private fun EmotionRecordStepScreenPreview() {
             galleryLauncher = galleryLauncher,
             cameraPermissionLauncher = cameraPermissionLauncher,
             galleryPermissionLauncher = galleryPermissionLauncher,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun EmotionRecordStepScreenContentPreview() {
-    WalkItTheme {
-        val context = LocalContext.current
-        val cameraImageUri = remember {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "emotion_image_preview.jpg")
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/Emotions")
-                }
-            }
-            context.contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues
-            )
-        }
-
-        val cameraLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.TakePicture()
-        ) { }
-
-        val galleryLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { }
-
-        val cameraPermissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { }
-
-        val galleryPermissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { }
-
-        EmotionRecordStepScreenContent(
-            emotionPhotoUri = null,
-            emotionText = "오늘 산책은 정말 좋았어요!",
-            onPhotoUriChange = {},
-            onTextChange = {},
-            onUpdateSessionImageAndNote = {},
-            onNext = {},
-            onPrevious = {},
-            cameraImageUri = cameraImageUri,
-            cameraLauncher = cameraLauncher,
-            galleryLauncher = galleryLauncher,
-            cameraPermissionLauncher = cameraPermissionLauncher,
-            galleryPermissionLauncher = galleryPermissionLauncher,
+            photoPickerLauncher = photoPickerLauncher,
         )
     }
 }

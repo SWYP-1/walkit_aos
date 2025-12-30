@@ -8,6 +8,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.domain.model.Sex
@@ -15,6 +16,7 @@ import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.domain.repository.GoalRepository
+import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.*
 import timber.log.Timber
 import javax.inject.Inject
@@ -26,6 +28,7 @@ import javax.inject.Inject
 class UserInfoManagementViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val goalRepository: GoalRepository,
+    private val authDataStore: AuthDataStore,
 ) : ViewModel() {
 
     // UI 상태
@@ -38,6 +41,14 @@ class UserInfoManagementViewModel @Inject constructor(
 
     // Goal 상태
     val goalFlow: StateFlow<Goal?> = goalRepository.goalFlow
+
+    // 연동된 계정 정보 (Flow를 StateFlow로 변환)
+    val provider: StateFlow<String?> = authDataStore.provider
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            initialValue = null
+        )
 
     val _uploadedImageUri = MutableStateFlow(Uri.EMPTY)
     val uploadedImageUri: StateFlow<Uri> = _uploadedImageUri.asStateFlow()

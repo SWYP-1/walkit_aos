@@ -1,7 +1,9 @@
 package team.swyp.sdu.di
 
 import team.swyp.sdu.data.api.auth.AuthApi
+import team.swyp.sdu.data.api.auth.CharacterApi
 import team.swyp.sdu.data.api.cosmetic.CosmeticItemApi
+import team.swyp.sdu.data.remote.auth.CharacterRemoteDataSource
 import team.swyp.sdu.data.api.follower.FollowerApi
 import team.swyp.sdu.data.api.goal.GoalApi
 import team.swyp.sdu.data.api.mission.MissionApi
@@ -37,6 +39,7 @@ object NetworkModule {
             encodeDefaults = true
             explicitNulls = false // null 필드는 JSON에서 제외 (서버에는 true/false만 전송)
             isLenient = true
+            coerceInputValues = true // null이 올 수 있는 필드에 강제 타입 변환 허용
         }
 
     @Provides
@@ -102,6 +105,18 @@ object NetworkModule {
     fun provideAuthApi(
         @Named("walkit") retrofit: Retrofit,
     ): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCharacterApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): CharacterApi = retrofit.create(CharacterApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCharacterRemoteDataSource(
+        characterApi: CharacterApi,
+    ): CharacterRemoteDataSource = CharacterRemoteDataSource(characterApi)
 
     @Provides
     @Singleton

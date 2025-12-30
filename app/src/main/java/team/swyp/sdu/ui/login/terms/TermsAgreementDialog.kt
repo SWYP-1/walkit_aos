@@ -54,6 +54,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun TermsAgreementDialogRoute(
     onDismiss: () -> Unit,
     onSuccess: () -> Unit,
+    onTermsAgreedUpdated: () -> Unit,
     viewModel: TermsAgreementViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +70,7 @@ fun TermsAgreementDialogRoute(
         },
         onSubmit = {
             viewModel.submitTermsAgreement(
+                onTermsAgreedUpdated = onTermsAgreedUpdated,
                 onSuccess = onSuccess,
                 onError = { /* 에러는 UI State에 표시됨 */ },
             )

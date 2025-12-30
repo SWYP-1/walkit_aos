@@ -3,8 +3,10 @@ package team.swyp.sdu.data.remote.mission.dto.mission
 import androidx.annotation.Keep
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import team.swyp.sdu.domain.model.MissionCategory
 import team.swyp.sdu.domain.model.MissionConfig
 import team.swyp.sdu.domain.model.MissionConfigParser
+import team.swyp.sdu.domain.model.MissionStatus
 import team.swyp.sdu.domain.model.MissionType
 
 @Keep
@@ -18,9 +20,6 @@ data class WeeklyMissionDto(
 
     @SerialName("title")
     val title: String,
-
-    @SerialName("description")
-    val description: String,
 
     @SerialName("category")
     val category: String,
@@ -50,10 +49,24 @@ data class WeeklyMissionDto(
     val failedAt: String? = null,
 ) {
     /**
+     * 미션 카테고리 enum으로 변환
+     */
+    fun getMissionCategory(): MissionCategory? {
+        return MissionCategory.fromApiValue(category)
+    }
+
+    /**
      * 미션 타입 enum으로 변환
      */
     fun getMissionType(): MissionType? {
         return MissionType.fromApiValue(type)
+    }
+
+    /**
+     * 미션 상태 enum으로 변환
+     */
+    fun getMissionStatus(): MissionStatus? {
+        return status?.let { MissionStatus.fromApiValue(it) }
     }
 
     /**
@@ -74,7 +87,6 @@ data class WeeklyMissionDto(
             userWeeklyMissionId = 0L,
             missionId = 0L,
             title = "",
-            description = "",
             category = "",
             type = "",
             status = "",

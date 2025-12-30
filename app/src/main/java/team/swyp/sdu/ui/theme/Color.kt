@@ -39,6 +39,7 @@ val Purple1 = Color(0xFFF6F4FF)
 val Purple3 = Color(0xFFB8ACF6)
 val Purple6 = Color(0xFF6E5DC6)
 val AquaBlue1 = Color(0xFFF0FCFF)
+val AquaBlue3 = Color(0xFFB2F2FF)
 val AquaBlue5 = Color(0xFF6EB3BF)
 
 

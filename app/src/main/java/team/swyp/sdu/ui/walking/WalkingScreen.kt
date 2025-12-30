@@ -32,10 +32,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
 import team.swyp.sdu.R
+import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.InfoBadge
 import team.swyp.sdu.ui.components.formatStepCount
@@ -44,54 +46,95 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.ui.walking.components.WalkingActionButton
 import team.swyp.sdu.ui.walking.components.formatToHoursMinutesSeconds
+import team.swyp.sdu.ui.walking.viewmodel.WalkingScreenState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
+import team.swyp.sdu.utils.DateUtils
+import team.swyp.sdu.utils.Season
+import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WalkingScreenRoute(
     modifier: Modifier = Modifier,
     viewModel: WalkingViewModel = hiltViewModel(),
-    onNavigateToFinish: () -> Unit = {},
+    onNavigateToPostWalkingEmotion: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
-    onStopClick: (() -> Unit)? = null, // 집중모드용 커스텀 스탑 핸들러
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isSessionSaved by viewModel.isSessionSaved.collectAsStateWithLifecycle()
+    val screenState by viewModel.walkingScreenState.collectAsStateWithLifecycle()
+    val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     val permissionsState =
         rememberMultiplePermissionsState(
-            permissions =
-                listOf(
-                    android.Manifest.permission.ACTIVITY_RECOGNITION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.POST_NOTIFICATIONS,
-                ),
+            permissions = buildList {
+                // 필수 권한들
+                add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+
+                // Android 10 이상에서 필요한 권한
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    add(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                }
+
+                // Android 13 이상에서 필요한 권한
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    add(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
         )
+
+    // 권한 상태 디버깅
+    LaunchedEffect(permissionsState.allPermissionsGranted) {
+        android.util.Log.d(
+            "WalkingScreen",
+            "권한 상태 변경: allPermissionsGranted = ${permissionsState.allPermissionsGranted}"
+        )
+        permissionsState.permissions.forEach { permission ->
+            android.util.Log.d(
+                "WalkingScreen",
+                "권한: ${permission.permission}, 상태: ${permission.status}"
+            )
+        }
+    }
+
+    // 권한이 없는 경우 자동으로 권한 요청
+    LaunchedEffect(Unit) {
+        if (!permissionsState.allPermissionsGranted) {
+            android.util.Log.d("WalkingScreen", "권한이 부족하여 자동으로 권한 요청")
+            permissionsState.launchMultiplePermissionRequest()
+        }
+    }
 
     // 백버튼 다이얼로그 상태
     val showBackDialog = remember { mutableStateOf(false) }
 
     // Walking 상태에서 백버튼 처리
-    BackHandler(enabled = uiState is WalkingUiState.Walking) {
+    BackHandler(enabled = screenState.uiState is WalkingUiState.Walking) {
         showBackDialog.value = true
     }
 
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        when (val state = uiState) {
+        when (val state = screenState.uiState) {
+            is WalkingUiState.Loading -> {
+                // 초기 로딩 화면
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                }
+            }
+
             is WalkingUiState.PreWalkingEmotionSelection -> {
                 // 산책 전 감정 선택
                 PreWalkingEmotionSelectRoute(
                     viewModel = viewModel,
                     onNext = {
-                        if (permissionsState.allPermissionsGranted) {
-                            coroutineScope.launch {
-                                viewModel.startWalking()
-                            }
+                        coroutineScope.launch {
+                            viewModel.startWalking()
                         }
                     },
                     onPrev = onNavigateBack,
@@ -100,128 +143,107 @@ fun WalkingScreenRoute(
             }
 
             is WalkingUiState.Walking -> {
-                // 기본 스탑 핸들러 (함수형 스타일)
-                val defaultStopHandler: () -> Unit = remember {
-                    {
+                WalkingScreenContent(
+                    modifier = modifier,
+                    screenState = screenState,
+                    onPauseClick = viewModel::pauseWalking,
+                    onResumeClick = viewModel::resumeWalking,
+                    onFinishClick = {
+                        // 즉시 UI 상태를 SessionSaved로 변경하여 isFinish = true로 만듦
+                        viewModel.finishWalking()
+                        // 백그라운드에서 세션 저장 실행
                         coroutineScope.launch {
                             viewModel.stopWalking()
                         }
-                    }
-                }
-
-                WalkingScreenContent(
-                    modifier = modifier,
-                    uiState = uiState,
-                    onPauseClick = viewModel::pauseWalking,
-                    onResumeClick = viewModel::resumeWalking,
-                    onStopClick = onStopClick ?: defaultStopHandler,
-                    onNextClick = onNavigateToFinish,
+                    },
+                    onNextClick = onNavigateToPostWalkingEmotion
                 )
             }
 
-            is WalkingUiState.SavingSession -> {
-                // 세션 저장 중 로딩 화면
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-                        Text(
-                            text = "산책 기록을 저장하는 중...",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
 
             is WalkingUiState.SessionSaved -> {
-                // 세션 저장 완료 후 자동으로 다음 화면으로 이동
-                // isSessionSaved 플래그가 true인 경우에만 이동 (DB 저장 완료 확인)
-                if (isSessionSaved) {
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
-                        onNavigateToFinish()
-                    }
-                } else {
-                    // 세션 저장이 아직 완료되지 않은 경우 로딩 유지
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-                            Text(
-                                text = "세션 저장 완료 대기 중...",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
-                    }
-                }
+                // 세션 저장 완료 후 UI 표시
+                WalkingScreenContent(
+                    modifier = modifier,
+                    screenState = screenState,
+                    onPauseClick = viewModel::pauseWalking,
+                    onResumeClick = viewModel::resumeWalking,
+                    onFinishClick = {}, // SessionSaved 상태에서는 사용하지 않음
+                    onNextClick = {
+                        Timber.d("🚶 WalkingScreenRoute - CTA 버튼 클릭, PostWalkingEmotionSelect로 이동")
+                        onNavigateToPostWalkingEmotion()
+                    },
+                )
             }
 
-            is WalkingUiState.Error -> {
+        }
+    }
+
+// 백버튼 확인 다이얼로그
+    if (showBackDialog.value) {
+
+        // 세션 저장 중 오버레이
+        if (isSavingSession) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
                     Text(
-                        text = "오류",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        text = "산책 기록을 저장하는 중...",
+                        style = MaterialTheme.typography.bodyLarge,
                     )
-                    Text(
-                        text = state.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 16.dp),
-                    )
-                    androidx.compose.material3.Button(onClick = {}) {
-                        Text("다시 시도")
-                    }
                 }
             }
         }
-
-        // 백버튼 확인 다이얼로그
-        if (showBackDialog.value) {
-            ConfirmDialog(
-                title = "산책 중단",
-                message = "산책을 중단하시겠습니까?",
-                negativeButtonText = "중단하기",
-                positiveButtonText = "계속하기",
-                onDismiss = { showBackDialog.value = false },
-                onNegative = {
-                    showBackDialog.value = false
-                    // 세션 저장 없이 그냥 종료
-                    onNavigateBack()
-                },
-                onPositive = {
-                    showBackDialog.value = false
-                    // 산책 계속 진행
+        ConfirmDialog(
+            title = "산책 중단",
+            message = "산책을 중단하시겠습니까?",
+            negativeButtonText = "중단하기",
+            positiveButtonText = "계속하기",
+            onDismiss = { showBackDialog.value = false },
+            onNegative = {
+                showBackDialog.value = false
+                // 산책 취소 (추적 중단만 하고 세션 저장하지 않음)
+                coroutineScope.launch {
+                    viewModel.cancelWalking()
                 }
-            )
-        }
+                onNavigateBack()
+            },
+            onPositive = {
+                showBackDialog.value = false
+                // 산책 계속 진행
+            }
+        )
     }
 }
 
 @Composable
 private fun WalkingScreenContent(
     modifier: Modifier = Modifier,
-    uiState: WalkingUiState,
+    screenState: WalkingScreenState,
     onPauseClick: () -> Unit = {},
     onResumeClick: () -> Unit = {},
-    onStopClick: () -> Unit = {},
-    onNextClick: () -> Unit = {},
+    onFinishClick: () -> Unit = {}, // 산책 종료 모든 기록 저장
+    onNextClick: () -> Unit = {}, // 산책 완료 후 PostWalkingEmotionSelect 화면으로 이동
 ) {
-    val isFinish = uiState is WalkingUiState.SessionSaved
-    val isWalking = uiState is WalkingUiState.Walking
-    val walkingState = uiState as? WalkingUiState.Walking
+
+    val walkingState = screenState.uiState as? WalkingUiState.Walking
+    val characterState = screenState.character
+
+    val currentSeason = DateUtils.getCurrentSeason()
+    val defaultBackground = when (currentSeason) {
+        Season.SPRING -> R.drawable.bg_spring_full
+        Season.SUMMER -> R.drawable.bg_summer_full
+        Season.AUTUMN -> R.drawable.bg_autumn_full
+        Season.WINTER -> R.drawable.bg_winter_full
+    }
+
+
 
     SubcomposeLayout(
         modifier = modifier.fillMaxSize()
@@ -229,61 +251,74 @@ private fun WalkingScreenContent(
 
         /* ---------- Background ---------- */
         val bg = subcompose("bg") {
-            Image(
-                painter = painterResource(R.drawable.bg_winter_cropped),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (characterState == null) {
+                Image(
+                    painter = painterResource(defaultBackground),
+                    contentDescription = "walking background",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                AsyncImage(
+                    model = characterState.backgroundImageName,
+                    error = painterResource(defaultBackground),
+                    contentDescription = "walking background"
+                )
+            }
+
         }[0].measure(constraints)
 
         /* ---------- Character ---------- */
         val character = subcompose("character") {
-            Image(
-                painter = painterResource(R.drawable.walk_it_character),
-                contentDescription = null
-            )
+            WalkitCharacter(character = characterState)
         }[0].measure(Constraints())
 
-        /* ---------- StepCounter (isFinish == false) ---------- */
-        val stepCounter = if (!isFinish && walkingState != null) {
-            subcompose("stepCounter") {
-                WalkitStepInfo(stepCount = walkingState.stepCount)
-            }[0].measure(Constraints())
-        } else null
+        /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
+        val stepCounter =
+            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                subcompose("stepCounter") {
+                    WalkitStepInfo(stepCount = walkingState.stepCount)
+                }[0].measure(Constraints())
+            } else null
 
-        /* ---------- Timer (isFinish == false) ---------- */
-        val timer = if (!isFinish && walkingState != null) {
-            subcompose("timer") {
-                val painterResource = painterResource(id = R.drawable.ic_info_timer)
-                InfoBadge(iconPainter = painterResource, text = formatToHoursMinutesSeconds(walkingState.duration))
-            }[0].measure(Constraints())
-        } else null
+        /* ---------- Timer (SessionSaved 상태가 아닐 때) ---------- */
+        val timer =
+            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                subcompose("timer") {
+                    val painterResource = painterResource(id = R.drawable.ic_info_timer)
+                    InfoBadge(
+                        iconPainter = painterResource,
+                        text = formatToHoursMinutesSeconds(walkingState.duration)
+                    )
+                }[0].measure(Constraints())
+            } else null
 
 
-        val finishText = if (isFinish) {
+        val finishText = if (screenState.uiState is WalkingUiState.SessionSaved) {
             subcompose("finishText") {
                 FinishWalkingText()
             }[0].measure(Constraints())
         } else null
 
-        /* ---------- Action Buttons (isFinish == false) ---------- */
-        val actionRow = if (!isFinish && walkingState != null) {
-            subcompose("actionRow") {
-                WalkingActionButtonRow(
-                    isPaused = walkingState.isPaused,
-                    onClickPause = {
-                        if (walkingState.isPaused) onResumeClick() else onPauseClick()
-                    },
-                    onClickFinish = onStopClick
-                )
-            }[0].measure(Constraints())
-        } else null
+        /* ---------- Action Buttons (SessionSaved 상태가 아닐 때) ---------- */
+        val actionRow =
+            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                subcompose("actionRow") {
+                    WalkingActionButtonRow(
+                        isPaused = walkingState.isPaused,
+                        onClickPause = {
+                            if (walkingState.isPaused) onResumeClick() else onPauseClick()
+                        },
+                        onClickFinish = onFinishClick
+                    )
+                }[0].measure(Constraints())
+            } else null
 
-        /* ---------- CTA Button (isFinish == true) ---------- */
-        val onNextButton = if (isFinish) {
+        /* ---------- CTA Button (SessionSaved 상태일 때) ---------- */
+        val onNextButton = if (screenState.uiState is WalkingUiState.SessionSaved) {
             subcompose("onNext") {
                 CtaWrapper(
-                    onClick = onNextClick
+                    onClick = onNextClick,
+                    enabled = true // 세션 저장 완료 상태이므로 항상 활성화
                 )
             }[0].measure(
                 Constraints(
@@ -343,6 +378,22 @@ private fun WalkingScreenContent(
                         70.dp.roundToPx()
             )
         }
+    }
+}
+
+@Composable
+fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?) {
+    if (character != null) {
+        AsyncImage(
+            model = character.characterImageName,
+            contentDescription = null,
+            modifier = modifier
+        )
+    } else {
+        Image(
+            painter = painterResource(R.drawable.walk_it_character),
+            contentDescription = null,
+        )
     }
 }
 
@@ -406,11 +457,16 @@ fun WalkingActionButtonRow(
 }
 
 @Composable
-fun CtaWrapper(modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun CtaWrapper(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) { // PostWalkingEmotionSelect로 이동
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         CtaButton(
             text = "다음으로 이동",
             onClick = onClick,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -455,10 +511,13 @@ fun WalkingScreenPreviewInProgress() {
     WalkItTheme {
         // Preview에서는 mock 데이터를 사용
         WalkingScreenContent(
-            uiState = WalkingUiState.Walking(
-                stepCount = 1250,
-                duration = 1800000L, // 30분
-                isPaused = false
+            screenState = WalkingScreenState(
+                uiState = WalkingUiState.Walking(
+                    stepCount = 1250,
+                    duration = 1800000L, // 30분
+                    isPaused = false
+                ),
+                character = null // 캐릭터 정보 없음
             )
         )
     }
@@ -473,10 +532,13 @@ fun WalkingScreenPreviewPaused() {
     WalkItTheme {
         // Preview에서는 mock 데이터를 사용
         WalkingScreenContent(
-            uiState = WalkingUiState.Walking(
-                stepCount = 1250,
-                duration = 1800000L, // 30분
-                isPaused = true
+            screenState = WalkingScreenState(
+                uiState = WalkingUiState.Walking(
+                    stepCount = 1250,
+                    duration = 1800000L, // 30분
+                    isPaused = true
+                ),
+                character = null // 캐릭터 정보 없음
             )
         )
     }
@@ -490,7 +552,15 @@ fun WalkingScreenPreviewPaused() {
 fun WalkingScreenPreviewFinished() {
     WalkItTheme {
         WalkingScreenContent(
-            uiState = WalkingUiState.SessionSaved
+            screenState = WalkingScreenState(
+                uiState = WalkingUiState.Walking(
+                    stepCount = 1250,
+                    duration = 1800000L, // 30분
+                    isPaused = true
+                ),
+                character = null // 캐릭터 정보 없음
+            ),
+            onNextClick = {}
         )
     }
 }

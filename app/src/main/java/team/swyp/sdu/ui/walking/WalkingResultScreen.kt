@@ -384,10 +384,21 @@ private fun WalkingResultScreenContent(
                             // 케이스 1: 사진이 있는 경우 - 사진 + 경로만 표시 (맵뷰 로딩하지 않음)
                             val bitmap = remember(emotionPhotoUri) {
                                 try {
-                                    val inputStream =
-                                        context.contentResolver.openInputStream(emotionPhotoUri!!)
-                                    android.graphics.BitmapFactory.decodeStream(inputStream)
+                                    // 🚨 영상 파일 검증: URI가 영상인지 확인
+                                    val mimeType = context.contentResolver.getType(emotionPhotoUri!!)
+                                    val isVideo = mimeType?.startsWith("video/") == true
+
+                                    if (isVideo) {
+                                        // 영상 파일인 경우 Bitmap 변환 생략
+                                        Timber.w("영상 파일이 감정 기록에 설정됨 - 이미지 표시 불가: $mimeType")
+                                        null
+                                    } else {
+                                        // 사진 파일인 경우 정상 변환
+                                        val inputStream = context.contentResolver.openInputStream(emotionPhotoUri)
+                                        android.graphics.BitmapFactory.decodeStream(inputStream)
+                                    }
                                 } catch (e: Exception) {
+                                    Timber.e(e, "이미지 변환 실패")
                                     null
                                 }
                             }

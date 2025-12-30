@@ -6,8 +6,9 @@ package team.swyp.sdu.domain.model
 enum class MissionType(
     val apiValue: String,
 ) {
+    PHOTO_COLOR("PHOTO_COLOR"),
     CHALLENGE_STEPS("CHALLENGE_STEPS"),
-    PHOTO_COLOR("PHOTO_COLOR");
+    CHALLENGE_ATTENDANCE("CHALLENGE_ATTENDANCE");
 
     companion object {
         fun fromApiValue(apiValue: String): MissionType? {

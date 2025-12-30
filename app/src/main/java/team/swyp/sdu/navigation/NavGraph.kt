@@ -33,6 +33,7 @@ import team.swyp.sdu.ui.mypage.settings.NotificationSettingsRoute
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementScreen
 import team.swyp.sdu.ui.onboarding.OnboardingScreen
 import team.swyp.sdu.ui.alarm.AlarmScreen
+import team.swyp.sdu.ui.customtest.CustomTestRoute
 import team.swyp.sdu.ui.dressroom.DressingRoomRoute
 import team.swyp.sdu.ui.record.dailyrecord.DailyRecordRoute
 
@@ -48,8 +49,7 @@ sealed class Screen(val route: String) {
     // 🔥 Walking Graph
     data object WalkingGraph : Screen("walking_graph")
     data object Walking : Screen("walking")
-    data object WalkingFinishStep : Screen("walking_finish_step")
-    data object EmotionSelectionStep : Screen("emotion_selection_step")
+    data object PostEmotionSelectionStep : Screen("emotion_selection_step")
     data object EmotionRecord : Screen("emotion_record")
     data object WalkingResult : Screen("walking_result")
 
@@ -70,6 +70,7 @@ sealed class Screen(val route: String) {
     data object UserInfoManagement : Screen("user_info_management")
     data object NotificationSettings : Screen("notification_settings")
     data object Alarm : Screen("alarm")
+    data object CustomTest : Screen("custom_test")
 
     data object DailyRecord : Screen("daily_record/{dateString}") {
         fun createRoute(dateString: String): String {
@@ -133,30 +134,17 @@ fun NavGraph(
                     WalkingScreenRoute(
                         modifier = Modifier.padding(paddingValues),
                         viewModel = viewModel,
-                        onNavigateToFinish = {
-                            navController.navigate(Screen.WalkingFinishStep.route)
+                        onNavigateToPostWalkingEmotion = {
+                            navController.navigate(Screen.PostEmotionSelectionStep.route)
                         },
                         onNavigateBack = {
                             navController.popBackStack()
                         },
-                        onStopClick = null // 기본 핸들러 사용 (집중모드에서도 동일한 산책 종료 로직 적용)
                     )
                 }
             }
 
-            composable(Screen.WalkingFinishStep.route) { entry ->
-                val viewModel = entry.sharedViewModel<WalkingViewModel>(navController)
-                Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                    WalkingFinishStep(
-                        modifier = Modifier.padding(paddingValues),
-                        onClose = { navController.popBackStack(Screen.Main.route, false) },
-                        onSkip = { navController.navigate(Screen.WalkingResult.route) },
-                        onRecordEmotion = { navController.navigate(Screen.EmotionSelectionStep.route) },
-                    )
-                }
-            }
-
-            composable(Screen.EmotionSelectionStep.route) { entry ->
+            composable(Screen.PostEmotionSelectionStep.route) { entry ->
                 val viewModel = entry.sharedViewModel<WalkingViewModel>(navController)
                 Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                     PostWalkingEmotionSelectRoute(
@@ -204,7 +192,11 @@ fun NavGraph(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = {
                         if (!navController.popBackStack(Screen.Main.route, false)) {
-                            navController.navigate(Screen.Main.route) { popUpTo(Screen.Main.route) { inclusive = true } }
+                            navController.navigate(Screen.Main.route) {
+                                popUpTo(Screen.Main.route) {
+                                    inclusive = true
+                                }
+                            }
                         }
                     },
                     onNavigateToSearch = { navController.navigate(Screen.FriendSearch.route) },
@@ -220,7 +212,11 @@ fun NavGraph(
                     onNavigateToDetail = { navController.navigate(Screen.FriendSearchDetail.route) },
                     onNavigateBack = {
                         if (!navController.popBackStack(Screen.Friends.route, false)) {
-                            navController.navigate(Screen.Main.route) { popUpTo(Screen.Main.route) { inclusive = true } }
+                            navController.navigate(Screen.Main.route) {
+                                popUpTo(Screen.Main.route) {
+                                    inclusive = true
+                                }
+                            }
                         }
                     },
                 )
@@ -233,7 +229,24 @@ fun NavGraph(
                 OnboardingScreen(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = { navController.popBackStack() },
-                    onFinish = { navController.navigate(Screen.Main.route) { popUpTo(Screen.Onboarding.route) { inclusive = true } } },
+                    onFinish = {
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.Onboarding.route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
+        /* Custom Test */
+        composable(Screen.CustomTest.route) {
+            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
+                CustomTestRoute(
+                    modifier = Modifier.padding(paddingValues),
+                    onNavigateBack = { navController.popBackStack() },
+                    onStartOnboarding = { navController.navigate(Screen.Onboarding.route) },
                 )
             }
         }
@@ -260,7 +273,7 @@ fun NavGraph(
         /* DressingRoom */
         composable(Screen.DressingRoom.route) {
             DressingRoomRoute(
-               onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

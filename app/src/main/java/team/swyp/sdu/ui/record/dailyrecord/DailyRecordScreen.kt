@@ -41,6 +41,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.utils.LocationTestData
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.ConfirmDialog
+import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 import timber.log.Timber
@@ -78,6 +79,7 @@ fun DailyRecordRoute(
 
     // 해당 날짜의 세션 목록 로드
     val daySessions by viewModel.daySessions.collectAsStateWithLifecycle()
+    val isLoadingDaySessions by viewModel.isLoadingDaySessions.collectAsStateWithLifecycle()
 
     // 선택된 날짜로 업데이트
     LaunchedEffect(selectedDate) {
@@ -97,6 +99,7 @@ fun DailyRecordRoute(
     DailyRecordScreen(
         selectedDate = selectedDate,
         sessionsForDate = sessionsForDate,
+        isLoading = isLoadingDaySessions,
         modifier = modifier,
         onDeleteClick = { localId -> viewModel.deleteSessionNote(localId) },
         onUpdateNote = { localId, note -> viewModel.updateSessionNote(localId, note) },
@@ -120,13 +123,18 @@ fun DailyRecordRoute(
 fun DailyRecordScreen(
     selectedDate: LocalDate,
     sessionsForDate: List<WalkingSession>,
+    isLoading: Boolean,
     modifier: Modifier = Modifier,
     onUpdateNote: (String, String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onNavigateBack: () -> Unit = {},
 ) {
-    var selectedSessionIndex by remember(sessionsForDate) { mutableIntStateOf(if (sessionsForDate.isNotEmpty()) 0 else -1) }
-    val selectedSession = remember(selectedSessionIndex, sessionsForDate) { sessionsForDate.getOrNull(selectedSessionIndex) }
+    var selectedSessionIndex by remember(sessionsForDate, isLoading) {
+        mutableIntStateOf(if (!isLoading && sessionsForDate.isNotEmpty()) 0 else -1)
+    }
+    val selectedSession = remember(selectedSessionIndex, sessionsForDate, isLoading) {
+        if (isLoading) null else sessionsForDate.getOrNull(selectedSessionIndex)
+    }
 
     // 상위에서 편집 상태와 note 관리
     var isEditing by remember { mutableStateOf(false) }
@@ -146,7 +154,6 @@ fun DailyRecordScreen(
         Modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
-            .windowInsetsPadding(WindowInsets.systemBars),
     ) {
         Column(modifier = modifier) {
             val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일"))
@@ -160,20 +167,26 @@ fun DailyRecordScreen(
                 },
             )
 
-            if (selectedSession == null) {
-                EmptySessionContent()
-            } else {
-                DailyRecordContent(
-                    sessionsForDate = sessionsForDate,
-                    selectedSessionIndex = selectedSessionIndex,
-                    selectedSession = selectedSession,
-                    editedNote = editedNote,
-                    onNoteChange = { editedNote = it },
-                    onSessionSelected = { selectedSessionIndex = it },
-                    onDeleteClick = onDeleteClick,
-                    isEditing = isEditing,
-                    setEditing = { isEditing = it }
-                )
+            when {
+                isLoading -> {
+                    LoadingSessionContent()
+                }
+                selectedSession == null -> {
+                    EmptySessionContent()
+                }
+                else -> {
+                    DailyRecordContent(
+                        sessionsForDate = sessionsForDate,
+                        selectedSessionIndex = selectedSessionIndex,
+                        selectedSession = selectedSession,
+                        editedNote = editedNote,
+                        onNoteChange = { editedNote = it },
+                        onSessionSelected = { selectedSessionIndex = it },
+                        onDeleteClick = onDeleteClick,
+                        isEditing = isEditing,
+                        setEditing = { isEditing = it }
+                    )
+                }
             }
         }
 
@@ -242,6 +255,17 @@ fun DailyRecordContent(
             isEditMode = isEditing,
             setEditing = setEditing
         )
+    }
+}
+
+@Composable
+fun LoadingSessionContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CustomProgressIndicator()
     }
 }
 
@@ -319,6 +343,24 @@ fun DailyRecordScreenWithSessionsPreview() {
         DailyRecordScreen(
             selectedDate = selectedDate,
             sessionsForDate = mockSessions,
+            isLoading = false,
+            onNavigateBack = {},
+            onUpdateNote = { _, _ -> },
+            onDeleteClick = {}
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun DailyRecordScreenLoadingPreview() {
+    WalkItTheme {
+        val selectedDate = LocalDate.of(2024, 12, 5)
+
+        DailyRecordScreen(
+            selectedDate = selectedDate,
+            sessionsForDate = emptyList(),
+            isLoading = true,
             onNavigateBack = {},
             onUpdateNote = { _, _ -> },
             onDeleteClick = {}
@@ -335,6 +377,7 @@ fun DailyRecordScreenEmptyPreview() {
         DailyRecordScreen(
             selectedDate = selectedDate,
             sessionsForDate = emptyList(),
+            isLoading = false,
             onNavigateBack = {},
             onUpdateNote = { _, _ -> },
             onDeleteClick = {}

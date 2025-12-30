@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.MainScope
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 
 /**
@@ -20,6 +23,7 @@ fun MyPageRoute(
     onNavigateGoalManagement: () -> Unit = {},
     onNavigateNotificationSetting: () -> Unit = {},
     onNavigateMission: () -> Unit = {},
+    onNavigateCustomTest: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
 ) {
@@ -32,11 +36,17 @@ fun MyPageRoute(
         onNavigateGoalManagement = onNavigateGoalManagement,
         onNavigateNotificationSetting = onNavigateNotificationSetting,
         onNavigateBack = onNavigateBack,
+        onNavigateMission = onNavigateMission,
+        onNavigateCustomTest = onNavigateCustomTest,
         onLogout = {
             loginViewModel.logout()
-            onNavigateToLogin()
+            // 로그아웃 처리 후 약간의 딜레이를 두고 로그인 화면으로 이동
+            // (상태 초기화가 완료될 시간을 줌)
+            MainScope().launch {
+                delay(100) // 100ms 딜레이
+                onNavigateToLogin()
+            }
         },
-        onNavigateMission = onNavigateMission,
         onWithdraw = {
             // TODO: 탈퇴 기능 구현
         },

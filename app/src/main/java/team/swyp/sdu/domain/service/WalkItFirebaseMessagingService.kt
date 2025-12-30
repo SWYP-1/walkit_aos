@@ -1,5 +1,6 @@
 package team.swyp.sdu.domain.service
 
+import android.app.ActivityManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -7,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -16,6 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import team.swyp.sdu.MainActivity
 import team.swyp.sdu.R
+import team.swyp.sdu.domain.repository.FriendRepository
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -27,12 +30,15 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var fcmTokenManager: FcmTokenManager
 
+    @Inject
+    lateinit var friendRepository: FriendRepository
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         private const val CHANNEL_ID = "walkit_notification_channel"
         private const val CHANNEL_NAME = "알림"
-        private const val NOTIFICATION_ID = 1
+        private var notificationIdCounter = 1000 // 동적 ID 시작값
     }
 
     override fun onCreate() {
@@ -54,25 +60,65 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
 
     /**
      * FCM 메시지 수신 시 호출
+     * - notification 메시지: 시스템에서 자동으로 알림 표시 (백그라운드/종료 시)
+     * - data 메시지: 앱에서 직접 알림 처리 (모든 상태)
+     * - notification + data 혼합: 포그라운드에서 onMessageReceived 처리
      */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Timber.d("FCM 메시지 수신: ${remoteMessage.messageId}")
 
-        // 알림 표시
+        // 상세 로깅으로 디버깅
+        Timber.d("=== FCM 메시지 수신 시작 ===")
+        Timber.d("메시지 ID: ${remoteMessage.messageId}")
+        Timber.d("발신자: ${remoteMessage.from}")
+        Timber.d("notification 존재: ${remoteMessage.notification != null}")
+        Timber.d("data 존재: ${remoteMessage.data.isNotEmpty()}")
+        Timber.d("TTL: ${remoteMessage.ttl}")
+        Timber.d("전송 시간: ${remoteMessage.sentTime}")
+
+
+        if (remoteMessage.notification != null) {
+            Timber.d("Notification 제목: ${remoteMessage.notification?.title}")
+            Timber.d("Notification 본문: ${remoteMessage.notification?.body}")
+        }
+
+        if (remoteMessage.data.isNotEmpty()) {
+            Timber.d("Data 내용: ${remoteMessage.data}")
+        }
+
+        Timber.d("=== FCM 메시지 수신 끝 ===")
+
+        // 포그라운드 상태 확인
+        val isForeground = isAppInForeground()
+        Timber.d("현재 앱 상태: ${if (isForeground) "FOREGROUND" else "BACKGROUND"}")
+
+        // ✅ 현재 구현: notification이든 data든 모두 처리 가능
+        Timber.d("메시지 처리 시작")
+
+        // 1. notification 필드가 있는 경우 (시스템 알림 또는 혼합 메시지)
         remoteMessage.notification?.let { notification ->
-            showNotification(
+            Timber.d("✅ Notification 메시지 처리: ${notification.title}")
+            showSystemNotification(
                 title = notification.title ?: "알림",
                 body = notification.body ?: "",
-                data = remoteMessage.data,
+                data = remoteMessage.data
             )
+            return
+        }
+
+        // 2. data-only 메시지인 경우 직접 알림 생성 (서버가 잘못된 형식으로 줘도 처리 가능)
+        if (remoteMessage.data.isNotEmpty()) {
+            Timber.d("✅ Data-only 메시지 처리 (서버가 notification 안 줘도 OK)")
+            showCustomNotification(remoteMessage.data)
+        } else {
+            Timber.w("❌ FCM 메시지에 notification과 data가 모두 없음 - 빈 메시지")
         }
     }
 
     /**
-     * 알림 표시
+     * 시스템 notification 메시지 표시 (notification 필드가 있는 경우)
      */
-    private fun showNotification(
+    private fun showSystemNotification(
         title: String,
         body: String,
         data: Map<String, String>,
@@ -92,17 +138,117 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
+        // 동적 알림 ID 생성 (여러 알림이 동시에 표시되도록)
+        val notificationId = synchronized(this) {
+            notificationIdCounter++
+        }
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground) // TODO: 알림 아이콘으로 변경
             .setContentTitle(title)
             .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX) // 포그라운드에서도 표시되도록 MAX 우선순위
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE) // 메시지 카테고리
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 잠금화면에서도 표시
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true) // 시간 표시
+            .setDefaults(NotificationCompat.DEFAULT_ALL) // 소리, 진동 등 모든 기본값 사용
             .build()
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        // NotificationManagerCompat를 사용하여 알림 표시
+        val notificationManager = NotificationManagerCompat.from(this)
+
+        // 포그라운드 상태 확인
+        val isAppInForeground = isAppInForeground()
+        Timber.d("앱 포그라운드 상태: $isAppInForeground")
+
+        // 알림 권한 확인
+        if (!notificationManager.areNotificationsEnabled()) {
+            Timber.w("알림 권한이 비활성화되어 있어 알림을 표시할 수 없습니다")
+            return
+        }
+
+        // 채널 차단 여부 확인 (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+            if (channel?.importance == NotificationManager.IMPORTANCE_NONE) {
+                Timber.w("알림 채널이 차단되어 있어 알림을 표시할 수 없습니다")
+                return
+            }
+        }
+
+        try {
+            notificationManager.notify(notificationId, notification)
+            Timber.d("알림 표시 완료: id=$notificationId, title=$title, foreground=$isAppInForeground")
+        } catch (e: SecurityException) {
+            Timber.e(e, "알림 표시 중 SecurityException 발생")
+        } catch (e: Exception) {
+            Timber.e(e, "알림 표시 중 예외 발생")
+        }
+    }
+
+    /**
+     * 커스텀 알림 표시 (data-only 메시지용)
+     * data 필드의 type에 따라 알림 내용 결정
+     */
+    private fun showCustomNotification(data: Map<String, String>) {
+        val type = data["type"] ?: "general"
+        val senderName = data["senderName"] ?: "알림"
+        val message = data["message"] ?: ""
+
+        // FRIEND_UPDATED 이벤트 처리 (silent push)
+        if (type == "FRIEND_UPDATED") {
+            Timber.d("친구 상태 변경 이벤트 수신 - 캐시 무효화 및 이벤트 발행")
+            serviceScope.launch {
+                friendRepository.invalidateCache()
+                friendRepository.emitFriendUpdated()
+            }
+            return // silent push는 알림 표시하지 않음
+        }
+
+        val (title, body) = when (type) {
+            "follow" -> {
+                "팔로우 알림" to "${senderName}님이 팔로우했습니다"
+            }
+            "like" -> {
+                "좋아요 알림" to "${senderName}님이 좋아요를 눌렀습니다"
+            }
+            "comment" -> {
+                "댓글 알림" to "${senderName}님이 댓글을 남겼습니다"
+            }
+            "mission" -> {
+                "미션 알림" to "새로운 미션이 도착했습니다"
+            }
+            "goal" -> {
+                "목표 알림" to "걸음 목표 달성 축하합니다!"
+            }
+            else -> {
+                "알림" to (message.takeIf { it.isNotEmpty() } ?: "새로운 알림이 있습니다")
+            }
+        }
+
+        Timber.d("커스텀 알림 생성: type=$type, title=$title, body=$body")
+
+        showSystemNotification(title, body, data)
+    }
+
+    /**
+     * 앱이 포그라운드에 있는지 확인
+     */
+    private fun isAppInForeground(): Boolean {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val appProcesses = activityManager.runningAppProcesses ?: return false
+
+        val packageName = packageName
+        for (appProcess in appProcesses) {
+            if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                && appProcess.processName == packageName) {
+                return true
+            }
+        }
+        return false
     }
 
     /**

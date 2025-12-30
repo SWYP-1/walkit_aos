@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,7 +84,14 @@ private fun MissionSectionHeader(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-        Row(modifier = Modifier.clickable(onClick = onClickMissionMore)) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))  // 1️⃣ 클릭 영역 자르기
+                .clickable(onClick = onClickMissionMore)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        )
+        {
             Text(
                 text = "더보기",
                 // body M/medium

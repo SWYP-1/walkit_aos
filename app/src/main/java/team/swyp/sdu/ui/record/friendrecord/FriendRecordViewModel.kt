@@ -87,7 +87,7 @@ class FriendRecordViewModel @Inject constructor(
 
             when (result) {
                 is Result.Success -> {
-                    val record = FollowerWalkRecordMapper.toDomain(result.data)
+                    val record = result.data
 
                     // 4️⃣ 캐시에 저장 (성공 시)
                     friendStateCache[nickname] = FriendRecordState(record)

@@ -5,8 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,14 +36,27 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
 @Composable
-fun CharacterGradeInfoDialog(modifier: Modifier = Modifier, onDismiss: () -> Unit = {}) {
+fun CharacterGradeInfoDialog(
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit = {}
+) {
     val maxHeight = 140.dp
     Dialog(
         onDismissRequest = onDismiss
     ) {
-
-        Column {
-            Row(modifier = modifier.height(maxHeight)) {
+        Column(
+            modifier = Modifier
+                .background(
+                    color = SemanticColor.backgroundWhitePrimary,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(vertical = 28.dp, horizontal = 16.dp)
+        ) {
+            Row(
+                modifier = modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
                     text = "캐릭터 레벨",
 
@@ -54,7 +69,7 @@ fun CharacterGradeInfoDialog(modifier: Modifier = Modifier, onDismiss: () -> Uni
 
                 IconButton(
                     modifier = modifier.size(24.dp),
-                    onClick = {}
+                    onClick = onDismiss
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_action_clear),
@@ -117,10 +132,11 @@ private fun CharacterGradeDescription(
         Grade.TREE -> painterResource(R.drawable.ic_tree)
     }
 
-    Row(modifier = modifier) {
+    Row(modifier = modifier.height(IntrinsicSize.Min)) {
         Column(
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxHeight()
         ) {
             Image(
                 painter = painterResource,
@@ -152,6 +168,8 @@ private fun CharacterGradeDescription(
         // LazyColumn 대신 Column + height 분배
         Column(
             modifier = Modifier
+                .background(SemanticColor.backgroundWhiteSecondary)
+                .padding(vertical = 16.dp, horizontal = 12.dp)
                 .weight(1f)
         ) {
             desList.forEachIndexed { index, des ->
@@ -207,9 +225,9 @@ fun CharacterDesListItem(modifier: Modifier = Modifier) {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
-fun CharacterGradeInfoDialogPreview(modifier: Modifier = Modifier) {
+fun CharacterGradeInfoDialogPreview() {
     WalkItTheme {
         CharacterGradeInfoDialog()
     }

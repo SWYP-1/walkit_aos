@@ -21,7 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import team.swyp.sdu.ui.components.formatStepCount
@@ -181,7 +184,7 @@ private fun RowScope.TimeSummarySection(
 }
 
 /**
- * 시간 값 섹션 (값 + 단위만 표시)
+ * 시간 값 섹션 (값 + 단위만 표시 - AnnotatedString 사용)
  * 누적 산책 시간 영역 내에서 시간/분 각각 50%를 차지
  */
 @Composable
@@ -189,29 +192,24 @@ private fun RowScope.TimeValueSection(
     value: String,
     unit: String,
 ) {
-    Row(
-        modifier = Modifier.weight(1f),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // 값
-        Text(
-            text = value,
-            style = MaterialTheme.walkItTypography.headingS.copy(
-                fontWeight = FontWeight.Medium
-            ),
-            color = SemanticColor.textBorderPrimary // color/text-border/primary
-        )
-        Spacer(Modifier.width(4.dp))
-        // 단위
-        Text(
-            text = unit,
-            style = MaterialTheme.walkItTypography.bodyM.copy(
-                fontWeight = FontWeight.Normal
-            ),
-            color = SemanticColor.textBorderPrimary // color/text-border/primary
-        )
-    }
+    Text(
+        text = buildAnnotatedString {
+            append(value)
+            withStyle(
+                SpanStyle(
+                    fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    color = SemanticColor.textBorderPrimary
+                )
+            ) {
+                append(" $unit")
+            }
+        },
+        style = MaterialTheme.walkItTypography.headingS.copy(
+            fontWeight = FontWeight.Medium
+        ),
+        modifier = Modifier.weight(1f)
+    )
 }
 
 

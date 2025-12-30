@@ -25,6 +25,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun UserInfoDisplaySection(
     modifier: Modifier = Modifier,
+    provider: String? = null,
 ) {
     val tertiaryText = SemanticColor.textBorderTertiary
 
@@ -32,38 +33,6 @@ fun UserInfoDisplaySection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // 유저 ID 표시 필드 (비활성화)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "유저 ID",
-                style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = Grey7,
-            )
-            // TODO: 실제 유저 ID 데이터를 표시하도록 수정 필요
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SemanticColor.backgroundWhiteSecondary, RoundedCornerShape(8.dp)),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = tertiaryText,
-                    disabledBorderColor = Color.Transparent,
-                ),
-                shape = RoundedCornerShape(8.dp),
-                textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Bold,
-                ),
-                singleLine = true,
-            )
-        }
-
         // 연동된 계정 표시 필드 (비활성화)
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -78,7 +47,7 @@ fun UserInfoDisplaySection(
             )
 
             OutlinedTextField(
-                value = "카카오",
+                value = provider ?: "알 수 없음",
                 onValueChange = {},
                 modifier = Modifier
                     .fillMaxWidth()

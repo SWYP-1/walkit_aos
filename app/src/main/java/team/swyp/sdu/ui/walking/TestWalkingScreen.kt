@@ -184,25 +184,6 @@ fun TestWalkingScreen(
                 )
             }
 
-            is WalkingUiState.SavingSession -> {
-                // 세션 저장 중 로딩 화면
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-                        Text(
-                            text = "산책 기록을 저장하는 중...",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
-
             is WalkingUiState.SessionSaved -> {
                 // 세션 저장 완료 후 자동으로 다음 화면으로 이동
                 LaunchedEffect(Unit) {
@@ -210,14 +191,7 @@ fun TestWalkingScreen(
                 }
             }
 
-            is WalkingUiState.Error -> {
-                ErrorView(
-                    message = state.message,
-                    onRetryClick = {
-
-                    },
-                )
-            }
+            WalkingUiState.Loading -> TODO()
         }
     }
 }

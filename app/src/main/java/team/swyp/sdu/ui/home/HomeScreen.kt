@@ -26,13 +26,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import team.swyp.sdu.presentation.viewmodel.UserViewModel
 import team.swyp.sdu.R
 import team.swyp.sdu.core.DataState
+import team.swyp.sdu.core.Result
 import team.swyp.sdu.domain.model.Goal
+import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.ui.home.components.WeeklyRecordCard
 import team.swyp.sdu.ui.home.components.HomeHeader
 import team.swyp.sdu.ui.home.components.DominantEmotionCard
 import team.swyp.sdu.ui.home.components.EmotionIcon
+import team.swyp.sdu.ui.home.components.HomeEmptySession
 import team.swyp.sdu.ui.home.components.ProfileSection
 import team.swyp.sdu.ui.home.components.MissionSection
 import team.swyp.sdu.ui.mypage.goal.model.GoalState
@@ -51,11 +55,22 @@ fun HomeRoute(
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
+    val userViewModel: UserViewModel = hiltViewModel()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val goalState by viewModel.goalUiState.collectAsStateWithLifecycle()
     val profileUiState by viewModel.profileUiState.collectAsStateWithLifecycle()
     val missionUiState by viewModel.missionUiState.collectAsStateWithLifecycle()
     val walkingSessionDataState by viewModel.walkingSessionDataState.collectAsStateWithLifecycle()
+    val userState by userViewModel.userState.collectAsStateWithLifecycle()
+
+    // 사용자 프로필 이미지 URL 추출
+    val profileImageUrl = when (userState) {
+        is Result.Success -> {
+            (userState as Result.Success<User>).data.imageName
+        }
+        else -> null
+    }
 
     HomeScreen(
         uiState = uiState,
@@ -63,6 +78,7 @@ fun HomeRoute(
         profileUiState = profileUiState,
         missionUiState = missionUiState,
         walkingSessionDataState = walkingSessionDataState,
+        profileImageUrl = profileImageUrl,
         onClickWalk = onClickWalk,
         onClickAlarm = onClickAlarm,
         onClickMission = onClickMission,
@@ -81,13 +97,12 @@ private fun HomeScreenContent(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
+    profileImageUrl: String? = null,
     onClickMissionMore: () -> Unit,
     onClickAlarm: () -> Unit,
     onClickMission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val profileImageUrl = "" // TODO: 사용자 프로필 이미지 URL 가져오기
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -146,6 +161,7 @@ fun HomeScreen(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
+    profileImageUrl: String? = null,
     onClickWalk: () -> Unit = {},
     onClickAlarm: () -> Unit = {},
     onClickMission: () -> Unit = {},
@@ -157,11 +173,12 @@ fun HomeScreen(
         goalState = goalState,
         profileUiState = profileUiState,
         missionUiState = missionUiState,
+        walkingSessionDataState = walkingSessionDataState,
+        profileImageUrl = profileImageUrl,
         onClickAlarm = onClickAlarm,
         onClickMission = onClickMission,
         onClickMissionMore = onClickMissionMore,
         modifier = modifier,
-        walkingSessionDataState = walkingSessionDataState
     )
 }
 
@@ -182,7 +199,6 @@ private fun HomeBottomSection(walkingSessionDataState: DataState<WalkingSessionD
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = "나의 산책 기록",
@@ -193,44 +209,43 @@ private fun HomeBottomSection(walkingSessionDataState: DataState<WalkingSessionD
             ),
             color = SemanticColor.textBorderPrimary
         )
-
-        Row() {
-            Text(
-                text = "더보기",
-                // body M/medium
-                style = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderSecondary,
-            )
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_forward),
-                contentDescription = "더보기", tint = SemanticColor.iconGrey
-            )
-        }
     }
     Spacer(Modifier.height(12.dp))
 
     when (walkingSessionDataState) {
         is DataState.Success -> {
             val records = walkingSessionDataState.data.sessionsThisWeek
-            Column {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    records.forEach { session ->
-                        WeeklyRecordCard(
-                            session = session,
-                            modifier = Modifier.width(260.dp),
-                        )
-                    }
-                }
 
+            Column {
+                if(records.isNotEmpty()){
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        records.forEach { session ->
+                            WeeklyRecordCard(
+                                session = session,
+                                modifier = Modifier.width(260.dp),
+                            )
+                        }
+                    }
+                }else {
+                    HomeEmptySession(onClick = onClickMission)
+                }
                 Spacer(Modifier.height(32.dp))
+
+                Text(
+                    text = "나의 감정 기록",
+                    // body XL/semibold
+                    style = MaterialTheme.walkItTypography.bodyXL.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = SemanticColor.textBorderPrimary
+                )
+                Spacer(Modifier.height(12.dp))
 
                 // 이번주 주요 감정 카드
                 val dominantEmotion = walkingSessionDataState.data.dominantEmotion

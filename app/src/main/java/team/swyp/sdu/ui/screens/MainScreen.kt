@@ -9,13 +9,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import team.swyp.sdu.ui.components.BottomBarItem
+import team.swyp.sdu.ui.components.CustomBottomNavigation
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
@@ -32,11 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
+import team.swyp.sdu.R
 import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.ui.home.HomeRoute
 import team.swyp.sdu.ui.home.HomeScreen
@@ -109,73 +116,92 @@ fun MainScreen(
             selectedTabIndex
         }
 
+    // Route 기반 selected route 결정
+    val selectedRoute = when (currentTabIndex) {
+        0 -> "home"
+        1 -> "record"
+        2 -> "mypage"
+        else -> "home"
+    }
+
+    // Bottom Navigation 아이템 정의
+    val bottomNavItems = listOf(
+        BottomBarItem(
+            route = "record",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_record),
+                    contentDescription = "산책 기록"
+                )
+            },
+            label = "산책 기록"
+        ),
+        BottomBarItem(
+            route = "home",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_home),
+                    contentDescription = "홈"
+                )
+            },
+            label = "홈"
+        ),
+
+        BottomBarItem(
+            route = "mypage",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_mypage),
+                    contentDescription = "마이 페이지"
+                )
+            },
+            label = "마이 페이지"
+        )
+    )
+
     Scaffold(
         modifier = modifier
             .fillMaxSize(),
-        contentWindowInsets = WindowInsets.systemBars,
+        contentWindowInsets = WindowInsets.systemBars.exclude(WindowInsets.navigationBars), // Status bar만 고려, 시스템 네비게이션 바는 제외
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (currentTabIndex == 0) {
                 // 홈 화면에서만 FloatingActionButton 표시
                 WalkingFloatingActionButton(
                     onClick = {
-                        // 위치 권한 확인 후 LocationService 시작
+                        // 위치 권한 확인 후 LocationService 시작 및 WalkingScreen 이동
                         if (locationViewModel.hasLocationPermission()) {
                             val intent = android.content.Intent(context, team.swyp.sdu.domain.service.LocationTrackingService::class.java).apply {
                                 action = team.swyp.sdu.domain.service.LocationTrackingService.ACTION_START_TRACKING
                             }
                             context.startService(intent)
-                            // 네비게이션은 MainActivity의 LaunchedEffect에서 자동 처리
+                            // 버그로 인해 서비스가 이미 실행중이더라도 강제로 WalkingScreen으로 이동
+                            navController.navigate(Screen.Walking.route) {
+                                popUpTo(Screen.Main.route) { saveState = true }
+                                launchSingleTop = true
+                            }
                         } else {
                             locationViewModel.checkShouldShowDialog()
                         }
                     },
-//                    modifier = Modifier.padding(bottom = 40.dp), // NavigationBar 위에 표시
+                    modifier = Modifier.padding(bottom = 64.dp), // Custom Bottom Navigation 위에 표시 (시스템 네비게이션 바는 이미 고려됨)
                 )
             }
         },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = currentTabIndex == 0,
-                    onClick = {
-                        selectedTabIndex = 0
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = "홈",
-                        )
-                    },
-                    label = { Text("홈") },
-                )
-                NavigationBarItem(
-                    selected = currentTabIndex == 1,
-                    onClick = {
-                        selectedTabIndex = 1
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = "산책 기록",
-                        )
-                    },
-                    label = { Text("산책 기록") },
-                )
-                NavigationBarItem(
-                    selected = currentTabIndex == 2,
-                    onClick = {
-                        selectedTabIndex = 2
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "마이 페이지",
-                        )
-                    },
-                    label = { Text("마이 페이지") },
-                )
-            }
+            CustomBottomNavigation(
+                items = bottomNavItems,
+                selectedRoute = selectedRoute,
+                onItemClick = { route ->
+                    val newIndex = when (route) {
+                        "home" -> 0
+                        "record" -> 1
+                        "mypage" -> 2
+                        else -> 0
+                    }
+                    selectedTabIndex = newIndex
+                }
+            )
         },
     ) { paddingValues ->
         Box(
@@ -233,6 +259,9 @@ fun MainScreen(
                         },
                         onNavigateMission = {
                             navController.navigate(Screen.Mission.route)
+                        },
+                        onNavigateCustomTest = {
+                            navController.navigate(Screen.CustomTest.route)
                         }
                     )
                 }

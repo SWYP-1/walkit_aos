@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import team.swyp.sdu.ui.theme.Green4
@@ -49,8 +51,9 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun CtaButton(
     text: String,
-    textColor: Color = White,
-    buttonColor: Color = Green4,
+    textColor: Color = SemanticColor.textBorderPrimaryInverse,
+    buttonColor: Color = SemanticColor.buttonPrimaryDefault,
+    buttonHeight : Dp = 47.dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -61,12 +64,14 @@ fun CtaButton(
 
     // Figma 디자인 색상
     val disabledColor = Color(0xFFE0E0E0) // 비활성화 색상 (임시)
+    val borderWidth = if (buttonColor == SemanticColor.buttonPrimaryDefault) 1.dp else 0.dp
 
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(51.dp),
+            .border(width = borderWidth, color = SemanticColor.buttonPrimaryDefault, shape = RoundedCornerShape(8.dp))
+            .height(buttonHeight),
         enabled = enabled,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(8.dp),
@@ -81,7 +86,7 @@ fun CtaButton(
             vertical = 10.dp,
         ),
         elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = if (isPressed) 0.dp else 2.dp,
+            defaultElevation = if (isPressed) 0.dp else 0.dp,
             pressedElevation = 0.dp,
             disabledElevation = 0.dp,
         ),

@@ -29,7 +29,7 @@ interface WalkApi {
     suspend fun saveWalk(
         @retrofit2.http.Part("data") data: RequestBody,
         @retrofit2.http.Part image: MultipartBody.Part?
-    ): Response<WalkSaveResponse>
+    ): WalkSaveResponse
 
     /**
      * 산책 좋아요 누르기

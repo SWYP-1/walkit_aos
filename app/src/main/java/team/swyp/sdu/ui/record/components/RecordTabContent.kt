@@ -16,6 +16,7 @@ fun RecordTabContent(
     weekStats: WalkAggregate,
     monthSessions: List<WalkingSession>,
     weekSessions: List<WalkingSession>,
+    monthMissionsCompleted: List<String>,
     currentDate: LocalDate,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
@@ -26,6 +27,7 @@ fun RecordTabContent(
         RecordTabType.Month -> MonthSection(
             stats = monthStats,
             sessions = monthSessions,
+            missionsCompleted = monthMissionsCompleted,
             onNavigateToDailyRecord = onNavigateToDailyRecord,
             onMonthChanged = onMonthChanged,
         )

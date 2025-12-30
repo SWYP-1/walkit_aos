@@ -15,18 +15,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
-import team.swyp.sdu.domain.model.Friend
 import team.swyp.sdu.domain.model.User
-import team.swyp.sdu.domain.repository.FriendRepository
 import team.swyp.sdu.domain.repository.UserRepository
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.onFailure
 
 @HiltViewModel
 class RecordViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val friendRepository: FriendRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecordUiState>(RecordUiState.Loading)
@@ -45,39 +41,20 @@ class RecordViewModel @Inject constructor(
     private fun loadInitialData() = viewModelScope.launch {
         _uiState.value = RecordUiState.Loading
 
-        supervisorScope {
-            val userDeferred = async { userRepository.getUser() }
-            val friendsDeferred = async { friendRepository.getFriends() }
+        val userResult = userRepository.getUser()
 
-            val userResult = userDeferred.await()
-            val friendsResult = friendsDeferred.await()
-
-            var user: User? = null
-            var friends: List<Friend> = emptyList()
-
-            userResult
-                .onSuccess { user = it }
-                .onError { _, _ ->
-                    _uiState.value = RecordUiState.Error(
-                        message = "사용자 정보를 불러올 수 없습니다."
-                    )
-                }
-
-            // 유저 실패면 바로 종료
-            if (user == null) return@supervisorScope
-
-            friendsResult
-                .onSuccess { friends = it }
-                .onError { _, _ ->
-                    Timber.w("친구 목록 로드 실패 - 빈 목록으로 처리")
-                }
-
-            _uiState.value = RecordUiState.Success(
-                user = user,
-                friends = friends,
-                selectedFriendNickname = null,
-            )
-        }
+        userResult
+            .onSuccess { user ->
+                _uiState.value = RecordUiState.Success(
+                    user = user,
+                    selectedFriendNickname = null,
+                )
+            }
+            .onError { _, _ ->
+                _uiState.value = RecordUiState.Error(
+                    message = "사용자 정보를 불러올 수 없습니다."
+                )
+            }
     }
 
     /**
@@ -104,8 +81,10 @@ class RecordViewModel @Inject constructor(
         }
     }
 
+
     /**
      * 친구 차단 (이미 친구인 유저)
+     * Note: 친구 목록 갱신은 FriendBarViewModel에서 이벤트 기반으로 자동 처리됨
      */
     fun blockSelectedFriend(nickname : String) {
         val state = _uiState.value
@@ -118,12 +97,12 @@ class RecordViewModel @Inject constructor(
                         RecordUiEvent.ShowToast("차단되었습니다.")
                     )
 
-                    // 차단 성공 시 목록에서 제거
+                    // 차단 성공 시 친구 목록 이벤트 발행 (FriendBarViewModel에서 자동 갱신)
+                    friendRepository.invalidateCache()
+                    friendRepository.emitFriendUpdated()
+
                     _uiState.update {
-                        state.copy(
-                            friends = state.friends.filterNot { it.nickname == nickname },
-                            selectedFriendNickname = null,
-                        )
+                        state.copy(selectedFriendNickname = null)
                     }
                 }
                 .onError { throwable, message ->
@@ -143,7 +122,6 @@ class RecordViewModel @Inject constructor(
 
         data class Success(
             val user: User?,
-            val friends: List<Friend>,
             val selectedFriendNickname: String?,
         ) : RecordUiState()
 

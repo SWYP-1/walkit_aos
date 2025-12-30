@@ -41,22 +41,30 @@ import team.swyp.sdu.ui.theme.walkItTypography
  *
  * @param title 배너 제목 (필수)
  * @param description 배너 설명 (선택)
+ * @param backgroundColor 배경 색상 (기본값: BlueTertiary)
+ * @param borderColor 테두리 색상 (기본값: BlueSecondary)
+ * @param iconTint 아이콘 틴트 색상 (기본값: SemanticColor.stateBluePrimary)
+ * @param textColor 텍스트 색상 (기본값: BluePrimary)
  * @param modifier Modifier
  */
 @Composable
 fun InfoBanner(
     title: String,
     description: String? = null,
+    backgroundColor: Color = BlueTertiary,
+    borderColor: Color = BlueSecondary,
+    iconTint: Color = SemanticColor.stateBluePrimary,
+    textColor: Color = BluePrimary,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(BlueTertiary)
+            .background(backgroundColor)
             .border(
                 width = 1.dp,
-                color = BlueSecondary,
+                color = borderColor,
                 shape = RoundedCornerShape(12.dp),
             )
             .padding(
@@ -69,7 +77,7 @@ fun InfoBanner(
         verticalAlignment = Alignment.Top,
     ) {
         // 왼쪽: 정보 아이콘
-        InfoIcon()
+        InfoIcon(iconTint = iconTint)
 
         // 오른쪽: 텍스트 영역
         Column(
@@ -82,7 +90,7 @@ fun InfoBanner(
                 style = MaterialTheme.walkItTypography.bodyS.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
-                color = BluePrimary,
+                color = textColor,
             )
 
             // 설명 (있는 경우)
@@ -90,7 +98,7 @@ fun InfoBanner(
                 Text(
                     text = it,
                     style = MaterialTheme.walkItTypography.captionM,
-                    color = BluePrimary,
+                    color = textColor,
                 )
             }
         }
@@ -101,9 +109,13 @@ fun InfoBanner(
  * 정보 아이콘
  *
  * 파란색 원 배경에 흰색 Info 아이콘이 있는 커스텀 아이콘입니다.
+ *
+ * @param iconTint 아이콘 틴트 색상
+ * @param modifier Modifier
  */
 @Composable
 private fun InfoIcon(
+    iconTint: Color,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -115,7 +127,7 @@ private fun InfoIcon(
         Icon(
             painter = painterResource(R.drawable.ic_info_exclamation),
             contentDescription = null,
-            tint = SemanticColor.stateBluePrimary,
+            tint = iconTint,
         )
     }
 }

@@ -25,6 +25,7 @@ import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.ui.components.*
 import team.swyp.sdu.ui.dressroom.component.CartDialog
 import team.swyp.sdu.ui.dressroom.component.CharacterAndBackground
+import team.swyp.sdu.ui.dressroom.component.CharacterGradeInfoDialog
 import team.swyp.sdu.ui.dressroom.component.ItemCard
 import team.swyp.sdu.ui.dressroom.component.ItemHeader
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -45,6 +46,9 @@ fun DressingRoomRoute(
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
     val isWearLoading by viewModel.isWearLoading.collectAsStateWithLifecycle()
     val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
+    val showOwnedOnly by viewModel.showOwnedOnly.collectAsStateWithLifecycle()
+    
+    val showCartDialog by viewModel.showCartDialog.collectAsStateWithLifecycle()
 
     DressingRoomScreen(
         modifier = modifier,
@@ -52,9 +56,12 @@ fun DressingRoomRoute(
         cartItems = cartItems,
         lottieImageProcessor = viewModel.lottieImageProcessor, // 실제 주입
         isWearLoading = isWearLoading,
+        showOwnedOnly = showOwnedOnly,
+        showCartDialog = showCartDialog,
         onBackClick = onNavigateBack,
         onRefreshClick = viewModel::loadDressingRoom,
-        onQuestionClick = {},
+        onQuestionClick = { /* 다이얼로그는 Screen에서 관리 */ },
+        onToggleOwnedOnly = viewModel::toggleShowOwnedOnly,
         onItemClick = { itemId ->
             if (!isWearLoading) { // 로딩 중 클릭 방지
                 viewModel.selectItem(itemId)
@@ -62,6 +69,7 @@ fun DressingRoomRoute(
         },
         onPurChaseItem = { viewModel.purchaseItems() },
         onSaveItem = { viewModel.saveItems() },
+        onDismissCartDialog = viewModel::dismissCartDialog,
     )
 }
 
@@ -75,15 +83,19 @@ fun DressingRoomScreen(
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?, // ⭐ nullable
     isWearLoading: Boolean = false,
+    showOwnedOnly: Boolean = false,
+    showCartDialog: Boolean = false,
     wornItemsByPosition: Map<EquipSlot, Int> = emptyMap(),
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
+    onToggleOwnedOnly: () -> Unit,
     onItemClick: (Int) -> Unit,
     onPurChaseItem: () -> Unit,
     onSaveItem: () -> Unit,
+    onDismissCartDialog: () -> Unit = {},
 ) {
-    val showCartDialog = remember { mutableStateOf(false) }
+    val showGradeInfoDialog = remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -99,25 +111,29 @@ fun DressingRoomScreen(
                     uiState = uiState,
                     cartItems = cartItems,
                     lottieImageProcessor = lottieImageProcessor,
+                    showOwnedOnly = showOwnedOnly,
                     wornItemsByPosition = wornItemsByPosition,
                     onBackClick = onBackClick,
                     onRefreshClick = onRefreshClick,
-                    onQuestionClick = onQuestionClick,
+                    onQuestionClick = { showGradeInfoDialog.value = true },
+                    onToggleOwnedOnly = onToggleOwnedOnly,
                     onItemClick = onItemClick,
                     onSaveItem = onSaveItem,
-                    onPurChaseItem = { showCartDialog.value = true }
+                    onPurChaseItem = { /* ViewModel에서 처리 */ },
+                    showGradeInfoDialog = showGradeInfoDialog,
+                    processedLottieJson = uiState.processedLottieJson
                 )
             }
 
-            if (showCartDialog.value) {
-                BottomDialog(onDismissRequest = { showCartDialog.value = false }) {
+            if (showCartDialog) {
+                BottomDialog(onDismissRequest = onDismissCartDialog) {
                     CartDialog(
                         cartItems = cartItems.toList(),
                         myPoints = (uiState as? DressingRoomUiState.Success)?.myPoint ?: 0,
-                        onDismiss = { showCartDialog.value = false },
+                        onDismiss = onDismissCartDialog,
                         onPurchase = { itemsToPurchase ->
                             onPurChaseItem()
-                            showCartDialog.value = false
+                            onDismissCartDialog()
                         }
                     )
                 }
@@ -146,16 +162,19 @@ private fun SuccessContent(
     uiState: DressingRoomUiState.Success,
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?,
+    showOwnedOnly: Boolean,
     wornItemsByPosition: Map<EquipSlot, Int>,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
+    onToggleOwnedOnly: () -> Unit,
     onItemClick: (Int) -> Unit,
     onSaveItem: () -> Unit,
     onPurChaseItem: () -> Unit,
+    showGradeInfoDialog: MutableState<Boolean>,
+    processedLottieJson: String? = null,
 ) {
-    // 체크박스 상태를 remember로 선언
-    var check by remember { mutableStateOf(false) }
+    // 체크박스 상태는 ViewModel에서 관리됨
     val currentSeason = DateUtils.getCurrentSeason()
     val seasionBackgroundColor = when (currentSeason) {
         Season.SPRING -> SemanticColor.stateGreenPrimary
@@ -180,17 +199,20 @@ private fun SuccessContent(
                     currentSeason = currentSeason,
                     character = character,
                     points = uiState.myPoint,
+                    wornItemsByPosition = wornItemsByPosition,
+                    cosmeticItems = uiState.items,
                     lottieImageProcessor = lottieImageProcessor,
                     onBackClick = onBackClick,
                     onRefreshClick = onRefreshClick,
-                    onQuestionClick = onQuestionClick
+                    onQuestionClick = onQuestionClick,
+                    processedLottieJson = processedLottieJson
                 )
             }
 
             // 체크박스 토글 가능한 헤더
             ItemHeader(
-                checked = check,
-                onCheckedChange = { checked -> check = checked }
+                checked = showOwnedOnly,
+                onCheckedChange = { onToggleOwnedOnly() }
             )
 
             if (uiState.items.isEmpty()) {
@@ -242,6 +264,14 @@ private fun SuccessContent(
                 )
             }
         }
+
+        // 캐릭터 등급 정보 다이얼로그
+        if (showGradeInfoDialog.value) {
+            CharacterGradeInfoDialog(
+                onDismiss = { showGradeInfoDialog.value = false }
+            )
+        }
+
     }
 }
 
@@ -288,7 +318,17 @@ private fun EmptyContent() { /* 동일 */
 }
 
 @Composable
-private fun ErrorContent(message: String) { /* 동일 */
+private fun ErrorContent(message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.material3.Text(
+            text = "아이템 목록을 불러오는데 실패했습니다",
+            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable
@@ -349,6 +389,8 @@ fun PreviewDressingRoomFullSample() {
             ),
             cartItems = linkedSetOf(items[1], items[2]),
             lottieImageProcessor = null, // ⭐ Preview 핵심
+            showOwnedOnly = false,
+            showCartDialog = false,
             wornItemsByPosition = mapOf(
                 // 착용 상태 예시
                 EquipSlot.HEAD to 1, // 첫 번째 HEAD 아이템 착용
@@ -356,10 +398,12 @@ fun PreviewDressingRoomFullSample() {
             ),
             onBackClick = {},
             onRefreshClick = {},
-            onQuestionClick = {},
+            onQuestionClick = { /* 다이얼로그는 Screen에서 관리 */ },
+            onToggleOwnedOnly = {},
             onItemClick = {},
             onSaveItem = {},
             onPurChaseItem = {},
+            onDismissCartDialog = {},
         )
     }
 }

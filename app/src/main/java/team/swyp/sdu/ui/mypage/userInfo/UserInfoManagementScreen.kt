@@ -116,7 +116,8 @@ fun UserInfoManagementScreen(
     // ViewModel 상태 수집
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val userInput by viewModel.userInput.collectAsStateWithLifecycle()
-    
+    val provider by viewModel.provider.collectAsStateWithLifecycle()
+
     // GoalRepository에서 Goal 가져오기 (ViewModel을 통해)
     val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
     // 로컬 상태
@@ -467,7 +468,7 @@ fun UserInfoManagementScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // 사용자 정보 표시 섹션
-        UserInfoDisplaySection()
+        UserInfoDisplaySection(provider = provider)
 
         Spacer(modifier = Modifier.weight(1f))
 

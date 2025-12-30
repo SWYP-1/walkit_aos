@@ -494,7 +494,6 @@ constructor(
                 Timber.d("온보딩 데이터 저장: $onboardingData")
 
                 // 완료 상태 저장 및 모든 온보딩 데이터 초기화
-                // 중첩된 updateData 호출을 방지하기 위해 하나의 메서드에서 처리
                 localCompleted.value = true
                 onboardingDataStore.completeOnboarding()
                 

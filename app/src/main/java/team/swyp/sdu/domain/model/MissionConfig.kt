@@ -16,6 +16,14 @@ sealed class MissionConfig {
     ) : MissionConfig()
 
     /**
+     * 챌린지 출석 설정
+     */
+    @Serializable
+    data class ChallengeAttendanceConfig(
+        val requiredAttendanceDays: Int,
+    ) : MissionConfig()
+
+    /**
      * 사진 색상 설정
      */
     @Serializable

@@ -23,17 +23,19 @@ import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.repository.WalkingSessionRepository
-import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.domain.repository.MissionRepository
 import team.swyp.sdu.domain.repository.HomeRepository
+import team.swyp.sdu.domain.repository.UserRepository
+import team.swyp.sdu.worker.SessionSyncWorker
 import team.swyp.sdu.domain.service.LocationManager
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.domain.model.WalkRecord
 import team.swyp.sdu.domain.model.Grade
+import team.swyp.sdu.data.mapper.MissionCardStateMapper
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.utils.CalenderUtils.weekRange
 import team.swyp.sdu.utils.LocationConstants
@@ -73,12 +75,21 @@ sealed interface ProfileUiState {
 sealed interface MissionUiState {
     data object Loading : MissionUiState
     data class Success(
-        val missions: List<WeeklyMission>
+        val missions: List<WeeklyMission>,
+        val missionCardStates: List<MissionWithState>
     ) : MissionUiState
 
     data object Empty : MissionUiState
     data class Error(val message: String) : MissionUiState
 }
+
+/**
+ * 미션과 그 상태를 함께 담는 데이터 클래스
+ */
+data class MissionWithState(
+    val mission: WeeklyMission,
+    val cardState: team.swyp.sdu.ui.mission.model.MissionCardState
+)
 
 // Walking Session 데이터 모델 (API 독립적)
 data class WalkingSessionData(
@@ -91,12 +102,13 @@ data class WalkingSessionData(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
-    private val userRepository: UserRepository,
     private val characterRepository: CharacterRepository,
     private val goalRepository: GoalRepository,
     private val missionRepository: MissionRepository,
     private val homeRepository: HomeRepository,
+    private val userRepository: UserRepository,
     private val locationManager: LocationManager,
+    private val missionCardStateMapper: MissionCardStateMapper,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -213,6 +225,12 @@ class HomeViewModel @Inject constructor(
                             }
                     }
 
+                    // ✅ Home API 호출 후 User 정보를 Room에 저장 (마이페이지 닉네임 표시용)
+                    userRepository.refreshUser()
+                        .onError { exception, message ->
+                            Timber.w(exception, "사용자 정보 저장 실패: $message")
+                        }
+
                     // Section별 UiState 업데이트
                     updateProfileSection(homeData)
                     updateMissionSection(homeData)
@@ -318,7 +336,27 @@ class HomeViewModel @Inject constructor(
             _missionUiState.value = MissionUiState.Empty
         } else {
             Timber.d("미션 상태: Success, 개수: ${missions.size}")
-            _missionUiState.value = MissionUiState.Success(missions = missions)
+            // 미션 상태 매핑 (비동기로 처리)
+            viewModelScope.launch {
+                try {
+                    val missionCardStates = missions.map { mission ->
+                        val cardState = missionCardStateMapper.mapToCardState(mission, isActive = true)
+                        MissionWithState(mission, cardState)
+                    }
+                    Timber.d("미션 카드 상태 매핑 완료: $missionCardStates")
+                    _missionUiState.value = MissionUiState.Success(
+                        missions = missions,
+                        missionCardStates = missionCardStates
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "미션 카드 상태 매핑 실패")
+                    // 매핑 실패 시 기존 로직으로 fallback
+                    _missionUiState.value = MissionUiState.Success(
+                        missions = missions,
+                        missionCardStates = missions.map { MissionWithState(it, team.swyp.sdu.ui.mission.model.MissionCardState.INACTIVE) }
+                    )
+                }
+            }
         }
     }
 
@@ -389,23 +427,6 @@ class HomeViewModel @Inject constructor(
         loadHomeData()
     }
 
-    private fun loadUser() {
-        viewModelScope.launch {
-            userRepository.refreshUser().onSuccess { user ->
-                // 현재 UI 상태에 사용자 정보 업데이트
-                val currentState = _uiState.value
-                if (currentState is HomeUiState.Success) {
-                    // 사용자 정보 업데이트 - 필요한 경우 필드 업데이트
-                    // 현재 HomeUiState.Success에는 nickname 등의 필드가 없으므로
-                    // 별도 상태 관리로 분리됨
-                }
-            }.onError { throwable, message ->
-                // 사용자 정보 로드 실패 - 기본값 유지
-                Timber.e(throwable, "사용자 정보 로드 실패: $message")
-            }
-        }
-    }
-
 
     /**
      * 오늘의 실제 걸음 수 계산
@@ -473,6 +494,23 @@ class HomeViewModel @Inject constructor(
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
         return emotionCounts.maxByOrNull { it.value }?.key
+    }
+
+    /**
+     * 수동 세션 동기화 실행
+     *
+     * UI에서 즉시 동기화를 원할 때 호출 (예: 설정 화면의 동기화 버튼)
+     */
+    fun triggerManualSessionSync(context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                Timber.d("수동 세션 동기화 시작")
+                SessionSyncWorker.scheduleOneTimeSync(context)
+                Timber.d("수동 세션 동기화 작업 예약됨")
+            } catch (e: Exception) {
+                Timber.e(e, "수동 세션 동기화 예약 실패")
+            }
+        }
     }
 
 }

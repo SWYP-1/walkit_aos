@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.theme.WalkItTheme
 import timber.log.Timber
 
@@ -89,9 +88,6 @@ fun OnboardingScreen(
                     )
                 }
             }
-            
-            // 로딩 오버레이
-            LoadingOverlay(isLoading = uiState.isLoading)
         }
     }
 }

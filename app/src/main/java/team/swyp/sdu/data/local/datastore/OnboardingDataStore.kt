@@ -20,11 +20,15 @@ import timber.log.Timber
 class OnboardingDataStore @Inject constructor(
     @Named("onboarding") private val dataStore: DataStore<Preferences>,
 ) {
-    // 기존 키들
+    // 기존 키들 (하위 호환성 유지)
     private val completedKey = booleanPreferencesKey("onboarding_completed")
 
     // 약관 동의 완료 상태
     private val termsAgreedKey = booleanPreferencesKey("onboarding_terms_agreed")
+
+    // 소셜 구별자별 온보딩 완료 상태
+    private val kakaoOnboardingCompletedKey = booleanPreferencesKey("kakao_onboarding_completed")
+    private val naverOnboardingCompletedKey = booleanPreferencesKey("naver_onboarding_completed")
 
     // 진행 상태를 위한 개별 키들
     private val currentStepKey = intPreferencesKey("onboarding_current_step")
@@ -43,6 +47,33 @@ class OnboardingDataStore @Inject constructor(
     val isCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[completedKey] ?: false }
 
     val isTermsAgreed: Flow<Boolean> = dataStore.data.map { prefs -> prefs[termsAgreedKey] ?: false }
+
+    // 소셜별 온보딩 완료 상태 Flow
+    val kakaoOnboardingCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[kakaoOnboardingCompletedKey] ?: false }
+    val naverOnboardingCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[naverOnboardingCompletedKey] ?: false }
+
+    /**
+     * 소셜 구별자별 온보딩 완료 상태 확인
+     */
+    fun isOnboardingCompletedForProvider(provider: String): Flow<Boolean> = dataStore.data.map { prefs ->
+        when (provider.lowercase()) {
+            "카카오" -> prefs[kakaoOnboardingCompletedKey] ?: false
+            "네이버" -> prefs[naverOnboardingCompletedKey] ?: false
+            else -> false
+        }
+    }
+
+    /**
+     * 소셜 구별자별 온보딩 완료 상태 설정
+     */
+    suspend fun setOnboardingCompletedForProvider(provider: String, completed: Boolean) {
+        val key = when (provider.lowercase()) {
+            "카카오" -> kakaoOnboardingCompletedKey
+            "네이버" -> naverOnboardingCompletedKey
+            else -> return // 지원하지 않는 제공자
+        }
+        dataStore.edit { prefs -> prefs[key] = completed }
+    }
 
     suspend fun getProgress(): OnboardingProgress {
         return dataStore.data.first().let { prefs ->
@@ -113,7 +144,7 @@ class OnboardingDataStore @Inject constructor(
 
     /**
      * 온보딩 진행 데이터 초기화
-     * 
+     *
      * 주의: completedKey는 삭제하지 않습니다.
      * completedKey는 온보딩 완료 여부를 나타내는 중요한 플래그이므로
      * 로그아웃 시에도 유지되어야 합니다.
@@ -136,6 +167,23 @@ class OnboardingDataStore @Inject constructor(
             prefs.remove(marketingConsentKey)
             prefs.remove(nicknameRegisteredKey)
             // completedKey는 삭제하지 않음 (온보딩 완료 여부 유지)
+        }
+    }
+
+    /**
+     * 특정 소셜 제공자의 온보딩 데이터 초기화
+     * 로그아웃 시 해당 제공자의 온보딩 상태만 초기화
+     */
+    suspend fun clearOnboardingDataForProvider(provider: String) {
+        val key = when (provider.lowercase()) {
+            "카카오" -> kakaoOnboardingCompletedKey
+            "네이버" -> naverOnboardingCompletedKey
+            else -> return // 지원하지 않는 제공자
+        }
+
+        dataStore.edit { prefs ->
+            prefs.remove(key)
+            Timber.d("$provider 온보딩 상태 초기화 완료")
         }
     }
 

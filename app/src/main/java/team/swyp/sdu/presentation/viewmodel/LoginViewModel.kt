@@ -20,9 +20,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.Result
+import team.swyp.sdu.core.onError
+import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.data.local.datastore.AuthDataStore
-import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 import team.swyp.sdu.data.remote.auth.AuthRemoteDataSource
+import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.data.remote.auth.TokenProvider
 import team.swyp.sdu.domain.service.FcmTokenManager
 import timber.log.Timber
@@ -46,10 +48,13 @@ sealed class LoginUiState {
 class LoginViewModel @Inject constructor(
     private val authRemoteDataSource: AuthRemoteDataSource,
     private val authDataStore: AuthDataStore,
-    private val onboardingDataStore: OnboardingDataStore,
+    private val userRepository: UserRepository,
     private val tokenProvider: TokenProvider,
     private val fcmTokenManager: FcmTokenManager,
 ) : ViewModel() {
+
+    private var onNavigateToMain: (() -> Unit)? = null
+    private var onNavigateToTermsAgreement: (() -> Unit)? = null
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -60,63 +65,76 @@ class LoginViewModel @Inject constructor(
     val isLoginChecked: StateFlow<Boolean> = _isLoginChecked.asStateFlow()
 
     init {
+        Timber.i("LoginViewModel 초기화 시작")
         checkLoginStatus()
     }
 
     /**
+     * 네비게이션 콜백 설정
+     */
+    fun setNavigationCallbacks(
+        onNavigateToMain: () -> Unit,
+        onNavigateToTermsAgreement: () -> Unit
+    ) {
+        this.onNavigateToMain = onNavigateToMain
+        this.onNavigateToTermsAgreement = onNavigateToTermsAgreement
+    }
+
+    /**
      * 로그인 상태 확인
-     * 서버 토큰(AuthDataStore)과 약관 동의 여부를 함께 확인
-     * 약관 동의가 안 되어 있으면 자동으로 토큰 삭제 처리
-     * 단, 온보딩이 완료된 경우에는 약관 동의 여부와 관계없이 토큰 유지
+     * 서버 토큰이 있으면 getUser()를 호출하여 사용자 정보를 확인
+     * 닉네임이 있는 경우에만 로그인 상태로 인정
      */
     fun checkLoginStatus() {
+        Timber.i("checkLoginStatus() 시작")
         viewModelScope.launch {
+            Timber.d("checkLoginStatus() 코루틴 시작")
             _isLoginChecked.value = false
             try {
-                // 서버 토큰 확인 (AuthDataStore)
-                val accessToken = authDataStore.accessToken.first()
+                // 서버 토큰 확인
+                Timber.d("서버 토큰 확인 시작")
+                val accessToken = try {
+                    authDataStore.accessToken.first()
+                } catch (e: Exception) {
+                    Timber.e(e, "토큰 조회 중 예외 발생")
+                    null
+                }
+                Timber.i("서버 토큰 확인 결과: ${if (accessToken.isNullOrBlank()) "토큰 없음" else "토큰 있음 (길이: ${accessToken?.length})"}")
+
                 if (!accessToken.isNullOrBlank()) {
-                    // 온보딩 완료 여부 확인 (completeKey 확인)
-                    val isOnboardingCompleted = onboardingDataStore.isCompleted.first()
-                    
-                    Timber.d("로그인 상태 확인 - 서버 토큰: 존재함, completeKey: $isOnboardingCompleted")
-                    
-                    if (isOnboardingCompleted) {
-                        // 온보딩이 완료된 경우 약관 동의 여부와 관계없이 로그인 상태 유지
-                        // (온보딩 완료 시 약관 동의 상태는 초기화되므로)
-                        _isLoggedIn.value = true
-                        Timber.i("온보딩 완료 상태 (completeKey=true) - 로그인 상태 유지")
-                    } else {
-                        // 온보딩이 완료되지 않은 경우 약관 동의 여부 확인
-                        val isTermsAgreed = onboardingDataStore.isTermsAgreed.first()
-                        
-                        Timber.d("로그인 상태 확인 - completeKey: false, 약관 동의: $isTermsAgreed")
-                        
-                        if (!isTermsAgreed) {
-                            // 토큰은 있지만 약관 동의가 안 되어 있으면 토큰 삭제 처리
-                            // (약관 동의 없이 강제 종료한 경우)
-                            Timber.w("약관 동의 미완료 상태 감지 - 토큰 삭제 처리")
-                            // 토큰만 삭제 (소셜 로그아웃은 하지 않음)
-                            tokenProvider.clearTokens()
-                            authDataStore.clear()
-                            _isLoggedIn.value = false
-                            Timber.i("토큰 삭제 완료 - 로그인 필요")
-                        } else {
-                            // 서버 토큰이 있고 약관 동의도 완료된 경우 로그인 상태로 간주
+                    Timber.d("서버 토큰 존재 - 사용자 정보 확인 시도")
+
+                    // getUser() 호출하여 사용자 정보 확인
+                    userRepository.getUser().onSuccess { user ->
+                        // 닉네임이 있는 경우에만 로그인 상태로 인정
+                        if (!user.nickname.isNullOrBlank()) {
                             _isLoggedIn.value = true
-                            Timber.i("서버 토큰 및 약관 동의 확인됨 - 로그인 상태")
+                            Timber.i("사용자 정보 확인 성공 - 닉네임: ${user.nickname}, 로그인 상태 유지")
+                        } else {
+                            // 닉네임이 없으면 온보딩 필요
+                            _isLoggedIn.value = false
+                            Timber.i("닉네임 없음 - 온보딩 필요")
                         }
+                    }.onError { throwable, message ->
+                        // 사용자 정보 조회 실패 (토큰 만료 등)
+                        Timber.w(throwable, "사용자 정보 조회 실패: $message - 토큰 삭제")
+                        tokenProvider.clearTokens()
+                        authDataStore.clear()
+                        _isLoggedIn.value = false
+                        Timber.i("토큰 삭제 완료 - 재로그인 필요")
                     }
                 } else {
                     // 서버 토큰이 없으면 로그인 안 된 상태
-                    _isLoggedIn.value = false
                     Timber.i("서버 토큰 없음 - 로그인 필요")
+                    _isLoggedIn.value = false
                 }
             } catch (e: Exception) {
                 Timber.e(e, "로그인 상태 확인 실패")
                 _isLoggedIn.value = false
             } finally {
+                Timber.i("checkLoginStatus() 완료 - isLoginChecked = true 설정")
                 _isLoginChecked.value = true
+                Timber.d("최종 상태 - isLoggedIn: ${_isLoggedIn.value}, isLoginChecked: ${_isLoginChecked.value}")
             }
         }
     }
@@ -234,16 +252,15 @@ class LoginViewModel @Inject constructor(
 
     /**
      * 로그아웃
-     * 
+     *
      * 소셜 로그아웃 실패 시에도 로컬 데이터는 삭제합니다.
      * (이미 토큰이 없는 상태에서 로그아웃을 시도하면 TokenNotFound 에러가 발생할 수 있음)
-     * 
-     * 주의: onboardingDataStore의 completeKey는 삭제하지 않습니다.
-     * 온보딩 완료 여부는 로그아웃 후에도 유지되어야 하므로,
-     * 로그아웃 시에는 인증 토큰만 삭제하고 온보딩 완료 상태는 보존합니다.
      */
     fun logout() {
         viewModelScope.launch {
+            // 현재 로그인한 제공자 확인
+            val currentProvider = authDataStore.getProvider()
+
             // 카카오 로그아웃 시도 (실패해도 계속 진행)
             UserApiClient.instance.logout { error ->
                 if (error != null) {
@@ -272,11 +289,12 @@ class LoginViewModel @Inject constructor(
             NidOAuth.logout(naverCallback)
 
             // 로컬 토큰 및 데이터 삭제 (소셜 로그아웃 실패 여부와 관계없이 항상 실행)
-            // 주의: onboardingDataStore는 건드리지 않음 (completeKey 유지)
             try {
                 tokenProvider.clearTokens()
                 authDataStore.clear()
-                Timber.i("로컬 토큰 및 데이터 삭제 완료 (온보딩 완료 상태는 유지됨)")
+                // 🔥 Room 사용자 데이터도 삭제 (로그인 전환 시 캐시된 이전 사용자 데이터 제거)
+                userRepository.clearAuth()
+                Timber.i("로컬 토큰 및 데이터 삭제 완료")
             } catch (e: Exception) {
                 Timber.e(e, "로컬 데이터 삭제 실패")
             }
@@ -288,22 +306,24 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * 강제 재로그인 - 기존 토큰을 모두 삭제하고 처음부터 새로 로그인
-     * 
-     * 사용 시나리오:
-     * - 기존 토큰이 만료되었거나 유효하지 않은 경우
-     * - 다른 계정으로 로그인하고 싶은 경우
-     * - 토큰 관련 문제 해결을 위해 처음부터 다시 시작하고 싶은 경우
+     * 앱 데이터 완전 초기화 (디버깅용)
      */
-    fun forceReLogin(context: Context) {
+    fun forceCompleteReset() {
         viewModelScope.launch {
-            // 1. 기존 토큰 모두 삭제
+            Timber.i("=== 앱 데이터 완전 초기화 시작 ===")
+
+            // 1. 모든 토큰 삭제
             tokenProvider.clearTokens()
             authDataStore.clear()
+            Timber.i("토큰 데이터 삭제 완료")
+
+            // 2. 로그인 상태 초기화
             _isLoggedIn.value = false
+            _isLoginChecked.value = false
             _uiState.value = LoginUiState.Idle
-            
-            Timber.i("기존 토큰 삭제 완료 - 재로그인 준비됨")
+            Timber.i("로그인 상태 초기화 완료")
+
+            Timber.i("=== 앱 데이터 완전 초기화 완료 ===")
         }
     }
 
@@ -324,37 +344,30 @@ class LoginViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         val tokenResponse = result.data
-                        // 서버 토큰 저장
+                        // 서버 토큰 및 provider 저장
+                        val provider = if (isKakao) "카카오" else "네이버"
                         authDataStore.saveTokens(
                             accessToken = tokenResponse.accessToken,
                             refreshToken = tokenResponse.refreshToken,
                         )
+                        authDataStore.saveProvider(provider)
                         // TokenProvider도 업데이트 (Flow 구독으로 자동 업데이트되지만 명시적으로 호출)
                         tokenProvider.updateTokens(
                             tokenResponse.accessToken,
                             tokenResponse.refreshToken,
                         )
 
-                        // 로그인 성공 후 온보딩 완료 여부 확인 (completeKey 확인)
-                        val isOnboardingCompleted = onboardingDataStore.isCompleted.first()
-                        val isTermsAgreed = onboardingDataStore.isTermsAgreed.first()
-                        
-                        Timber.d("로그인 성공 - completeKey: $isOnboardingCompleted, 약관 동의: $isTermsAgreed")
-                        
-                        if (isOnboardingCompleted) {
-                            Timber.i("로그인 성공 - 온보딩 완료됨 (completeKey=true) → 메인 화면으로 이동 예정")
-                        } else if (isTermsAgreed) {
-                            Timber.i("로그인 성공 - 약관 동의 완료, 온보딩 미완료 (completeKey=false) → 온보딩 화면으로 이동 예정")
-                        } else {
-                            Timber.i("로그인 성공 - 약관 동의 미완료 → 약관 동의 다이얼로그 표시 예정")
-                        }
+                        // 로그인 성공 - 즉시 사용자 정보 확인
+                        Timber.i("서버 로그인 성공 - 토큰 저장됨")
 
-                        _isLoggedIn.value = true
-                        _uiState.value = LoginUiState.Idle
-                        Timber.i("서버 로그인 성공")
-
-                        // FCM 토큰 서버 동기화
+                        // FCM 토큰 서버 동기화 먼저 실행
+                        Timber.d("로그인 성공 후 FCM 토큰 서버 동기화 시작")
                         fcmTokenManager.syncTokenToServer()
+                        Timber.d("로그인 성공 후 FCM 토큰 서버 동기화 완료")
+
+                        // 즉시 사용자 정보 확인 (Splash 대신 여기서 처리)
+                        Timber.i("로그인 직후 사용자 정보 확인 시작")
+                        checkUserStatusAfterLogin()
                     }
                     is Result.Error -> {
                         _uiState.value = LoginUiState.Error(
@@ -369,6 +382,49 @@ class LoginViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = LoginUiState.Error("로그인 처리 중 오류 발생: ${e.message}")
                 Timber.e(e, "로그인 처리 실패")
+            }
+        }
+    }
+
+    /**
+     * 로그인 직후 사용자 상태 확인
+     * getUser()를 호출하여 닉네임 존재 여부를 확인하고 적절한 상태로 설정
+     */
+    private fun checkUserStatusAfterLogin() {
+        viewModelScope.launch {
+            try {
+                Timber.i("로그인 직후 사용자 상태 확인 시도")
+
+                // refreshUser() 호출하여 서버에서 최신 사용자 정보 가져오기 (캐시 무시)
+                userRepository.refreshUser().onSuccess { user ->
+                    Timber.i("로그인 직후 사용자 정보 조회 성공: ${user.nickname}")
+
+                    // 닉네임이 있는 경우: Main으로 이동
+                    if (!user.nickname.isNullOrBlank()) {
+                        _isLoggedIn.value = true
+                        _uiState.value = LoginUiState.Idle
+                        Timber.i("로그인 완료 - 닉네임 있음: ${user.nickname}")
+                        onNavigateToMain?.invoke()
+                    } else {
+                        // 닉네임이 없으면: 약관 동의 → 온보딩
+                        _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
+                        _uiState.value = LoginUiState.Idle
+                        Timber.i("로그인 완료 - 닉네임 없음, 약관 동의 필요")
+                        // 약관 동의 다이얼로그는 UI에서 처리됨
+                    }
+                }.onError { throwable, message ->
+                    // 사용자 정보 조회 실패 (토큰 만료 등)
+                    Timber.w(throwable, "로그인 직후 사용자 정보 조회 실패: $message - 토큰 삭제")
+                    tokenProvider.clearTokens()
+                    authDataStore.clear()
+                    _isLoggedIn.value = false
+                    _uiState.value = LoginUiState.Error("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.")
+                    Timber.i("토큰 삭제 완료 - 재로그인 필요")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "로그인 직후 사용자 상태 확인 실패")
+                _isLoggedIn.value = false
+                _uiState.value = LoginUiState.Error("사용자 상태 확인 중 오류 발생")
             }
         }
     }

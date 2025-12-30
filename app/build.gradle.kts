@@ -139,6 +139,9 @@ dependencies {
     // Google Play Services - Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // Google Maps Utils - GPS 필터링 및 경로 스무딩용
+    implementation("com.google.maps.android:android-maps-utils:3.8.2")
+
     // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -158,6 +161,10 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.work.hilt)
 
     // KMP Date Time Picker
     implementation("network.chaintech:kmp-date-time-picker:1.1.1")

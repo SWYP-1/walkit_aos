@@ -30,6 +30,15 @@ interface CharacterRepository {
      * nickname으로 캐릭터 정보 삭제
      */
     suspend fun deleteCharacter(nickname: String): Result<Unit>
+
+    /**
+     * 위치 기반 캐릭터 정보 조회
+     *
+     * @param lat 위도
+     * @param lon 경도
+     * @return 캐릭터 정보
+     */
+    suspend fun getCharacterByLocation(lat: Double, lon: Double): Result<Character>
 }
 
 

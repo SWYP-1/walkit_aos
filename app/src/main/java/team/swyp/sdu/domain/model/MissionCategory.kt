@@ -7,8 +7,8 @@ enum class MissionCategory(
     val displayName: String,
     val apiValue: String,
 ) {
-    CHALLENGE("챌린지", "CHALLENGE"),
-    PHOTO_COLOR("색깔찾기", "PHOTO_COLOR");
+    PHOTO("사진", "PHOTO"),
+    CHALLENGE("챌린지", "CHALLENGE");
 
     companion object {
         fun fromApiValue(apiValue: String): MissionCategory? {

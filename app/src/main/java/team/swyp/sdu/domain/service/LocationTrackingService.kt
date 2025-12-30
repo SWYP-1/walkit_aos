@@ -24,6 +24,8 @@ import team.swyp.sdu.MainActivity
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.domain.contract.WalkingRawEvent
 import team.swyp.sdu.domain.service.ActivityType
+import team.swyp.sdu.domain.service.filter.GpsFilter
+import team.swyp.sdu.domain.service.filter.PathSmoother
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import javax.inject.Inject
 import android.content.Intent as BroadcastIntent
 
 /**
@@ -53,8 +56,16 @@ class LocationTrackingService : Service() {
     private var locationCallback: LocationCallback? = null
     private var activityReceiver: BroadcastReceiver? = null
 
+    // GPS 필터링 관련
+    @Inject
+    lateinit var gpsFilter: GpsFilter
+
+    @Inject
+    lateinit var pathSmoother: PathSmoother
+
     private var isTracking = false
-    private val locationPoints = mutableListOf<LocationPoint>()
+    private val locationPoints = mutableListOf<LocationPoint>()  // 원본 GPS 데이터
+    private val filteredPoints = mutableListOf<Pair<Double, Double>>()  // 필터링된 좌표
     private var lastSentIndex = 0 // 마지막으로 전송한 위치 인덱스
     private var currentActivityType: ActivityType? = null // 현재 활동 상태
 
@@ -223,7 +234,12 @@ class LocationTrackingService : Service() {
         }
 
         locationPoints.clear()
+        filteredPoints.clear()
         lastSentIndex = 0
+
+        // GPS 필터 상태 초기화
+        gpsFilter.reset()
+
         startForeground(NOTIFICATION_ID, createNotification())
         isTracking = true
 
@@ -243,44 +259,43 @@ class LocationTrackingService : Service() {
                     }
                     
                     result.lastLocation?.let { location ->
-                        // GPS 정확도 필터링: 정확도가 50m 이하인 경우만 사용
                         val accuracy = location.accuracy
-                        if (accuracy > 0 && accuracy > 50f) {
-                            Timber.w("GPS 정확도가 낮아 위치를 무시합니다: ${accuracy}m")
+
+                        // 새로운 GPS 필터 체인 적용 (정확도 → 칼만 → 속도)
+                        val filtered = gpsFilter.filter(
+                            lat = location.latitude,
+                            lng = location.longitude,
+                            accuracy = accuracy,
+                            timestamp = location.time
+                        )
+
+                        if (filtered == null) {
+                            Timber.d("GPS 필터링: 위치 데이터 필터링됨 (정확도: ${accuracy}m)")
                             return@let
                         }
 
-                        val point =
-                            LocationPoint(
-                                latitude = location.latitude,
-                                longitude = location.longitude,
-                                timestamp = location.time,
-                                accuracy = if (accuracy > 0) accuracy else null,
-                            )
+                        val (filteredLat, filteredLng) = filtered
 
-                        // 활동 상태에 따른 최소 거리 필터링: 이전 위치와 일정 거리 이상 떨어진 경우만 추가
-                        if (locationPoints.isNotEmpty()) {
-                            val lastPoint = locationPoints.last()
-                            val distance =
-                                calculateDistance(
-                                    lastPoint.latitude,
-                                    lastPoint.longitude,
-                                    point.latitude,
-                                    point.longitude,
-                                )
+                        // 필터링된 좌표 저장
+                        filteredPoints.add(filteredLat to filteredLng)
 
-                            // 활동 상태에 따른 최소 거리 가져오기
-                            val minDistance = getMinDistanceForActivity()
+                        // LocationPoint 생성 (필터링된 좌표 사용)
+                        val point = LocationPoint(
+                            latitude = filteredLat,
+                            longitude = filteredLng,
+                            timestamp = location.time,
+                            accuracy = if (accuracy > 0) accuracy else null,
+                        )
 
-                            // 최소 거리 미만 이동은 GPS 노이즈로 간주하고 무시
-                            if (distance < minDistance) {
-//                            Timber.d("최소 거리 미만으로 위치를 무시합니다: ${distance}m (필요: ${minDistance}m, 활동: $currentActivityType)")
-                                return@let
-                            }
-                        }
-
+                        // 원본 좌표 리스트에도 추가 (호환성 유지)
                         locationPoints.add(point)
-                        Timber.d("위치 업데이트: ${point.latitude}, ${point.longitude}, 정확도: ${accuracy}m")
+
+                        Timber.d(
+                            "위치 업데이트: 필터링됨 " +
+                            "(${String.format("%.6f", location.latitude)}, ${String.format("%.6f", location.longitude)}) → " +
+                            "(${String.format("%.6f", filteredLat)}, ${String.format("%.6f", filteredLng)}), " +
+                            "정확도: ${accuracy}m"
+                        )
 
                         // Contract-based architecture: 위치 업데이트 이벤트 emit
                         serviceScope.launch {
@@ -393,6 +408,42 @@ class LocationTrackingService : Service() {
      * 추적 상태 확인
      */
     fun isCurrentlyTracking(): Boolean = isTracking
+
+    /**
+     * 운동 완료 시 경로 스무딩 적용
+     *
+     * 필터링된 좌표들을 스무딩하여 최종 경로 생성
+     *
+     * @return 스무딩된 위도/경도 리스트 쌍
+     */
+    fun finishWorkoutWithSmoothing(): Pair<List<Double>, List<Double>> {
+        if (filteredPoints.isEmpty()) {
+            Timber.w("스무딩 불가: 필터링된 좌표 데이터가 없습니다")
+            return emptyList<Double>() to emptyList<Double>()
+        }
+
+        val lats = filteredPoints.map { it.first }
+        val lngs = filteredPoints.map { it.second }
+
+        Timber.d("운동 완료: 필터링된 ${filteredPoints.size}개 포인트에 스무딩 적용")
+
+        return pathSmoother.smoothPath(lats, lngs)
+    }
+
+    /**
+     * 필터링 통계 정보 반환 (디버깅용)
+     */
+    fun getFilteringStats(): Map<String, Any> {
+        val originalCount = locationPoints.size
+        val filteredCount = filteredPoints.size
+
+        return mapOf(
+            "original_points" to originalCount,
+            "filtered_points" to filteredCount,
+            "filtering_ratio" to if (originalCount > 0) String.format("%.2f", filteredCount.toFloat() / originalCount) else "0.00",
+            "filter_info" to gpsFilter.getFilterInfo()
+        )
+    }
 
     /**
      * 새로운 위치 데이터만 Broadcast로 전송 (성능 최적화)

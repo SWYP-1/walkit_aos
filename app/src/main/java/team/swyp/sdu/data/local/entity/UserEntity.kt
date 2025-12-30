@@ -14,6 +14,7 @@ import androidx.room.PrimaryKey
 data class UserEntity(
     @PrimaryKey
     val nickname: String,
+    val userId: Long? = null,
     val imageName: String? = null,
     val birthDate: String? = null,
     val sex: String? = null,

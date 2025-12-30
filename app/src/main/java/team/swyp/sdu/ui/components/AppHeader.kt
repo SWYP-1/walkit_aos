@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.annotations.concurrent.Background
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.Pretendard
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -54,6 +55,7 @@ fun AppHeader(
     title: String,
     showBackButton: Boolean = true,
     onNavigateBack: () -> Unit = {},
+    background: Color = SemanticColor.backgroundWhitePrimary,
     modifier: Modifier = Modifier,
     rightAction: @Composable (() -> Unit)? = null,
 ) {
@@ -61,7 +63,7 @@ fun AppHeader(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp) // Material Design 표준 헤더 높이
-            .background(Color(0xFFFFFFFF)) // color/background/whtie-primary
+            .background(background) // color/background/whtie-primary
         ,
         contentAlignment = Alignment.Center
     ) {

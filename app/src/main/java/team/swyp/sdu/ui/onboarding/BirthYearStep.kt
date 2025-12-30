@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import java.time.LocalDate
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -55,6 +56,8 @@ fun BirthYearStep(
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
+    // 생년월일 업데이트 API 호출 시 로딩 표시
+    val isLoading = uiState.isLoading && uiState.currentStep == 1
     val currentYear = uiState.birthYear
     val currentMonth = uiState.birthMonth
     val currentDay = uiState.birthDay
@@ -216,127 +219,136 @@ fun BirthYearStep(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(SemanticColor.backgroundWhiteSecondary)
-    ) {
-        Spacer(modifier = Modifier.height(56.dp))
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(SemanticColor.backgroundWhiteSecondary)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+        ) {
+            Spacer(modifier = Modifier.height(56.dp))
 
-        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp)) {
 
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                OnBoardingStepTag(text = "준비 단계")
-                Spacer(modifier = Modifier.height(14.dp))
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    OnBoardingStepTag(text = "준비 단계")
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "${uiState.nicknameState.value}님,\n" + "생년월일을 선택해주세요",
+                        style = MaterialTheme.walkItTypography.headingM.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = Black,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+
+
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
-                    text = "${uiState.nicknameState.value}님,\n" + "생년월일을 선택해주세요",
-                    style = MaterialTheme.walkItTypography.headingM.copy(
+                    text = "생년월일", style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Medium
-                    ),
-                    color = Black,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "생년월일", style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium
-                ), color = Black
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "생년월일 8자리를 입력해주세요.",
-                style = MaterialTheme.walkItTypography.captionM,
-                color = SemanticColor.textBorderSecondary
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // 날짜 입력 필드 (년, 월, 일)
-            val isError = allFieldsFilled && !isValidDate
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 년도 입력 필드
-                DateNumberInputField(
-                    value = yearText,
-                    placeholder = "YYYY",
-                    modifier = Modifier.weight(1f),
-                    onValueChange = ::handleYearInput,
-                    maxLength = 4,
-                    isError = isError
+                    ), color = Black
                 )
 
-                // 월 입력 필드
-                DateNumberInputField(
-                    value = monthText,
-                    placeholder = "MM",
-                    modifier = Modifier.weight(1f),
-                    onValueChange = ::handleMonthInput,
-                    maxLength = 2,
-                    isError = isError
-                )
-
-                // 일 입력 필드
-                DateNumberInputField(
-                    value = dayText,
-                    placeholder = "DD",
-                    modifier = Modifier.weight(1f),
-                    onValueChange = ::handleDayInput,
-                    maxLength = 2,
-                    isError = isError
-                )
-            }
-
-            // 유효성 검사 에러 메시지 표시
-            if (isError) {
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
-                    text = "올바른 날짜를 입력해주세요.",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.stateRedPrimary
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CtaButton(
-                    text = "이전으로",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
-                    onClick = onPrev,
-                    modifier = Modifier.width(96.dp)      // 1
+                    text = "생년월일 8자리를 입력해주세요.",
+                    style = MaterialTheme.walkItTypography.captionM,
+                    color = SemanticColor.textBorderSecondary
                 )
 
-                CtaButton(
-                    text = "다음으로",
-                    textColor = SemanticColor.textBorderPrimaryInverse,
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f),   // 2.4
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_forward),
-                            contentDescription = "arrow forward",
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 날짜 입력 필드 (년, 월, 일)
+                val isError = allFieldsFilled && !isValidDate
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 년도 입력 필드
+                    DateNumberInputField(
+                        value = yearText,
+                        placeholder = "YYYY",
+                        modifier = Modifier.weight(1f),
+                        onValueChange = ::handleYearInput,
+                        maxLength = 4,
+                        isError = isError
+                    )
+
+                    // 월 입력 필드
+                    DateNumberInputField(
+                        value = monthText,
+                        placeholder = "MM",
+                        modifier = Modifier.weight(1f),
+                        onValueChange = ::handleMonthInput,
+                        maxLength = 2,
+                        isError = isError
+                    )
+
+                    // 일 입력 필드
+                    DateNumberInputField(
+                        value = dayText,
+                        placeholder = "DD",
+                        modifier = Modifier.weight(1f),
+                        onValueChange = ::handleDayInput,
+                        maxLength = 2,
+                        isError = isError
+                    )
+                }
+
+                // 유효성 검사 에러 메시지 표시
+                if (isError) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "올바른 날짜를 입력해주세요.",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.stateRedPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CtaButton(
+                        text = "이전으로",
+                        textColor = SemanticColor.buttonPrimaryDefault,
+                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        onClick = onPrev,
+                        modifier = Modifier.width(96.dp)      // 1
+                    )
+
+                    CtaButton(
+                        text = "다음으로",
+                        textColor = SemanticColor.textBorderPrimaryInverse,
+                        onClick = onNext,
+                        modifier = Modifier.weight(1f),   // 2.4
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_arrow_forward),
+                                contentDescription = "arrow forward",
+                                tint = SemanticColor.iconWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    )
+                }
             }
+
+            // API 요청 시 로딩 오버레이 표시
+            LoadingOverlay(isLoading = isLoading)
         }
     }
 }

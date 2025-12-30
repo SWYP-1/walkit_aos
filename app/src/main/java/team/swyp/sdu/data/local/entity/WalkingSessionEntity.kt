@@ -21,7 +21,9 @@ data class WalkingSessionEntity(
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,
-    val locationsJson: String = "[]", // LocationPoint 리스트를 JSON으로 직렬화
+    val locationsJson: String = "[]", // LocationPoint 리스트를 JSON으로 직렬화 (원본 데이터)
+    val filteredLocationsJson: String? = null, // 필터링된 LocationPoint 리스트 (nullable)
+    val smoothedLocationsJson: String? = null, // 스무딩된 LocationPoint 리스트 (nullable)
     val totalDistance: Float = 0f,
     val isSynced: Boolean = false, // 서버 동기화 여부
     // 산책 저장 API용 필드들
@@ -31,5 +33,6 @@ data class WalkingSessionEntity(
     val localImagePath: String? = null, // 로컬 파일 경로
     val serverImageUrl: String? = null, // 서버 URL
     val createdDate: String,
-    val syncState: SyncState
+    val syncState: SyncState,
+    val targetStepCount: Int = 0, // 산책 당시 설정된 목표 걸음 수
 )

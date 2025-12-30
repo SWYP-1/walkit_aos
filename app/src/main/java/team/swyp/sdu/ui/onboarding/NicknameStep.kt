@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -61,6 +62,8 @@ fun NicknameStep(
     onNext: () -> Unit,
     onPrev: () -> Unit,
 ) {
+    // 닉네임 등록 API 호출 시 로딩 표시
+    val isLoading = uiState.isLoading && uiState.currentStep == 0
     val nicknameState = uiState.nicknameState
     val maxLength = 20
 
@@ -76,142 +79,151 @@ fun NicknameStep(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhiteSecondary)
     ) {
-
-        AppHeader("", showBackButton = false) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            AppHeader(
+                "",
+                showBackButton = false,
+                background = SemanticColor.backgroundWhiteSecondary
+            ) {
 //            Icon(
 //                painter = painterResource(R.drawable.ic_action_clear),
 //                contentDescription = null,
 //                tint = SemanticColor.iconBlack,
 //                modifier = Modifier.size(24.dp),
 //            )
-        }
+            }
 
-        Column(
-            horizontalAlignment = CenterHorizontally,
-            modifier = Modifier
-                .weight(1f)
-                .imePadding()
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(Modifier.height(24.dp))
-
-            OnBoardingStepTag(text = "준비 단계")
-
-            Spacer(Modifier.height(14.dp))
-
-            Text(
-                text = "캐릭터의 이름을 만들어주세요",
-                style = MaterialTheme.walkItTypography.headingM.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = Black
-            )
-
-            Spacer(Modifier.height(64.dp))
-
-            Image(
-                painter = painterResource(R.drawable.walk_it_character),
-                contentDescription = "walkit character"
-            )
-
-            // 키보드가 올라왔을 때는 Spacer 높이를 줄이고, 평상시에는 92.dp 유지
-            Spacer(
-                modifier = Modifier.height(
-                    if (isImeVisible) 16.dp else 92.dp
-                )
-            )
-            Box(
+            Column(
+                horizontalAlignment = CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 46.dp)
-                    .clickable {
-                        focusRequester.requestFocus()
-                        keyboardController?.show()
-                    }
-                    .border(
-                        width = 1.dp,
-                        color = if (isError) SemanticColor.stateRedPrimary
-                        else SemanticColor.textBorderPrimary,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterStart
+                    .weight(1f)
+                    .imePadding()
+                    .padding(horizontal = 16.dp)
             ) {
-                BasicTextField(
-                    value = nicknameState.value,
-                    onValueChange = onNicknameChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.walkItTypography.bodyM,
-                    modifier = Modifier.focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
+                Spacer(Modifier.height(24.dp))
+
+                OnBoardingStepTag(text = "준비 단계")
+
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    text = "캐릭터의 이름을 만들어주세요",
+                    style = MaterialTheme.walkItTypography.headingM.copy(
+                        fontWeight = FontWeight.Medium
                     ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            // 항상 키보드 내리기
-                            keyboardController?.hide()
-                            // 다음 단계로 진행 가능한 경우에만 진행
-                            if (canGoNext) {
-                                onNext()
-                            }
-                        }
-                    ),
-                    decorationBox = { innerTextField ->
-                        if (nicknameState.value.isEmpty()) {
-                            Text(
-                                "닉네임을 입력해주세요",
-                                style = MaterialTheme.walkItTypography.bodyM,
-                                color = SemanticColor.textBorderSecondary
-                            )
-                        }
-                        innerTextField()
-                    }
+                    color = Black
                 )
-            }
-            if (isError) {
-                Column(
-                    Modifier
+
+                Spacer(Modifier.height(64.dp))
+
+                Image(
+                    painter = painterResource(R.drawable.walk_it_character),
+                    contentDescription = "walkit character"
+                )
+
+                // 키보드가 올라왔을 때는 Spacer 높이를 줄이고, 평상시에는 92.dp 유지
+                Spacer(
+                    modifier = Modifier.height(
+                        if (isImeVisible) 16.dp else 92.dp
+                    )
+                )
+                Box(
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .heightIn(min = 46.dp)
+                        .clickable {
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
+                        .border(
+                            width = 1.dp,
+                            color = if (isError) SemanticColor.stateRedPrimary
+                            else SemanticColor.textBorderPrimary,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(
-                        text = "중복된 닉네임입니다.",
-                        style = MaterialTheme.walkItTypography.bodyS.copy(
-                            fontWeight = FontWeight.Medium
+                    BasicTextField(
+                        value = nicknameState.value,
+                        onValueChange = onNicknameChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.walkItTypography.bodyM,
+                        modifier = Modifier.focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done
                         ),
-                        color = SemanticColor.stateRedPrimary,
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // 항상 키보드 내리기
+                                keyboardController?.hide()
+                                // 다음 단계로 진행 가능한 경우에만 진행
+                                if (canGoNext) {
+                                    onNext()
+                                }
+                            }
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (nicknameState.value.isEmpty()) {
+                                Text(
+                                    "닉네임을 입력해주세요",
+                                    style = MaterialTheme.walkItTypography.bodyM,
+                                    color = SemanticColor.textBorderSecondary
+                                )
+                            }
+                            innerTextField()
+                        }
                     )
                 }
+                if (isError) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "중복된 닉네임입니다.",
+                            style = MaterialTheme.walkItTypography.bodyS.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = SemanticColor.stateRedPrimary,
+                        )
+                    }
 
-            }
-
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // 키보드가 내려가 있을 때만 버튼 표시
-            // TODO: 중복 체크 후에 다시 구현
-            if (!isImeVisible) {
-                CtaButton(
-                    text = "다음으로",
-                    enabled = true,
-                    onClick = onNext,
-                    buttonColor = SemanticColor.buttonPrimaryDefault,
-                    textColor = SemanticColor.textBorderPrimaryInverse
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_forward),
-                        contentDescription = null,
-                        tint = SemanticColor.iconWhite
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (!isImeVisible) {
+                    CtaButton(
+                        text = "다음으로",
+                        enabled = true,
+                        onClick = onNext,
+                        buttonColor = SemanticColor.buttonPrimaryDefault,
+                        textColor = SemanticColor.textBorderPrimaryInverse
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_forward),
+                            contentDescription = null,
+                            tint = SemanticColor.iconWhite
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
+
+            // API 요청 시 로딩 오버레이 표시
+            LoadingOverlay(isLoading = isLoading)
         }
     }
 }

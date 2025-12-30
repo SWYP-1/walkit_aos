@@ -49,6 +49,7 @@ import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.ui.walking.components.formatToMinutesSeconds
 import java.io.File
 
 @Composable
@@ -70,7 +71,6 @@ fun WeeklyRecordCard(
                         .height(190.dp)
                         .background(
                             Color(0xFFE6E6E6),
-                            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
                         ),
                 contentAlignment = Alignment.BottomStart,
             ) {
@@ -111,7 +111,7 @@ fun WeeklyRecordCard(
                     modifier =
                         Modifier
                             .align(Alignment.BottomEnd)
-                            .offset(x = 8.dp,y = 42.dp),
+                            .offset(x = -16.dp,y = 26.dp),
                 ) {
                     EmotionCircle(emotionType = session.postWalkEmotion)
                 }
@@ -160,24 +160,30 @@ fun WeeklyRecordCard(
                         color = SemanticColor.textBorderPrimary
                     )
 
-                    // 거리 (AnnotatedString)
+                    // 시간 분 (AnnotatedString)
                     Row(
                         Modifier.weight(1f),
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        val (number, unit) = formatDistance(session.totalDistance)
+                        val timeString = formatToMinutesSeconds(session.duration)
 
                         Text(
                             text = buildAnnotatedString {
-                                append(number)
-                                withStyle(
-                                    SpanStyle(
-                                        fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
-                                        fontWeight = FontWeight.Normal,
-                                        color = SemanticColor.textBorderPrimary
-                                    )
-                                ) {
-                                    append(" $unit")
+                                // 분 부분 (콜론 앞)
+                                val colonIndex = timeString.indexOf(':')
+                                if (colonIndex > 0) {
+                                    append(timeString.substring(0, colonIndex))
+                                    withStyle(
+                                        SpanStyle(
+                                            fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
+                                            fontWeight = FontWeight.Normal,
+                                            color = SemanticColor.textBorderPrimary
+                                        )
+                                    ) {
+                                        append(timeString.substring(colonIndex)) // 콜론과 초 부분
+                                    }
+                                } else {
+                                    append(timeString)
                                 }
                             },
                             style = MaterialTheme.walkItTypography.bodyXL.copy(
@@ -206,7 +212,7 @@ fun EmotionCircle(emotionType: EmotionType) {
     Image(
         painter = painterResource(drawable),
         contentDescription = "감정",
-        modifier = Modifier.size(78.dp),
+        modifier = Modifier.size(52.dp),
     )
 }
 

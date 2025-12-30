@@ -47,21 +47,25 @@ fun RecordRoute(
     modifier: Modifier = Modifier,
     calendarViewModel: CalendarViewModel = hiltViewModel(),
     recordViewModel: RecordViewModel = hiltViewModel(),
+    friendBarViewModel: FriendBarViewModel = hiltViewModel(),
     onNavigateToFriend: () -> Unit = {},
     onNavigateToAlarm: () -> Unit = {},
     onNavigateToDailyRecord: (String) -> Unit = {},
     onStartOnboarding: () -> Unit = {},
 ) {
     val recordUiState by recordViewModel.uiState.collectAsStateWithLifecycle()
+    val friendsState by friendBarViewModel.friendsState.collectAsStateWithLifecycle()
     val weekStats by calendarViewModel.weekStats.collectAsStateWithLifecycle()
     val monthStats by calendarViewModel.monthStats.collectAsStateWithLifecycle()
     val monthSessions by calendarViewModel.monthSessions.collectAsStateWithLifecycle()
     val weekSessions by calendarViewModel.weekSessions.collectAsStateWithLifecycle()
+    val monthMissionsCompleted by calendarViewModel.monthMissionsCompleted.collectAsStateWithLifecycle()
     val currentDate by calendarViewModel.currentDate.collectAsStateWithLifecycle()
 
     RecordScreenContent(
         modifier = modifier,
         recordUiState = recordUiState,
+        friendsState = friendsState,
         weekStats = weekStats,
         monthStats = monthStats,
         currentDate = currentDate,
@@ -75,6 +79,7 @@ fun RecordRoute(
         onFriendDeselected = { recordViewModel.clearFriendSelection() },
         monthSessions = monthSessions,
         weekSessions = weekSessions,
+        monthMissionsCompleted = monthMissionsCompleted,
         onMonthChanged = { calendarViewModel.setDate(it.atDay(1)) },
         onStartOnboarding = onStartOnboarding,
         onLoadFriendRecord = { friendName -> recordViewModel.selectFriend(friendName) },
@@ -86,6 +91,7 @@ fun RecordRoute(
 private fun RecordScreenContent(
     modifier: Modifier = Modifier,
     recordUiState: RecordUiState,
+    friendsState: Result<List<Friend>>,
     weekStats: WalkAggregate,
     monthStats: WalkAggregate,
     currentDate: LocalDate,
@@ -99,6 +105,7 @@ private fun RecordScreenContent(
     onFriendDeselected: () -> Unit,
     monthSessions: List<team.swyp.sdu.data.model.WalkingSession>,
     weekSessions: List<team.swyp.sdu.data.model.WalkingSession>,
+    monthMissionsCompleted: List<String>,
     onMonthChanged: (java.time.YearMonth) -> Unit,
     onStartOnboarding: () -> Unit,
     onLoadFriendRecord: (String) -> Unit,
@@ -127,9 +134,11 @@ private fun RecordScreenContent(
         // 상단 영역 (고정 높이)
         RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
         Spacer(Modifier.height(16.dp))
-        Row(Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
             Text(
                 text = "친구목록",
                 // caption M/regular
@@ -158,9 +167,15 @@ private fun RecordScreenContent(
             }
 
             is RecordUiState.Success -> {
+                // FriendBarViewModel에서 친구 목록 상태 가져오기
+                val friends = when (friendsState) {
+                    is Result.Success -> friendsState.data
+                    else -> emptyList()
+                }
+
                 RecordTopSection(
                     user = recordUiState.user,
-                    friends = recordUiState.friends,
+                    friends = friends,
                     selectedFriendNickname = recordUiState.selectedFriendNickname,
                     onMyProfileClick = onMyProfileClick,
                     onFriendSelected = onFriendSelected,
@@ -175,7 +190,9 @@ private fun RecordScreenContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // 남은 공간 모두 차지
+                .weight(1f)
+                .background(SemanticColor.backgroundWhiteSecondary)
+
         ) {
             if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
                 FriendRecordScreen(
@@ -188,35 +205,48 @@ private fun RecordScreenContent(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize() // Box 내 전체 공간
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .padding(horizontal = 20.dp)
                 ) {
-            item {
-                HeaderRow(
-                    onDummyClick = { /*TODO*/ },
-                    onStartOnboarding = onStartOnboarding
-                )
-            }
+//                    item {
+//                        HeaderRow(
+//                            onDummyClick = { /*TODO*/ },
+//                            onStartOnboarding = onStartOnboarding
+//                        )
+//                    }
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                    }
 
-            item {
-                RecordTabRow(
-                    selectedTabIndex = tabIndex,
-                    onTabSelected = { tabIndex = it }
-                )
-            }
+                    item {
+                        RecordTabRow(
+                            selectedTabIndex = tabIndex,
+                            onTabSelected = { tabIndex = it }
+                        )
+                    }
 
-            item {
-                RecordTabContent(
-                    selectedTab = tabs[tabIndex],
-                    monthStats = monthStats,
-                    weekStats = weekStats,
-                    monthSessions = monthSessions,
-                    weekSessions = weekSessions,
-                    currentDate = currentDate,
-                    onPrevWeek = onPrevWeek,
-                    onNextWeek = onNextWeek,
-                    onNavigateToDailyRecord = onNavigateToDailyRecord,
-                    onMonthChanged = onMonthChanged
-                )
+                    item {
+                        Spacer(Modifier.height(24.dp))
+                    }
+
+                    item {
+                        RecordTabContent(
+                            selectedTab = tabs[tabIndex],
+                            monthStats = monthStats,
+                            weekStats = weekStats,
+                            monthSessions = monthSessions,
+                            weekSessions = weekSessions,
+                            monthMissionsCompleted = monthMissionsCompleted,
+                            currentDate = currentDate,
+                            onPrevWeek = onPrevWeek,
+                            onNextWeek = onNextWeek,
+                            onNavigateToDailyRecord = onNavigateToDailyRecord,
+                            onMonthChanged = onMonthChanged
+                        )
+                    }
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
             }
         }
     }

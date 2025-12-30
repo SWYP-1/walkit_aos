@@ -78,23 +78,17 @@ class GoalManagementViewModel @Inject constructor(
     }
 
     /**
-     * 목표 초기화
+     * 목표 초기화 (UI만 리셋, 서버 저장하지 않음)
      */
     fun resetGoal() {
-        viewModelScope.launch {
-            val defaultState = GoalState()
-            // UI 상태 초기화
-            _uiState.value = defaultState
-
-            val defaultGoal = Goal(
-                targetStepCount = defaultState.targetSteps,
-                targetWalkCount = defaultState.walkFrequency
-            )
-            goalRepository.updateGoal(defaultGoal).onError { t, msg ->
-                Timber.e(t, "목표 초기화 실패: $msg")
-                // 실패 시 서버에서 다시 가져오기
-                refreshGoal()
-            }
-        }
+        val defaultState = GoalState()
+        // UI 상태만 초기화 (서버 저장하지 않음)
+        _uiState.value = defaultState
+        Timber.d("목표 UI 초기화됨: 걸음 수=${defaultState.targetSteps}, 빈도=${defaultState.walkFrequency}회")
     }
+
+    /**
+     * 현재 목표 상태 반환 (UI에서 로컬 상태 초기화에 사용)
+     */
+    fun getCurrentGoalState(): GoalState = _uiState.value
 }

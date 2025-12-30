@@ -45,10 +45,10 @@ class MainActivity : ComponentActivity() {
                         }
                     } else {
                         // 현재 Walking 화면이면 홈으로 복귀
-                        val currentRoute = navController.currentBackStackEntry?.destination?.route
-                        if (currentRoute == Screen.Walking.route) {
-                            navController.popBackStack(Screen.Main.route, false)
-                        }
+//                        val currentRoute = navController.currentBackStackEntry?.destination?.route
+//                        if (currentRoute == Screen.Walking.route) {
+//                            navController.popBackStack(Screen.Main.route, false)
+//                        }
                     }
                 }
 

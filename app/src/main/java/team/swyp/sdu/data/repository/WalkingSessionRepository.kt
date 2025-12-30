@@ -141,37 +141,20 @@ constructor(
         when (result) {
             is Result.Success -> {
                 val response = result.data
-                if (response.isSuccessful) {
-                    // 서버 응답에서 받은 imageUrl을 serverImageUrl에 저장
-                    val responseBody = response.body()
-                    val serverImageUrl = responseBody?.imageUrl
+                val serverImageUrl = response.imageUrl
 
-                    // Entity 업데이트 (serverImageUrl 저장)
-                    val entity = walkingSessionDao.getSessionById(session.id)
-                    if (entity != null && serverImageUrl != null) {
-                        val updatedEntity = entity.copy(
-                            serverImageUrl = serverImageUrl
-                            // localImagePath는 유지 (오프라인 지원)
-                        )
-                        walkingSessionDao.update(updatedEntity)
-                    }
-
-                    // 서버 동기화 성공
-                    // 로컬 DB의 동기화 상태는 이미 SYNCED로 업데이트됨
-                    Timber.d("서버 동기화 성공: 세션 ID=${session.id}, serverImageUrl=$serverImageUrl")
-                } else {
-                    val errorCode = response.code()
-                    val errorMessage = when (errorCode) {
-                        508 -> "서버가 요청을 처리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
-                        500 -> "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                        502 -> "서버 게이트웨이 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                        503 -> "서버가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."
-                        504 -> "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
-                        else -> response.message() ?: "서버 동기화 실패 (HTTP $errorCode)"
-                    }
-                    Timber.w("서버 동기화 실패: HTTP $errorCode - $errorMessage")
-                    throw Exception(errorMessage)
+                // Entity 업데이트 (serverImageUrl 저장)
+                val entity = walkingSessionDao.getSessionById(session.id)
+                if (entity != null && serverImageUrl != null) {
+                    val updatedEntity = entity.copy(
+                        serverImageUrl = serverImageUrl
+                        // localImagePath는 유지 (오프라인 지원)
+                    )
+                    walkingSessionDao.update(updatedEntity)
                 }
+                // 서버 동기화 성공
+                // 로컬 DB의 동기화 상태는 이미 SYNCED로 업데이트됨
+                Timber.d("서버 동기화 성공: 세션 ID=${session.id}, serverImageUrl=$serverImageUrl")
             }
 
             is Result.Error -> {
@@ -187,22 +170,46 @@ constructor(
     }
 
     /**
-     * 미동기화 세션 모두 동기화 (스텁)
-     *
-     * TODO: 실제 서버 API 연동 시 이 함수를 구현하세요.
+     * 미동기화 세션 조회 (PENDING 또는 FAILED 상태)
+     */
+    suspend fun getUnsyncedSessions(): List<WalkingSession> {
+        val entities = walkingSessionDao.getUnsyncedSessions()
+        return entities.map { WalkingSessionMapper.toDomain(it) }
+    }
+
+    /**
+     * 미동기화 세션 모두 동기화 (WorkManager에서 호출)
      */
     suspend fun syncAllPendingSessions() {
-        // TODO: 서버 API 연동 구현 필요
-        // val unsyncedSessions = walkingSessionDao.getUnsyncedSessions()
-        // unsyncedSessions.forEach { entity ->
-        //     try {
-        //         syncToServer(entity.toDomain())
-        //     } catch (e: Exception) {
-        //         Timber.w(e, "세션 동기화 실패: ID=${entity.id}")
-        //     }
-        // }
+        val unsyncedSessions = getUnsyncedSessions()
 
-        Timber.d("미동기화 세션 동기화 스텁 호출됨 (실제 구현 필요)")
+        if (unsyncedSessions.isEmpty()) {
+            Timber.d("동기화할 세션이 없습니다")
+            return
+        }
+
+        Timber.d("미동기화 세션 ${unsyncedSessions.size}개 발견, 동기화 시작")
+
+        unsyncedSessions.forEach { session ->
+            try {
+                // 동기화 상태를 SYNCING으로 변경
+                walkingSessionDao.updateSyncState(session.id, SyncState.SYNCING)
+
+                // 서버 동기화 시도 (이미지 URI는 null로 전달)
+                syncToServer(session, null)
+
+                // 성공 시 SYNCED로 변경
+                walkingSessionDao.updateSyncState(session.id, SyncState.SYNCED)
+                Timber.d("세션 동기화 성공: ID=${session.id}")
+
+            } catch (e: Exception) {
+                // 실패 시 FAILED로 변경
+                walkingSessionDao.updateSyncState(session.id, SyncState.FAILED)
+                Timber.w(e, "세션 동기화 실패: ID=${session.id}")
+            }
+        }
+
+        Timber.d("미동기화 세션 동기화 완료")
     }
 
 
@@ -420,33 +427,17 @@ constructor(
             when (result) {
                 is Result.Success -> {
                     val response = result.data
-                    if (response.isSuccessful) {
-                        // 서버 응답에서 받은 imageUrl을 serverImageUrl에 저장
-                        val responseBody = response.body()
-                        val serverImageUrl = responseBody?.imageUrl
+                    val serverImageUrl = response.imageUrl
 
-                        val updatedEntity = entity.copy(
-                            serverImageUrl = serverImageUrl // 서버에서 받은 URL 저장
-                            // localImagePath는 유지 (오프라인 지원)
-                        )
-                        walkingSessionDao.update(updatedEntity)
+                    val updatedEntity = entity.copy(
+                        serverImageUrl = serverImageUrl // 서버에서 받은 URL 저장
+                        // localImagePath는 유지 (오프라인 지원)
+                    )
+                    walkingSessionDao.update(updatedEntity)
 
-                        // 동기화 성공
-                        walkingSessionDao.updateSyncState(localId, SyncState.SYNCED)
-                        Timber.d("서버 동기화 성공: localId=$localId, serverImageUrl=$serverImageUrl")
-                    } else {
-                        val errorCode = response.code()
-                        val errorMessage = when (errorCode) {
-                            508 -> "서버가 요청을 처리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
-                            500 -> "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                            502 -> "서버 게이트웨이 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                            503 -> "서버가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."
-                            504 -> "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
-                            else -> response.message() ?: "서버 동기화 실패 (HTTP $errorCode)"
-                        }
-                        Timber.w("서버 동기화 실패: HTTP $errorCode - $errorMessage")
-                        throw Exception(errorMessage)
-                    }
+                    // 동기화 성공
+                    walkingSessionDao.updateSyncState(localId, SyncState.SYNCED)
+                    Timber.d("서버 동기화 성공: localId=$localId, serverImageUrl=$serverImageUrl")
                 }
 
                 is Result.Error -> {

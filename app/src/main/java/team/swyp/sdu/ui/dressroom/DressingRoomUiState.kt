@@ -29,6 +29,7 @@ sealed interface DressingRoomUiState {
         val currentPosition: String? = null,
         val myPoint : Int = 0,
         val availablePositions: List<String> = listOf("HEAD", "BODY", "FEET"),
+        val processedLottieJson: String? = null,  // Lottie 미리보기 JSON
     ) : DressingRoomUiState
 
     /**

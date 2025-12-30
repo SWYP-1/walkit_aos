@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import team.swyp.sdu.data.remote.billing.BillingManager
 import team.swyp.sdu.domain.service.FcmTokenManager
+import team.swyp.sdu.worker.SessionSyncWorker
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -89,6 +90,10 @@ class WalkingBuddyApplication : Application() {
             // 토큰이 없으면 초기화
             fcmTokenManager.initializeToken()
         }
+
+        // 세션 동기화 WorkManager 초기화
+        // 앱 시작 시 주기적 동기화 작업 예약 (15분 간격)
+        SessionSyncWorker.schedulePeriodicSync(this, 15L)
 
         Timber.d("WalkingBuddyApplication onCreate")
     }

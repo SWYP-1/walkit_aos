@@ -5,6 +5,11 @@ import com.google.firebase.messaging.FirebaseMessaging
 import team.swyp.sdu.domain.service.ActivityRecognitionManager
 import team.swyp.sdu.domain.service.LocationTrackingService
 import team.swyp.sdu.domain.service.StepCounterManager
+import team.swyp.sdu.domain.service.filter.AccuracyFilter
+import team.swyp.sdu.domain.service.filter.GpsFilter
+import team.swyp.sdu.domain.service.filter.KalmanFilter
+import team.swyp.sdu.domain.service.filter.PathSmoother
+import team.swyp.sdu.domain.service.filter.SpeedFilter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -42,6 +47,36 @@ object ServiceModule {
     @Provides
     @Singleton
     fun provideFirebaseMessaging(): FirebaseMessaging = FirebaseMessaging.getInstance()
+
+    /**
+     * GPS 필터 관련 의존성 제공
+     */
+
+    @Provides
+    @Singleton
+    fun provideAccuracyFilter(): AccuracyFilter = AccuracyFilter(maxAccuracy = 50f)
+
+    @Provides
+    @Singleton
+    fun provideKalmanFilter(): KalmanFilter = KalmanFilter(q = 3f)
+
+    @Provides
+    @Singleton
+    fun provideSpeedFilter(): SpeedFilter = SpeedFilter(maxSpeedMs = 30.0)
+
+    @Provides
+    @Singleton
+    fun provideGpsFilter(
+        accuracyFilter: AccuracyFilter,
+        kalmanFilter: KalmanFilter,
+        speedFilter: SpeedFilter
+    ): GpsFilter {
+        return GpsFilter(accuracyFilter, kalmanFilter, speedFilter)
+    }
+
+    @Provides
+    @Singleton
+    fun providePathSmoother(): PathSmoother = PathSmoother()
 
     /**
      * LocationTrackingService는 @AndroidEntryPoint로 주입되므로

@@ -8,13 +8,20 @@ package team.swyp.sdu.domain.model
  * Character 정보는 별도의 Character 모델로 분리되었습니다.
  */
 data class User(
+    val userId: Long,
     val imageName: String? = null,
     val nickname: String,
     val birthDate: String?, // ISO 8601 형식: "2025-12-07"
     val sex: Sex? = null,
 ) {
+    /**
+     * 온보딩 완료 여부 (닉네임이 빈 문자열이면 온보딩 미완료로 판단)
+     */
+    val isOnboarded: Boolean
+        get() = nickname.isNotEmpty()
     companion object {
         val EMPTY = User(
+            userId = 0L,
             imageName = null,
             nickname = "",
             birthDate = "",

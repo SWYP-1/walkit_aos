@@ -124,28 +124,28 @@ private fun ProfileContent(
         ) {
             // 캐릭터 이미지
             uiState.character.characterImageName?.let { charImageUrl ->
-//                AsyncImage(
-//                    model = ImageRequest.Builder(context)
-//                        .data(charImageUrl)
-//                        .crossfade(true)
-//                        .build(),
-//                    contentDescription = "캐릭터 이미지",
-//                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-//                    modifier = Modifier.size(130.dp)
-//                )
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(charImageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "캐릭터 이미지",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier.size(130.dp)
+                )
                 val (feetPart, bodyPart, headPart) = createCharacterParts(
                     feetUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_FEET_BLACK_BOOTS.png",
                     bodyUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_BODY_RED_SCARF.png",
                     headUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_HEAD_BLUE_RIBBON.png",
                 )
 // Compose에서
-                TestCharacterWithAnchor(
-                    feet = feetPart,
-                    body = bodyPart,
-                    head = headPart,
-                    characterUrl = charImageUrl.toString(),
-                    modifier = Modifier.size(120.dp)
-                )
+//                TestCharacterWithAnchor(
+//                    feet = feetPart,
+//                    body = bodyPart,
+//                    head = headPart,
+//                    characterUrl = charImageUrl.toString(),
+//                    modifier = Modifier.size(120.dp)
+//                )
             }
 
             // 사용자 정보 및 목표

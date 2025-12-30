@@ -56,7 +56,7 @@ fun GoalManagementScreen(
     var selectedFrequency by remember { mutableIntStateOf(goalState.walkFrequency) }
 
     // 서버 데이터가 로드되면 로컬 상태 업데이트
-    LaunchedEffect(goalState) {
+    LaunchedEffect(goalState.targetSteps, goalState.walkFrequency) {
         selectedSteps = goalState.targetSteps
         selectedFrequency = goalState.walkFrequency
     }
@@ -115,13 +115,19 @@ fun GoalManagementScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CtaButton(
-                        text = "초기화",
-                        textColor = SemanticColor.buttonPrimaryDefault,
-                        buttonColor = SemanticColor.backgroundWhitePrimary,
-                        onClick = { scope.launch { onResetGoal() } },
-                        modifier = Modifier.weight(1f)
-                    )
+                CtaButton(
+                    text = "초기화",
+                    textColor = SemanticColor.buttonPrimaryDefault,
+                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    onClick = {
+                        scope.launch { onResetGoal() }
+                        // 초기화 후 로컬 상태도 즉시 업데이트
+                        val defaultState = GoalState()
+                        selectedSteps = defaultState.targetSteps
+                        selectedFrequency = defaultState.walkFrequency
+                    },
+                    modifier = Modifier.weight(1f)
+                )
 
                     CtaButton(
                         text = "저장하기",

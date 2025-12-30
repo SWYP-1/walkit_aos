@@ -7,6 +7,8 @@ import kotlinx.coroutines.withContext
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.local.dao.CharacterDao
 import team.swyp.sdu.data.local.mapper.CharacterMapper
+import team.swyp.sdu.data.remote.auth.CharacterRemoteDataSource
+import team.swyp.sdu.data.remote.walking.mapper.CharacterMapper as RemoteCharacterMapper
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.repository.CharacterRepository
 import timber.log.Timber
@@ -21,6 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class CharacterRepositoryImpl @Inject constructor(
     private val characterDao: CharacterDao,
+    private val characterRemoteDataSource: CharacterRemoteDataSource,
 ) : CharacterRepository {
 
     override fun observeCharacter(nickname: String): Flow<Character?> =
@@ -73,6 +76,18 @@ class CharacterRepositoryImpl @Inject constructor(
                 Result.Error(e, e.message)
             }
         }
+
+    override suspend fun getCharacterByLocation(lat: Double, lon: Double): Result<Character> {
+        return try {
+            val dto = characterRemoteDataSource.getCharacterByLocation(lat, lon)
+            val character = RemoteCharacterMapper.toDomain(dto)
+            Timber.d("위치 기반 캐릭터 정보 조회 성공: lat=$lat, lon=$lon, nickname=${character.nickName}")
+            Result.Success(character)
+        } catch (e: Exception) {
+            Timber.e(e, "위치 기반 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
+            Result.Error(e, e.message)
+        }
+    }
 }
 
 

@@ -5,17 +5,25 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import team.swyp.sdu.core.Result
+import team.swyp.sdu.core.map
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.repository.WalkingSessionRepository
+import team.swyp.sdu.domain.repository.MissionRepository
 import team.swyp.sdu.utils.CalenderUtils.dayRange
 import team.swyp.sdu.utils.CalenderUtils.monthRange
 import team.swyp.sdu.utils.CalenderUtils.weekRange
@@ -32,10 +40,9 @@ import timber.log.Timber
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
+    private val missionRepository: MissionRepository,
 ) : ViewModel() {
 
-    private val _dummyMessage = MutableStateFlow<String?>(null)
-    val dummyMessage: StateFlow<String?> = _dummyMessage.asStateFlow()
 
     data class WalkAggregate(
         val steps: Int = 0,
@@ -53,6 +60,10 @@ class CalendarViewModel @Inject constructor(
 
     private val today = MutableStateFlow(LocalDate.now())
     val currentDate: StateFlow<LocalDate> = today.asStateFlow()
+
+    // 데이터 로딩 상태
+    private val _isLoadingDaySessions = MutableStateFlow(true)
+    val isLoadingDaySessions: StateFlow<Boolean> = _isLoadingDaySessions.asStateFlow()
 
     val allSessions: StateFlow<List<WalkingSession>> =
         walkingSessionRepository
@@ -107,6 +118,36 @@ class CalendarViewModel @Inject constructor(
                 initialValue = emptyList(),
             )
 
+    val monthMissionsCompleted: StateFlow<List<String>> =
+        today
+            .flatMapLatest { date ->
+                val year = date.year
+                val month = date.monthValue
+                val result = missionRepository.getMonthlyCompletedMissions(year, month)
+
+                flowOf(
+                    when (result) {
+                        is Result.Success -> result.data
+                        is Result.Error -> {
+                            Timber.e("월간 미션 완료 데이터 로드 실패: ${result.message}")
+                            emptyList()
+                        }
+
+                        Result.Loading -> {
+                            emptyList()
+                        }
+                    }
+                )
+            }
+
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
+
+
     val weekSessions: StateFlow<List<WalkingSession>> =
         today
             .flatMapLatest { date ->
@@ -123,6 +164,9 @@ class CalendarViewModel @Inject constructor(
             .flatMapLatest { date ->
                 val (start, end) = dayRange(date)
                 walkingSessionRepository.getSessionsBetween(start, end)
+            }.onEach { sessions ->
+                // 데이터 로드 완료 시 로딩 상태 해제
+                _isLoadingDaySessions.value = false
             }.stateIn(
                 scope = viewModelScope,
                 started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
@@ -188,6 +232,8 @@ class CalendarViewModel @Inject constructor(
      */
     fun setDate(date: LocalDate) {
         today.value = date
+        // 날짜 변경 시 로딩 상태로 설정
+        _isLoadingDaySessions.value = true
     }
 
     fun prevDay() {

@@ -55,15 +55,15 @@ fun WalkingResultRoute(
     var showWalkingCompleteDialog by remember { mutableStateOf(false) }
 
     // 저장 중일 때만 로딩 표시
-    if (uiState is WalkingUiState.SavingSession) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CustomProgressIndicator()
-        }
-        return
-    }
+//    if (uiState is WalkingUiState.SavingSession) {
+//        Box(
+//            modifier = modifier.fillMaxSize(),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            CustomProgressIndicator()
+//        }
+//        return
+//    }
 
     // 동기화 완료 시 다이얼로그 표시, 실패 시 바로 홈 이동
     LaunchedEffect(snapshotState) {
@@ -113,10 +113,15 @@ fun WalkingResultRoute(
             Timber.d("  📊 uiState: ${viewModel.uiState.value}")
         }
 
-        // Goal 데이터 추출
+        // Goal 데이터 추출 및 ViewModel에 설정
         val goal: Goal? = when (val goal = goalState) {
             is team.swyp.sdu.core.Result.Success -> goal.data
             else -> null
+        }
+
+        // WalkingViewModel에 현재 goal 설정 (targetStepCount 저장용)
+        LaunchedEffect(goal) {
+            viewModel.setCurrentGoal(goal)
         }
 
         // 이번주 동기화된 세션 목록 추출

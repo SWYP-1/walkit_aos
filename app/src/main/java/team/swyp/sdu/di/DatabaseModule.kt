@@ -17,6 +17,7 @@ import team.swyp.sdu.data.repository.FriendRepositoryImpl
 import team.swyp.sdu.data.repository.MissionProgressRepositoryImpl
 import team.swyp.sdu.data.repository.WalkRepositoryImpl
 import team.swyp.sdu.data.repository.WalkingSessionRepository
+import team.swyp.sdu.data.remote.auth.CharacterRemoteDataSource
 import team.swyp.sdu.data.remote.friend.FollowRemoteDataSource
 import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
 import team.swyp.sdu.domain.repository.CharacterRepository
@@ -103,7 +104,8 @@ object DatabaseModule {
     @Singleton
     fun provideCharacterRepository(
         characterDao: CharacterDao,
-    ): CharacterRepository = CharacterRepositoryImpl(characterDao)
+        characterRemoteDataSource: CharacterRemoteDataSource,
+    ): CharacterRepository = CharacterRepositoryImpl(characterDao, characterRemoteDataSource)
 
     @Provides
     @Singleton

@@ -60,6 +60,10 @@ fun LoginRoute(
     viewModel: LoginViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
 ) {
+    // 로그인 성공 후 사용자 상태에 따른 네비게이션 처리
+    LaunchedEffect(Unit) {
+        viewModel.setNavigationCallbacks(onNavigateToMain, onNavigateToTermsAgreement)
+    }
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
@@ -77,7 +81,16 @@ fun LoginRoute(
 
         when {
             onboardingCompleted -> onNavigateToMain()
-            // 약관 동의는 다이얼로그로 표시되므로 여기서는 네비게이션하지 않음
+            termsAgreed -> onNavigateToTermsAgreement() // 약관 동의 완료 시 온보딩으로
+            // 그 외: 약관 동의 대기 (다이얼로그 표시)
+        }
+    }
+
+    // 로그아웃 상태 감지 - 로그아웃 시 모든 상태 초기화
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            // 로그아웃 상태일 때는 약관 동의 다이얼로그를 표시하지 않음
+            // (필요시 추가적인 초기화 로직을 여기에 추가할 수 있음)
         }
     }
 
@@ -92,7 +105,7 @@ fun LoginRoute(
         },
     )
 
-    // 로그인 성공 시 약관 동의 다이얼로그 표시
+    // 로그인 성공 시 약관 동의 다이얼로그 표시 (로그아웃 상태일 때는 표시하지 않음)
     if (isLoggedIn && !termsAgreed && !onboardingCompleted) {
         TermsAgreementDialogRoute(
             onDismiss = {
@@ -102,6 +115,11 @@ fun LoginRoute(
             onSuccess = {
                 // 약관 동의 성공 시 온보딩으로 이동
                 onNavigateToTermsAgreement()
+            },
+            onTermsAgreedUpdated = {
+                // 약관 동의 상태를 OnboardingViewModel에 업데이트
+                onboardingViewModel.updateServiceTermsChecked(true)
+                onboardingViewModel.updatePrivacyPolicyChecked(true)
             },
         )
     }

@@ -2,6 +2,8 @@ package team.swyp.sdu.data.remote.mission.mapper
 
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionListResponse
+import team.swyp.sdu.domain.model.MissionCategory
+import team.swyp.sdu.domain.model.MissionType
 import team.swyp.sdu.domain.model.WeeklyMission
 
 /**
@@ -16,10 +18,9 @@ object WeeklyMissionMapper {
             userWeeklyMissionId = dto.userWeeklyMissionId,
             missionId = dto.missionId,
             title = dto.title,
-            description = dto.description,
-            category = dto.category,
-            type = dto.type,
-            status = dto.status,
+            category = dto.getMissionCategory() ?: MissionCategory.CHALLENGE,
+            type = dto.getMissionType() ?: MissionType.CHALLENGE_STEPS,
+            status = dto.getMissionStatus(),
             rewardPoints = dto.rewardPoints,
             assignedConfigJson = dto.assignedConfigJson,
             weekStart = dto.weekStart,

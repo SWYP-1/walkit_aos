@@ -157,6 +157,7 @@ fun PreWalkingEmotionSelectScreen(
                     textColor = SemanticColor.textBorderPrimaryInverse,
                     onClick = onNext,
                     modifier = Modifier.weight(1f),
+                    enabled = permissionsGranted, // 권한이 없으면 버튼 비활성화
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_forward),

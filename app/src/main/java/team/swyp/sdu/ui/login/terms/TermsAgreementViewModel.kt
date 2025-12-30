@@ -96,6 +96,7 @@ class TermsAgreementViewModel @Inject constructor(
      * 필수 약관이 모두 체크되어야만 API 호출
      */
     fun submitTermsAgreement(
+        onTermsAgreedUpdated: () -> Unit, // 약관 동의 상태 업데이트 콜백 추가
         onSuccess: () -> Unit,
         onError: (String) -> Unit,
     ) {
@@ -107,7 +108,7 @@ class TermsAgreementViewModel @Inject constructor(
             if (!currentState.termsAgreed) missingTerms.add("서비스 이용약관")
             if (!currentState.privacyAgreed) missingTerms.add("개인정보 처리방침")
             if (!currentState.locationAgreed) missingTerms.add("위치 정보 이용약관")
-            
+
             val errorMsg = "다음 약관에 동의해주세요: ${missingTerms.joinToString(", ")}"
             _uiState.value = currentState.copy(errorMessage = errorMsg)
             onError(errorMsg)
@@ -126,6 +127,11 @@ class TermsAgreementViewModel @Inject constructor(
                 is Result.Success -> {
                     _uiState.value = currentState.copy(isLoading = false)
                     Timber.d("약관 동의 성공")
+
+                    // 약관 동의 상태 업데이트 콜백 호출 (OnboardingViewModel에서 상태 저장)
+                    onTermsAgreedUpdated()
+
+                    // 약관 동의 상태가 업데이트된 후 콜백 호출
                     onSuccess()
                 }
                 is Result.Error -> {

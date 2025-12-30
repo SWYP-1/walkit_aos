@@ -54,7 +54,7 @@ class WalkRemoteDataSource @Inject constructor(
     suspend fun saveWalk(
         session: WalkingSession,
         imageUri: String? = null
-    ): Result<Response<WalkSaveResponse>> {
+    ): Result<WalkSaveResponse> {
         return try {
             // 산책 데이터를 JSON으로 변환
             val walkDataJson = createWalkDataJson(session)
@@ -85,22 +85,6 @@ class WalkRemoteDataSource @Inject constructor(
                 image = imagePart
             )
 
-            // 응답 상태 로깅
-            if (response.isSuccessful) {
-                Timber.d("산책 저장 성공: HTTP ${response.code()}")
-            } else {
-                Timber.w("산책 저장 실패: HTTP ${response.code()}, 메시지: ${response.message()}")
-                // 응답 본문이 있으면 로깅
-                response.errorBody()?.let { errorBody ->
-                    try {
-                        val errorString = errorBody.string()
-                        Timber.w("에러 응답 본문: $errorString")
-                    } catch (e: Exception) {
-                        Timber.w(e, "에러 응답 본문 읽기 실패")
-                    }
-                }
-            }
-            
             Result.Success(response)
 
         } catch (e: CancellationException) {

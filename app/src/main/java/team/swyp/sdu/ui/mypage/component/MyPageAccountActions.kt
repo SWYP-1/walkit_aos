@@ -1,16 +1,21 @@
 package team.swyp.sdu.ui.mypage.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.ui.theme.Grey3
 import team.swyp.sdu.ui.theme.Grey7
@@ -27,17 +32,18 @@ fun MyPageAccountActions(
     onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val buttonShape = RoundedCornerShape(12.dp)
+
     Row(
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 16.dp)
     ) {
-        Text(
+        ActionTextButton(
             text = "로그아웃",
-            style = MaterialTheme.walkItTypography.bodyS,
-            color = Grey7,
-            modifier = Modifier.clickable(onClick = onLogout)
+            onClick = onLogout,
+            shape = buttonShape
         )
 
         VerticalDivider(
@@ -48,13 +54,31 @@ fun MyPageAccountActions(
             color = Grey3
         )
 
-        Text(
+        ActionTextButton(
             text = "탈퇴 하기",
-            style = MaterialTheme.walkItTypography.bodyS,
-            color = Grey7,
-            modifier = Modifier.clickable(onClick = onWithdraw)
+            onClick = onWithdraw,
+            shape = buttonShape
         )
     }
 }
 
-
+@Composable
+private fun ActionTextButton(
+    text: String,
+    onClick: () -> Unit,
+    shape: RoundedCornerShape,
+) {
+    Box(
+        modifier = Modifier
+            .clip(shape)                 // ✅ 클릭 영역 라운드
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp), // 터치 영역 확보
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.walkItTypography.bodyS,
+            color = Grey7
+        )
+    }
+}
