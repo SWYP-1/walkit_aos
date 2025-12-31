@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.domain.model.FollowStatus
+import timber.log.Timber
 import team.swyp.sdu.domain.model.FollowerWalkRecord
 import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.ui.components.AppHeader
@@ -67,6 +68,7 @@ import timber.log.Timber
 @Composable
 fun FriendSearchDetailRoute(
     nickname: String? = null,
+    followStatusString: String? = null,
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FriendSearchViewModel = hiltViewModel(),
@@ -76,8 +78,21 @@ fun FriendSearchDetailRoute(
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
     // 화면 진입 시 데이터 로드
-    LaunchedEffect(nickname) {
-        Timber.d("FriendSearchDetailRoute: LaunchedEffect with nickname=$nickname")
+    LaunchedEffect(nickname, followStatusString) {
+        Timber.d("FriendSearchDetailRoute: LaunchedEffect with nickname=$nickname, followStatusString=$followStatusString")
+
+        // 네비게이션에서 전달받은 followStatus 설정
+        if (followStatusString != null) {
+            try {
+                val followStatus = FollowStatus.valueOf(followStatusString)
+                viewModel.setFollowStatus(followStatus)
+                Timber.d("FriendSearchDetailRoute: set followStatus from navigation: $followStatus")
+            } catch (e: IllegalArgumentException) {
+                Timber.e(e, "Invalid followStatusString: $followStatusString")
+                viewModel.setFollowStatus(FollowStatus.EMPTY)
+            }
+        }
+
         if (nickname != null) {
             viewModel.loadFollowerWalkRecord(nickname)
         } else {

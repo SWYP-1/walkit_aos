@@ -67,8 +67,8 @@ sealed class Screen(val route: String) {
     data object Onboarding : Screen("onboarding")
     data object Friends : Screen("friends")
     data object FriendSearch : Screen("friend_search")
-    data object FriendSearchDetail : Screen("friend_search_detail/{nickname}") {
-        fun createRoute(nickname: String) = "friend_search_detail/$nickname"
+    data object FriendSearchDetail : Screen("friend_search_detail/{nickname}/{followStatus}") {
+        fun createRoute(nickname: String, followStatus: String) = "friend_search_detail/$nickname/$followStatus"
     }
     data object GoalManagement : Screen("goal_management")
     data object Mission : Screen("mission")
@@ -218,8 +218,8 @@ fun NavGraph(
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 FriendSearchScreen(
                     modifier = Modifier.padding(paddingValues),
-                    onNavigateToDetail = { nickname ->
-                        navController.navigate(Screen.FriendSearchDetail.createRoute(nickname))
+                    onNavigateToDetail = { nickname, followStatus ->
+                        navController.navigate(Screen.FriendSearchDetail.createRoute(nickname, followStatus))
                     },
                     onNavigateBack = {
                         if (!navController.popBackStack(Screen.Friends.route, false)) {
@@ -234,11 +234,19 @@ fun NavGraph(
             }
         }
         /* Friend Search Detail*/
-        composable(Screen.FriendSearchDetail.route) { backStackEntry ->
+        composable(
+            route = Screen.FriendSearchDetail.route,
+            arguments = listOf(
+                navArgument("nickname") { type = NavType.StringType },
+                navArgument("followStatus") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
             val nickname = backStackEntry.arguments?.getString("nickname")
+            val followStatusString = backStackEntry.arguments?.getString("followStatus")
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 FriendSearchDetailRoute(
                     nickname = nickname,
+                    followStatusString = followStatusString,
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = {
                         navController.popBackStack()

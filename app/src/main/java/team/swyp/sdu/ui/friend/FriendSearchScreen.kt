@@ -33,7 +33,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 fun FriendSearchScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
-    onNavigateToDetail: (String) -> Unit,
+    onNavigateToDetail: (String, String) -> Unit,
     viewModel: FriendViewModel = hiltViewModel(),
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -71,8 +71,8 @@ fun FriendSearchScreen(
         SearchResultScreen(
             searchUiState = searchUiState,
             isFollowing = isFollowing,
-            onNavigateToDetail = { nickName ->
-                onNavigateToDetail(nickName)
+            onNavigateToDetail = { nickName, followStatus ->
+                onNavigateToDetail(nickName, followStatus)
             },
             onFollowClick = {
                 // 검색 결과가 Success 상태일 때만 팔로우 가능
@@ -94,7 +94,7 @@ fun FriendSearchScreen(
 private fun SearchResultScreen(
     searchUiState: SearchUiState,
     isFollowing: Boolean,
-    onNavigateToDetail: (String) -> Unit,
+    onNavigateToDetail: (String, String) -> Unit,
     onFollowClick: () -> Unit,
 ) {
     Surface(

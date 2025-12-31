@@ -87,10 +87,8 @@ constructor(
                 _uiState.value = when (result) {
                     is Result.Success -> {
                         val data = result.data
-                        // 팔로우 상태 초기화 (로컬 저장된 상태 로드)
-                        val savedFollowStatus = loadFollowStatusFromLocal(nickname ?: "")
-                        _followStatus.value = savedFollowStatus
-                        Timber.d("FriendSearchViewModel.loadFollowerWalkRecord: $nickname 팔로우 상태 로드 - $savedFollowStatus")
+                        // 팔로우 상태는 네비게이션 파라미터에서 이미 설정됨
+                        Timber.d("FriendSearchViewModel.loadFollowerWalkRecord: $nickname 팔로우 상태 이미 설정됨 - ${_followStatus.value}")
                         FriendSearchUiState.Success(data = data)
                     }
 
@@ -99,6 +97,14 @@ constructor(
                 }
             }
         }
+    }
+
+    /**
+     * 팔로우 상태 설정 (네비게이션 파라미터에서 전달받은 값 사용)
+     */
+    fun setFollowStatus(followStatus: FollowStatus) {
+        _followStatus.value = followStatus
+        Timber.d("FriendSearchViewModel.setFollowStatus: $followStatus")
     }
 
     /**

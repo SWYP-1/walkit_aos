@@ -63,12 +63,12 @@ fun FriendCard(
     nickname: String,
     imageName: String? = null,
     followStatus: FollowStatus,
-    onCardClick: (String) -> Unit,
+    onCardClick: (String, FollowStatus) -> Unit,
     onFollowClick: () -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.clickable(onClick = { onCardClick(nickname) })) {
+    Box(modifier = modifier.clickable(onClick = { onCardClick(nickname, followStatus) })) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
