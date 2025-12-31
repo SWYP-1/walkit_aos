@@ -50,6 +50,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.FormatUtils
+import team.swyp.sdu.utils.WalkingTestData.generateRandomCityWalk
 import java.io.File
 
 @Composable
@@ -248,12 +249,7 @@ fun PathThumbnail(
     val source =
         if (locations.size < 2) {
             // TODO(2025-12-10): 더미 경로 제거하고 실제 위치 데이터만 사용하도록 교체
-            listOf(
-                LocationPoint(37.286, 127.046),
-                LocationPoint(37.2875, 127.047),
-                LocationPoint(37.288, 127.0455),
-                LocationPoint(37.287, 127.044),
-            )
+            generateRandomCityWalk()
         } else {
             locations
         }

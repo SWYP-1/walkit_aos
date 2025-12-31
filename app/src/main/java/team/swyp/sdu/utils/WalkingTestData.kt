@@ -722,6 +722,40 @@ object WalkingTestData {
     }
 
     /**
+     * 무작위 도시에서 산책 경로 포인트 리스트 생성
+     * @return List<LocationPoint> - 산책 경로의 위치 포인트 리스트
+     */
+    fun generateRandomCityWalkPoints(): List<LocationPoint> {
+        val cities = listOf(
+            Triple("서울", 37.5665, 126.9780), // Seoul
+            Triple("부산", 35.1796, 129.0756), // Busan
+            Triple("대구", 35.8714, 128.6014), // Daegu
+            Triple("인천", 37.4563, 126.7052), // Incheon
+            Triple("광주", 35.1595, 126.8526), // Gwangju
+            Triple("대전", 36.3504, 127.3845), // Daejeon
+            Triple("울산", 35.5384, 129.3114), // Ulsan
+            Triple("세종", 36.4800, 127.2890), // Sejong
+            Triple("수원", 37.2636, 127.0286), // Suwon
+            Triple("강릉", 37.7519, 128.8762)  // Gangneung
+        )
+
+        val (cityName, baseLat, baseLon) = cities.random()
+        val today = LocalDate.now()
+        val date = today.minusDays(Random.nextInt(0, 7).toLong()) // 최근 7일 중 랜덤
+        val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val durationMinutes = Random.nextInt(30, 121) // 30분 ~ 120분
+
+        return generateDenseLocationPoints(
+            baseLat = baseLat,
+            baseLon = baseLon,
+            startTime = startTime,
+            duration = durationMinutes,
+            pointCount = Random.nextInt(60, 101), // 60~100개 포인트
+            cityName = cityName
+        )
+    }
+
+    /**
      * 무작위 도시에서 단일 산책 세션 생성
      */
     fun generateRandomCityWalk(): WalkingSession {
