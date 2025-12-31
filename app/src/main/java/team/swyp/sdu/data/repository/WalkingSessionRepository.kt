@@ -76,6 +76,33 @@ constructor(
         return sessionUUID
     }
 
+    /**
+     * 세션 로컬 전용 저장 (데이터베이스에만 저장, 서버 동기화 없음)
+     *
+     * 더미 데이터나 테스트용 데이터 저장에 사용
+     *
+     * @param session 저장할 산책 세션
+     * @param imageUri 산책 이미지 URI (선택사항)
+     * @param syncState 동기화 상태 (기본값: NONE - 동기화하지 않음)
+     * @return 저장된 세션의 로컬 ID
+     */
+    suspend fun saveSessionLocalOnly(
+        session: WalkingSession,
+        imageUri: Uri? = null,
+        syncState: SyncState = SyncState.NONE,
+    ): String {
+        // 1. 로컬 저장 (지정된 syncState로)
+        val entity = WalkingSessionMapper.toEntity(
+            session,
+            syncState = syncState
+        )
+        walkingSessionDao.insert(entity)
+
+        // 2. 서버 동기화는 하지 않음
+        Timber.d("로컬 전용 세션 저장 완료: Id=${session.id}, syncState=$syncState")
+        return session.id
+    }
+
 
     /**
      * 모든 세션 조회 (Flow로 실시간 업데이트)

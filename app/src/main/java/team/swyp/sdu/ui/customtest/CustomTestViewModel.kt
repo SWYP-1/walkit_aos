@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import team.swyp.sdu.data.repository.WalkingSessionRepository
+import team.swyp.sdu.data.local.entity.SyncState
 import team.swyp.sdu.utils.WalkingTestData
 import timber.log.Timber
 import javax.inject.Inject
@@ -19,7 +20,7 @@ class CustomTestViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * 더미 세션 데이터 추가
+     * 더미 세션 데이터 추가 (데이터베이스에만 저장, 서버 동기화 없음)
      */
     fun addDummySessions(onComplete: () -> Unit = {}) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -30,14 +31,15 @@ class CustomTestViewModel @Inject constructor(
 
                 dummySessions.forEachIndexed { index, session ->
                     Timber.d("💾 [${index + 1}/${dummySessions.size}] 세션 저장 시도: ${session.startTime}")
-                    walkingSessionRepository.saveSession(
+                    walkingSessionRepository.saveSessionLocalOnly(
                         session = session,
-                        imageUri = null // 이미지 없이 저장
+                        imageUri = null, // 이미지 없이 저장
+                        syncState = SyncState.NONE // 서버 동기화하지 않음
                     )
                     Timber.d("✅ [${index + 1}/${dummySessions.size}] 세션 저장 완료: ${session.id}")
                 }
 
-                Timber.d("🎉 더미 세션 데이터 추가 완료: ${dummySessions.size}개")
+                Timber.d("🎉 더미 세션 데이터 추가 완료: ${dummySessions.size}개 (로컬 전용)")
                 onComplete()
             } catch (e: Exception) {
                 Timber.e(e, "❌ 더미 세션 데이터 추가 실패: ${e.message}")
