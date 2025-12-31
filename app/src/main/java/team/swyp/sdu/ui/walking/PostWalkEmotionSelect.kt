@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,7 +29,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
@@ -66,7 +63,7 @@ fun PostWalkingEmotionSelectRoute(
     LaunchedEffect(Unit) {
         Timber.d("🚶 PostWalkingEmotionSelectRoute - 진입: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
     }
-    
+
     val selectedEmotion by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()
 
     PostWalkingEmotionSelectScreen(
@@ -78,7 +75,11 @@ fun PostWalkingEmotionSelectRoute(
                 onNext()
             }
         },
-        onClose = onClose,
+        onClose = {
+            // 임시로 저장된 산책 기록 삭제
+            viewModel.deleteCurrentSession()
+            onClose()
+        },
         modifier = modifier,
     )
 }
@@ -217,8 +218,6 @@ private fun PostWalkingEmotionSelectScreen(
                     ),
                     cancelButtonText = "중단하기",
                     continueButtonText = "계속하기",
-                    cancelButtonColor = SemanticColor.stateRedPrimary,
-                    cancelButtonTextColor = SemanticColor.textBorderPrimaryInverse,
                     onDismiss = { showWarningDialog = false },
                     onCancel = {
                         // 산책 기록 중단 및 메인 화면으로 이동

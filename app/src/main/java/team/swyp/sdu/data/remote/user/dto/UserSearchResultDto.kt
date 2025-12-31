@@ -16,6 +16,7 @@ import team.swyp.sdu.data.remote.walking.dto.Grade
  * - EMPTY: 팔로우 신청하지 않은 경우
  * - PENDING: 팔로우 신청까지만 한 경우
  * - ACCEPTED: 팔로우된 경우
+ * - REJECTED: 팔로우 요청이 거절된 경우
  * - MYSELF: 자기 자신을 검색한 경우
  */
 @Serializable
@@ -27,21 +28,21 @@ data class UserSearchResultDto(
     @SerialName("nickName")
     val nickName: String,
     @SerialName("followStatus")
-    val followStatus: String? = null, // EMPTY, PENDING, ACCEPTED, MYSELF 또는 null
+    val followStatus: String? = null, // EMPTY, PENDING, ACCEPTED, REJECTED, MYSELF 또는 null
 ) {
     /**
      * followStatus를 FollowStatus enum으로 변환
-     * null인 경우 NONE을 반환 (로그인하지 않은 경우)
+     * null인 경우 EMPTY을 반환 (로그인하지 않은 경우)
      */
     fun getFollowStatusEnum(): FollowStatus {
         if (followStatus == null) {
-            return FollowStatus.NONE // 로그인하지 않은 경우
+            return FollowStatus.EMPTY // 로그인하지 않은 경우
         }
         return try {
             FollowStatus.valueOf(followStatus)
         } catch (e: IllegalArgumentException) {
             // 알 수 없는 값인 경우 기본값 반환
-            FollowStatus.NONE
+            FollowStatus.EMPTY
         }
     }
 }
@@ -66,11 +67,11 @@ data class UserSummaryDto(
 @Serializable
 data class ResponseCharacterDto(
     @SerialName("headImageName")
-    val headImageName: String,
+    val headImageName: String?,  // ✅ null 허용
     @SerialName("bodyImageName")
-    val bodyImageName: String,
+    val bodyImageName: String?,  // ✅ null 허용
     @SerialName("feetImageName")
-    val feetImageName: String,
+    val feetImageName: String?,  // ✅ null 허용
     @SerialName("characterImageName")
     val characterImageName: String,
     @SerialName("backgroundImageName")

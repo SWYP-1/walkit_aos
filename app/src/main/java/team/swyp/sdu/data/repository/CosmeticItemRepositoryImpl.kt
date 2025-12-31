@@ -32,12 +32,21 @@ class CosmeticItemRepositoryImpl @Inject constructor(
 
     override suspend fun getCosmeticItems(position: String?): Result<List<CosmeticItem>> {
         return try {
+            Timber.d("코스메틱 아이템 조회 시작${position?.let { " (position: $it)" } ?: ""}")
             val dtos = cosmeticItemRemoteDataSource.getCosmeticItems(position)
+            Timber.d("RemoteDataSource에서 받은 DTO 개수: ${dtos.size}")
+
+            if (dtos.isNotEmpty()) {
+                Timber.d("첫 번째 아이템 샘플: ${dtos[0]}")
+            }
+
             val domainItems = CosmeticItemMapper.toDomainList(dtos)
             Timber.d("코스메틱 아이템 조회 완료: ${domainItems.size}개${position?.let { " (position: $it)" } ?: ""}")
             Result.Success(data = domainItems)
         } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 조회 실패")
+            Timber.e(e, "코스메틱 아이템 조회 실패: ${e.message}")
+            Timber.e(e, "스택 트레이스:")
+            e.printStackTrace()
             Result.Error(e)
         }
     }

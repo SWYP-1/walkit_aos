@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,8 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import team.swyp.sdu.R
@@ -27,6 +39,7 @@ import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.GradeBadge
 import team.swyp.sdu.ui.theme.Grey10
 import team.swyp.sdu.ui.theme.Grey7
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
@@ -40,6 +53,7 @@ fun MyPageUserInfo(
     nickname: String,
     profileImageUrl: String? = null,
     grade: Grade?,
+    consecutiveDays: Int = 0,
     modifier: Modifier = Modifier,
 ) {
 
@@ -66,6 +80,23 @@ fun MyPageUserInfo(
                 GradeBadge(grade = grade)
             }
         }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = buildAnnotatedString {
+                append("지금까지 ")
+                withStyle(style = SpanStyle(color = SemanticColor.textBorderGreenPrimary)) {
+                    append(consecutiveDays.toString())
+                }
+                append("일 연속 출석 중!")
+            },
+            style = TextStyle(
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                fontFamily = FontFamily(Font(R.font.pretendard_regular)),
+                fontWeight = FontWeight.W400,
+                color = SemanticColor.textBorderPrimary // 기본 텍스트 색상
+            )
+        )
         Spacer(Modifier.height(32.dp))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             AsyncImage(
@@ -81,8 +112,6 @@ fun MyPageUserInfo(
                     .clip(CircleShape) // 원형으로 자르기
             )
         }
-
-
     }
 }
 
@@ -91,7 +120,12 @@ fun MyPageUserInfo(
 @Composable
 fun MyPageUserInfoPreview(modifier: Modifier = Modifier) {
     WalkItTheme {
-        MyPageUserInfo(nickname = "테스트사용자", profileImageUrl = "https://example.com/image.jpg", grade = Grade.TREE)
+        MyPageUserInfo(
+            nickname = "테스트사용자",
+            profileImageUrl = "https://example.com/image.jpg",
+            grade = Grade.TREE,
+            consecutiveDays = 7,
+        )
     }
 }
 

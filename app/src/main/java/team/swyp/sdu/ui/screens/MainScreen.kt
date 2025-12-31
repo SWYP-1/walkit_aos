@@ -214,9 +214,6 @@ fun MainScreen(
                 0 -> HomeRoute(
                     onClickWalk = { navController.navigate(Screen.Walking.route) }, // FloatingActionButton에서 처리하므로 빈 함수
                     onClickAlarm = { navController.navigate(Screen.Alarm.route) },
-                    onClickMission = {
-                        navController.navigate(Screen.Mission.route)
-                    },
                     onClickMissionMore = {
                         navController.navigate(Screen.Mission.route)
                     }

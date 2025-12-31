@@ -340,7 +340,16 @@ class HomeViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     val missionCardStates = missions.map { mission ->
+                        Timber.d("미션 정보: title=${mission.title}, status=${mission.status}, assignedConfigJson=${mission.assignedConfigJson}")
+                        val missionConfig = mission.getMissionConfig()
+                        Timber.d("미션 설정 파싱 결과: $missionConfig")
+
+                        // 현재 todaySteps 값도 로깅
+                        val currentTodaySteps = todayStepsFlow.value
+                        Timber.d("현재 HomeViewModel todaySteps: $currentTodaySteps")
+
                         val cardState = missionCardStateMapper.mapToCardState(mission, isActive = true)
+                        Timber.d("미션 카드 상태 계산 결과: $cardState")
                         MissionWithState(mission, cardState)
                     }
                     Timber.d("미션 카드 상태 매핑 완료: $missionCardStates")
@@ -510,6 +519,96 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "수동 세션 동기화 예약 실패")
             }
+        }
+    }
+
+    /**
+     * 주간 미션 보상 요청
+     *
+     * @param userWeeklyMissionId 보상을 요청할 미션 ID
+     */
+    fun requestWeeklyMissionReward(userWeeklyMissionId: Long) {
+        viewModelScope.launch {
+            Timber.d("주간 미션 보상 요청 시작: $userWeeklyMissionId")
+
+            when (val result = missionRepository.verifyWeeklyMissionReward(userWeeklyMissionId)) {
+                is Result.Success -> {
+                    val verifiedMission = result.data
+                    Timber.d("미션 보상 검증 성공: ${verifiedMission.title}, 상태: ${verifiedMission.status}")
+
+                    // 현재 미션 상태를 업데이트
+                    updateMissionAfterRewardVerification(verifiedMission)
+
+                    // TODO: 보상 지급 성공 UI 피드백 추가
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "미션 보상 검증 실패: $userWeeklyMissionId")
+                    // TODO: 에러 처리 UI 피드백 추가
+                }
+                Result.Loading -> {
+                    // 로딩 상태 처리 (필요시)
+                }
+            }
+        }
+    }
+
+    /**
+     * 미션 클릭 처리 (도전하기)
+     * READY_FOR_CLAIM 상태가 아닐 때 호출됨
+     */
+    fun onClickToWalk() {
+        Timber.d("미션 클릭: 산책 화면으로 이동")
+        // TODO: 산책 화면으로 네비게이션
+    }
+
+    /**
+     * 보상 검증 후 미션 상태 업데이트
+     *
+     * @param verifiedMission 검증된 미션 데이터
+     */
+    private fun updateMissionAfterRewardVerification(verifiedMission: WeeklyMission) {
+        Timber.d("미션 상태 업데이트 시작: ${verifiedMission.title}")
+
+        // 현재 미션 UI 상태 가져오기
+        val currentMissionUiState = _missionUiState.value
+
+        if (currentMissionUiState is MissionUiState.Success) {
+            // 기존 미션 목록에서 검증된 미션으로 교체
+            val updatedMissions = currentMissionUiState.missions.map { existingMission ->
+                if (existingMission.userWeeklyMissionId == verifiedMission.userWeeklyMissionId) {
+                    Timber.d("미션 교체: ${existingMission.title} -> ${verifiedMission.title}")
+                    verifiedMission
+                } else {
+                    existingMission
+                }
+            }
+
+            // 미션 카드 상태도 함께 업데이트
+            viewModelScope.launch {
+                try {
+                    val updatedMissionCardStates = updatedMissions.map { mission ->
+                        Timber.d("업데이트된 미션 카드 상태 계산: ${mission.title}")
+                        val missionConfig = mission.getMissionConfig()
+                        val cardState = missionCardStateMapper.mapToCardState(mission, isActive = true)
+                        MissionWithState(mission, cardState)
+                    }
+
+                    Timber.d("미션 상태 업데이트 완료")
+                    _missionUiState.value = MissionUiState.Success(
+                        missions = updatedMissions,
+                        missionCardStates = updatedMissionCardStates
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "미션 카드 상태 업데이트 실패")
+                    // 실패 시 미션 정보만 업데이트
+                    _missionUiState.value = MissionUiState.Success(
+                        missions = updatedMissions,
+                        missionCardStates = currentMissionUiState.missionCardStates
+                    )
+                }
+            }
+        } else {
+            Timber.w("미션 UI 상태가 Success가 아니어서 업데이트할 수 없음: $currentMissionUiState")
         }
     }
 

@@ -48,7 +48,6 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 fun MissionRoute(
     onNavigateToWalk: () -> Unit = {},
     onNavigateBack: () -> Unit,
-    onNavigateToMissionDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val viewModel: MissionViewModel = hiltViewModel()
@@ -58,8 +57,9 @@ fun MissionRoute(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
         onMissionClick = { missionId ->
-//            onNavigateToMissionDetail(missionId)
+
         },
+        onNavigateToWalk = onNavigateToWalk,
         modifier = modifier,
     )
 }
@@ -68,6 +68,7 @@ fun MissionRoute(
 fun MissionScreen(
     uiState: MissionUiState,
     onNavigateBack: () -> Unit,
+    onNavigateToWalk: () -> Unit,
     onMissionClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -143,7 +144,7 @@ fun MissionScreen(
                 MissionCard(
                     cardState = missionCard.cardState,
                     mission = missionCard.mission,
-                    onChallengeClick = { },
+                    onChallengeClick = onNavigateToWalk,
                     onRewardClick = { missionId -> onMissionClick(missionId) }
                 )
             }
@@ -161,6 +162,7 @@ fun MissionPreview() {
             uiState = MissionUiState(),
             onNavigateBack = {},
             onMissionClick = {},
+            onNavigateToWalk = {}
         )
     }
 }

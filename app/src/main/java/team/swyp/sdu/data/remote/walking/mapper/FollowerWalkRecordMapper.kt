@@ -21,7 +21,8 @@ object FollowerWalkRecordMapper {
             totalDistance = dto.totalDistance,
             likeCount = dto.likeCount,
             liked = dto.liked,
-            walkId = dto.walkId ?: -1
+            walkId = dto.walkId ?: -1,
+            totalTime = dto.totalTime ?: 0L
         )
     }
 

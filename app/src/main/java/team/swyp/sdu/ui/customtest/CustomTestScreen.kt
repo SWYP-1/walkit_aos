@@ -26,6 +26,9 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun CustomTestScreen(
     onNavigateBack: () -> Unit = {},
     onStartOnboarding: () -> Unit = {},
+    onAddDummySessions: () -> Unit = {},
+    onNavigateToMapTest: () -> Unit = {},
+    onNavigateToGalleryTest: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -45,8 +48,8 @@ fun CustomTestScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "개발자용 테스트 메뉴",
@@ -54,10 +57,31 @@ fun CustomTestScreen(
             )
 
             Text(
-                text = "온보딩 플로우를 테스트할 수 있습니다.",
+                text = "온보딩 플로우와 더미 데이터를 테스트할 수 있습니다.",
                 style = MaterialTheme.walkItTypography.bodyM,
             )
         }
+
+        // 더미 세션 추가 버튼
+        CtaButton(
+            text = "더미 세션 데이터 추가 (40개)",
+            onClick = onAddDummySessions,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 카카오 맵뷰 테스트 버튼
+        CtaButton(
+            text = "카카오 맵뷰 테스트",
+            onClick = onNavigateToMapTest,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 갤러리 사진 테스트 버튼
+        CtaButton(
+            text = "갤러리 사진 + 경로 테스트",
+            onClick = onNavigateToGalleryTest,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
 
         // 온보딩 시작 버튼
         CtaButton(

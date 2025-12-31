@@ -38,8 +38,10 @@ import team.swyp.sdu.ui.record.friendrecord.FriendRecordScreen
 import team.swyp.sdu.ui.theme.SemanticColor
 import java.time.LocalDate
 import team.swyp.sdu.ui.record.RecordViewModel.RecordUiState
+import team.swyp.sdu.ui.record.friendrecord.FriendRecordViewModel
 import team.swyp.sdu.ui.record.friendrecord.component.FriendRecordSkeletonRow
 import team.swyp.sdu.ui.theme.walkItTypography
+import timber.log.Timber
 
 
 @Composable
@@ -48,10 +50,12 @@ fun RecordRoute(
     calendarViewModel: CalendarViewModel = hiltViewModel(),
     recordViewModel: RecordViewModel = hiltViewModel(),
     friendBarViewModel: FriendBarViewModel = hiltViewModel(),
+    friendRecordViewModel: FriendRecordViewModel = hiltViewModel(),
     onNavigateToFriend: () -> Unit = {},
     onNavigateToAlarm: () -> Unit = {},
     onNavigateToDailyRecord: (String) -> Unit = {},
     onStartOnboarding: () -> Unit = {},
+    onLoadFriendRecord: (String) -> Unit = {}, // 더 이상 사용하지 않음
 ) {
     val recordUiState by recordViewModel.uiState.collectAsStateWithLifecycle()
     val friendsState by friendBarViewModel.friendsState.collectAsStateWithLifecycle()
@@ -61,6 +65,14 @@ fun RecordRoute(
     val weekSessions by calendarViewModel.weekSessions.collectAsStateWithLifecycle()
     val monthMissionsCompleted by calendarViewModel.monthMissionsCompleted.collectAsStateWithLifecycle()
     val currentDate by calendarViewModel.currentDate.collectAsStateWithLifecycle()
+
+    // 디버그: 데이터 상태 확인
+    LaunchedEffect(monthSessions, weekSessions) {
+        Timber.d("📊 RecordScreen 데이터 상태 - monthSessions: ${monthSessions.size}개, weekSessions: ${weekSessions.size}개")
+        if (monthSessions.isNotEmpty()) {
+            Timber.d("🎯 RecordScreen 첫 번째 monthSession: ${monthSessions.first().startTime}")
+        }
+    }
 
     RecordScreenContent(
         modifier = modifier,
@@ -74,15 +86,22 @@ fun RecordRoute(
         onNavigateToAlarm = onNavigateToAlarm,
         onNavigateToFriend = onNavigateToFriend,
         onNavigateToDailyRecord = onNavigateToDailyRecord,
-        onMyProfileClick = { recordViewModel.clearFriendSelection() },
-        onFriendSelected = { recordViewModel.selectFriend(it.nickname) },
+        onMyProfileClick = {
+            android.util.Log.d("RecordScreen", "onMyProfileClick 호출됨")
+            timber.log.Timber.d("onMyProfileClick 호출됨")
+            recordViewModel.clearFriendSelection()
+        },
+        onFriendSelected = { friend ->
+            android.util.Log.d("RecordScreen", "RecordScreen에서 친구 선택됨: ${friend.nickname}")
+            timber.log.Timber.d("RecordScreen에서 친구 선택됨: ${friend.nickname}")
+            recordViewModel.selectFriend(friend.nickname)
+        },
         onFriendDeselected = { recordViewModel.clearFriendSelection() },
         monthSessions = monthSessions,
         weekSessions = weekSessions,
         monthMissionsCompleted = monthMissionsCompleted,
         onMonthChanged = { calendarViewModel.setDate(it.atDay(1)) },
         onStartOnboarding = onStartOnboarding,
-        onLoadFriendRecord = { friendName -> recordViewModel.selectFriend(friendName) },
         onBlockUser = { nickName -> recordViewModel.blockSelectedFriend(nickName) }
     )
 }
@@ -91,7 +110,7 @@ fun RecordRoute(
 private fun RecordScreenContent(
     modifier: Modifier = Modifier,
     recordUiState: RecordUiState,
-    friendsState: Result<List<Friend>>,
+    friendsState: team.swyp.sdu.core.Result<List<Friend>>,
     weekStats: WalkAggregate,
     monthStats: WalkAggregate,
     currentDate: LocalDate,
@@ -108,22 +127,12 @@ private fun RecordScreenContent(
     monthMissionsCompleted: List<String>,
     onMonthChanged: (java.time.YearMonth) -> Unit,
     onStartOnboarding: () -> Unit,
-    onLoadFriendRecord: (String) -> Unit,
     onBlockUser: (String) -> Unit
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     val tabs = RecordTabType.entries
 
-    // 친구 선택 시 API 호출
-    if (recordUiState is RecordUiState.Success) {
-        val selectedFriend = recordUiState.selectedFriendNickname
-        LaunchedEffect(selectedFriend) {
-            if (selectedFriend != null) {
-                // API 요청: 친구 기록 가져오기
-                onLoadFriendRecord(selectedFriend)
-            }
-        }
-    }
+    // 친구 선택 시 FriendRecordScreen에서 자동으로 로드됨
 
     Column(
         modifier = modifier
@@ -169,7 +178,7 @@ private fun RecordScreenContent(
             is RecordUiState.Success -> {
                 // FriendBarViewModel에서 친구 목록 상태 가져오기
                 val friends = when (friendsState) {
-                    is Result.Success -> friendsState.data
+                    is team.swyp.sdu.core.Result.Success -> friendsState.data
                     else -> emptyList()
                 }
 

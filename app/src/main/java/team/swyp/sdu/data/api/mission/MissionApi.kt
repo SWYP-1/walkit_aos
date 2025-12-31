@@ -1,9 +1,11 @@
 package team.swyp.sdu.data.api.mission
 
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
-import team.swyp.sdu.data.remote.mission.dto.MonthlyCompletedMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionListResponse
 
@@ -31,7 +33,18 @@ interface MissionApi {
     suspend fun getMonthlyCompletedMissions(
         @Query("year") year: Int,
         @Query("month") month: Int
-    ): Response<MonthlyCompletedMissionDto>
+    ): Response<List<String>>
+
+    /**
+     * 주간 미션 보상 검증 요청
+     *
+     * @param userWeeklyMissionId 검증할 미션 ID
+     * @return 검증된 미션 정보
+     */
+    @POST("/missions/weekly/verify/{userWeeklyMissionId}")
+    suspend fun verifyWeeklyMissionReward(
+        @Path("userWeeklyMissionId") userWeeklyMissionId: Long
+    ): WeeklyMissionDto
 }
 
 

@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import team.swyp.sdu.domain.model.OnboardingProgress
-import team.swyp.sdu.domain.model.Sex
 import timber.log.Timber
 
 @Singleton
@@ -81,10 +80,6 @@ class OnboardingDataStore @Inject constructor(
                 currentStep = prefs[currentStepKey] ?: 0,
                 nickname = prefs[nicknameKey] ?: "",
                 selectedImageUri = prefs[selectedImageUriKey],
-                sex = when (prefs[sexKey]) {
-                    "FEMALE" -> Sex.FEMALE
-                    else -> Sex.MALE
-                },
                 goalCount = prefs[goalCountKey] ?: 10,
                 stepTarget = prefs[stepTargetKey] ?: 0,
                 unit = prefs[unitKey] ?: "달",
@@ -112,7 +107,6 @@ class OnboardingDataStore @Inject constructor(
             prefs[currentStepKey] = progress.currentStep
             prefs[nicknameKey] = progress.nickname
             progress.selectedImageUri?.let { prefs[selectedImageUriKey] = it }
-            prefs[sexKey] = progress.sex.name
             prefs[goalCountKey] = progress.goalCount
             prefs[stepTargetKey] = progress.stepTarget
             prefs[unitKey] = progress.unit

@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.UserProfile
-import team.swyp.sdu.domain.model.Sex
 
 /**
  * 사용자 API 응답 DTO
@@ -22,20 +21,14 @@ data class RemoteUserDto(
     val nickname: String? = null,
     @SerialName("birthDate")
     val birthDate: String?,
-    @SerialName("sex")
-    val sex: String? = null,
+    @SerialName("email")
+    val email: String? = null,
 ) {
     fun toDomain(): User = User(
         userId = userId,
         imageName = imageName,
         nickname = nickname.orEmpty(), // null이면 빈 문자열로 변환
         birthDate = birthDate,
-        sex = sex?.let {
-            try {
-                Sex.valueOf(it)
-            } catch (e: IllegalArgumentException) {
-                null
-            }
-        },
+        email = email,
     )
 }

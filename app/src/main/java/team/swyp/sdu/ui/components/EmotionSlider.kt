@@ -14,8 +14,11 @@ import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -160,24 +163,25 @@ fun EmotionSlider(
                 horizontalAlignment = Alignment.Start
             ) {
                 emotions.forEachIndexed { index, emotion ->
+                    val isSelected = index == currentSelectedIndex
+                    val alpha = if (isSelected) 1.0f else 0.4f
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier.alpha(alpha)
                     ) {
                         // 이미지 원형 배경
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(emotion.boxColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = emotion.imageResId),
-                                contentDescription = emotion.label,
-                                modifier = Modifier.size(50.dp)
-                            )
-                        }
+                        Image(
+                            painter = painterResource(id = emotion.imageResId),
+                            contentDescription = emotion.label,
+                            alpha = alpha,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = if (isSelected) 1.2f else 1f
+                                scaleY = if (isSelected) 1.2f else 1f
+                                transformOrigin = TransformOrigin(1f, 0.5f) // 👈 오른쪽 기준
+                            }
+                        )
 
                         Spacer(modifier = Modifier.width(12.dp))
 
@@ -191,7 +195,7 @@ fun EmotionSlider(
                             Text(
                                 text = emotion.label,
                                 fontSize = 16.sp,
-                                fontWeight = if (index == currentSelectedIndex) {
+                                fontWeight = if (isSelected) {
                                     FontWeight.Bold
                                 } else {
                                     FontWeight.Normal

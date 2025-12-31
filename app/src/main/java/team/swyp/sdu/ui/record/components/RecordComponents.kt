@@ -72,6 +72,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.SemanticColor.backgroundWhitePrimary
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.utils.FormatUtils
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -560,7 +561,8 @@ private fun CalendarGridRecord(
                     } else if (dayIndex < daysInMonth) {
                         val date = yearMonth.atDay(dayIndex + 1)
                         val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
-                        val dateString = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        val dateString =
+                            date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                         val hasMissionCompleted = missionsCompletedSet.contains(dateString)
 
                         CalendarDayCellRecord(
@@ -667,22 +669,27 @@ private fun CalendarDayCellRecord(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-        Row(){
+        Row() {
             // 산책 완료시 점
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .clip(CircleShape)
-                    .background(if (hasWalkSession) SemanticColor.stateGreenPrimary else Color.Transparent)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            if (hasWalkSession) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(SemanticColor.stateGreenPrimary)
+                )
+            }
             // 미션 완료시 점
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .clip(CircleShape)
-                    .background(if (hasMissionCompleted) SemanticColor.stateGreenPrimary else Color.Transparent)
-            )
+            if (hasMissionCompleted) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(SemanticColor.stateAquaBluePrimary)
+                )
+            }
+
         }
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -937,21 +944,7 @@ private fun getEmotionKoreanName(emotionType: team.swyp.sdu.data.model.EmotionTy
  * 산책 시간 포맷팅 함수
  * 0시간보다 작으면 분으로 표시, 그 외에는 시간과 분으로 표시
  */
-private fun formatWalkingTime(totalMinutes: Long): String {
-    if (totalMinutes < 60) {
-        // 1시간 미만이면 분으로만 표시
-        return "${totalMinutes}분"
-    } else {
-        // 1시간 이상이면 시간과 분으로 표시
-        val hours = totalMinutes / 60
-        val minutes = totalMinutes % 60
-        return if (minutes > 0) {
-            "${hours}시간 ${minutes}분"
-        } else {
-            "${hours}시간"
-        }
-    }
-}
+// FormatUtils로 통합됨 - formatWalkingTime은 FormatUtils.formatWalkingTime으로 대체
 
 /**
  * 경로 거리 계산 함수 (간단 버전)
@@ -1089,7 +1082,7 @@ fun WalkingDiaryCard(
 }
 
 @Composable
-private fun EmotionCircleIcon(emotion: EmotionType) {
+fun EmotionCircleIcon(emotion: EmotionType) {
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -1277,10 +1270,10 @@ fun WalkingStatsCard(
 @Composable
 fun DropMenuItem(
     text: String,
-    iconResId: Int,
-    iconColor: Color,
-    textColor: Color,
-    backgroundColor: Color,
+    iconResId: Int? = null,
+    iconColor: Color = SemanticColor.iconBlack,
+    textColor: Color = SemanticColor.iconBlack,
+    backgroundColor: Color = SemanticColor.backgroundWhitePrimary,
     rippleColor: Color = Green1,
     pressedTextColor: Color = SemanticColor.buttonPrimaryDefault,
     pressedIconColor: Color = SemanticColor.buttonPrimaryDefault,
@@ -1311,12 +1304,14 @@ fun DropMenuItem(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(id = iconResId),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = currentIconColor
-            )
+            if (iconResId != null) {
+                Icon(
+                    painter = painterResource(id = iconResId),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = currentIconColor
+                )
+            }
             Text(
                 text = text,
                 style = MaterialTheme.walkItTypography.bodyS,

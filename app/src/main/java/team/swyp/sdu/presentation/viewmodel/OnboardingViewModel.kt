@@ -19,7 +19,6 @@ import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 import team.swyp.sdu.domain.model.OnboardingData
 import team.swyp.sdu.domain.model.OnboardingProgress
-import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.repository.UserRepository
 import timber.log.Timber
 import java.time.LocalDate
@@ -34,7 +33,6 @@ data class OnboardingUiState(
     val marketingConsentChecked: Boolean = false,
     val nickname: String = "",
     val selectedImageUri: String? = null, // 선택된 이미지 URI
-    val sex: Sex = Sex.MALE, // 성별
     val goalCount: Int = 10,
     val stepTarget: Int = 0,
     val unit: String = "주",
@@ -119,7 +117,6 @@ constructor(
                     marketingConsentChecked = progress.marketingConsent,
                     nickname = progress.nickname,
                     selectedImageUri = progress.selectedImageUri,
-                    sex = progress.sex,
                     goalCount = progress.goalCount,
                     stepTarget = progress.stepTarget,
                     unit = progress.unit,
@@ -141,7 +138,6 @@ constructor(
             currentStep = currentState.currentStep,
             nickname = currentState.nickname,
             selectedImageUri = currentState.selectedImageUri,
-            sex = currentState.sex,
             goalCount = currentState.goalCount,
             stepTarget = currentState.stepTarget,
             unit = currentState.unit,
@@ -288,14 +284,6 @@ constructor(
     }
 
     /**
-     * 성별 업데이트
-     */
-    fun updateSex(sex: Sex) {
-        _uiState.value = _uiState.value.copy(sex = sex)
-        saveProgress()
-    }
-
-    /**
      * 닉네임 등록
      */
     fun registerNickname() {
@@ -324,12 +312,6 @@ constructor(
      */
     fun submitOnboarding() {
         val state = _uiState.value
-
-        // 필수 필드 검증
-        if (state.sex == null) {
-            Timber.e("성별이 선택되지 않았습니다")
-            return
-        }
 
         viewModelScope.launch {
             try {

@@ -2,8 +2,8 @@ package team.swyp.sdu.domain.repository
 
 import android.net.Uri
 import kotlinx.coroutines.flow.StateFlow
+import retrofit2.Response
 import team.swyp.sdu.core.Result
-import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.UserSearchResult
 import team.swyp.sdu.domain.model.UserSummary
@@ -69,4 +69,19 @@ interface UserRepository {
         lat: Double,
         lon: Double,
     ): Result<UserSummary>
+
+    /**
+     * 사용자 탈퇴
+     *
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    suspend fun deleteUser(): Result<Response<Unit>>
+
+    /**
+     * 프로필 이미지 삭제
+     *
+     * @param imageId 삭제할 이미지 ID
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    suspend fun deleteImage(imageId: Long): Result<Response<Unit>>
 }

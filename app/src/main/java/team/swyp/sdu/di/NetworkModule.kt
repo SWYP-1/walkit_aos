@@ -166,4 +166,18 @@ object NetworkModule {
     fun provideCosmeticItemApi(
         @Named("walkit") retrofit: Retrofit,
     ): CosmeticItemApi = retrofit.create(CosmeticItemApi::class.java)
+
+    @Provides
+    @Singleton
+    @Named("image")
+    fun provideImageOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+    ): OkHttpClient =
+        OkHttpClient
+            .Builder()
+            .addInterceptor(loggingInterceptor) // AuthInterceptor 제외 - 이미지 다운로드용
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
 }

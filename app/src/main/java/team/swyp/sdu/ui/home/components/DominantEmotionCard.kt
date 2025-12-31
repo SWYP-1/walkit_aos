@@ -134,7 +134,7 @@ private fun getEmotionTextColor(emotionType: EmotionType?): androidx.compose.ui.
         EmotionType.HAPPY -> SemanticColor.stateYellowTertiaryInverse  // 기쁨 -> yellowTertiaryInverse
         EmotionType.JOYFUL -> SemanticColor.stateGreenTertiary          // 즐거움 -> greenPrimary (배경이 Secondary이므로 Primary 사용)
         EmotionType.CONTENT -> SemanticColor.statePinkPrimary           // 행복 -> pinkPrimary
-        EmotionType.DEPRESSED -> SemanticColor.stateBlueSecondary         // 우울 -> bluePrimary
+        EmotionType.DEPRESSED -> SemanticColor.stateBluePrimary         // 우울 -> bluePrimary
         EmotionType.TIRED -> SemanticColor.statePurplePrimary            // 지침 -> purplePrimary
         EmotionType.ANXIOUS -> SemanticColor.stateRedTertiary           // 짜증남 -> redTertiary
         null -> SemanticColor.textBorderSecondary                       // 기록 없음 -> textBorderSecondary

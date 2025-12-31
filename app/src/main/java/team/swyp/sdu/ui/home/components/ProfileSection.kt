@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
@@ -27,6 +28,7 @@ import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.ui.home.ProfileUiState
 import team.swyp.sdu.ui.home.utils.resolveWeatherIcon
+import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.home.utils.resolveWeatherIconRes
 import team.swyp.sdu.ui.mypage.goal.model.GoalState
 import team.swyp.sdu.ui.components.InfoBadge
@@ -46,7 +48,10 @@ import kotlin.toString
  */
 @Composable
 fun ProfileSection(
-    uiState: ProfileUiState, goalState: DataState<Goal>, modifier: Modifier = Modifier
+    uiState: ProfileUiState,
+    goalState: DataState<Goal>,
+    onRetry: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
@@ -56,9 +61,7 @@ fun ProfileSection(
         when (uiState) {
             is ProfileUiState.Loading -> ProfileSkeleton()
             is ProfileUiState.Success -> ProfileContent(uiState, goalState)
-            is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = {
-
-            })
+            is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = onRetry)
         }
     }
 }
@@ -105,7 +108,8 @@ private fun ProfileContent(
 
         // 우측 상단 날씨 텍스트
         uiState.weather?.let { weather ->
-            val weatherRes = resolveWeatherIconRes(precipType = weather.precipType, sky = weather.sky)
+            val weatherRes =
+                resolveWeatherIconRes(precipType = weather.precipType, sky = weather.sky)
             InfoBadge(
                 iconPainter = painterResource(weatherRes),
                 text = "${weather.tempC}",
@@ -155,7 +159,11 @@ private fun ProfileContent(
                 grade = uiState.character.grade,
                 level = uiState.character.level,
                 walkProgressPercentage = uiState.walkProgressPercentage,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
+                modifier = Modifier
+                    .background(
+                        GradientUtils.fadeToDark()
+                    )
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
             )
         }
     }
@@ -304,7 +312,10 @@ private fun ProfileError(
     message: String, onRetry: () -> Unit = {}, modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center
+        modifier = modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhiteTertiary),
+        contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

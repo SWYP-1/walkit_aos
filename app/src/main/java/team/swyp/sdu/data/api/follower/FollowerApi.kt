@@ -87,6 +87,7 @@ interface FollowerApi {
     ): Response<Unit>
 
 
+
     @GET("/follows")
     suspend fun getFriends(
     ): List<FriendListItemDto>

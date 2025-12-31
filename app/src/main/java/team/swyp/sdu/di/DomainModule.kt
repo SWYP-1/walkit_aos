@@ -8,6 +8,7 @@ import dagger.hilt.components.SingletonComponent
 import team.swyp.sdu.domain.calculator.DistanceCalculator
 import team.swyp.sdu.domain.estimator.StepEstimator
 import team.swyp.sdu.domain.movement.MovementStateStabilizer
+import team.swyp.sdu.domain.service.CharacterImageLoader
 import team.swyp.sdu.domain.service.ImageDownloader
 import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.domain.validator.DefaultStepCountValidator
@@ -63,5 +64,10 @@ object DomainProviderModule {
     @Singleton
     fun provideLottieImageProcessor(imageDownloader: ImageDownloader): LottieImageProcessor =
         LottieImageProcessor(imageDownloader)
+
+    @Provides
+    @Singleton
+    fun provideCharacterImageLoader(imageDownloader: ImageDownloader): CharacterImageLoader =
+        CharacterImageLoader(imageDownloader)
 }
 

@@ -38,7 +38,8 @@ fun FriendRecordMoreMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         modifier = modifier
-            .width(160.dp),
+            .width(160.dp)
+            .background(SemanticColor.backgroundWhitePrimary),// 드롭다운 메뉴 배경색 변경,
         shape = RoundedCornerShape(8.dp),
     ) {
         Column(

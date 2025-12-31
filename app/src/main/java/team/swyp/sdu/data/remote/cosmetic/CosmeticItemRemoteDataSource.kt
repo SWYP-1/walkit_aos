@@ -26,11 +26,18 @@ class CosmeticItemRemoteDataSource @Inject constructor(
      */
     suspend fun getCosmeticItems(position: String? = null): List<CosmeticItemDto> {
         return try {
+            Timber.d("코스메틱 아이템 API 호출 시작: position=$position")
             val response = cosmeticItemApi.getCosmeticItems(position)
+            Timber.d("API 응답 수신: isSuccessful=${response.isSuccessful}, code=${response.code()}")
 
             if (response.isSuccessful) {
                 val items = response.body() ?: emptyList()
                 Timber.d("코스메틱 아이템 조회 성공: ${items.size}개${position?.let { " (position: $it)" } ?: ""}")
+
+                if (items.isNotEmpty()) {
+                    Timber.d("첫 번째 아이템 샘플: itemId=${items[0].itemId}, name=${items[0].name}, position=${items[0].position}")
+                }
+
                 items
             } else {
                 val errorMessage = response.errorBody()?.string() ?: "코스메틱 아이템 조회 실패"
@@ -38,7 +45,7 @@ class CosmeticItemRemoteDataSource @Inject constructor(
                 throw Exception("코스메틱 아이템 조회 실패: ${response.code()}")
             }
         } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 조회 중 예외 발생")
+            Timber.e(e, "코스메틱 아이템 조회 중 예외 발생: ${e.message}")
             throw e
         }
     }

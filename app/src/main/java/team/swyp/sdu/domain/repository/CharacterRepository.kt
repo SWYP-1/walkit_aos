@@ -17,9 +17,14 @@ interface CharacterRepository {
     fun observeCharacter(nickname: String): Flow<Character?>
 
     /**
-     * nickname으로 캐릭터 정보 조회
+     * nickname으로 캐릭터 정보 조회 (DB 우선, 없으면 API 호출)
      */
     suspend fun getCharacter(nickname: String): Result<Character>
+
+    /**
+     * 캐릭터 정보 조회 (API 직접 호출 - 위치 기반)
+     */
+    suspend fun getCharacterFromApi(lat: Double = 37.5665, lon: Double = 126.9780): Result<Character>
 
     /**
      * 캐릭터 정보 저장/업데이트

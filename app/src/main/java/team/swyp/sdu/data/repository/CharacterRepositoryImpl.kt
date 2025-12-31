@@ -38,14 +38,36 @@ class CharacterRepositoryImpl @Inject constructor(
                     val character = CharacterMapper.toDomain(entity)
                     Result.Success(character)
                 } else {
-                    Result.Error(
-                        Exception("캐릭터 정보를 찾을 수 없습니다"),
-                        "캐릭터 정보를 찾을 수 없습니다: $nickname"
-                    )
+                    // DB에 없으면 API 호출
+                    Timber.d("DB에 캐릭터 정보 없음, API 호출 시도: $nickname")
+                    val apiResult = getCharacterFromApi()
+                    if (apiResult is Result.Success) {
+                        // API에서 가져온 캐릭터 정보를 DB에 저장 (nickname으로)
+                        saveCharacter(nickname, apiResult.data)
+                        Result.Success(apiResult.data)
+                    } else {
+                        Result.Error(
+                            Exception("캐릭터 정보를 찾을 수 없습니다"),
+                            "캐릭터 정보를 찾을 수 없습니다: $nickname"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "캐릭터 정보 조회 실패: $nickname")
                 Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun getCharacterFromApi(lat: Double, lon: Double): Result<Character> =
+        withContext(Dispatchers.IO) {
+            try {
+                val dto = characterRemoteDataSource.getCharacterByLocation(lat, lon)
+                val character = RemoteCharacterMapper.toDomain(dto)
+                Timber.d("API에서 캐릭터 정보 조회 성공: lat=$lat, lon=$lon")
+                Result.Success(character)
+            } catch (e: Exception) {
+                Timber.e(e, "API에서 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
+                Result.Error(e, e.message ?: "캐릭터 정보 조회 실패")
             }
         }
 

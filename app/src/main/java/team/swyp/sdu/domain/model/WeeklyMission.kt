@@ -1,5 +1,7 @@
 package team.swyp.sdu.domain.model
 
+import timber.log.Timber
+
 /**
  * 주간 미션 도메인 모델
  */
@@ -34,18 +36,24 @@ data class WeeklyMission(
     fun getMissionConfig(): MissionConfig? {
         // assignedConfigJson이 null이거나 빈 문자열인 경우 기본값 사용
         val configJson = assignedConfigJson?.takeIf { it.isNotBlank() } ?: "{}"
-        
+
+        Timber.d("WeeklyMission.getMissionConfig: assignedConfigJson=$assignedConfigJson, configJson=$configJson, type=$type")
+
         return try {
             val missionType = getMissionType() ?: return null
-            
+
             // 빈 JSON 객체인 경우 null 반환 (UI에서 description 사용)
             if (configJson == "{}" || configJson.trim() == "{}") {
+                Timber.d("WeeklyMission.getMissionConfig: 빈 JSON 객체이므로 null 반환")
                 return null
             }
-            
-            MissionConfigParser.parseMissionConfig(missionType, configJson)
+
+            val result = MissionConfigParser.parseMissionConfig(missionType, configJson)
+            Timber.d("WeeklyMission.getMissionConfig: 파싱 결과 = $result")
+            result
         } catch (e: Exception) {
             // 파싱 실패 시 null 반환 (UI에서 description을 fallback으로 사용)
+            Timber.e(e, "WeeklyMission.getMissionConfig: 파싱 실패")
             null
         }
     }

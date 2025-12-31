@@ -19,7 +19,9 @@ data class CosmeticItemDto(
     @SerialName("position")
     val position: String,
     @SerialName("point")
-    val point: Int
+    val point: Int,
+    @SerialName("worn")
+    val worn: Boolean? = null // 선택적 필드
 )
 
 

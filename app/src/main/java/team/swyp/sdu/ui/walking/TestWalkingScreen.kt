@@ -72,6 +72,7 @@ import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.LottieAnimationView
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
+import team.swyp.sdu.utils.FormatUtils
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -337,7 +338,7 @@ private fun WalkingView(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = formatDuration(duration),
+                                    text = FormatUtils.formatDurationMMSS(duration),
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Text(
@@ -348,7 +349,7 @@ private fun WalkingView(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = formatDistance(0f),
+                                    text = FormatUtils.formatDistanceTest(0f),
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Text(
@@ -781,19 +782,7 @@ private fun getActivityColor(activity: ActivityType): Color =
         ActivityType.UNKNOWN -> Color(0xFF757575)
     }
 
-private fun formatDistance(meters: Float): String =
-    if (meters >= 1000) {
-        String.format("%.2f km", meters / 1000f)
-    } else {
-        String.format("%.0f m", meters)
-    }
-
-private fun formatDuration(millis: Long): String {
-    val seconds = TimeUnit.MILLISECONDS.toSeconds(millis)
-    val minutes = seconds / 60
-    val remainingSeconds = seconds % 60
-    return String.format("%02d:%02d", minutes, remainingSeconds)
-}
+// FormatUtils로 통합됨
 
 private fun getMovementStateName(state: MovementState): String =
     when (state) {

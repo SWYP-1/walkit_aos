@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +71,8 @@ fun HomeNameAndGoalContent(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
     ) {
         Row() {
             Text(
@@ -90,8 +93,8 @@ fun HomeNameAndGoalContent(
                         shape = RoundedCornerShape(size = 16.dp)
                     )
                     .padding(
-                        vertical = 12.dp,
-                        horizontal = 6.dp
+                        vertical = 8.dp,
+                        horizontal = 12.dp
                     )
             ) {
                 Text(
@@ -114,9 +117,10 @@ fun HomeNameAndGoalContent(
             progressPercentage = walkProgressPercentage,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                text = "${goal.targetWalkCount} 일 ${goal.targetStepCount} 걸음 씩",
+                text = "${goal.targetStepCount}일/ ${goal.targetWalkCount} 걸음씩",
 
                 // body M/medium
                 style = MaterialTheme.walkItTypography.bodyM.copy(

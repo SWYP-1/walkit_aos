@@ -44,7 +44,9 @@ fun MyProfileImage(
                 indication = null, // ripple 제거
                 interactionSource = remember { MutableInteractionSource() }
             ) {
-                onClick
+                android.util.Log.d("MyProfileImage", "MyProfileImage 클릭됨")
+                timber.log.Timber.d("MyProfileImage 클릭됨")
+                onClick()
             },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),

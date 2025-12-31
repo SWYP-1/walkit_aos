@@ -12,7 +12,7 @@ data class User(
     val imageName: String? = null,
     val nickname: String,
     val birthDate: String?, // ISO 8601 형식: "2025-12-07"
-    val sex: Sex? = null,
+    val email: String? = null,
 ) {
     /**
      * 온보딩 완료 여부 (닉네임이 빈 문자열이면 온보딩 미완료로 판단)
@@ -24,18 +24,10 @@ data class User(
             userId = 0L,
             imageName = null,
             nickname = "",
-            birthDate = "",
-            sex = null,
+            birthDate = null,
+            email = null,
         )
     }
-}
-
-/**
- * 성별 enum
- */
-enum class Sex {
-    MALE,
-    FEMALE,
 }
 
 

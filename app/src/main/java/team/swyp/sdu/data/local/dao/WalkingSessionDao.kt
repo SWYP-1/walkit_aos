@@ -81,6 +81,12 @@ interface WalkingSessionDao {
     suspend fun getUnsyncedSessions(): List<WalkingSessionEntity>
 
     /**
+     * 동기화된 세션 조회 (SYNCED 상태)
+     */
+    @Query("SELECT * FROM walking_sessions WHERE syncState = 'SYNCED' ORDER BY startTime DESC")
+    suspend fun getSyncedSessions(): List<WalkingSessionEntity>
+
+    /**
      * 동기화 상태 업데이트 (SyncState 사용)
      */
     @Query("UPDATE walking_sessions SET syncState = :syncState WHERE id = :id")

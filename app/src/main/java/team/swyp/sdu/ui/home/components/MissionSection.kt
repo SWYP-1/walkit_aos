@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.ui.home.MissionUiState
+import team.swyp.sdu.ui.home.MissionWithState
 import team.swyp.sdu.ui.mission.component.MissionCard
-import team.swyp.sdu.ui.mission.model.toCardState
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.shimmer
@@ -32,6 +32,7 @@ import timber.log.Timber
 fun MissionSection(
     uiState: MissionUiState,
     onClickMission: () -> Unit,
+    onRewardClick: (Long) -> Unit,
     onClickMissionMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -49,7 +50,7 @@ fun MissionSection(
 
             is MissionUiState.Success -> {
                 Timber.d("MissionContent 표시")
-                MissionContent(uiState, onClickMission)
+                MissionContent(uiState, onClickMission,onRewardClick)
             }
 
             is MissionUiState.Empty -> {
@@ -59,7 +60,7 @@ fun MissionSection(
 
             is MissionUiState.Error -> {
                 Timber.d("MissionError 표시: ${uiState.message}")
-                MissionError(uiState.message)
+                MissionEmpty()
             }
         }
     }
@@ -116,11 +117,12 @@ private fun MissionSectionHeader(
 private fun MissionContent(
     uiState: MissionUiState.Success,
     onClickMission: () -> Unit,
+    onRewardClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Timber.d("MissionContent 렌더링 - missions 크기: ${uiState.missions.size}")
+    Timber.d("MissionContent 렌더링 - missionCardStates 크기: ${uiState.missionCardStates.size}")
 
-    if (uiState.missions.isEmpty()) {
+    if (uiState.missionCardStates.isEmpty()) {
         Timber.d("MissionEmpty 표시")
         MissionEmpty()
     } else {
@@ -128,16 +130,13 @@ private fun MissionContent(
             modifier = modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            uiState.missions.forEach { mission ->
-                val cardState = mission.toCardState(isActive = true)
+            uiState.missionCardStates.forEach { missionWithState ->
+                Timber.d("미션 카드 렌더링: ${missionWithState.mission.title}, 상태: ${missionWithState.cardState}")
                 MissionCard(
-                    mission = mission,
-                    cardState = cardState,
+                    mission = missionWithState.mission,
+                    cardState = missionWithState.cardState,
                     onChallengeClick = onClickMission,
-                    onRewardClick = { missionId ->
-                        // TODO: 리워드 받기 로직 구현
-                        onClickMission()
-                    },
+                    onRewardClick = onRewardClick,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

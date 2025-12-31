@@ -5,6 +5,7 @@ import okhttp3.Request
 import team.swyp.sdu.domain.service.ImageDownloader
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,7 +15,7 @@ import kotlinx.coroutines.withContext
  */
 @Singleton
 class OkHttpImageDownloader @Inject constructor(
-    private val okHttpClient: OkHttpClient
+    @Named("image") private val okHttpClient: OkHttpClient
 ) : ImageDownloader {
 
     override suspend fun downloadPngImage(imageUrl: String): ByteArray =
@@ -22,31 +23,22 @@ class OkHttpImageDownloader @Inject constructor(
             try {
                 val request = Request.Builder()
                     .url(imageUrl)
-                    .addHeader("Accept", "image/*")
                     .build()
 
-                val response = okHttpClient.newCall(request).execute()
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException("이미지 다운로드 실패: HTTP ${response.code}")
+                    }
 
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("이미지 다운로드 실패: HTTP ${response.code}")
+                    response.body?.bytes()
+                        ?: throw IllegalStateException("응답 본문이 비어있습니다")
                 }
-
-//                val contentType = response.header("Content-Type")
-//                    ?: throw IllegalArgumentException("Content-Type 헤더가 없습니다")
-//
-//                if (!contentType.contains("image/png", ignoreCase = true)) {
-//                    throw IllegalArgumentException(
-//                        "PNG 이미지가 아닙니다. Content-Type: $contentType"
-//                    )
-//                }
-
-                response.body?.bytes()
-                    ?: throw IllegalStateException("응답 본문이 비어있습니다")
             } catch (e: Exception) {
-                Timber.e(e, "PNG 이미지 다운로드 실패: $imageUrl")
+                Timber.e(e, "이미지 다운로드 실패: $imageUrl")
                 throw e
             }
         }
+
 
 
     companion object {

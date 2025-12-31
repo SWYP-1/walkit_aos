@@ -72,7 +72,17 @@ class CalendarViewModel @Inject constructor(
                 scope = viewModelScope,
                 started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList(),
-            )
+            ).also { flow ->
+                // 디버그: 데이터 변경 감지
+                viewModelScope.launch {
+                    flow.collect { sessions ->
+                        Timber.d("📅 CalendarViewModel.allSessions 업데이트: ${sessions.size}개 세션")
+                        if (sessions.isNotEmpty()) {
+                            Timber.d("🎯 첫 번째 세션: ${sessions.first().startTime} - 걸음수: ${sessions.first().stepCount}")
+                        }
+                    }
+                }
+            }
 
     val dayStats: StateFlow<WalkAggregate> =
         today

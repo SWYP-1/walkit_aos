@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -29,11 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.model.FollowerWalkRecord
 import team.swyp.sdu.domain.model.UserSummary
 import team.swyp.sdu.ui.components.AppHeader
@@ -43,8 +48,11 @@ import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.friendrecord.component.FriendRecordMoreMenu
+import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import timber.log.Timber
 
 /**
  * 친구 검색 상세 화면 Route
@@ -59,24 +67,37 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun FriendSearchDetailRoute(
     nickname: String? = null,
-    lat: Double? = null,
-    lon: Double? = null,
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FriendSearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val followStatus by viewModel.followStatus.collectAsStateWithLifecycle()
+    val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
     // 화면 진입 시 데이터 로드
     LaunchedEffect(nickname) {
+        Timber.d("FriendSearchDetailRoute: LaunchedEffect with nickname=$nickname")
         if (nickname != null) {
             viewModel.loadFollowerWalkRecord(nickname)
+        } else {
+            Timber.w("FriendSearchDetailRoute: nickname is null!")
         }
     }
 
     FriendSearchDetailScreen(
         uiState = uiState,
+        followStatus = followStatus,
+        isFollowing = isFollowing,
         onNavigateBack = onNavigateBack,
+        onRequestFollow = {
+            Timber.d("FriendSearchDetailRoute: onRequestFollow called, nickname=$nickname")
+            if (nickname != null) {
+                viewModel.followUser(nickname)
+            } else {
+                Timber.w("FriendSearchDetailRoute: onRequestFollow called but nickname is null")
+            }
+        },
         modifier = modifier,
     )
 }
@@ -92,7 +113,10 @@ fun FriendSearchDetailRoute(
 @Composable
 fun FriendSearchDetailScreen(
     uiState: FriendSearchUiState,
+    followStatus: FollowStatus,
+    isFollowing: Boolean,
     onNavigateBack: () -> Unit = {},
+    onRequestFollow: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
 
@@ -108,7 +132,11 @@ fun FriendSearchDetailScreen(
 
         is FriendSearchUiState.Success -> {
             FriendSearchDetailScreenContent(
+                modifier = modifier,
                 data = uiState.data,
+                followStatus = followStatus,
+                isFollowing = isFollowing,
+                onRequestFollow = onRequestFollow,
                 onNavigateBack = onNavigateBack,
             )
         }
@@ -130,17 +158,21 @@ fun FriendSearchDetailScreen(
 fun FriendSearchDetailScreenContent(
     modifier: Modifier = Modifier,
     data: UserSummary,
+    followStatus: FollowStatus,
+    isFollowing: Boolean,
+    onRequestFollow: () -> Unit,
     onNavigateBack: () -> Unit = {},
 ) {
     var isMoreMenuExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(263f / 375f)) {
             // 배경 이미지
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(data.character.backgroundImageName)
-                    .build(),
+                    .data(data.character.backgroundImageName).build(),
                 contentDescription = "배경",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
@@ -177,56 +209,104 @@ fun FriendSearchDetailScreenContent(
                     },
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.weight(1f))
 
                 // 사용자 정보 섹션
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // 등급 배지
-                    GradeBadge(
-                        grade = data.character.grade
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(data.character.characterImageName).build(),
+                        contentDescription = "캐릭터",
+                        modifier = Modifier.size(120.dp),
+                        contentScale = ContentScale.Crop,
                     )
-
-                    // 닉네임
-                    Text(
-                        text = data.character.nickName ?: "닉네임 없음",
-                        style = MaterialTheme.walkItTypography.headingM.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        color = SemanticColor.textBorderPrimaryInverse,
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // 팔로우 버튼
-                    Box(
+                    Spacer(modifier = Modifier.height(50.dp))
+                    Row(
                         modifier = Modifier
-                            .background(
-                                color = SemanticColor.buttonPrimaryDefault,
-                                shape = RoundedCornerShape(size = 8.dp),
-                            )
-                            .clickable {
-                                // TODO: 팔로우 기능 구현
-                            }
-                            .padding(
-                                horizontal = 16.dp,
-                                vertical = 8.dp,
-                            ),
+                            .fillMaxWidth()
+                            .background(GradientUtils.fadeToGray())
+                            .padding(horizontal = 20.dp, vertical = 26.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "팔로우",
-                            style = MaterialTheme.walkItTypography.bodyS.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                            color = SemanticColor.textBorderPrimaryInverse,
-                        )
+                        // 등급 배지
+
+                        Row {
+                            GradeBadge(
+                                grade = data.character.grade
+                            )
+                            Spacer(Modifier.width(8.dp))
+
+                            // 닉네임
+                            Text(
+                                text = data.character.nickName ?: "닉네임 없음",
+                                style = MaterialTheme.walkItTypography.headingM.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = SemanticColor.textBorderPrimaryInverse,
+                            )
+                        }
+
+                        // 팔로우 버튼
+                        val (buttonText, buttonColor, isEnabled) = when (followStatus) {
+                            FollowStatus.EMPTY -> Triple(
+                                "팔로우",
+                                SemanticColor.buttonPrimaryDefault,
+                                true
+                            )
+
+                            FollowStatus.PENDING -> Triple(
+                                "요청중",
+                                SemanticColor.textBorderPrimary,
+                                false
+                            )
+
+                            FollowStatus.ACCEPTED -> Triple(
+                                "친구",
+                                SemanticColor.buttonPrimaryDisabled,
+                                false
+                            )
+
+                            FollowStatus.REJECTED -> Triple(
+                                "거절됨",
+                                SemanticColor.buttonPrimaryDisabled,
+                                false
+                            )
+
+                            FollowStatus.MYSELF -> Triple(
+                                "본인",
+                                SemanticColor.buttonPrimaryDisabled,
+                                false
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = buttonColor,
+                                    shape = RoundedCornerShape(size = 8.dp),
+                                )
+                            .clickable(enabled = isEnabled && !isFollowing) {
+                                Timber.d("FriendSearchDetailScreenContent: follow button clicked, followStatus=$followStatus, isFollowing=$isFollowing")
+                                onRequestFollow()
+                            }
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp,
+                                ),
+                        ) {
+                            Text(
+                                text = if (isFollowing) "요청중..." else buttonText,
+                                style = MaterialTheme.walkItTypography.bodyS.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = if (isEnabled) SemanticColor.textBorderPrimaryInverse
+                                else SemanticColor.textBorderSecondaryInverse,
+                            )
+                        }
                     }
                 }
+
             }
         }
 
@@ -242,8 +322,87 @@ fun FriendSearchDetailScreenContent(
                 leftValue = data.walkSummary.totalWalkCount.toString(),
                 leftUnit = SummaryUnit.Step("회"),
                 rightLabel = "누적 산책 시간",
-                rightUnit = SummaryUnit.Time( data.walkSummary.totalWalkTimeMillis),
+                rightUnit = SummaryUnit.Time(data.walkSummary.totalWalkTimeMillis),
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FriendSearchDetailScreenContentSeedGradePreview() {
+    WalkItTheme {
+        FriendSearchDetailScreenContent(
+            data = team.swyp.sdu.domain.model.UserSummary(
+                character = team.swyp.sdu.domain.model.Character(
+                    headImageName = "head_default",
+                    bodyImageName = "body_default",
+                    feetImageName = "feet_default",
+                    characterImageName = "character_default",
+                    backgroundImageName = "background_forest",
+                    level = 1,
+                    grade = team.swyp.sdu.domain.model.Grade.SEED,
+                    nickName = "새싹사용자"
+                ), walkSummary = team.swyp.sdu.domain.model.WalkSummary(
+                    totalWalkCount = 5, totalWalkTimeMillis = 1800000L // 30분
+                )
+            ),
+            followStatus = FollowStatus.EMPTY,
+            isFollowing = false,
+            onNavigateBack = {},
+            onRequestFollow = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FriendSearchDetailScreenContentSproutGradePreview() {
+    WalkItTheme {
+        FriendSearchDetailScreenContent(
+            data = team.swyp.sdu.domain.model.UserSummary(
+                character = team.swyp.sdu.domain.model.Character(
+                    headImageName = "head_sprout",
+                    bodyImageName = "body_sprout",
+                    feetImageName = "feet_sprout",
+                    characterImageName = "character_sprout",
+                    backgroundImageName = "background_mountain",
+                    level = 15,
+                    grade = team.swyp.sdu.domain.model.Grade.SPROUT,
+                    nickName = "성장중인나무"
+                ), walkSummary = team.swyp.sdu.domain.model.WalkSummary(
+                    totalWalkCount = 25, totalWalkTimeMillis = 7200000L // 2시간
+                )
+            ),
+            followStatus = FollowStatus.EMPTY,
+            isFollowing = false,
+            onNavigateBack = {},
+            onRequestFollow = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FriendSearchDetailScreenContentTreeGradePreview() {
+    WalkItTheme {
+        FriendSearchDetailScreenContent(
+            data = team.swyp.sdu.domain.model.UserSummary(
+                character = team.swyp.sdu.domain.model.Character(
+                    headImageName = "head_tree",
+                    bodyImageName = "body_tree",
+                    feetImageName = "feet_tree",
+                    characterImageName = "character_tree",
+                    backgroundImageName = "background_ocean",
+                    level = 50,
+                    grade = team.swyp.sdu.domain.model.Grade.TREE,
+                    nickName = "완성된나무"
+                ), walkSummary = team.swyp.sdu.domain.model.WalkSummary(
+                    totalWalkCount = 100, totalWalkTimeMillis = 36000000L // 10시간
+                )
+            ),
+            followStatus = FollowStatus.EMPTY,
+            isFollowing = false,
+            onNavigateBack = {},
+            onRequestFollow = {})
     }
 }

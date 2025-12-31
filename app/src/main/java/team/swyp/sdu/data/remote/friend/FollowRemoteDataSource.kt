@@ -22,6 +22,7 @@ import javax.inject.Singleton
 class FollowRemoteDataSource @Inject constructor(
     private val followerApi: FollowerApi
 ) {
+
     /**
      * 친구 목록 조회
      */

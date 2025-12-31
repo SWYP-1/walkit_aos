@@ -49,7 +49,7 @@ import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
-import team.swyp.sdu.ui.walking.components.formatToMinutesSeconds
+import team.swyp.sdu.utils.FormatUtils
 import java.io.File
 
 @Composable
@@ -118,7 +118,7 @@ fun WeeklyRecordCard(
             }
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Text(
-                    text = formatDate(session.startTime),
+                    text = FormatUtils.formatDate(session.startTime),
                     // caption M/medium
                     style = MaterialTheme.walkItTypography.captionM.copy(
                         fontWeight = FontWeight.Medium
@@ -165,7 +165,7 @@ fun WeeklyRecordCard(
                         Modifier.weight(1f),
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        val timeString = formatToMinutesSeconds(session.duration)
+                        val timeString = FormatUtils.formatToMinutesSeconds(session.duration)
 
                         Text(
                             text = buildAnnotatedString {
@@ -270,32 +270,7 @@ fun PathThumbnail(
     }
 }
 
-private fun formatDate(startTime: Long): String {
-    val date = java.time.Instant.ofEpochMilli(startTime)
-        .atZone(java.time.ZoneId.systemDefault())
-        .toLocalDate()
-    return date.toString()
-}
-
-private fun formatDuration(durationMillis: Long): String {
-    val seconds = java.util.concurrent.TimeUnit.MILLISECONDS.toSeconds(durationMillis)
-    val minutes = seconds / 60
-    val remainingSeconds = seconds % 60
-    return String.format("%02d:%02d", minutes, remainingSeconds)
-}
-
-private fun formatDistance(meters: Float): Pair<String, String> =
-    if (meters >= 1000f) {
-        Pair(
-            String.format("%.2f", meters / 1000f),
-            "km"
-        )
-    } else {
-        Pair(
-            String.format("%.0f", meters),
-            "m"
-        )
-    }
+// FormatUtils로 통합됨
 
 
 @Preview(name = "WeeklyRecordCard Preview - With Image")

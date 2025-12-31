@@ -8,10 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.Result
+import team.swyp.sdu.data.mapper.MissionCardStateMapper
 import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.domain.repository.MissionRepository
 import team.swyp.sdu.ui.mission.model.MissionCardState
-import team.swyp.sdu.ui.mission.model.toCardState
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -35,6 +35,7 @@ data class MissionCardItem(
 @HiltViewModel
 class MissionViewModel @Inject constructor(
     private val missionRepository: MissionRepository,
+    private val missionCardStateMapper: MissionCardStateMapper,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MissionUiState())
@@ -65,7 +66,7 @@ class MissionViewModel @Inject constructor(
 
                         MissionCardItem(
                             mission = mission,
-                            cardState = mission.toCardState(isActive)
+                            cardState = missionCardStateMapper.mapToCardState(mission, isActive)
                         )
                     }
 

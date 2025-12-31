@@ -10,13 +10,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import team.swyp.sdu.core.DataState
+import team.swyp.sdu.core.onError
+import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.domain.model.Grade
+import team.swyp.sdu.presentation.viewmodel.LoginViewModel
+import timber.log.Timber
 import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.mypage.component.MyPageAccountActions
 import team.swyp.sdu.ui.mypage.component.MyPageCharacterEditButton
 import team.swyp.sdu.ui.mypage.component.MyPageUserInfo
@@ -24,10 +42,101 @@ import team.swyp.sdu.ui.mypage.component.MyPageSettingsSection
 import team.swyp.sdu.ui.mypage.component.MyPageStatsSection
 import team.swyp.sdu.ui.mypage.model.StatsData
 import team.swyp.sdu.ui.mypage.model.UserInfoData
+import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementViewModel
 import team.swyp.sdu.ui.theme.Grey3
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 
+
+
+@Composable
+fun MyPageRoute(
+    viewModel: MyPageViewModel = hiltViewModel(),
+    loginViewModel: LoginViewModel = hiltViewModel(),
+    userInfoViewModel: UserInfoManagementViewModel = hiltViewModel(),
+    onNavigateCharacterEdit: () -> Unit = {},
+    onNavigateUserInfoEdit: () -> Unit = {},
+    onNavigateGoalManagement: () -> Unit = {},
+    onNavigateNotificationSetting: () -> Unit = {},
+    onNavigateMission: () -> Unit = {},
+    onNavigateCustomTest: () -> Unit = {},
+    onNavigateBack: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val withdrawState by viewModel.withdrawState.collectAsStateWithLifecycle()
+
+    // 탈퇴 확인 다이얼로그 표시 상태
+    var showWithdrawConfirmDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    // 탈퇴 상태에 따른 처리
+    LaunchedEffect(withdrawState) {
+        when (withdrawState) {
+            WithdrawState.Success -> {
+                Timber.d("사용자 탈퇴 성공")
+                // 인증 정보 클리어
+                loginViewModel.logout()
+                // 백스택 제거 후 로그인 화면으로 이동
+                // navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                onNavigateToLogin()
+                // "탈퇴 완료" 토스트 메시지 표시
+                Toast.makeText(context, "탈퇴가 완료되었습니다.", Toast.LENGTH_SHORT).show()
+            }
+            is WithdrawState.Error -> {
+                Timber.e("사용자 탈퇴 실패: ${(withdrawState as WithdrawState.Error).message}")
+                // 사용자에게 탈퇴 실패 알림 표시
+                Toast.makeText(context, "탈퇴 처리 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                // 상태 초기화
+                viewModel.resetWithdrawState()
+            }
+            else -> {
+                // Loading, Idle 상태는 별도 처리 없음
+            }
+        }
+    }
+
+    MyPageScreen(
+        uiState = uiState,
+        onNavigateCharacterEdit = onNavigateCharacterEdit,
+        onNavigateUserInfoEdit = onNavigateUserInfoEdit,
+        onNavigateGoalManagement = onNavigateGoalManagement,
+        onNavigateNotificationSetting = onNavigateNotificationSetting,
+        onNavigateBack = onNavigateBack,
+        onNavigateMission = onNavigateMission,
+        onNavigateCustomTest = onNavigateCustomTest,
+        onLogout = {
+            loginViewModel.logout()
+            // 로그아웃 처리 후 약간의 딜레이를 두고 로그인 화면으로 이동
+            // (상태 초기화가 완료될 시간을 줌)
+            MainScope().launch {
+                delay(100) // 100ms 딜레이
+                onNavigateToLogin()
+            }
+        },
+        onWithdraw = {
+            // 탈퇴 확인 다이얼로그 표시
+            showWithdrawConfirmDialog = true
+        },
+    )
+
+    // 탈퇴 확인 다이얼로그
+    if (showWithdrawConfirmDialog) {
+        ConfirmDialog(
+            title = "회원 탈퇴",
+            message = "정말로 탈퇴하시겠습니까?\n탈퇴 후에는 모든 데이터가 삭제되며 복구할 수 없습니다.",
+            negativeButtonText = "취소",
+            positiveButtonText = "탈퇴하기",
+            onDismiss = { showWithdrawConfirmDialog = false },
+            onNegative = { showWithdrawConfirmDialog = false },
+            onPositive = {
+                showWithdrawConfirmDialog = false
+                viewModel.withdraw()
+            },
+        )
+    }
+}
 /**
  * 마이 페이지 Screen
  *
@@ -69,7 +178,8 @@ fun MyPageScreen(
         item {
             AppHeader(
                 title = "마이 페이지",
-                onNavigateBack = onNavigateBack,
+                showBackButton = false,
+                onNavigateBack = { },
             )
         }
 
@@ -79,20 +189,27 @@ fun MyPageScreen(
                 is DataState.Loading -> {
                     MyPageUserInfo(
                         nickname = "",
-                        grade = null
+                        grade = null,
+                        consecutiveDays = 0
                     )
                 }
                 is DataState.Success -> {
+                    val consecutiveDays = when (val consecutiveState = uiState.consecutiveDays) {
+                        is DataState.Success -> consecutiveState.data
+                        else -> 0
+                    }
                     MyPageUserInfo(
                         nickname = userState.data.nickname,
                         profileImageUrl = userState.data.profileImageUrl,
-                        grade = userState.data.grade
+                        grade = userState.data.grade,
+                        consecutiveDays = consecutiveDays,
                     )
                 }
                 is DataState.Error -> {
                     MyPageUserInfo(
                         nickname = "게스트",
-                        grade = null
+                        grade = null,
+                        consecutiveDays = 0
                     )
                 }
             }
@@ -176,7 +293,8 @@ private fun MyPageScreenPreview() {
                         totalStepCount = 12345,
                         totalWalkingTime = 331200000L // 92시간 (밀리초)
                     )
-                )
+                ),
+                consecutiveDays = DataState.Success(7)
             ),
             onNavigateCharacterEdit = {},
             onNavigateUserInfoEdit = {},
@@ -198,7 +316,8 @@ private fun MyPageScreenErrorPreview() {
         MyPageScreen(
             uiState = MyPageUiState(
                 userInfo = DataState.Error("사용자 정보 로딩 실패"),
-                stats = DataState.Error("통계 로딩 실패")
+                stats = DataState.Error("통계 로딩 실패"),
+                consecutiveDays = DataState.Error("연속 출석일 로딩 실패")
             ),
             onNavigateCharacterEdit = {},
             onNavigateUserInfoEdit = {},

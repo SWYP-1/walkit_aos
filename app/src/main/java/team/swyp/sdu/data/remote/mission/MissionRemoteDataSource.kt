@@ -4,7 +4,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.api.mission.MissionApi
-import team.swyp.sdu.data.remote.mission.dto.MonthlyCompletedMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionListResponse
 import timber.log.Timber
@@ -60,10 +59,10 @@ class MissionRemoteDataSource @Inject constructor(
             val response = missionApi.getMonthlyCompletedMissions(year, month)
 
             if (response.isSuccessful) {
-                val monthlyData = response.body()
-                if (monthlyData != null) {
-                    Timber.d("월간 미션 완료 목록 조회 성공: ${year}년 ${month}월, ${monthlyData.dates.size}개")
-                    Result.Success(monthlyData.dates)
+                val dates = response.body()
+                if (dates != null) {
+                    Timber.d("월간 미션 완료 목록 조회 성공: ${year}년 ${month}월, ${dates.size}개")
+                    Result.Success(dates)
                 } else {
                     Timber.e("월간 미션 완료 목록 조회 실패: 응답 바디가 null")
                     Result.Error(Exception("응답 데이터가 없습니다"))
@@ -76,6 +75,23 @@ class MissionRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "월간 미션 완료 목록 조회 중 예외 발생")
             Result.Error(e)
+        }
+    }
+
+    /**
+     * 주간 미션 보상 검증
+     *
+     * @param userWeeklyMissionId 검증할 미션 ID
+     * @return 검증된 미션 정보
+     */
+    suspend fun verifyWeeklyMissionReward(userWeeklyMissionId: Long): WeeklyMissionDto {
+        return try {
+            val verifiedMission = missionApi.verifyWeeklyMissionReward(userWeeklyMissionId)
+            Timber.d("주간 미션 보상 검증 성공: $userWeeklyMissionId")
+            verifiedMission
+        } catch (e: Exception) {
+            Timber.e(e, "주간 미션 보상 검증 실패: $userWeeklyMissionId")
+            throw e
         }
     }
 }

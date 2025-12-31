@@ -10,14 +10,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import retrofit2.Response
 import team.swyp.sdu.core.Result
-import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.*
+import team.swyp.sdu.ui.mypage.userInfo.UserInput
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -53,6 +54,10 @@ class UserInfoManagementViewModel @Inject constructor(
     val _uploadedImageUri = MutableStateFlow(Uri.EMPTY)
     val uploadedImageUri: StateFlow<Uri> = _uploadedImageUri.asStateFlow()
 
+    // 프로필 이미지 삭제 상태
+    private val _imageDeleted = MutableStateFlow(false)
+    val imageDeleted: StateFlow<Boolean> = _imageDeleted.asStateFlow()
+
     init {
         loadUserInfo()
         loadGoal()
@@ -80,7 +85,7 @@ class UserInfoManagementViewModel @Inject constructor(
                     _userInput.value = UserInput(
                         nickname = user.nickname ?: "",
                         birthDate = user.birthDate ?: "",
-                        sex = user.sex ?: Sex.MALE,
+                        email = user.email,
                         imageName = user.imageName,
                     )
                     _uiState.value = Success(user)
@@ -107,9 +112,51 @@ class UserInfoManagementViewModel @Inject constructor(
     }
     /**
      * 사용자 입력 상태 업데이트
+     * uri가 null이면 이미지 삭제
      */
-    fun updateProfileImageUri(uri: Uri) {
-        _uploadedImageUri.value = uri
+    fun updateProfileImageUri(uri: Uri?) {
+        if (uri == null) {
+            // 이미지 삭제
+            _imageDeleted.value = true
+            _uploadedImageUri.value = Uri.EMPTY
+        } else {
+            // 새 이미지 설정
+            _imageDeleted.value = false
+            _uploadedImageUri.value = uri
+        }
+    }
+
+    /**
+     * 프로필 이미지 삭제
+     * 성공 여부는 로그만 남김
+     */
+    private suspend fun deleteProfileImage() {
+        try {
+            // 현재 사용자 정보에서 imageName을 imageId로 사용 (Long 변환 시도)
+            val currentUser = when (val uiState = _uiState.value) {
+                is UserInfoUiState.Success -> uiState.user
+                else -> null
+            }
+
+            val imageId = currentUser?.imageName?.toLongOrNull() ?: 0L
+
+            val result = userRepository.deleteImage(imageId)
+            when (result) {
+                is Result.Success -> {
+                    if (result.data.isSuccessful) {
+                        Timber.d("프로필 이미지 삭제 성공: imageId=$imageId")
+                    } else {
+                        Timber.e("프로필 이미지 삭제 실패: HTTP ${result.data.code()}")
+                    }
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "프로필 이미지 삭제 실패: ${result.message}")
+                }
+                Result.Loading -> {}
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
+        }
     }
 
     /**
@@ -150,18 +197,24 @@ class UserInfoManagementViewModel @Inject constructor(
                 }
 
                 val currentImageUri = _uploadedImageUri.value
-
-                // _uploadedImageUri가 Uri.EMPTY인지 확인
-                val hasImage = currentImageUri != Uri.EMPTY
+                val shouldDeleteImage = _imageDeleted.value
 
                 // 1️⃣ 병렬 실행
                 val imageDeferred = async {
-                    if (hasImage) {
-                        // 이미지가 있으면 업데이트
-                        userRepository.updateUserProfileImage(currentImageUri)
-                    } else {
-                        // 이미지가 없으면 성공 처리 (이미지 없이 저장)
-                        Result.Success(Unit)
+                    when {
+                        shouldDeleteImage -> {
+                            // 이미지 삭제 요청
+                            deleteProfileImage()
+                            Result.Success(Unit)
+                        }
+                        currentImageUri != Uri.EMPTY -> {
+                            // 새 이미지 업로드
+                            userRepository.updateUserProfileImage(currentImageUri)
+                        }
+                        else -> {
+                            // 이미지 변경 없음
+                            Result.Success(Unit)
+                        }
                     }
                 }
 
@@ -198,14 +251,15 @@ class UserInfoManagementViewModel @Inject constructor(
                                 _userInput.value = UserInput(
                                     nickname = updatedUser.nickname ?: "",
                                     birthDate = updatedUser.birthDate ?: "",
-                                    sex = updatedUser.sex ?: Sex.MALE,
+                                    email = updatedUser.email,
                                     imageName = updatedUser.imageName,
                                     selectedImageUri = null // 저장 성공 시 선택된 이미지 URI 초기화
                                 )
-                                // 성공 시 _uploadedImageUri 초기화
+                                // 성공 시 상태 초기화
                                 _uploadedImageUri.value = Uri.EMPTY
+                                _imageDeleted.value = false
                                 _uiState.value = Success(updatedUser)
-                                Timber.d("프로필 저장 완료: nickname=$nickname, hasImage=$hasImage, imageName=${updatedUser.imageName}")
+                                Timber.d("프로필 저장 완료: nickname=$nickname,imageName=${updatedUser.imageName}")
                             }
                             is Result.Error -> {
                                 _uiState.value = Error("프로필 데이터 동기화 실패")
@@ -224,6 +278,18 @@ class UserInfoManagementViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 프로필 이미지 삭제
+     */
+    suspend fun deleteImage(imageId: Long): Result<Response<Unit>> {
+        return try {
+            userRepository.deleteImage(imageId)
+        } catch (e: Exception) {
+            Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
+            Result.Error(e, e.message ?: "프로필 이미지 삭제에 실패했습니다")
+        }
+    }
+
 }
 
 /**
@@ -236,16 +302,5 @@ sealed interface UserInfoUiState {
     data class Error(val message: String) : UserInfoUiState
 }
 
-/**
- * 사용자 입력 데이터
- */
-data class UserInput(
-    val name: String = "",
-    val nickname: String = "",
-    val birthDate: String = "",
-    val sex: Sex = Sex.MALE,
-    val imageName: String? = null,
-    val selectedImageUri: String? = null,
-)
 
 

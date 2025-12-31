@@ -17,11 +17,11 @@ import java.time.ZoneId
  * 각 기록에는 감정(Emotion) 리스트가 포함됩니다.
  */
 object WalkingTestData {
-    /**
-     * 10일치 산책 기록 테스트 데이터 생성
-     *
-     * @return 10개의 WalkingSession 리스트
-     */
+/**
+ * 40일치 산책 기록 테스트 데이터 생성
+ *
+ * @return 40개의 WalkingSession 리스트
+ */
     fun generateTestSessions(): List<WalkingSession> {
         val sessions = mutableListOf<WalkingSession>()
         val today = LocalDate.now()
@@ -56,7 +56,7 @@ object WalkingTestData {
             "활기찬 하루였어요",
         )
 
-        for (i in 0 until 10) {
+        for (i in 0 until 40) {
             val date = today.minusDays((9 - i).toLong())
             val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val durationMinutes = Random.nextInt(20, 61) // 20분 ~ 60분

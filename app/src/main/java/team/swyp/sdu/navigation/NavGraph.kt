@@ -34,8 +34,12 @@ import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementScreen
 import team.swyp.sdu.ui.onboarding.OnboardingScreen
 import team.swyp.sdu.ui.alarm.AlarmScreen
 import team.swyp.sdu.ui.customtest.CustomTestRoute
+import team.swyp.sdu.ui.customtest.MapTestScreen
 import team.swyp.sdu.ui.dressroom.DressingRoomRoute
+import team.swyp.sdu.ui.friend.FriendSearchDetailRoute
+import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementRoute
 import team.swyp.sdu.ui.record.dailyrecord.DailyRecordRoute
+import timber.log.Timber
 
 /* ----------------------- */
 /* Screen 정의 */
@@ -63,7 +67,9 @@ sealed class Screen(val route: String) {
     data object Onboarding : Screen("onboarding")
     data object Friends : Screen("friends")
     data object FriendSearch : Screen("friend_search")
-    data object FriendSearchDetail : Screen("friend_search_detail")
+    data object FriendSearchDetail : Screen("friend_search_detail/{nickname}") {
+        fun createRoute(nickname: String) = "friend_search_detail/$nickname"
+    }
     data object GoalManagement : Screen("goal_management")
     data object Mission : Screen("mission")
     data object DressingRoom : Screen("dressing_room")
@@ -71,6 +77,7 @@ sealed class Screen(val route: String) {
     data object NotificationSettings : Screen("notification_settings")
     data object Alarm : Screen("alarm")
     data object CustomTest : Screen("custom_test")
+    data object MapTest : Screen("map_test")
 
     data object DailyRecord : Screen("daily_record/{dateString}") {
         fun createRoute(dateString: String): String {
@@ -204,12 +211,16 @@ fun NavGraph(
             }
         }
 
+
+
         /* Friend Search */
         composable(Screen.FriendSearch.route) {
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 FriendSearchScreen(
                     modifier = Modifier.padding(paddingValues),
-                    onNavigateToDetail = { navController.navigate(Screen.FriendSearchDetail.route) },
+                    onNavigateToDetail = { nickname ->
+                        navController.navigate(Screen.FriendSearchDetail.createRoute(nickname))
+                    },
                     onNavigateBack = {
                         if (!navController.popBackStack(Screen.Friends.route, false)) {
                             navController.navigate(Screen.Main.route) {
@@ -218,6 +229,19 @@ fun NavGraph(
                                 }
                             }
                         }
+                    },
+                )
+            }
+        }
+        /* Friend Search Detail*/
+        composable(Screen.FriendSearchDetail.route) { backStackEntry ->
+            val nickname = backStackEntry.arguments?.getString("nickname")
+            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
+                FriendSearchDetailRoute(
+                    nickname = nickname,
+                    modifier = Modifier.padding(paddingValues),
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                 )
             }
@@ -247,6 +271,23 @@ fun NavGraph(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = { navController.popBackStack() },
                     onStartOnboarding = { navController.navigate(Screen.Onboarding.route) },
+                    onNavigateToMapTest = {
+                        navController.navigate(Screen.MapTest.route)
+                    },
+                    onNavigateToGalleryTest = {
+                        // TODO: 갤러리 사진 + 경로 테스트 화면으로 이동
+                        Timber.d("갤러리 사진 + 경로 테스트 이동")
+                    },
+                )
+            }
+        }
+
+        /* Map Test */
+        composable(Screen.MapTest.route) {
+            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
+                MapTestScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }
@@ -280,7 +321,7 @@ fun NavGraph(
         /* User Info Management */
         composable(Screen.UserInfoManagement.route) {
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                UserInfoManagementScreen(
+                UserInfoManagementRoute(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = { navController.popBackStack() },
                 )

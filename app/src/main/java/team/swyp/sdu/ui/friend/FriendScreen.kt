@@ -283,6 +283,7 @@ private fun FriendRow(
                 DropdownMenu(
                     expanded = menuOpen,
                     onDismissRequest = onMenuDismiss,
+                    modifier = Modifier.background(SemanticColor.backgroundWhitePrimary) // 드롭다운 메뉴 배경색 변경
                 ) {
                     DropdownMenuItem(
                         text = { Text("친구 차단하기") },

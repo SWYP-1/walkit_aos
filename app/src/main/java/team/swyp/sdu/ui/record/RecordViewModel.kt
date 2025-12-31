@@ -16,6 +16,7 @@ import kotlinx.coroutines.supervisorScope
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.domain.model.User
+import team.swyp.sdu.domain.repository.FriendRepository
 import team.swyp.sdu.domain.repository.UserRepository
 import timber.log.Timber
 import javax.inject.Inject
@@ -23,6 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class RecordViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val friendRepository: FriendRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecordUiState>(RecordUiState.Loading)
@@ -61,11 +63,19 @@ class RecordViewModel @Inject constructor(
      * 친구 선택
      */
     fun selectFriend(nickname: String) {
+        android.util.Log.d("RecordViewModel", "RecordViewModel.selectFriend 호출됨: $nickname")
+        timber.log.Timber.d("RecordViewModel.selectFriend 호출됨: $nickname")
+
         val state = _uiState.value
         if (state is RecordUiState.Success) {
-            _uiState.update {
-                state.copy(selectedFriendNickname = nickname)
-            }
+            val newState = state.copy(selectedFriendNickname = nickname)
+            android.util.Log.d("RecordViewModel", "새로운 selectedFriendNickname: ${newState.selectedFriendNickname}")
+            timber.log.Timber.d("새로운 selectedFriendNickname: ${newState.selectedFriendNickname}")
+
+            _uiState.update { newState }
+        } else {
+            android.util.Log.d("RecordViewModel", "RecordUiState가 Success가 아님: $state")
+            timber.log.Timber.d("RecordUiState가 Success가 아님: $state")
         }
     }
 
@@ -73,11 +83,20 @@ class RecordViewModel @Inject constructor(
      * 친구 선택 해제
      */
     fun clearFriendSelection() {
+        android.util.Log.d("RecordViewModel", "clearFriendSelection 호출됨")
+        timber.log.Timber.d("clearFriendSelection 호출됨")
+
         val state = _uiState.value
         if (state is RecordUiState.Success) {
-            _uiState.update {
-                state.copy(selectedFriendNickname = null)
-            }
+            val oldNickname = state.selectedFriendNickname
+            val newState = state.copy(selectedFriendNickname = null)
+            android.util.Log.d("RecordViewModel", "친구 선택 해제: $oldNickname -> null")
+            timber.log.Timber.d("친구 선택 해제: $oldNickname -> null")
+
+            _uiState.update { newState }
+        } else {
+            android.util.Log.d("RecordViewModel", "clearFriendSelection 실패: RecordUiState가 Success가 아님")
+            timber.log.Timber.d("clearFriendSelection 실패: RecordUiState가 Success가 아님")
         }
     }
 

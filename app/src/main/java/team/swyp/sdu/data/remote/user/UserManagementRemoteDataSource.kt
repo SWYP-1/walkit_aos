@@ -85,4 +85,23 @@ class UserManagementRemoteDataSource @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * 사용자 탈퇴
+     */
+    suspend fun deleteUser(): Response<Unit> {
+        try {
+            val response = userApi.deleteUser()
+            if (response.isSuccessful) {
+                Timber.d("사용자 탈퇴 성공")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "사용자 탈퇴 실패"
+                Timber.e("사용자 탈퇴 실패: $errorMessage (코드: ${response.code()})")
+            }
+            return response
+        } catch (e: Exception) {
+            Timber.e(e, "사용자 탈퇴 실패")
+            throw e
+        }
+    }
 }

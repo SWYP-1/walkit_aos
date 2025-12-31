@@ -14,20 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.presentation.viewmodel.UserViewModel
-import team.swyp.sdu.R
 import team.swyp.sdu.core.DataState
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.domain.model.Goal
@@ -39,7 +36,6 @@ import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.home.components.HomeEmptySession
 import team.swyp.sdu.ui.home.components.ProfileSection
 import team.swyp.sdu.ui.home.components.MissionSection
-import team.swyp.sdu.ui.mypage.goal.model.GoalState
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 
@@ -50,7 +46,6 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun HomeRoute(
     onClickWalk: () -> Unit = {},
     onClickAlarm: () -> Unit = {},
-    onClickMission: () -> Unit = {},
     onClickMissionMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -81,9 +76,12 @@ fun HomeRoute(
         profileImageUrl = profileImageUrl,
         onClickWalk = onClickWalk,
         onClickAlarm = onClickAlarm,
-        onClickMission = onClickMission,
+        onRewardClick = { missionId ->
+            viewModel.requestWeeklyMissionReward(missionId)
+        },
         onClickMissionMore = onClickMissionMore,
         modifier = modifier,
+        onRetry = viewModel::loadHomeData
     )
 }
 
@@ -101,6 +99,8 @@ private fun HomeScreenContent(
     onClickMissionMore: () -> Unit,
     onClickAlarm: () -> Unit,
     onClickMission: () -> Unit,
+    onRewardClick: (Long) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -111,12 +111,13 @@ private fun HomeScreenContent(
         HomeHeader(profileImageUrl = profileImageUrl, onClickAlarm = onClickAlarm)
 
         // ==============================
-        // 프로필 섹션 (토스/배민 스타일)
+        // 프로필 섹션
         // ==============================
         ProfileSection(
             goalState = goalState,
             uiState = profileUiState,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onRetry = onRetry
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -128,11 +129,12 @@ private fun HomeScreenContent(
                 .padding(vertical = 12.dp),
         ) {
             // ==============================
-            // 미션 섹션 (토스/배민 스타일)
+            // 미션 섹션
             // ==============================
             MissionSection(
                 uiState = missionUiState,
                 onClickMission = onClickMission,
+                onRewardClick = onRewardClick,
                 onClickMissionMore = onClickMissionMore,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -164,8 +166,9 @@ fun HomeScreen(
     profileImageUrl: String? = null,
     onClickWalk: () -> Unit = {},
     onClickAlarm: () -> Unit = {},
-    onClickMission: () -> Unit = {},
+    onRewardClick: (Long) -> Unit = {},
     onClickMissionMore: () -> Unit = {},
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     HomeScreenContent(
@@ -176,8 +179,10 @@ fun HomeScreen(
         walkingSessionDataState = walkingSessionDataState,
         profileImageUrl = profileImageUrl,
         onClickAlarm = onClickAlarm,
-        onClickMission = onClickMission,
+        onClickMission = onClickWalk,
+        onRewardClick = onRewardClick,
         onClickMissionMore = onClickMissionMore,
+        onRetry = onRetry,
         modifier = modifier,
     )
 }
@@ -194,7 +199,10 @@ fun HomeScreen(
  * 하단 Room 기반 영역 (항상 표시)
  */
 @Composable
-private fun HomeBottomSection(walkingSessionDataState: DataState<WalkingSessionData>, onClickMission: () -> Unit = {}) {
+private fun HomeBottomSection(
+    walkingSessionDataState: DataState<WalkingSessionData>,
+    onClickMission: () -> Unit = {}
+) {
 
     Row(
         Modifier.fillMaxWidth(),
@@ -217,7 +225,7 @@ private fun HomeBottomSection(walkingSessionDataState: DataState<WalkingSessionD
             val records = walkingSessionDataState.data.sessionsThisWeek
 
             Column {
-                if(records.isNotEmpty()){
+                if (records.isNotEmpty()) {
                     Row(
                         modifier =
                             Modifier
@@ -232,7 +240,7 @@ private fun HomeBottomSection(walkingSessionDataState: DataState<WalkingSessionD
                             )
                         }
                     }
-                }else {
+                } else {
                     HomeEmptySession(onClick = onClickMission)
                 }
                 Spacer(Modifier.height(32.dp))

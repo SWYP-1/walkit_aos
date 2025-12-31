@@ -210,6 +210,7 @@ class WalkingViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is WalkingUiState.PreWalkingEmotionSelection) {
             _preWalkingEmotion.value = emotionType
+            _postWalkingEmotion.value = emotionType
             _uiState.value = currentState.copy(preWalkingEmotion = emotionType)
         }
     }
@@ -886,6 +887,27 @@ class WalkingViewModel @Inject constructor(
                 Timber.d("세션 노트 삭제 완료: localId=$localId")
             } catch (e: Exception) {
                 Timber.e(e, "세션 노트 삭제 실패: localId=$localId")
+            }
+        }
+    }
+
+    /**
+     * 현재 진행 중인 세션 삭제 (임시 저장된 산책 기록 삭제)
+     * PostWalkingEmotionSelectRoute에서 취소할 때 호출됨
+     */
+    fun deleteCurrentSession() {
+        viewModelScope.launch {
+            val localId = _currentSessionLocalId.value
+            if (localId != null) {
+                try {
+                    walkingSessionRepository.deleteSession(localId)
+                    _currentSessionLocalId.value = null
+                    Timber.d("임시 산책 세션 삭제 완료: localId=$localId")
+                } catch (e: Exception) {
+                    Timber.e(e, "임시 산책 세션 삭제 실패: localId=$localId")
+                }
+            } else {
+                Timber.w("삭제할 임시 세션이 없습니다")
             }
         }
     }

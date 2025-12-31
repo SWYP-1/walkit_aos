@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import team.swyp.sdu.ui.theme.Pretendard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.TypeScale
+import team.swyp.sdu.utils.FormatUtils
 import java.text.DecimalFormat
 
 /**
@@ -60,15 +61,7 @@ sealed class SummaryUnit {
         return when (this) {
             is Step -> Pair("", unit)
             is Time -> {
-                val totalSeconds = durationMs / 1000
-                val hours = totalSeconds / 3600
-                val minutes = (totalSeconds % 3600) / 60
-                
-                val value = when {
-                    hours > 0 -> "${hours}시간 ${minutes}분"
-                    minutes > 0 -> "${minutes}분"
-                    else -> "0분"
-                }
+                val value = FormatUtils.formatDurationCompat(durationMs)
                 Pair(value, null) // 시간은 값에 단위가 포함되어 있으므로 unit은 null
             }
             is Distance -> {
@@ -247,42 +240,6 @@ private fun RowScope.SummarySection(
     }
 }
 
-/**
- * 걸음 수를 포맷팅 (천 단위 구분자 추가)
- * 예: 18312 -> "18,312"
- */
-fun formatStepCount(stepCount: Int): String {
-    val formatter = DecimalFormat("#,###")
-    return formatter.format(stepCount)
-}
-
-/**
- * 시간을 "-시간 -분" 형식으로 포맷팅
- * 예: 3660000ms (61분) -> "1시간 1분"
- * 예: 1800000ms (30분) -> "0시간 30분"
- */
-fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-
-    return if (hours > 0) {
-        "${hours}시간 ${minutes}분"
-    } else {
-        "0시간 ${minutes}분"
-    }
-}
-
-/**
- * 거리를 포맷팅 (km 또는 m)
- * 예: 5200.0m -> "5.2"
- * 예: 500.0m -> "500"
- */
-fun formatDistance(distanceMeters: Float): String {
-    return if (distanceMeters >= 1000) {
-        String.format("%.1f", distanceMeters / 1000f)
-    } else {
-        DecimalFormat("#,###").format(distanceMeters.toInt())
-    }
-}
+// FormatUtils로 통합됨 - 아래 함수들은 하위 호환성을 위한 것들
+// 실제로는 FormatUtils.formatStepCountCompat, formatDurationCompat, formatDistanceCompat 사용 권장
 

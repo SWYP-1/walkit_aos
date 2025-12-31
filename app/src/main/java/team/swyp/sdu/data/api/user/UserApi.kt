@@ -3,6 +3,7 @@ package team.swyp.sdu.data.api.user
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -77,6 +78,16 @@ interface UserApi {
         @Part image : MultipartBody.Part?
     ) : Response<Unit>
 
+    /**
+     * 프로필 이미지 삭제
+     *
+     * @param imageId 삭제할 이미지 ID
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    @DELETE("/images/delete/{imageId}")
+    suspend fun deleteImage(
+        @Path("imageId") imageId: Long
+    ): Response<Unit>
 
     /**
      * 약관 동의
@@ -113,5 +124,13 @@ interface UserApi {
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
     ): UserSummaryDto
+
+    /**
+     * 사용자 탈퇴
+     *
+     * @return Response로 감싼 응답 (성공/실패 확인 가능)
+     */
+    @DELETE("/users")
+    suspend fun deleteUser(): Response<Unit>
 }
 

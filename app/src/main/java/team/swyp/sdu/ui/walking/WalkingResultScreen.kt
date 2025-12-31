@@ -1,6 +1,8 @@
 package team.swyp.sdu.ui.walking
 
+import android.R.attr.fontWeight
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -68,15 +71,18 @@ import team.swyp.sdu.ui.walking.components.WalkingResultCompletionDialog
 import team.swyp.sdu.ui.walking.components.WalkingResultLoadingOverlay
 import team.swyp.sdu.ui.walking.viewmodel.SnapshotState
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import team.swyp.sdu.R
+import team.swyp.sdu.presentation.viewmodel.KakaoMapUiState
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.components.WalkingDiaryCard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.walking.components.CoilBitmapImage
+import team.swyp.sdu.ui.walking.components.ShareWalkingResultDialog
 import team.swyp.sdu.ui.walking.components.WalkingProgressBar
 import java.io.File
 import java.io.FileOutputStream
@@ -289,6 +295,12 @@ private fun WalkingResultScreenContent(
     // 완료 팝업 표시 여부
     var showCompletionDialog by remember { mutableStateOf(false) }
 
+    // 고유 팝업 표시 여부
+    var showShareDialog by remember { mutableStateOf(false) }
+
+    // 캡쳐된 스냅샷 경로 (공유 다이얼로그에서 사용)
+    var capturedSnapshotPath by remember { mutableStateOf<String?>(null) }
+
     var isEditing by remember { mutableStateOf(false) }
     var editedNote by remember { mutableStateOf(currentSession.note ?: "") }
 
@@ -385,7 +397,8 @@ private fun WalkingResultScreenContent(
                             val bitmap = remember(emotionPhotoUri) {
                                 try {
                                     // 🚨 영상 파일 검증: URI가 영상인지 확인
-                                    val mimeType = context.contentResolver.getType(emotionPhotoUri!!)
+                                    val mimeType =
+                                        context.contentResolver.getType(emotionPhotoUri!!)
                                     val isVideo = mimeType?.startsWith("video/") == true
 
                                     if (isVideo) {
@@ -394,7 +407,8 @@ private fun WalkingResultScreenContent(
                                         null
                                     } else {
                                         // 사진 파일인 경우 정상 변환
-                                        val inputStream = context.contentResolver.openInputStream(emotionPhotoUri)
+                                        val inputStream =
+                                            context.contentResolver.openInputStream(emotionPhotoUri)
                                         android.graphics.BitmapFactory.decodeStream(inputStream)
                                     }
                                 } catch (e: Exception) {
@@ -413,16 +427,22 @@ private fun WalkingResultScreenContent(
                                 )
                             }
 
-                            // 경로 표시
-                            PathThumbnail(
-                                locations = currentSession.locations,
-                                modifier =
-                                    Modifier
+                            // 다이얼로그 스타일 오버레이 + 경로 표시
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.5f)) // 다이얼로그 같은 반투명 회색 오버레이
+                            ) {
+                                // 경로 표시 (하얀색 선)
+                                PathThumbnail(
+                                    locations = currentSession.locations,
+                                    modifier = Modifier
                                         .fillMaxSize()
                                         .padding(20.dp),
-                                pathColor = Color(0xFF2196F3),
-                                endpointColor = Color(0xFF2196F3),
-                            )
+                                    pathColor = Color.White, // 하얀색 선
+                                    endpointColor = Color.White, // 하얀색 끝점
+                                )
+                            }
                         } else {
                             // 케이스 2: 사진이 없는 경우 - MapView 직접 표시
                             KakaoMapView(
@@ -439,34 +459,76 @@ private fun WalkingResultScreenContent(
                         Row(
                             modifier = Modifier
                                 .padding(16.dp)
-                                .align(Alignment.TopStart),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .align(Alignment.TopEnd),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "코스 / 지도",
 
                                 // body S/semibold
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = SemanticColor.textBorderPrimaryInverse
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = SemanticColor.textBorderPrimaryInverse
+                                )
                             )
-                        }
 
-                        IconButton(onClick = {
-                            // TODO : 공유
-                        }, modifier = Modifier
-                            .padding(4.dp)
-                            .align(Alignment.TopEnd)) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_action_external),
-                                tint = SemanticColor.iconWhite,
-                                contentDescription = "external",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                            Spacer(modifier = Modifier.weight(1f))
 
+                            IconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        // 공유하기를 누를 때 스냅샷이 없으면 생성 (저장하기와 동일한 로직)
+                                        if (capturedSnapshotPath == null) {
+                                            Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+                                            var snapshotPath: String? = null
+                                            val success = onCaptureSnapshot {
+                                                try {
+                                                    snapshotPath = if (emotionPhotoUri != null) {
+                                                        // 케이스 1: 사진 + 경로 스냅샷 (맵뷰 로딩 없음)
+                                                        capturePhotoWithPathSnapshot(
+                                                            photoWithPathBoxCoordinates,
+                                                            context
+                                                        )
+                                                    } else {
+                                                        // 케이스 2: 지도 + 경로 스냅샷
+                                                        if (mapViewRef != null) {
+                                                            captureMapViewSnapshot(
+                                                                mapViewRef!!,
+                                                                context
+                                                            )
+                                                        } else {
+                                                            Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+                                                            null
+                                                        }
+                                                    }
+                                                    snapshotPath
+                                                } catch (e: Exception) {
+                                                    Timber.e(e, "공유용 스냅샷 생성 실패")
+                                                    null
+                                                }
+                                            }
+
+                                            // 스냅샷 생성 성공 시 경로 저장 (서버 동기화는 하지 않음)
+                                            if (success && snapshotPath != null) {
+                                                capturedSnapshotPath = snapshotPath
+                                            } else {
+                                                Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+                                                return@launch
+                                            }
+                                        }
+
+                                        showShareDialog = true
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_action_external),
+                                    tint = SemanticColor.iconWhite,
+                                    contentDescription = "external",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -543,9 +605,10 @@ private fun WalkingResultScreenContent(
                             onClick = {
                                 coroutineScope.launch {
                                     // 스냅샷 생성 및 저장
+                                    var snapshotPath: String? = null
                                     val success = onCaptureSnapshot {
                                         try {
-                                            if (emotionPhotoUri != null) {
+                                            snapshotPath = if (emotionPhotoUri != null) {
                                                 // 케이스 1: 사진 + 경로 스냅샷 (맵뷰 로딩 없음)
                                                 capturePhotoWithPathSnapshot(
                                                     photoWithPathBoxCoordinates,
@@ -555,12 +618,16 @@ private fun WalkingResultScreenContent(
                                                 // 케이스 2: 지도 + 경로 스냅샷
                                                 // MapView를 PixelCopy로 캡처
                                                 if (mapViewRef != null) {
-                                                    captureMapViewSnapshot(mapViewRef!!, context)
+                                                    captureMapViewSnapshot(
+                                                        mapViewRef!!,
+                                                        context
+                                                    )
                                                 } else {
                                                     Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
                                                     null
                                                 }
                                             }
+                                            snapshotPath
                                         } catch (e: Exception) {
                                             Timber.e(e, "스냅샷 생성 실패")
                                             null
@@ -568,7 +635,8 @@ private fun WalkingResultScreenContent(
                                     }
 
                                     // 스냅샷 저장 완료 후 서버 동기화 시작
-                                    if (success) {
+                                    if (success && snapshotPath != null) {
+                                        capturedSnapshotPath = snapshotPath
                                         onSyncSessionToServer()
                                     }
                                 }
@@ -584,7 +652,6 @@ private fun WalkingResultScreenContent(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-
         // 저장 중 오버레이
         if (snapshotState is SnapshotState.Capturing ||
             snapshotState is SnapshotState.Saving ||
@@ -600,6 +667,20 @@ private fun WalkingResultScreenContent(
                     showCompletionDialog = false
                     onNavigateToHome()
                 },
+            )
+        }
+        if (showShareDialog) {
+            ShareWalkingResultDialog(
+                stepCount = currentSession.stepCount.toString(),
+                duration = currentSession.duration,
+                onDismiss = { showShareDialog = false },
+                onPrev = { showShareDialog = false },
+                preWalkEmotion = currentSession.preWalkEmotion,
+                postWalkEmotion = currentSession.postWalkEmotion,
+                onSave = {
+
+                },
+                sessionThumbNailUri = capturedSnapshotPath ?: ""
             )
         }
     }

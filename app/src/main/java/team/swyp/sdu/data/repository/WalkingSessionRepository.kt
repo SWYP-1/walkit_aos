@@ -178,6 +178,14 @@ constructor(
     }
 
     /**
+     * 동기화된 세션 조회 (SYNCED 상태)
+     */
+    suspend fun getSyncedSessions(): List<WalkingSession> {
+        val entities = walkingSessionDao.getSyncedSessions()
+        return entities.map { WalkingSessionMapper.toDomain(it) }
+    }
+
+    /**
      * 미동기화 세션 모두 동기화 (WorkManager에서 호출)
      */
     suspend fun syncAllPendingSessions() {

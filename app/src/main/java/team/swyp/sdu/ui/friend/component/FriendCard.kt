@@ -190,21 +190,11 @@ private fun FollowButton(
                 fontWeight = FontWeight.Medium,
             )
         }
-
-        FollowStatus.FOLLOWING -> {
+        FollowStatus.REJECTED -> {
             ButtonConfig(
-                text = "팔로잉",
-                backgroundColor = SemanticColor.buttonDisabled,
-                textColor = SemanticColor.textBorderDisabled,
-                fontWeight = FontWeight.Medium,
-            )
-        }
-
-        FollowStatus.NONE -> {
-            ButtonConfig(
-                text = "팔로우",
-                backgroundColor = SemanticColor.buttonPrimaryDefault,
-                textColor = SemanticColor.textBorderPrimaryInverse,
+                text = "거절됨",
+                backgroundColor = Color.Transparent,
+                textColor = Color.Transparent,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -241,9 +231,10 @@ private fun FollowButton(
         (-0.16f).sp
     }
 
+    //TODO : && followStatus != FollowStatus.REJECTED 거절당하면 두번다시 못누르나?
     Button(
         onClick = onClick,
-        enabled = enabled && followStatus != FollowStatus.ACCEPTED && followStatus != FollowStatus.FOLLOWING,
+        enabled = enabled && followStatus != FollowStatus.ACCEPTED ,
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = buttonColor,

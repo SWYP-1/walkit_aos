@@ -11,7 +11,8 @@ data class FollowerWalkRecord(
     val stepCount: Int = 0,
     val totalDistance: Double = 0.0,
     val likeCount: Int = 0,
-    val liked: Boolean = false
+    val liked: Boolean = false,
+    val totalTime: Long = 0L
 )
 
 

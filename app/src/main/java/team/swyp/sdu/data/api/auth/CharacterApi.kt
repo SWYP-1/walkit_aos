@@ -10,6 +10,7 @@ import team.swyp.sdu.data.remote.walking.dto.CharacterDto
  */
 interface CharacterApi {
 
+
     /**
      * 위치 기반 캐릭터 정보 조회
      *

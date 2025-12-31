@@ -24,6 +24,8 @@ import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.model.Friend
 import team.swyp.sdu.domain.repository.FriendRepository
 import timber.log.Timber
+import android.content.SharedPreferences
+import android.app.Application
 import javax.inject.Inject
 
 /**
@@ -49,6 +51,7 @@ sealed interface SearchUiState {
 class FriendViewModel
 @Inject
 constructor(
+    private val application: Application,
     private val userRemoteDataSource: UserRemoteDataSource,
     private val followRemoteDataSource: FollowRemoteDataSource,
     private val friendRepository: FriendRepository,
@@ -68,6 +71,11 @@ constructor(
 
     private val _isFollowing = MutableStateFlow(false)
     val isFollowing: StateFlow<Boolean> = _isFollowing
+
+    // 팔로우 상태 공유를 위한 SharedPreferences
+    private val followPrefs: SharedPreferences by lazy {
+        application.getSharedPreferences("follow_status_prefs", android.content.Context.MODE_PRIVATE)
+    }
 
     // 자동 검색은 제거 (FriendSearchScreen에서 수동 검색만 사용)
 
@@ -92,7 +100,7 @@ constructor(
     fun loadFriends() {
         viewModelScope.launch {
             _uiState.value = FriendUiState.Loading
-            when (val result = friendRepository.getFriends()) {
+            when (val result = friendRepository.loadFriends()) {
                 is Result.Success -> {
                     _friends.value = result.data
                     _uiState.value = FriendUiState.Success(result.data)
@@ -129,7 +137,16 @@ constructor(
             _searchUiState.value = SearchUiState.Loading
             try {
                 val result = userRemoteDataSource.searchUserByNickname(trimmedNickname)
-                _searchUiState.value = SearchUiState.Success(result)
+                // FriendSearchViewModel에서 저장된 팔로우 상태 확인
+                val localFollowStatus = getLocalFollowStatus(trimmedNickname)
+                val updatedResult = if (localFollowStatus != FollowStatus.EMPTY) {
+                    // 로컬 상태가 있으면 우선 사용
+                    Timber.d("FriendView: 로컬 팔로우 상태 적용 - $trimmedNickname: $localFollowStatus")
+                    result.copy(followStatus = localFollowStatus)
+                } else {
+                    result
+                }
+                _searchUiState.value = SearchUiState.Success(updatedResult)
             } catch (e: UserNotFoundException) {
                 Timber.Forest.e(e, "사용자를 찾을 수 없음: $trimmedNickname")
                 _searchUiState.value = SearchUiState.Error("존재하지 않는 유저입니다")
@@ -176,8 +193,7 @@ constructor(
         val previousFollowStatus = previousResult?.followStatus
 
         // 이미 팔로우 중이거나 팔로잉 상태면 처리하지 않음
-        if (previousFollowStatus == FollowStatus.ACCEPTED || 
-            previousFollowStatus == FollowStatus.FOLLOWING ||
+        if (previousFollowStatus == FollowStatus.ACCEPTED ||
             previousFollowStatus == FollowStatus.PENDING) {
             return
         }
@@ -196,6 +212,8 @@ constructor(
             }
         }
 
+        // 낙관적 업데이트 시점에는 로컬 저장하지 않음 (서버 성공 시에만 저장)
+
         // 버튼 비활성화
         _isFollowing.value = true
 
@@ -204,7 +222,9 @@ constructor(
             try {
                 followRemoteDataSource.followUserByNickname(trimmedNickname)
                 Timber.d("팔로우 성공: $trimmedNickname")
-                // 성공 시 이미 UI가 업데이트되어 있으므로 추가 작업 없음
+                // 성공 시 로컬에 PENDING 상태 저장 (FriendSearchDetail 동기화)
+                saveFollowStatusToLocal(trimmedNickname, FollowStatus.PENDING)
+                Timber.d("FriendViewModel.followUser: saved PENDING status to local for $trimmedNickname")
             } catch (e: FollowUserNotFoundException) {
                 Timber.e(e, "존재하지 않는 유저: $trimmedNickname")
                 // 롤백: 이전 상태로 복원
@@ -231,6 +251,7 @@ constructor(
                         else -> state
                     }
                 }
+                saveFollowStatusToLocal(trimmedNickname, FollowStatus.ACCEPTED)
             } catch (e: Exception) {
                 Timber.e(e, "팔로우 실패: $trimmedNickname")
                 // 롤백: 이전 상태로 복원
@@ -261,6 +282,33 @@ constructor(
                     else -> state
                 }
             }
+        }
+    }
+
+    /**
+     * 로컬 SharedPreferences에서 팔로우 상태 확인
+     */
+    private fun getLocalFollowStatus(nickname: String): FollowStatus {
+        return try {
+            val statusString = followPrefs.getString("follow_status_$nickname", null)
+            statusString?.let { FollowStatus.valueOf(it) } ?: FollowStatus.EMPTY
+        } catch (e: Exception) {
+            Timber.e(e, "로컬 팔로우 상태 로드 실패: $nickname")
+            FollowStatus.EMPTY
+        }
+    }
+
+    /**
+     * 팔로우 상태를 로컬에 저장 (ViewModel 간 공유용)
+     */
+    private fun saveFollowStatusToLocal(nickname: String, status: FollowStatus) {
+        try {
+            followPrefs.edit()
+                .putString("follow_status_$nickname", status.name)
+                .apply()
+            Timber.d("FriendView: 팔로우 상태 로컬 저장 - $nickname: $status, key=follow_status_$nickname")
+        } catch (e: Exception) {
+            Timber.e(e, "팔로우 상태 로컬 저장 실패: $nickname")
         }
     }
 }

@@ -22,6 +22,7 @@ data class UserSearchResult(
 data class UserSummary(
     val character: Character,
     val walkSummary: WalkSummary,
+    val followStatus: FollowStatus = FollowStatus.EMPTY,
 )
 
 

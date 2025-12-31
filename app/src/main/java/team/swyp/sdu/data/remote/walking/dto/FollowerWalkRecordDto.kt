@@ -31,7 +31,10 @@ data class FollowerWalkRecordDto(
     val likeCount: Int = 0,
 
     @SerialName("liked")
-    val liked: Boolean = false
+    val liked: Boolean = false,
+
+    @SerialName("totalTime")
+    val totalTime: Long? = null
 )
 
 

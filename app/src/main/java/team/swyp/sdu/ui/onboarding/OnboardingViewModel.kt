@@ -18,7 +18,6 @@ import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 import team.swyp.sdu.domain.model.OnboardingData
 import team.swyp.sdu.domain.model.OnboardingProgress
-import team.swyp.sdu.domain.model.Sex
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.domain.repository.GoalRepository

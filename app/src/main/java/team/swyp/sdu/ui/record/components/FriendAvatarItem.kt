@@ -42,7 +42,9 @@ fun FriendAvatarItem(
                 indication = null, // ripple 제거
                 interactionSource = remember { MutableInteractionSource() }
             ) {
-                onClick
+                android.util.Log.d("FriendAvatarItem", "친구 클릭됨: ${friend.nickname}")
+                timber.log.Timber.d("친구 클릭됨: ${friend.nickname}")
+                onClick()
             },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),

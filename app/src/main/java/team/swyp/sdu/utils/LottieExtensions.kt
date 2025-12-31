@@ -17,6 +17,12 @@ fun ByteArray.toBase64DataUrl(): String {
     return "data:image/png;base64,$base64String"
 }
 
+data class LottieAssetSize(
+    val width: Int,
+    val height: Int
+)
+
+
 /**
  * Lottie JSON에서 특정 asset의 p 값을 교체
  * @param assetId 교체할 asset의 id
@@ -50,5 +56,17 @@ fun JSONObject.replaceAssetP(assetId: String, dataUrl: String): JSONObject {
         throw e
     }
 }
-
+fun JSONObject.findAssetSize(assetId: String): LottieAssetSize {
+    val assets = getJSONArray("assets")
+    for (i in 0 until assets.length()) {
+        val asset = assets.getJSONObject(i)
+        if (asset.getString("id") == assetId) {
+            return LottieAssetSize(
+                width = asset.getInt("w"),
+                height = asset.getInt("h")
+            )
+        }
+    }
+    error("assetId not found: $assetId")
+}
 

@@ -54,9 +54,9 @@ import timber.log.Timber
  * EquipSlot과 Lottie assetId의 매핑
  */
 private val SLOT_ASSET_MAPPING = mapOf(
-    EquipSlot.HEAD to "head_ribbon",  // HEAD 슬롯의 asset ID
-    EquipSlot.BODY to "body_cloth",   // BODY 슬롯의 asset ID
-    EquipSlot.FEET to "feet_shoes"    // FEET 슬롯의 asset ID
+    EquipSlot.HEAD to "head",  // HEAD 슬롯의 asset ID
+    EquipSlot.BODY to "body",   // BODY 슬롯의 asset ID
+    EquipSlot.FEET to "feet"    // FEET 슬롯의 asset ID
 )
 
 /**
@@ -131,6 +131,16 @@ fun CharacterAndBackground(
     Timber.d("🎭 CharacterAndBackground 컴포넌트 렌더링")
     Timber.d("📄 processedLottieJson 길이: ${processedLottieJson?.length ?: 0}")
     Timber.d("🧷 wornItemsByPosition: $wornItemsByPosition")
+
+    // processedLottieJson이 null인지 아닌지, 그리고 어떤 내용인지 확인
+    if (processedLottieJson.isNullOrEmpty()) {
+        Timber.w("⚠️ processedLottieJson이 null 또는 비어있음 - 기본 Lottie 사용")
+    } else {
+        Timber.d("✅ processedLottieJson 존재 - 커스텀 Lottie 사용")
+        // JSON이 너무 길어서 앞부분만 로깅
+        val preview = processedLottieJson.take(200) + if (processedLottieJson.length > 200) "..." else ""
+        Timber.d("📋 Lottie JSON 미리보기: $preview")
+    }
     // 오늘 날짜의 계절 확인
     val backgroundRes =
         when (currentSeason) {

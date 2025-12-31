@@ -2,7 +2,9 @@ package team.swyp.sdu.ui.mission.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -10,10 +12,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,8 +25,8 @@ import team.swyp.sdu.domain.model.MissionCategory
 import team.swyp.sdu.domain.model.MissionStatus
 import team.swyp.sdu.domain.model.MissionType
 import team.swyp.sdu.domain.model.WeeklyMission
+import team.swyp.sdu.ui.home.components.clickableNoRipple
 import team.swyp.sdu.ui.mission.model.MissionCardState
-import team.swyp.sdu.ui.mission.model.toCardState
 import team.swyp.sdu.ui.record.components.customShadow
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -91,20 +95,19 @@ private fun MissionCardState.rewardTextColor(): Color =
         MissionCardState.COMPLETED -> SemanticColor.textBorderGreenSecondary
     }
 
-private fun MissionCardState.buttonBorderColor(): Color =
-    when (this) {
-        MissionCardState.INACTIVE -> Color.Transparent
-        MissionCardState.ACTIVE_CHALLENGE -> SemanticColor.textBorderGreenPrimary
-        MissionCardState.READY_FOR_CLAIM -> Color.Transparent
-        MissionCardState.COMPLETED -> Color.Transparent
-    }
-
 private fun MissionCardState.buttonBorder(): BorderStroke? =
     when (this) {
         MissionCardState.INACTIVE -> null
         MissionCardState.ACTIVE_CHALLENGE -> null
-        MissionCardState.READY_FOR_CLAIM -> BorderStroke(width = 1.dp, color = SemanticColor.textBorderGreenPrimary)
-        MissionCardState.COMPLETED -> BorderStroke(width = 1.dp, color = SemanticColor.buttonPrimaryDisabled)
+        MissionCardState.READY_FOR_CLAIM -> BorderStroke(
+            width = 1.dp,
+            color = SemanticColor.textBorderGreenPrimary
+        )
+
+        MissionCardState.COMPLETED -> BorderStroke(
+            width = 1.dp,
+            color = SemanticColor.buttonPrimaryDisabled
+        )
     }
 
 
@@ -115,6 +118,22 @@ private fun MissionCardState.titleTextColor(): Color =
         MissionCardState.READY_FOR_CLAIM -> SemanticColor.textBorderPrimary
         MissionCardState.COMPLETED -> SemanticColor.textBorderPrimary
     }
+
+private val MissionCardShape = RoundedCornerShape(8.dp)
+
+fun Modifier.missionCardBorder(
+    state: MissionCardState,
+    shape: Shape = MissionCardShape
+): Modifier {
+    val border = state.buttonBorder()
+    return if (border != null) {
+        this
+            .border(border, shape)
+    } else {
+        this
+    }
+}
+
 
 
 /* =====================================================
@@ -129,28 +148,15 @@ fun MissionCard(
     onRewardClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val clickableModifier = when (cardState) {
-        MissionCardState.ACTIVE_CHALLENGE,
-        MissionCardState.INACTIVE ->
-            Modifier.clickable { onChallengeClick() }
-
-        MissionCardState.READY_FOR_CLAIM ->
-            Modifier  // 보상 청구 가능한 상태에서는 카드 클릭 불가 (버튼으로 처리)
-
-        MissionCardState.COMPLETED ->
-            Modifier  // 이미 완료된 미션은 클릭 불가
-    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .customShadow()
-            .then(clickableModifier),
+            .customShadow(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = cardState.backgroundColor()
         ),
-        border = cardState.buttonBorder(),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -195,19 +201,32 @@ fun MissionCard(
                 )
             }
 
-            val buttonModifier = if (cardState == MissionCardState.READY_FOR_CLAIM) {
-                Modifier.clickable { onRewardClick(mission.userWeeklyMissionId ?: 0L) }
-            } else {
-                Modifier
-            }
+            val buttonModifier = when (cardState) {
+                MissionCardState.READY_FOR_CLAIM ->
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onRewardClick(mission.userWeeklyMissionId ?: 0L)
+                    }
 
+                MissionCardState.ACTIVE_CHALLENGE ->
+                    Modifier.clickableNoRipple(
+                        onClick = onChallengeClick
+                    )
+
+                else ->
+                    Modifier // 아무 Modifier도 안 붙음 = 클릭 불가
+            }
             Box(
                 modifier = Modifier
                     .then(buttonModifier)
+                    .missionCardBorder(cardState)
                     .background(
                         color = cardState.buttonBackgroundColor(),
                         shape = RoundedCornerShape(8.dp)
                     )
+                    .clip(MissionCardShape)
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
@@ -246,7 +265,7 @@ fun PreviewActiveChallenge() {
     WalkItTheme {
         MissionCard(
             mission = previewMission(MissionStatus.IN_PROGRESS),
-            cardState = previewMission(MissionStatus.IN_PROGRESS).toCardState(isActive = true),
+            cardState = MissionCardState.ACTIVE_CHALLENGE,
             onChallengeClick = {},
             onRewardClick = {}
         )
@@ -259,7 +278,7 @@ fun PreviewCompleted() {
     WalkItTheme {
         MissionCard(
             mission = previewMission(MissionStatus.COMPLETED),
-            cardState = previewMission(MissionStatus.COMPLETED).toCardState(isActive = true),
+            cardState = MissionCardState.READY_FOR_CLAIM,
             onChallengeClick = {},
             onRewardClick = {}
         )
@@ -272,7 +291,7 @@ fun PreviewFailed() {
     WalkItTheme {
         MissionCard(
             mission = previewMission(MissionStatus.FAILED),
-            cardState = previewMission(MissionStatus.FAILED).toCardState(isActive = true),
+            cardState = MissionCardState.INACTIVE,
             onChallengeClick = {},
             onRewardClick = {}
         )
@@ -285,7 +304,7 @@ fun PreviewInactive() {
     WalkItTheme {
         MissionCard(
             mission = previewMission(MissionStatus.COMPLETED),
-            cardState = previewMission(MissionStatus.COMPLETED).toCardState(isActive = false),
+            cardState = MissionCardState.INACTIVE,
             onChallengeClick = {},
             onRewardClick = {}
         )
@@ -299,7 +318,7 @@ fun PreviewReadyToClaim() {
     WalkItTheme {
         MissionCard(
             mission = previewMission(MissionStatus.COMPLETED),
-            cardState = previewMission(MissionStatus.COMPLETED).toCardState(isActive = true),
+            cardState = MissionCardState.READY_FOR_CLAIM,
             onChallengeClick = {},
             onRewardClick = {}
         )

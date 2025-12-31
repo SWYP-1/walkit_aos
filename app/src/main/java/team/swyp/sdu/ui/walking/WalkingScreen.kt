@@ -40,7 +40,6 @@ import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.InfoBadge
-import team.swyp.sdu.ui.components.formatStepCount
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -50,6 +49,7 @@ import team.swyp.sdu.ui.walking.viewmodel.WalkingScreenState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.utils.DateUtils
+import team.swyp.sdu.utils.FormatUtils.formatStepCount
 import team.swyp.sdu.utils.Season
 import timber.log.Timber
 
@@ -86,22 +86,17 @@ fun WalkingScreenRoute(
 
     // 권한 상태 디버깅
     LaunchedEffect(permissionsState.allPermissionsGranted) {
-        android.util.Log.d(
-            "WalkingScreen",
-            "권한 상태 변경: allPermissionsGranted = ${permissionsState.allPermissionsGranted}"
-        )
+        Timber.tag("WalkingScreen")
+            .d("권한 상태 변경: allPermissionsGranted = ${permissionsState.allPermissionsGranted}")
         permissionsState.permissions.forEach { permission ->
-            android.util.Log.d(
-                "WalkingScreen",
-                "권한: ${permission.permission}, 상태: ${permission.status}"
-            )
+            Timber.tag("WalkingScreen").d("권한: ${permission.permission}, 상태: ${permission.status}")
         }
     }
 
     // 권한이 없는 경우 자동으로 권한 요청
     LaunchedEffect(Unit) {
         if (!permissionsState.allPermissionsGranted) {
-            android.util.Log.d("WalkingScreen", "권한이 부족하여 자동으로 권한 요청")
+            Timber.tag("WalkingScreen").d("권한이 부족하여 자동으로 권한 요청")
             permissionsState.launchMultiplePermissionRequest()
         }
     }
@@ -242,143 +237,139 @@ private fun WalkingScreenContent(
         Season.AUTUMN -> R.drawable.bg_autumn_full
         Season.WINTER -> R.drawable.bg_winter_full
     }
-
-
-
-    SubcomposeLayout(
-        modifier = modifier.fillMaxSize()
-    ) { constraints ->
-
-        /* ---------- Background ---------- */
-        val bg = subcompose("bg") {
-            if (characterState == null) {
-                Image(
-                    painter = painterResource(defaultBackground),
-                    contentDescription = "walking background",
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                AsyncImage(
-                    model = characterState.backgroundImageName,
-                    error = painterResource(defaultBackground),
-                    contentDescription = "walking background"
-                )
-            }
-
-        }[0].measure(constraints)
-
-        /* ---------- Character ---------- */
-        val character = subcompose("character") {
-            WalkitCharacter(character = characterState)
-        }[0].measure(Constraints())
-
-        /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
-        val stepCounter =
-            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
-                subcompose("stepCounter") {
-                    WalkitStepInfo(stepCount = walkingState.stepCount)
-                }[0].measure(Constraints())
-            } else null
-
-        /* ---------- Timer (SessionSaved 상태가 아닐 때) ---------- */
-        val timer =
-            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
-                subcompose("timer") {
-                    val painterResource = painterResource(id = R.drawable.ic_info_timer)
-                    InfoBadge(
-                        iconPainter = painterResource,
-                        text = formatToHoursMinutesSeconds(walkingState.duration)
-                    )
-                }[0].measure(Constraints())
-            } else null
-
-
-        val finishText = if (screenState.uiState is WalkingUiState.SessionSaved) {
-            subcompose("finishText") {
-                FinishWalkingText()
-            }[0].measure(Constraints())
-        } else null
-
-        /* ---------- Action Buttons (SessionSaved 상태가 아닐 때) ---------- */
-        val actionRow =
-            if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
-                subcompose("actionRow") {
-                    WalkingActionButtonRow(
-                        isPaused = walkingState.isPaused,
-                        onClickPause = {
-                            if (walkingState.isPaused) onResumeClick() else onPauseClick()
-                        },
-                        onClickFinish = onFinishClick
-                    )
-                }[0].measure(Constraints())
-            } else null
-
-        /* ---------- CTA Button (SessionSaved 상태일 때) ---------- */
-        val onNextButton = if (screenState.uiState is WalkingUiState.SessionSaved) {
-            subcompose("onNext") {
-                CtaWrapper(
-                    onClick = onNextClick,
-                    enabled = true // 세션 저장 완료 상태이므로 항상 활성화
-                )
-            }[0].measure(
-                Constraints(
-                    minWidth = constraints.maxWidth,
-                    maxWidth = constraints.maxWidth
-                )
+    Box(modifier = Modifier.fillMaxSize()){
+        if (characterState == null) {
+            Image(
+                painter = painterResource(defaultBackground),
+                contentDescription = "walking background",
+                modifier = Modifier.fillMaxSize()
             )
-        } else null
-
-        /* ---------- Layout ---------- */
-        layout(
-            width = constraints.maxWidth,
-            height = constraints.maxHeight
-        ) {
-            val centerY = constraints.maxHeight / 2
-
-            // Background
-            bg.place(0, 0)
-
-            // Character (bottom = center line)
-            character.place(
-                x = (constraints.maxWidth - character.width) / 2,
-                y = centerY - character.height
-            )
-
-            // stepCounter (top = 94dp)
-            stepCounter?.place(
-                x = (constraints.maxWidth - stepCounter.width) / 2,
-                y = 94.dp.roundToPx()
-            )
-
-            // timer (top and bottom)
-            timer?.place(
-                x = (constraints.maxWidth - timer.width) / 2,
-                y = 18.dp.roundToPx()
-            )
-
-            // Finish Text (top = 137.dp)
-            finishText?.place(
-                x = (constraints.maxWidth - finishText.width) / 2,
-                y = 137.dp.roundToPx()
-            )
-
-            // Action buttons (bottom = 100dp)
-            actionRow?.place(
-                x = (constraints.maxWidth - actionRow.width) / 2,
-                y = constraints.maxHeight -
-                        actionRow.height -
-                        100.dp.roundToPx()
-            )
-
-            // CTA button (bottom = 40dp)
-            onNextButton?.place(
-                x = (constraints.maxWidth - onNextButton.width) / 2,
-                y = constraints.maxHeight -
-                        onNextButton.height -
-                        70.dp.roundToPx()
+        } else {
+            AsyncImage(
+                model = characterState.backgroundImageName,
+                error = painterResource(defaultBackground),
+                contentDescription = "walking background"
             )
         }
+
+        SubcomposeLayout(
+            modifier = modifier.fillMaxSize()
+        ) { constraints ->
+
+            /* ---------- Character ---------- */
+            val character = subcompose("character") {
+                WalkitCharacter(character = characterState)
+            }[0].measure(Constraints())
+
+            /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
+            val stepCounter =
+                if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                    subcompose("stepCounter") {
+                        WalkitStepInfo(stepCount = walkingState.stepCount)
+                    }[0].measure(Constraints())
+                } else null
+
+            /* ---------- Timer (SessionSaved 상태가 아닐 때) ---------- */
+            val timer =
+                if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                    subcompose("timer") {
+                        val painterResource = painterResource(id = R.drawable.ic_info_timer)
+                        InfoBadge(
+                            iconPainter = painterResource,
+                            text = formatToHoursMinutesSeconds(walkingState.duration)
+                        )
+                    }[0].measure(Constraints())
+                } else null
+
+
+            val finishText = if (screenState.uiState is WalkingUiState.SessionSaved) {
+                subcompose("finishText") {
+                    FinishWalkingText()
+                }[0].measure(Constraints())
+            } else null
+
+            /* ---------- Action Buttons (SessionSaved 상태가 아닐 때) ---------- */
+            val actionRow =
+                if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
+                    subcompose("actionRow") {
+                        WalkingActionButtonRow(
+                            isPaused = walkingState.isPaused,
+                            onClickPause = {
+                                if (walkingState.isPaused) onResumeClick() else onPauseClick()
+                            },
+                            onClickFinish = onFinishClick
+                        )
+                    }[0].measure(Constraints())
+                } else null
+
+            /* ---------- CTA Button (SessionSaved 상태일 때) ---------- */
+            val onNextButton = if (screenState.uiState is WalkingUiState.SessionSaved) {
+                subcompose("onNext") {
+                    CtaWrapper(
+                        onClick = onNextClick,
+                        enabled = true // 세션 저장 완료 상태이므로 항상 활성화
+                    )
+                }[0].measure(
+                    Constraints(
+                        minWidth = constraints.maxWidth,
+                        maxWidth = constraints.maxWidth
+                    )
+                )
+            } else null
+
+            /* ---------- Layout ---------- */
+            layout(
+                width = constraints.maxWidth,
+                height = constraints.maxHeight
+            ) {
+                val centerY = constraints.maxHeight / 2
+
+                // Character (bottom = center line)
+                character.place(
+                    x = (constraints.maxWidth - character.width) / 2,
+                    y = centerY - character.height
+                )
+
+                // stepCounter (top = 94dp)
+                stepCounter?.place(
+                    x = (constraints.maxWidth - stepCounter.width) / 2,
+                    y = 94.dp.roundToPx()
+                )
+
+                // timer (top and bottom)
+                timer?.place(
+                    x = (constraints.maxWidth - timer.width) / 2,
+                    y = 18.dp.roundToPx()
+                )
+
+                // Finish Text (top = 137.dp)
+                finishText?.place(
+                    x = (constraints.maxWidth - finishText.width) / 2,
+                    y = 137.dp.roundToPx()
+                )
+
+                // Action buttons (bottom = 100dp)
+                actionRow?.place(
+                    x = (constraints.maxWidth - actionRow.width) / 2,
+                    y = constraints.maxHeight -
+                            actionRow.height -
+                            100.dp.roundToPx()
+                )
+
+                // CTA button (bottom = 40dp)
+                onNextButton?.place(
+                    x = (constraints.maxWidth - onNextButton.width) / 2,
+                    y = constraints.maxHeight -
+                            onNextButton.height -
+                            70.dp.roundToPx()
+                )
+            }
+        }
     }
+
+
+
+
 }
 
 @Composable

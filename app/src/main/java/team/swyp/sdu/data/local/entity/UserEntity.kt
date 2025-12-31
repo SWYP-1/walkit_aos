@@ -17,6 +17,6 @@ data class UserEntity(
     val userId: Long? = null,
     val imageName: String? = null,
     val birthDate: String? = null,
-    val sex: String? = null,
+    val email: String? = null,
     val updatedAt: Long = System.currentTimeMillis(),
 )

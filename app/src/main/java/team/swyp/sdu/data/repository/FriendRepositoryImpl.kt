@@ -90,10 +90,6 @@ class FriendRepositoryImpl @Inject constructor(
             }
         }
 
-    /**
-     * 사용자 차단 (기존 API 호환성 유지)
-     */
-    override suspend fun getFriends(): Result<List<Friend>> = loadFriends(force = false)
 
     /**
      * 사용자 차단

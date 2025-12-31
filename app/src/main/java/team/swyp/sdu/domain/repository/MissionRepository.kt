@@ -25,6 +25,14 @@ interface MissionRepository {
      * @return 월간 미션 완료 날짜 목록
      */
     suspend fun getMonthlyCompletedMissions(year: Int, month: Int): Result<List<String>>
+
+    /**
+     * 주간 미션 보상 검증
+     *
+     * @param userWeeklyMissionId 검증할 미션 ID
+     * @return 검증된 미션 정보
+     */
+    suspend fun verifyWeeklyMissionReward(userWeeklyMissionId: Long): Result<WeeklyMission>
 }
 
 

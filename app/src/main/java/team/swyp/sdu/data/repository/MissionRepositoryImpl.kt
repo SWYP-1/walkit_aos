@@ -48,4 +48,16 @@ class MissionRepositoryImpl @Inject constructor(
             Result.Error(e, e.message)
         }
     }
+
+    override suspend fun verifyWeeklyMissionReward(userWeeklyMissionId: Long): Result<WeeklyMission> {
+        return try {
+            val verifiedMissionDto = missionRemoteDataSource.verifyWeeklyMissionReward(userWeeklyMissionId)
+            val verifiedMission = WeeklyMissionMapper.toDomain(verifiedMissionDto)
+            Timber.d("주간 미션 보상 검증 성공: $userWeeklyMissionId")
+            Result.Success(verifiedMission)
+        } catch (e: Exception) {
+            Timber.e(e, "주간 미션 보상 검증 실패: $userWeeklyMissionId")
+            Result.Error(e)
+        }
+    }
 }

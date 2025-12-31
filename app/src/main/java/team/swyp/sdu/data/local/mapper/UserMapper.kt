@@ -15,7 +15,7 @@ object UserMapper {
             userId = domain.userId,
             imageName = domain.imageName,
             birthDate = domain.birthDate,
-            sex = domain.sex?.name,
+            email = domain.email,
         )
 
     fun toDomain(entity: UserEntity): User =
@@ -24,12 +24,6 @@ object UserMapper {
             imageName = entity.imageName,
             nickname = entity.nickname,
             birthDate = entity.birthDate,
-            sex = entity.sex?.let {
-                try {
-                    team.swyp.sdu.domain.model.Sex.valueOf(it)
-                } catch (e: IllegalArgumentException) {
-                    null
-                }
-            },
+            email = entity.email,
         )
 }

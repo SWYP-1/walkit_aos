@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.HttpException
+import retrofit2.Response
 import team.swyp.sdu.data.api.user.UpdateUserProfileRequest
 import team.swyp.sdu.data.api.user.UserApi
 import team.swyp.sdu.domain.model.User
@@ -109,6 +110,25 @@ class UserProfileRemoteDataSource @Inject constructor(
             }
         } catch (e: Exception) {
             Timber.e(e, "사용자 프로필 이미지 업데이트 실패: ${file.name}")
+            throw e
+        }
+    }
+
+    /**
+     * 프로필 이미지 삭제
+     */
+    suspend fun deleteImage(imageId: Long): Response<Unit> {
+        return try {
+            val response = userApi.deleteImage(imageId)
+            if (response.isSuccessful) {
+                Timber.d("프로필 이미지 삭제 성공: $imageId")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "프로필 이미지 삭제 실패"
+                Timber.e("프로필 이미지 삭제 실패: $errorMessage (코드: ${response.code()})")
+            }
+            response
+        } catch (e: Exception) {
+            Timber.e(e, "프로필 이미지 삭제 실패: $imageId")
             throw e
         }
     }

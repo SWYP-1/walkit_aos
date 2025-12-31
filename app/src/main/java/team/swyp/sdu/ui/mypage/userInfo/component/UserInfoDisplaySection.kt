@@ -26,6 +26,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun UserInfoDisplaySection(
     modifier: Modifier = Modifier,
     provider: String? = null,
+    email: String? = null,
 ) {
     val tertiaryText = SemanticColor.textBorderTertiary
 
@@ -63,6 +64,40 @@ fun UserInfoDisplaySection(
                 ),
                 singleLine = true,
             )
+        }
+
+        // 이메일 표시 필드 (비활성화)
+        email?.let {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "이메일",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = Grey7,
+                )
+
+                OutlinedTextField(
+                    value = it,
+                    onValueChange = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SemanticColor.backgroundWhiteSecondary, RoundedCornerShape(8.dp)),
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = tertiaryText,
+                        disabledBorderColor = Color.Transparent,
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    textStyle = MaterialTheme.walkItTypography.bodyM.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    singleLine = true,
+                )
+            }
         }
     }
 }

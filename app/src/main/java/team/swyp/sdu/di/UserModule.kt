@@ -8,6 +8,8 @@ import javax.inject.Singleton
 import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.data.local.datastore.LocationAgreementDataStore
+import team.swyp.sdu.data.remote.user.UserManagementRemoteDataSource
+import team.swyp.sdu.data.remote.user.UserProfileRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
 import team.swyp.sdu.data.repository.PointRepositoryImpl
 import team.swyp.sdu.data.repository.UserRepositoryImpl
@@ -25,8 +27,10 @@ object UserModule {
     fun provideUserRepository(
         userDao: UserDao,
         userRemoteDataSource: UserRemoteDataSource,
+        userManagementRemoteDataSource: UserManagementRemoteDataSource,
+        userProfileRemoteDataSource: UserProfileRemoteDataSource,
         authDataStore: AuthDataStore,
-    ): UserRepository = UserRepositoryImpl(userDao, userRemoteDataSource, authDataStore)
+    ): UserRepository = UserRepositoryImpl(userDao, userRemoteDataSource, userManagementRemoteDataSource, userProfileRemoteDataSource, authDataStore)
 
     @Provides
     @Singleton

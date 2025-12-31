@@ -53,6 +53,7 @@ import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Error
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Loading
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Success
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Updating
+import team.swyp.sdu.ui.mypage.userInfo.UserInput
 import javax.inject.Inject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
+import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.mypage.userInfo.component.DateDropdown
@@ -83,6 +85,31 @@ import team.swyp.sdu.utils.parseBirthDate
 import team.swyp.sdu.utils.ProfileImageState
 
 /**
+ * 내 정보 관리 화면 Route (ViewModel 연결)
+ */
+@Composable
+fun UserInfoManagementRoute(
+    modifier: Modifier = Modifier,
+    viewModel: UserInfoManagementViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit = {},
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val userInput by viewModel.userInput.collectAsStateWithLifecycle()
+    val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
+
+    UserInfoManagementScreen(
+        modifier = modifier,
+        uiState = uiState,
+        userInput = userInput,
+        provider = "provider",
+        goal = goal,
+        onNavigateBack = onNavigateBack,
+        onSaveUserProfile = viewModel::saveUserProfile,
+        onUpdateProfileImageUri = { uri -> viewModel.updateProfileImageUri(uri) }
+    )
+}
+
+/**
  * 내 정보 관리 화면
  *
  * 사용자의 정보를 관리하는 화면
@@ -94,9 +121,13 @@ import team.swyp.sdu.utils.ProfileImageState
  * - 연동된 계정 표시
  *
  * @param modifier Modifier
+ * @param uiState UI 상태
+ * @param userInput 사용자 입력 데이터
+ * @param provider 연동된 계정 정보
+ * @param goal 목표 정보
  * @param onNavigateBack 뒤로가기 클릭 핸들러
- * @param onSave 저장 버튼 클릭 핸들러
- * @param onBack 뒤로가기 버튼 클릭 핸들러
+ * @param onSaveUserProfile 사용자 프로필 저장 핸들러
+ * @param onUpdateProfileImageUri 프로필 이미지 URI 업데이트 핸들러
  */
 // 상수 정의
 private object UserInfoConstants {
@@ -109,17 +140,19 @@ private object UserInfoConstants {
 fun UserInfoManagementScreen(
     modifier: Modifier = Modifier,
     viewModel: UserInfoManagementViewModel = hiltViewModel(),
+    uiState: UserInfoUiState,
+    userInput: UserInput,
+    provider: String,
+    goal: team.swyp.sdu.domain.model.Goal?,
     onNavigateBack: () -> Unit = {},
+    onSaveUserProfile: (birthYear: String, birthMonth: String, birthDay: String, nickname: String) -> Unit = { _, _, _, _ -> },
+    onUpdateProfileImageUri: (Uri?) -> Unit = {},
 ) {
     val context = LocalContext.current
 
-    // ViewModel 상태 수집
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val userInput by viewModel.userInput.collectAsStateWithLifecycle()
-    val provider by viewModel.provider.collectAsStateWithLifecycle()
+    // ViewModel 상태
+    val imageDeleted by viewModel.imageDeleted.collectAsStateWithLifecycle()
 
-    // GoalRepository에서 Goal 가져오기 (ViewModel을 통해)
-    val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
     // 로컬 상태
     var name by remember { mutableStateOf(userInput.name) }
     var birthYear by remember { mutableStateOf("") }
@@ -128,7 +161,9 @@ fun UserInfoManagementScreen(
     var nickname by remember { mutableStateOf(userInput.nickname) }
     var profileImageState by remember {
         mutableStateOf(
-            ProfileImageState.fromUserInput(userInput.imageName, userInput.selectedImageUri)
+            ProfileImageState.fromUserInput(
+                userInput.imageName,
+                userInput.selectedImageUri)
         )
     }
 
@@ -136,7 +171,17 @@ fun UserInfoManagementScreen(
     fun updateLocalStateFromUserInput() {
         nickname = userInput.nickname
         name = userInput.name
-        profileImageState = ProfileImageState.fromUserInput(userInput.imageName, userInput.selectedImageUri)
+
+        // 이미지 삭제 상태에 따라 다르게 처리
+        profileImageState = if (imageDeleted) {
+            // 삭제된 상태: imageName은 유지하되 selectedImageUri는 null
+            ProfileImageState.fromUserInput(userInput.imageName, null)
+        } else {
+            ProfileImageState.fromUserInput(
+                userInput.imageName,
+                userInput.selectedImageUri)
+        }
+
         parseBirthDate(userInput.birthDate)?.let { (year, month, day) ->
             birthYear = year
             birthMonth = month
@@ -144,8 +189,8 @@ fun UserInfoManagementScreen(
         }
     }
 
-    // userInput이 변경될 때 로컬 상태 업데이트
-    LaunchedEffect(userInput) {
+    // userInput 또는 imageDeleted가 변경될 때 로컬 상태 업데이트
+    LaunchedEffect(userInput, imageDeleted) {
         updateLocalStateFromUserInput()
     }
 
@@ -158,7 +203,7 @@ fun UserInfoManagementScreen(
     ) { success: Boolean ->
         if (success && cameraImageUri != null) {
             profileImageState = profileImageState.copy(selectedImageUri = cameraImageUri)
-            viewModel.updateProfileImageUri(cameraImageUri)
+            onUpdateProfileImageUri(cameraImageUri)
         }
     }
 
@@ -169,7 +214,7 @@ fun UserInfoManagementScreen(
         Timber.d("갤러리 결과 수신: $uri")
         if (uri != null) {
             profileImageState = profileImageState.copy(selectedImageUri = uri)
-            viewModel.updateProfileImageUri(uri)
+            onUpdateProfileImageUri(uri)
             Timber.d("프로필 이미지 URL 설정됨: ${profileImageState.currentDisplayUrl}")
         } else {
             Timber.d("갤러리에서 이미지를 선택하지 않음")
@@ -212,16 +257,16 @@ fun UserInfoManagementScreen(
 
     // 에러 메시지 표시
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    
+
     // 성공 메시지 표시
     var successMessage by remember { mutableStateOf<String?>(null) }
-    
+
     // 이전 상태 추적
     var previousState by remember { mutableStateOf<UserInfoUiState?>(null) }
-    
+
     // 변경사항 확인 다이얼로그 표시 여부
     var showConfirmDialog by remember { mutableStateOf(false) }
-    
+
     // 변경사항이 있는지 확인하는 함수
     fun hasChanges(): Boolean {
         return hasUserInfoChanges(
@@ -238,36 +283,6 @@ fun UserInfoManagementScreen(
         )
     }
 
-    // UI 상태에 따른 처리
-    LaunchedEffect(uiState) {
-        when (uiState) {
-            is Error -> {
-                errorMessage = (uiState as Error).message
-                successMessage = null
-            }
-            is Success -> {
-                errorMessage = null
-                // 저장 업데이트 성공 시 성공 메시지 표시
-                if (previousState is Updating) {
-                    successMessage = "프로필이 성공적으로 업데이트되었습니다."
-                }
-            }
-            else -> {
-                errorMessage = null
-                successMessage = null
-            }
-        }
-        previousState = uiState
-    }
-    
-    // 성공 메시지 자동 숨김
-    LaunchedEffect(successMessage) {
-        if (successMessage != null) {
-            kotlinx.coroutines.delay(UserInfoConstants.SUCCESS_MESSAGE_DURATION_MS)
-            successMessage = null
-        }
-    }
-    
     // 뒤로가기 핸들러 (변경사항 확인)
     fun handleNavigateBack() {
         if (hasChanges()) {
@@ -276,14 +291,14 @@ fun UserInfoManagementScreen(
             onNavigateBack()
         }
     }
-    
+
     // 저장 후 뒤로가기 핸들러
     fun handleSaveAndNavigateBack() {
-        viewModel.saveUserProfile(
-            birthYear = birthYear,
-            birthMonth = birthMonth,
-            birthDay = birthDay,
-            nickname = nickname,
+        onSaveUserProfile(
+            birthYear,
+            birthMonth,
+            birthDay,
+            nickname,
         )
     }
 
@@ -291,7 +306,7 @@ fun UserInfoManagementScreen(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
-            .padding(horizontal = 16.dp)
+
     ) {
         // 로딩 상태 표시
         if (uiState is Loading) {
@@ -304,264 +319,317 @@ fun UserInfoManagementScreen(
             return@Column
         }
 
-        // 에러 메시지 표시
-        errorMessage?.let { message ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SemanticColor.stateRedTertiary, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-            ) {
-                Text(
-                    text = message,
-                    color = SemanticColor.stateRedPrimary,
-                    style = MaterialTheme.walkItTypography.bodyM,
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        
-        // 성공 메시지 표시
-        successMessage?.let { message ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SemanticColor.stateGreenTertiary, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-            ) {
-                Text(
-                    text = message,
-                    color = SemanticColor.stateGreenPrimary,
-                    style = MaterialTheme.walkItTypography.bodyM,
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        
         AppHeader(
             title = "내 정보 관리",
             onNavigateBack = ::handleNavigateBack,
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 프로필 업로드 섹션
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
         ) {
-            // 프로필 이미지
-            Box(
-                modifier = Modifier.size(80.dp),
-                contentAlignment = Alignment.Center,
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 프로필 업로드 섹션
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (!profileImageState.currentDisplayUrl.isNullOrBlank()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(profileImageState.currentDisplayUrl),
-                        contentDescription = "프로필 이미지",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Grey2, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = Grey7,
-                            modifier = Modifier.size(32.dp),
+                // 프로필 이미지
+                Box(
+                    modifier = Modifier.size(80.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (!profileImageState.currentDisplayUrl.isNullOrBlank()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(profileImageState.currentDisplayUrl),
+                            contentDescription = "프로필 이미지",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Grey2, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = Grey7,
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
                     }
+                }
+
+                // 이미지 업로드 버튼 및 안내 텍스트
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // 이미지 업로드 버튼 및 드랍다운 메뉴
+                    ImageUploadMenu(
+                        onCameraClick = {
+                            if (ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                cameraImageUri?.let { uri ->
+                                    cameraLauncher.launch(uri)
+                                }
+                            } else {
+                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                            }
+                        },
+                        onGalleryClick = {
+                            Timber.d("갤러리 선택 클릭됨")
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.READ_MEDIA_IMAGES
+                                ) == PackageManager.PERMISSION_GRANTED
+                                Timber.d("Android 13+ 권한 상태: $hasPermission")
+                                if (hasPermission) {
+                                    Timber.d("갤러리 Launcher 실행")
+                                    galleryLauncher.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
+                                    )
+                                } else {
+                                    Timber.d("READ_MEDIA_IMAGES 권한 요청")
+                                    galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                                }
+                            } else {
+                                // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.READ_EXTERNAL_STORAGE
+                                ) == PackageManager.PERMISSION_GRANTED
+                                Timber.d("Android 12 이하 권한 상태: $hasPermission")
+                                if (hasPermission) {
+                                    Timber.d("갤러리 Launcher 실행")
+                                    galleryLauncher.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
+                                    )
+                                } else {
+                                    Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
+                                    galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                                }
+                            }
+                        }
+                    )
+
+                    // 안내 텍스트
+                    Text(
+                        text = UserInfoConstants.FILE_SIZE_GUIDE_TEXT,
+                        style = MaterialTheme.walkItTypography.captionM.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Grey7,
+                    )
                 }
             }
 
-            // 이미지 업로드 버튼 및 안내 텍스트
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // 이미지 업로드 버튼 및 드랍다운 메뉴
-                ImageUploadMenu(
-                    onCameraClick = {
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                android.Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED
-                        ) {
-                            cameraImageUri?.let { uri ->
-                                cameraLauncher.launch(uri)
-                            }
-                        } else {
-                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                        }
-                    },
-                    onGalleryClick = {
-                        Timber.d("갤러리 선택 클릭됨")
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
-                            val hasPermission = ContextCompat.checkSelfPermission(
-                                context,
-                                android.Manifest.permission.READ_MEDIA_IMAGES
-                            ) == PackageManager.PERMISSION_GRANTED
-                            Timber.d("Android 13+ 권한 상태: $hasPermission")
-                            if (hasPermission) {
-                                Timber.d("갤러리 Launcher 실행")
-                                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            } else {
-                                Timber.d("READ_MEDIA_IMAGES 권한 요청")
-                                galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                            }
-                        } else {
-                            // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
-                            val hasPermission = ContextCompat.checkSelfPermission(
-                                context,
-                                android.Manifest.permission.READ_EXTERNAL_STORAGE
-                            ) == PackageManager.PERMISSION_GRANTED
-                            Timber.d("Android 12 이하 권한 상태: $hasPermission")
-                            if (hasPermission) {
-                                Timber.d("갤러리 Launcher 실행")
-                                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            } else {
-                                Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
-                                galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                            }
-                        }
-                    }
-                )
+            Spacer(modifier = Modifier.height(24.dp))
 
-                // 안내 텍스트
-                Text(
-                    text = UserInfoConstants.FILE_SIZE_GUIDE_TEXT,
-                    style = MaterialTheme.walkItTypography.captionM.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = Grey7,
-                )
+            // 사용자 정보 입력 폼
+            UserInfoFormSection(
+                name = name,
+                onNameChange = { name = it },
+                nickname = nickname,
+                onNicknameChange = { nickname = it },
+                birthYear = birthYear,
+                onBirthYearChange = { birthYear = it },
+                birthMonth = birthMonth,
+                onBirthMonthChange = { birthMonth = it },
+                birthDay = birthDay,
+                onBirthDayChange = { birthDay = it },
+            )
+
+
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 사용자 정보 표시 섹션
+            UserInfoDisplaySection(
+                provider = provider,
+                email = userInput.email
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 하단 버튼들
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // 뒤로가기 버튼
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(47.dp)
+                        .clickable(onClick = ::handleNavigateBack)
+                        .border(
+                            width = 1.dp,
+                            color = Grey3,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "뒤로가기",
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = tertiaryText,
+                    )
+                }
+
+                // 저장하기 버튼
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(47.dp)
+                        .then(
+                            if (uiState is UserInfoUiState.Updating) {
+                                Modifier.background(Grey3, RoundedCornerShape(8.dp))
+                            } else {
+                                Modifier
+                                    .clickable {
+                                        onSaveUserProfile(
+                                            birthYear,
+                                            birthMonth,
+                                            birthDay,
+                                            nickname,
+                                        )
+                                    }
+                                    .background(greenPrimary, RoundedCornerShape(8.dp))
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (uiState is Updating) "저장 중..." else "저장하기",
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = if (uiState is Updating) Grey7 else Color.White,
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 사용자 정보 입력 폼
-        UserInfoFormSection(
-            name = name,
-            onNameChange = { name = it },
-            nickname = nickname,
-            onNicknameChange = { nickname = it },
-            birthYear = birthYear,
-            onBirthYearChange = { birthYear = it },
-            birthMonth = birthMonth,
-            onBirthMonthChange = { birthMonth = it },
-            birthDay = birthDay,
-            onBirthDayChange = { birthDay = it },
-        )
-
-
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 사용자 정보 표시 섹션
-        UserInfoDisplaySection(provider = provider)
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // 하단 버튼들
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // 뒤로가기 버튼
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(47.dp)
-                    .clickable(onClick = ::handleNavigateBack)
-                    .border(
-                        width = 1.dp,
-                        color = Grey3,
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .background(Color.White, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "뒤로가기",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = tertiaryText,
-                )
-            }
-
-            // 저장하기 버튼
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(47.dp)
-                    .then(
-                        if (uiState is UserInfoUiState.Updating) {
-                            Modifier.background(Grey3, RoundedCornerShape(8.dp))
-                        } else {
-                            Modifier
-                                .clickable {
-                                    viewModel.saveUserProfile(
-                                        birthYear = birthYear,
-                                        birthMonth = birthMonth,
-                                        birthDay = birthDay,
-                                        nickname = nickname,
-                                    )
-                                }
-                                .background(greenPrimary, RoundedCornerShape(8.dp))
-                        }
-                    )
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = if (uiState is Updating) "저장 중..." else "저장하기",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = if (uiState is Updating) Grey7 else Color.White,
-                )
-            }
+        // 변경사항 확인 다이얼로그
+        if (showConfirmDialog) {
+            ConfirmDialog(
+                title = "변경된 사항이 있습니다.",
+                message = "저장하시겠습니까?",
+                negativeButtonText = "아니요",
+                positiveButtonText = "예",
+                onDismiss = { showConfirmDialog = false },
+                onNegative = {
+                    showConfirmDialog = false
+                    onNavigateBack()
+                },
+                onPositive = {
+                    showConfirmDialog = false
+                    handleSaveAndNavigateBack()
+                },
+            )
         }
-    }
-    
-    // 변경사항 확인 다이얼로그
-    if (showConfirmDialog) {
-        ConfirmDialog(
-            title = "변경된 사항이 있습니다.",
-            message = "저장하시겠습니까?",
-            negativeButtonText = "아니요",
-            positiveButtonText = "예",
-            onDismiss = { showConfirmDialog = false },
-            onNegative = {
-                showConfirmDialog = false
-                onNavigateBack()
-            },
-            onPositive = {
-                showConfirmDialog = false
-                handleSaveAndNavigateBack()
-            },
-        )
     }
 }
 
 @Composable
-@Preview
+@Preview(showBackground = true, heightDp = 800)
 private fun UserInfoManagementScreenPreview() {
     WalkItTheme {
-        UserInfoManagementScreen()
+        val mockUserInput = UserInput(
+            name = "홍길동",
+            nickname = "길동이",
+            birthDate = "1990-01-01",
+            email = "test@example.com",
+            imageName = "https://example.com/profile.jpg",
+            selectedImageUri = null
+        )
+
+        val mockUser = team.swyp.sdu.domain.model.User(
+            userId = 12345,
+            nickname = "길동이",
+            birthDate = "1990-01-01",
+            imageName = "https://example.com/profile.jpg",
+            email = "test@example.com"
+        )
+
+        val mockGoal = Goal(
+            targetStepCount = 10000,
+            targetWalkCount = 5
+        )
+
+        UserInfoManagementScreen(
+            uiState = UserInfoUiState.Success(mockUser),
+            userInput = mockUserInput,
+            provider = "KAKAO",
+            goal = mockGoal,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UserInfoManagementScreenLoadingPreview() {
+    WalkItTheme {
+        val mockUserInput = UserInput(
+            name = "",
+            nickname = "",
+            birthDate = "",
+            email = null,
+            imageName = null,
+            selectedImageUri = null
+        )
+
+        UserInfoManagementScreen(
+            uiState = UserInfoUiState.Loading,
+            userInput = mockUserInput,
+            provider = "null",
+            goal = null,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UserInfoManagementScreenErrorPreview() {
+    WalkItTheme {
+        val mockUserInput = UserInput(
+            name = "",
+            nickname = "",
+            birthDate = "",
+            email = null,
+            imageName = null,
+            selectedImageUri = null
+        )
+
+        UserInfoManagementScreen(
+            uiState = UserInfoUiState.Error("사용자 정보를 불러올 수 없습니다"),
+            userInput = mockUserInput,
+            provider = "null",
+            goal = null,
+        )
     }
 }

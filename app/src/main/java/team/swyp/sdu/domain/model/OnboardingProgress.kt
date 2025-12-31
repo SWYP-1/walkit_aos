@@ -9,7 +9,6 @@ data class OnboardingProgress(
     val currentStep: Int = 0,
     val nickname: String = "",
     val selectedImageUri: String? = null,
-    val sex: Sex = Sex.MALE, // nullable 제거, 기본값 설정
     val goalCount: Int = 10,
     val stepTarget: Int = 0,
     val unit: String = "달",

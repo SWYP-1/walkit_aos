@@ -28,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -45,9 +47,9 @@ import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.components.GradeBadge
+import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
-import team.swyp.sdu.ui.components.formatStepCount
 import team.swyp.sdu.ui.home.components.WalkProgressBar
 import team.swyp.sdu.ui.record.friendrecord.component.FriendRecordMoreMenu
 import team.swyp.sdu.ui.record.friendrecord.component.LikeButton
@@ -56,6 +58,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.DateUtils.formatIsoToKoreanDate
+import team.swyp.sdu.utils.FormatUtils.formatStepCount
 
 /**
  * 친구 기록 화면 Route
@@ -189,8 +192,8 @@ private fun FriendRecordContent(
             leftLabel = "걸음 수",
             leftValue = formatStepCount(data.stepCount),
             leftUnit = SummaryUnit.Step("걸음"),
-            rightLabel = "이동거리",
-            rightUnit = SummaryUnit.Distance(data.totalDistance.toFloat()),
+            rightLabel = "누적 산책 시간",
+            rightUnit = SummaryUnit.Time(data.totalTime),
             header = {
                 data.createdDate.let { date ->
                     Text(
@@ -250,103 +253,112 @@ private fun CharacterInfoSection(
                     color = SemanticColor.textBorderSecondaryInverse,
                     shape = RoundedCornerShape(12.dp)
                 )
-                .padding(16.dp)
         ) {
             // Top Row: Grade + Nickname + More 버튼
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        GradeBadge(grade = character.grade)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = character.nickName,
+                            style = MaterialTheme.walkItTypography.headingM.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = SemanticColor.textBorderPrimary
+                        )
+                    }
+                    Box {
+                        IconButton(
+                            onClick = { onClickMore() },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_more),
+                                contentDescription = "more"
+                            )
+                        }
+                        FriendRecordMoreMenu(
+                            expanded = showMenu,
+                            onDismiss = onDismissMenu,
+                            onBlockClick = {
+                                onDismissMenu()
+                                onBlockUser(character.nickName)
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                // 누적 목표 달성
                 Row {
-                    GradeBadge(grade = character.grade)
-                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = character.nickName,
-                        style = MaterialTheme.walkItTypography.headingM.copy(
-                            fontWeight = FontWeight.SemiBold
+                        text = "누적 목표 달성",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = SemanticColor.textBorderPrimary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "00",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.textBorderGreenPrimary
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text = "일",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Medium
                         ),
                         color = SemanticColor.textBorderPrimary
                     )
                 }
-                Box {
-                    IconButton(
-                        onClick = { onClickMore() },
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_action_more),
-                            contentDescription = "more"
-                        )
-                    }
-                    FriendRecordMoreMenu(
-                        expanded = showMenu,
-                        onDismiss = onDismissMenu,
-                        onBlockClick = {
-                            onDismissMenu()
-                            onBlockUser(character.nickName)
-                        },
-                    )
-                }
+
             }
 
-            Spacer(Modifier.height(4.dp))
 
-            // 누적 목표 달성
-            Row {
-                Text(
-                    text = "누적 목표 달성",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Normal
-                    ),
-                    color = SemanticColor.textBorderPrimary
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "00",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.textBorderGreenPrimary
-                )
-                Spacer(Modifier.width(2.dp))
-                Text(
-                    text = "일",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.textBorderPrimary
-                )
-            }
 
             Spacer(Modifier.weight(1f))
 
-            // 목표 달성률
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            val color = Color(0xFF444444) // 부드러운 검정
+            Column(
+                modifier = Modifier.background(
+                    GradientUtils.fadeToGray(color), shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                ).padding(16.dp)
             ) {
-                Text(
-                    text = "목표 달성률",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.backgroundWhitePrimary
-                )
-                Text(
-                    text = "${walkProgressPercentage}%",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.backgroundWhitePrimary
+                Spacer(Modifier.height(48.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "목표 달성률",
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.backgroundWhitePrimary
+                    )
+                    Text(
+                        text = "${walkProgressPercentage}%",
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.backgroundWhitePrimary
+                    )
+                }
+
+                Spacer(Modifier.height(6.5.dp))
+
+                WalkProgressBar(
+                    progressPercentage = walkProgressPercentage,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-
-            Spacer(Modifier.height(6.5.dp))
-
-            WalkProgressBar(
-                progressPercentage = walkProgressPercentage,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }

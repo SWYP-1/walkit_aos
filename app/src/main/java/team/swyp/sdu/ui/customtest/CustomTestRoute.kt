@@ -2,6 +2,7 @@ package team.swyp.sdu.ui.customtest
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 
 /**
  * 커스텀 테스트 Route
@@ -11,11 +12,22 @@ import androidx.compose.ui.Modifier
 @Composable
 fun CustomTestRoute(
     modifier: Modifier = Modifier,
+    viewModel: CustomTestViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
     onStartOnboarding: () -> Unit = {},
+    onNavigateToMapTest: () -> Unit = {},
+    onNavigateToGalleryTest: () -> Unit = {},
 ) {
+    val onAddDummySessions: () -> Unit = {
+        viewModel.addDummySessions()
+    }
+
     CustomTestScreen(
+        modifier = modifier,
         onNavigateBack = onNavigateBack,
         onStartOnboarding = onStartOnboarding,
+        onAddDummySessions = onAddDummySessions,
+        onNavigateToMapTest = onNavigateToMapTest,
+        onNavigateToGalleryTest = onNavigateToGalleryTest,
     )
 }

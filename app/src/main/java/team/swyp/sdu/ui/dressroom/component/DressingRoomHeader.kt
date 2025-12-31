@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.dressroom.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,10 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.GradeBadge
 import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
 @Composable
@@ -34,44 +38,95 @@ fun DressingRoomHeader(
     onClickQuestion: () -> Unit = {},
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(modifier = Modifier.size(24.dp), onClick = onBack) {
+        // 뒤로가기 버튼 클릭 영역 확대
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp) // 최소 터치 영역 확보
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_backward),
-                contentDescription = "arrow back"
+                contentDescription = "arrow back",
+                modifier = Modifier.size(24.dp) // 아이콘 크기
             )
         }
 
-
-        Row() {
+        // 닉네임 + 등급
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f) // 남는 공간 채우기
+        ) {
             GradeBadge(grade)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = nickName,
-
-                // heading S/medium
                 style = MaterialTheme.walkItTypography.headingS.copy(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onClickQuestion),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_info_question),
-                contentDescription = "arrow back"
-            )
+        // 오른쪽 질문 아이콘
+
+        IconButton(
+            onClick = onClickQuestion,
+            modifier = Modifier.size(48.dp) // 최소 터치 영역 확보
+        ){
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onClickQuestion)
+                    .background(SemanticColor.iconBlack),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info_question),
+                    contentDescription = "info",
+                    tint = SemanticColor.iconWhite
+                )
+            }
         }
 
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DressingRoomHeaderSproutGradePreview() {
+    WalkItTheme {
+        DressingRoomHeader(
+            grade = team.swyp.sdu.domain.model.Grade.SPROUT,
+            nickName = "성장중인사용자"
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DressingRoomHeaderTreeGradePreview() {
+    WalkItTheme {
+        DressingRoomHeader(
+            grade = team.swyp.sdu.domain.model.Grade.TREE,
+            nickName = "완성된나무"
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DressingRoomHeaderLongNickNamePreview() {
+    WalkItTheme {
+        DressingRoomHeader(
+            grade = team.swyp.sdu.domain.model.Grade.SPROUT,
+            nickName = "매우긴닉네임을가진사용자가 이름이 더길어진다."
+        )
     }
 }

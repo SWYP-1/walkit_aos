@@ -27,11 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import team.swyp.sdu.ui.components.formatStepCount
 import team.swyp.sdu.ui.theme.Pretendard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.TypeScale
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.utils.FormatUtils.formatStepCount
 
 /**
  * 마이 페이지 통계 섹션 컴포넌트

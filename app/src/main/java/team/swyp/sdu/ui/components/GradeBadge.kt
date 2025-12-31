@@ -33,8 +33,8 @@ fun GradeBadge(
     val (text, backgroundColor, textColor) = when (grade) {
         Grade.SEED -> Triple(
             "Lv.${grade.level} 씨앗",
-            SemanticColor.stateGreenTertiary,
-            SemanticColor.stateGreenPrimary,
+            SemanticColor.stateAquaBlueTertiary,
+            SemanticColor.stateAquaBluePrimary,
         )
         Grade.SPROUT -> Triple(
             "Lv.${grade.level} 새싹",
@@ -43,8 +43,8 @@ fun GradeBadge(
         )
         Grade.TREE -> Triple(
             "Lv.${grade.level} 나무",
-            SemanticColor.statePurpleTertiary,
-            SemanticColor.statePurplePrimary,
+            SemanticColor.stateAquaBlueTertiary,
+            SemanticColor.stateAquaBluePrimary,
         )
     }
 
@@ -56,7 +56,7 @@ fun GradeBadge(
             )
             .padding(
                 horizontal = 12.dp,
-                vertical = 6.dp,
+                vertical = 8.dp,
             ),
     ) {
         Text(

@@ -46,7 +46,11 @@ fun RecordTopSection(
     ) {
         MyProfileImage(
             user = user,
-            onClick = onMyProfileClick,
+            onClick = {
+                android.util.Log.d("RecordTopSection", "MyProfileImage 클릭됨")
+                timber.log.Timber.d("MyProfileImage 클릭됨")
+                onMyProfileClick()
+            },
             isSelected = selectedFriendNickname == null
         )
         Spacer(Modifier.width(8.dp))
@@ -59,7 +63,11 @@ fun RecordTopSection(
         FriendListRow(
             friends = friends,
             selectedFriendNickname = selectedFriendNickname,
-            onFriendSelected = onFriendSelected,
+            onFriendSelected = { friend ->
+                android.util.Log.d("RecordTopSection", "RecordTopSection에서 친구 선택됨: ${friend.nickname}")
+                timber.log.Timber.d("RecordTopSection에서 친구 선택됨: ${friend.nickname}")
+                onFriendSelected(friend)
+            },
             modifier = Modifier.weight(1f)
         )
         IconButton(

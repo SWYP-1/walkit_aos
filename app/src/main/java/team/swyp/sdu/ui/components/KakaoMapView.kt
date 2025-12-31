@@ -107,7 +107,7 @@ fun KakaoMapView(
     var mapStarted by remember {
         mutableStateOf(false)
     }
-    
+
     // MapView 크기 상태
     var mapViewSize by remember {
         mutableStateOf<IntSize?>(null)
@@ -139,7 +139,7 @@ fun KakaoMapView(
                 val currentUiState = uiState
                 if (currentUiState is KakaoMapUiState.Ready && currentUiState.shouldDrawPath) {
                     Timber.d("경로 그리기 시작")
-                    drawPath(kakaoMap, currentUiState.locations, viewModel, mapView)
+//                    drawPath(kakaoMap, currentUiState.locations, viewModel, mapView)
                 } else {
                     // 경로가 없으면 바로 Complete 상태로
                     viewModel.onPathDrawComplete()
@@ -292,6 +292,11 @@ private fun updateMapFromState(
                 // 카메라 이동 시작
                 viewModel.startCameraMove()
                 moveCameraToPath(kakaoMap, uiState.cameraSettings)
+
+                // 경로 그리기
+                if (uiState.shouldDrawPath) {
+                    drawPath(kakaoMap, uiState.locations, viewModel, mapView)
+                }
             } catch (e: Exception) {
                 Timber.e(e, "지도 업데이트 실패")
             }
@@ -551,11 +556,17 @@ private fun drawPath(
                 return
             }
 
-        val routeLineOptions = createRouteLineOptions(locations)
-        routeLineManager.layer.addRouteLine(routeLineOptions) { _, _ ->
-            Timber.d("RouteLine 생성 완료")
-            // 경로 그리기 완료 - 바로 Complete 상태로 변경 (스냅샷 생성 없음)
-            viewModel.onPathDrawComplete()
+        val (outlineOptions, mainOptions) = createRouteLineOptions(locations)
+
+        // 윤곽선 먼저 추가
+        routeLineManager.layer.addRouteLine(outlineOptions) { _, _ ->
+            Timber.d("윤곽선 RouteLine 생성 완료")
+            // 본선 추가
+            routeLineManager.layer.addRouteLine(mainOptions) { _, _ ->
+                Timber.d("본선 RouteLine 생성 완료")
+                // 경로 그리기 완료 - 바로 Complete 상태로 변경 (스냅샷 생성 없음)
+                viewModel.onPathDrawComplete()
+            }
         }
         Timber.d("RouteLine 추가 요청 완료 (콜백 등록됨)")
 
@@ -600,25 +611,38 @@ private fun waitForFramesToRender(
 
 
 /**
- * RouteLine 옵션 생성
+ * RouteLine 옵션 생성 - 윤곽선과 본선을 별도의 라인으로 생성
  */
-private fun createRouteLineOptions(locations: List<LocationPoint>): RouteLineOptions {
+private fun createRouteLineOptions(locations: List<LocationPoint>): Pair<RouteLineOptions, RouteLineOptions> {
     val latLngList = locations.map { location ->
         LatLng.from(location.latitude, location.longitude)
     }
 
-    val routeLineStyle = RouteLineStyle.from(
+    // 윤곽선 옵션 (#1C1C1E, 더 굵은 선)
+    val outlineStyle = RouteLineStyle.from(
+        20f, // 윤곽선은 더 굵게
+        Color(0xFF1C1C1E).toArgb()
+    )
+    val outlineStyles = RouteLineStyles.from(outlineStyle)
+    val outlineStylesSet = RouteLineStylesSet.from(outlineStyles)
+    val outlineSegment = RouteLineSegment.from(latLngList)
+        .setStyles(outlineStylesSet.getStyles(0))
+    val outlineOptions = RouteLineOptions.from(outlineSegment)
+        .setStylesSet(outlineStylesSet)
+
+    // 본선 옵션 (흰색, 기존 너비)
+    val mainLineStyle = RouteLineStyle.from(
         MapSnapshotConstants.ROUTE_LINE_WIDTH,
         White.toArgb()
     )
+    val mainStyles = RouteLineStyles.from(mainLineStyle)
+    val mainStylesSet = RouteLineStylesSet.from(mainStyles)
+    val mainSegment = RouteLineSegment.from(latLngList)
+        .setStyles(mainStylesSet.getStyles(0))
+    val mainOptions = RouteLineOptions.from(mainSegment)
+        .setStylesSet(mainStylesSet)
 
-    val routeLineStyles = RouteLineStyles.from(routeLineStyle)
-    val routeLineStylesSet = RouteLineStylesSet.from(routeLineStyles)
-    val routeLineSegment = RouteLineSegment.from(latLngList)
-        .setStyles(routeLineStylesSet.getStyles(0))
-
-    return RouteLineOptions.from(routeLineSegment)
-        .setStylesSet(routeLineStylesSet)
+    return Pair(outlineOptions, mainOptions)
 }
 
 /**
@@ -635,7 +659,7 @@ private fun moveCameraToPath(
 
         kakaoMap.moveCamera(cameraUpdate)
         Timber.d("카메라 이동 요청: 중심 (${cameraSettings.centerLat}, ${cameraSettings.centerLon}), 줌 레벨: ${cameraSettings.zoomLevel}")
-        
+
         // 경계 정보가 있으면 로그 출력
         if (cameraSettings.minLat != null && cameraSettings.maxLat != null &&
             cameraSettings.minLon != null && cameraSettings.maxLon != null) {

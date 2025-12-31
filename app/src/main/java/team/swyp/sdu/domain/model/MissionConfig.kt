@@ -1,5 +1,6 @@
 package team.swyp.sdu.domain.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -12,6 +13,7 @@ sealed class MissionConfig {
      */
     @Serializable
     data class ChallengeStepsConfig(
+        @SerialName("missionSteps")
         val weeklyGoalSteps: Int,
     ) : MissionConfig()
 
@@ -20,6 +22,7 @@ sealed class MissionConfig {
      */
     @Serializable
     data class ChallengeAttendanceConfig(
+        @SerialName("requiredDays")
         val requiredAttendanceDays: Int,
     ) : MissionConfig()
 

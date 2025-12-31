@@ -32,7 +32,11 @@ fun FriendListRow(
             FriendAvatarItem(
                 friend = friend,
                 isSelected = friend.nickname == selectedFriendNickname,
-                onClick = { onFriendSelected(friend) },
+                onClick = {
+                    android.util.Log.d("FriendListRow", "FriendListRow에서 친구 선택됨: ${friend.nickname}")
+                    timber.log.Timber.d("FriendListRow에서 친구 선택됨: ${friend.nickname}")
+                    onFriendSelected(friend)
+                },
             )
         }
     }

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import team.swyp.sdu.ui.theme.GradientUtils
 
 /**
  * WheelPicker – iOS 스타일의 휠 피커 구현 (Jetpack Compose)
@@ -211,15 +212,8 @@ fun WheelPicker(
                         Modifier
                             .matchParentSize()
                             .background(
-                                Brush.verticalGradient(
-                                    colors =
-                                        listOf(
-                                            MaterialTheme.colorScheme.surface,
-                                            MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                                            MaterialTheme.colorScheme.surface.copy(alpha = 0f),
-                                            MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                                            MaterialTheme.colorScheme.surface,
-                                        ),
+                                GradientUtils.centerFade(
+                                    surfaceColor = MaterialTheme.colorScheme.surface,
                                     startY = 0f,
                                     endY = with(density) { pickerHeight.toPx() },
                                 ),

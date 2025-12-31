@@ -12,10 +12,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import retrofit2.Response
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.data.local.mapper.UserMapper
+import team.swyp.sdu.data.remote.user.UserManagementRemoteDataSource
+import team.swyp.sdu.data.remote.user.UserProfileRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserSearchResult as RemoteUserSearchResult
 import team.swyp.sdu.data.remote.user.UserSummaryMapper
@@ -36,6 +39,8 @@ import timber.log.Timber
 class UserRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val remoteDataSource: UserRemoteDataSource,
+    private val userManagementRemoteDataSource: UserManagementRemoteDataSource,
+    private val userProfileRemoteDataSource: UserProfileRemoteDataSource,
     private val authDataStore: AuthDataStore,
 ) : UserRepository {
 
@@ -234,6 +239,30 @@ class UserRepositoryImpl @Inject constructor(
                 Result.Success(domainResult)
             } catch (e: Exception) {
                 Timber.e(e, "사용자 요약 정보 조회 실패: $nickname")
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun deleteUser(): Result<Response<Unit>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = userManagementRemoteDataSource.deleteUser()
+                Timber.d("사용자 탈퇴 요청 완료")
+                Result.Success(response)
+            } catch (e: Exception) {
+                Timber.e(e, "사용자 탈퇴 실패")
+                Result.Error(e, e.message)
+            }
+        }
+
+    override suspend fun deleteImage(imageId: Long): Result<Response<Unit>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = userProfileRemoteDataSource.deleteImage(imageId)
+                Timber.d("프로필 이미지 삭제 요청 완료: $imageId")
+                Result.Success(response)
+            } catch (e: Exception) {
+                Timber.e(e, "프로필 이미지 삭제 실패: $imageId")
                 Result.Error(e, e.message)
             }
         }

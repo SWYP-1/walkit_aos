@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +25,7 @@ import team.swyp.sdu.ui.theme.White
 
 @Composable
 fun RecordHeader(
-    onClickSearch: () -> Unit,
+    onClickSearch: () -> Unit = {},
     onClickAlarm: () -> Unit
 ) {
     Box(
@@ -50,24 +51,27 @@ fun RecordHeader(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_action_search),
-                    contentDescription = "검색",
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .size(24.dp)
-                        .clickable(onClick = onClickSearch)
-                )
+//                IconButton(
+//                    onClick = onClickSearch
+//                ) {
+//                    Icon(
+//                        painter = painterResource(R.drawable.ic_action_search),
+//                        contentDescription = "검색",
+//                        modifier = Modifier.size(24.dp)
+//                    )
+//                }
 
-                Icon(
-                    painter = painterResource(R.drawable.ic_action_alarm),
-                    contentDescription = "알람",
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .size(24.dp)
-                        .clickable(onClick = onClickAlarm)
-                )
+                IconButton(
+                    onClick = onClickAlarm
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_action_alarm),
+                        contentDescription = "알람",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
+
         }
     }
 }

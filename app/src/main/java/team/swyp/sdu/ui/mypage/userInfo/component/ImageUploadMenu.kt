@@ -1,10 +1,12 @@
 package team.swyp.sdu.ui.mypage.userInfo.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,8 +25,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import team.swyp.sdu.R
 import team.swyp.sdu.ui.theme.SemanticColor
+import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
 /**
@@ -73,8 +79,16 @@ fun ImageUploadMenu(
         DropdownMenu(
             expanded = showImageMenu,
             onDismissRequest = { showImageMenu = false },
+            modifier = Modifier.background(SemanticColor.backgroundWhitePrimary) // 드롭다운 메뉴 배경색 변경
         ) {
             DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info_camera),
+                        contentDescription = "camera",
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 text = {
                     Text(
                         text = "촬영하기",
@@ -84,9 +98,17 @@ fun ImageUploadMenu(
                 onClick = {
                     showImageMenu = false
                     onCameraClick()
-                }
+                },
+                modifier = modifier.height(32.dp)
             )
             DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info_gallery),
+                        contentDescription = "gallery",
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 text = {
                     Text(
                         text = "갤러리에서 가져오기",
@@ -96,7 +118,99 @@ fun ImageUploadMenu(
                 onClick = {
                     showImageMenu = false
                     onGalleryClick()
-                }
+                },
+                modifier = modifier.height(32.dp)
+            )
+            DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_action_minus),
+                        tint = SemanticColor.iconBlack,
+                        contentDescription = "minus",
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                text = {
+                    Text(
+                        text = "삭제하기",
+                        style = MaterialTheme.walkItTypography.bodyM,
+                    )
+                },
+                onClick = {
+                    showImageMenu = false
+                    onGalleryClick()
+                },
+                modifier = modifier.height(32.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "이미지 업로드 메뉴")
+@Composable
+private fun ImageUploadMenuPreview() {
+    WalkItTheme {
+        ImageUploadMenu(
+            onCameraClick = {},
+            onGalleryClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "드롭다운 메뉴 아이템들")
+@Composable
+private fun DropdownMenuItemsPreview() {
+    WalkItTheme {
+        androidx.compose.material3.DropdownMenu(
+            expanded = true,
+            onDismissRequest = {},
+            modifier = Modifier.background(SemanticColor.backgroundWhitePrimary)
+        ) {
+            androidx.compose.material3.DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info_camera),
+                        contentDescription = "camera"
+                    )
+                },
+                text = {
+                    Text(
+                        text = "촬영하기",
+                        style = MaterialTheme.walkItTypography.bodyM,
+                    )
+                },
+                onClick = {}
+            )
+            androidx.compose.material3.DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info_gallery),
+                        contentDescription = "gallery"
+                    )
+                },
+                text = {
+                    Text(
+                        text = "갤러리에서 가져오기",
+                        style = MaterialTheme.walkItTypography.bodyM,
+                    )
+                },
+                onClick = {}
+            )
+            androidx.compose.material3.DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_action_minus),
+                        contentDescription = "delete",
+                        tint = SemanticColor.iconBlack
+                    )
+                },
+                text = {
+                    Text(
+                        text = "삭제하기",
+                        style = MaterialTheme.walkItTypography.bodyM,
+                    )
+                },
+                onClick = {}
             )
         }
     }
