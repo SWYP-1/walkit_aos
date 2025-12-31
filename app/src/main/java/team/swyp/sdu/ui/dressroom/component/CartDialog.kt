@@ -208,31 +208,13 @@ fun CartDialog(
 
                 // 4️⃣ 하단 구매 버튼
                 CtaButton(
-                    text = "구매하기",
+                    text = "구매하기 (${checkedItems.values.count { it }})",
                     enabled = checkedItems.values.any { it },
                     onClick = {
                         val itemsToPurchase = cartItems.filter { checkedItems[it.itemId] == true }
                         onPurchase(itemsToPurchase)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    icon = {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(SemanticColor.textBorderPrimaryInverse),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = checkedItems.size.toString(),
-                                style = MaterialTheme.walkItTypography.captionM.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = SemanticColor.textBorderGreenTertiary,
-                            )
-                        }
-
-                    }
                 )
             }
         }

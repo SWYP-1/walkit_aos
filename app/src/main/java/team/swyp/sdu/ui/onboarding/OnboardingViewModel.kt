@@ -27,8 +27,42 @@ import java.time.LocalDate
 
 data class NicknameState(
     val value: String = "",
-    val isDuplicate: Boolean? = null
-)
+    val isDuplicate: Boolean? = null,
+    val validationError: String? = null
+) {
+    /**
+     * 닉네임 유효성 검증
+     * - 최소 1자 ~ 최대 20자
+     * - 한글/영문(대소문자 구분) 가능
+     * - 특수문자 불가능
+     * - 띄어쓰기 불가능
+     */
+    val isValid: Boolean
+        get() = validationError == null
+
+    companion object {
+        private const val MAX_NICKNAME_LENGTH = 20
+        private const val MIN_NICKNAME_LENGTH = 1
+        private val NICKNAME_PATTERN = Regex("^[a-zA-Z가-힣]{1,$MAX_NICKNAME_LENGTH}$")
+
+        // 에러 메시지 상수
+        private const val ERROR_TOO_LONG = "닉네임은 최대 20자까지 입력 가능합니다"
+        private const val ERROR_TOO_SHORT = "닉네임을 입력해주세요"
+        private const val ERROR_INVALID_CHARS = "닉네임은 한글과 영문(대소문자)만 사용할 수 있습니다"
+        private const val ERROR_HAS_SPACE = "닉네임에 띄어쓰기를 사용할 수 없습니다"
+
+        fun validateNickname(nickname: String): String? {
+            return when {
+                nickname.isEmpty() -> null // 빈 문자열은 에러 표시하지 않음
+                nickname.length > MAX_NICKNAME_LENGTH -> ERROR_TOO_LONG
+                nickname.length < MIN_NICKNAME_LENGTH -> ERROR_TOO_SHORT
+                !NICKNAME_PATTERN.matches(nickname) -> ERROR_INVALID_CHARS
+                nickname.contains(" ") -> ERROR_HAS_SPACE
+                else -> null // 유효함
+            }
+        }
+    }
+}
 
 /**
  * 온보딩 UI 상태
@@ -51,7 +85,7 @@ data class OnboardingUiState(
      */
     val canProceed: Boolean
         get() = when (currentStep) {
-            0 -> nicknameState.isDuplicate == false
+            0 -> nicknameState.isValid && nicknameState.isDuplicate == false && nicknameState.value.isNotBlank()
             1 -> {
                 val yearValid = birthYear in 1901..LocalDate.now().year
                 val monthValid = birthMonth in 1..12
@@ -321,8 +355,47 @@ constructor(
      * 닉네임 업데이트
      */
     fun updateNickname(nickname: String) {
-        _uiState.value = _uiState.value.copy(nicknameState = NicknameState(nickname))
+        val validationError = NicknameState.validateNickname(nickname)
+        _uiState.value = _uiState.value.copy(
+            nicknameState = NicknameState(
+                value = nickname,
+                validationError = validationError
+            )
+        )
         saveProgress()
+    }
+
+    /**
+     * 닉네임 중복 체크
+     */
+    fun checkNicknameDuplicate() {
+        val state = _uiState.value
+        val nickname = state.nicknameState.value
+
+        // 유효성 검증 실패 시 중복 체크하지 않음
+        if (!state.nicknameState.isValid || nickname.isBlank()) {
+            Timber.w("닉네임 유효성 검증 실패 - 중복 체크 취소")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            userRepository.checkNicknameDuplicate(nickname)
+                .onSuccess { isDuplicate ->
+                    Timber.d("닉네임 중복 체크 결과: $nickname -> ${if (isDuplicate) "중복" else "사용가능"}")
+                    _uiState.value = _uiState.value.copy(
+                        nicknameState = state.nicknameState.copy(isDuplicate = isDuplicate),
+                        isLoading = false
+                    )
+                    saveProgress()
+                }
+                .onError { throwable, message ->
+                    Timber.e(throwable, "닉네임 중복 체크 실패: $message")
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    // 중복 체크 실패 시에도 진행 가능하도록 null 유지
+                }
+        }
     }
 
     /**
@@ -373,12 +446,18 @@ constructor(
     fun registerNickname() {
         Timber.d("registerNickname() 호출됨")
         val state = _uiState.value
-        Timber.d("현재 닉네임 상태: value=${state.nicknameState.value}, isDuplicate=${state.nicknameState.isDuplicate}")
+        Timber.d("현재 닉네임 상태: value=${state.nicknameState.value}, isDuplicate=${state.nicknameState.isDuplicate}, validationError=${state.nicknameState.validationError}")
+
+        // 유효성 검증 실패 시 API 호출하지 않음
+        if (!state.nicknameState.isValid || state.nicknameState.value.isBlank()) {
+            Timber.w("닉네임 유효성 검증 실패 - 등록 취소")
+            return
+        }
 
         viewModelScope.launch {
             Timber.d("registerNickname() - coroutine 시작")
             _uiState.value = _uiState.value.copy(isLoading = true)
-            
+
             Timber.d("registerNickname() - API 호출 시작: ${state.nicknameState.value}")
             userRepository.registerNickname(state.nicknameState.value)
                 .onSuccess {

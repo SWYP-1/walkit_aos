@@ -333,7 +333,7 @@ fun DailyRecordScreenWithSessionsPreview() {
                 stepCount = 3000,
                 locations = testLocations.take(10),
                 totalDistance = 2000f,
-                preWalkEmotion = EmotionType.ANXIOUS,
+                preWalkEmotion = EmotionType.IRRITATED,
                 postWalkEmotion = EmotionType.CONTENT,
                 note = "스트레스 해소를 위해 짧게 산책했어요.",
                 createdDate = "2024-12-05",

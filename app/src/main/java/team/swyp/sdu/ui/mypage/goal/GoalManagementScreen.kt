@@ -17,6 +17,7 @@ import team.swyp.sdu.domain.goal.GoalRange
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.mypage.goal.component.GoalSettingCard
 import team.swyp.sdu.ui.mypage.goal.model.GoalState
@@ -82,7 +83,7 @@ fun GoalManagementScreen(
 
                 InfoBanner(
                     title = "목표는 설정일부터 1주일 기준으로 설정 가능합니다.",
-                    description = "목표는 1주 내 최소 1회, 최대 7회까지 설정 가능합니다"
+                    description = "목표는 한 달에 한 번만 변경 가능합니다\u2028변경된 목표는 목표 달성율과 캐릭터 레벨업에 영향을 미칩니다"
                 )
                 Spacer(Modifier.height(20.dp))
 
@@ -117,8 +118,7 @@ fun GoalManagementScreen(
                 ) {
                 CtaButton(
                     text = "초기화",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    variant = CtaButtonVariant.SECONDARY,
                     onClick = {
                         scope.launch { onResetGoal() }
                         // 초기화 후 로컬 상태도 즉시 업데이트
@@ -131,7 +131,6 @@ fun GoalManagementScreen(
 
                     CtaButton(
                         text = "저장하기",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
                         onClick = {
                             if (GoalState(selectedSteps, selectedFrequency)
                                     .hasChangesComparedTo(goalState)

@@ -56,7 +56,6 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun TermsAgreementDialogRoute(
     onDismiss: () -> Unit,
-    onSuccess: () -> Unit,
     onTermsAgreedUpdated: () -> Unit,
     viewModel: TermsAgreementViewModel = hiltViewModel(),
 ) {
@@ -74,7 +73,6 @@ fun TermsAgreementDialogRoute(
         onSubmit = {
             viewModel.submitTermsAgreement(
                 onTermsAgreedUpdated = onTermsAgreedUpdated,
-                onSuccess = onSuccess,
                 onError = { /* 에러는 UI State에 표시됨 */ },
             )
         },
@@ -221,8 +219,6 @@ internal fun TermsAgreementDialogContent(
             ) {
                 CtaButton(
                     text = "가입하기",
-                    buttonColor = SemanticColor.stateGreenPrimary, // #52ce4b
-                    textColor = Color.White,
                     onClick = onSubmit,
                     enabled = uiState.canProceed && !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth(),

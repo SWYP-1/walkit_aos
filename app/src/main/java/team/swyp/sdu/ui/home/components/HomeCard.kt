@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -51,6 +52,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.FormatUtils
 import team.swyp.sdu.utils.WalkingTestData.generateRandomCityWalk
+import team.swyp.sdu.utils.WalkingTestData.generateRandomCityWalkPoints
 import java.io.File
 
 @Composable
@@ -231,7 +233,7 @@ fun EmotionCircle(emotionType: EmotionType) {
         CONTENT -> R.drawable.ic_circle_content
         DEPRESSED -> R.drawable.ic_circle_depressed
         TIRED -> R.drawable.ic_circle_tired
-        ANXIOUS -> R.drawable.ic_circle_anxious
+        IRRITATED -> R.drawable.ic_circle_anxious
     }
     Image(
         painter = painterResource(drawable),
@@ -249,7 +251,7 @@ fun PathThumbnail(
     val source =
         if (locations.size < 2) {
             // TODO(2025-12-10): 더미 경로 제거하고 실제 위치 데이터만 사용하도록 교체
-            generateRandomCityWalk()
+            generateRandomCityWalkPoints()
         } else {
             locations
         }
@@ -353,5 +355,74 @@ fun WeeklyRecordCardPathPreview() {
             session = dummySessionWithoutImage,
             modifier = Modifier.padding(16.dp)
         )
+    }
+}
+
+data class DurationParts(
+    val hourNumber: String?,
+    val minuteNumber: String?
+)
+
+fun parseDuration(durationText: String): DurationParts {
+    val parts = durationText.split(" ")
+
+    var hour: String? = null
+    var minute: String? = null
+
+    parts.forEach { part ->
+        when {
+            part.endsWith("시간") ->
+                hour = part.removeSuffix("시간")
+            part.endsWith("분") ->
+                minute = part.removeSuffix("분")
+        }
+    }
+
+    return DurationParts(
+        hourNumber = hour,
+        minuteNumber = minute
+    )
+}
+
+
+@Composable
+fun DurationText(
+    durationText: String,
+) {
+    val (hour, minute) = remember(durationText) {
+        parseDuration(durationText)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        hour?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.walkItTypography.bodyL,
+                color = SemanticColor.textBorderPrimary
+            )
+            Text(
+                text = "시간",
+                style = MaterialTheme.walkItTypography.bodyXL,
+                fontWeight = FontWeight.Medium,
+                color = SemanticColor.textBorderPrimary
+            )
+            Spacer(Modifier.width(4.dp))
+        }
+
+        minute?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.walkItTypography.bodyL,
+                color = SemanticColor.textBorderPrimary
+            )
+            Text(
+                text = "분",
+                style = MaterialTheme.walkItTypography.bodyXL,
+                fontWeight = FontWeight.Medium,
+                color = SemanticColor.textBorderPrimary
+            )
+        }
     }
 }

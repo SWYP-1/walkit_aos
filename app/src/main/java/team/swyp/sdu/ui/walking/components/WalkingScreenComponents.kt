@@ -63,7 +63,7 @@ fun EmotionGrid(
     val negativeEmotions = listOf(
         EmotionType.DEPRESSED to "우울함",
         EmotionType.TIRED to "지침",
-        EmotionType.ANXIOUS to "짜증남",
+        EmotionType.IRRITATED to "짜증남",
     )
 
     Column(

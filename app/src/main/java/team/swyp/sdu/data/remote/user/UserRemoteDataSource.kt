@@ -38,6 +38,16 @@ class UserRemoteDataSource @Inject constructor(
     }
 
     /**
+     * 닉네임 중복 체크
+     *
+     * @param nickname 체크할 닉네임
+     * @return Response 객체 (isSuccessful로 중복 여부 판단)
+     */
+    suspend fun checkNicknameDuplicate(nickname: String): retrofit2.Response<Void> {
+        return userManagementRemoteDataSource.checkNicknameDuplicate(nickname)
+    }
+
+    /**
      * 닉네임 등록
      *
      * @param nickname 등록할 닉네임

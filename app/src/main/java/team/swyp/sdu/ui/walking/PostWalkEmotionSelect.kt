@@ -34,6 +34,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.EmotionSlider
 import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.components.TextHighlight
@@ -184,8 +185,7 @@ private fun PostWalkingEmotionSelectScreen(
                 ) {
                     CtaButton(
                         text = "닫기",
-                        textColor = SemanticColor.buttonPrimaryDefault,
-                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        variant = CtaButtonVariant.SECONDARY,
                         onClick = {
                             showWarningDialog = true
                         },
@@ -194,18 +194,11 @@ private fun PostWalkingEmotionSelectScreen(
 
                     CtaButton(
                         text = "다음으로",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
                         onClick = onNextClick,
                         enabled = selectedEmotion != null,
                         modifier = Modifier.weight(1f),
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_forward),
-                                contentDescription = "arrow forward",
-                                tint = SemanticColor.iconWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        iconResId = R.drawable.ic_arrow_forward,
+                        // iconTint 생략하면 자동으로 content 색상 사용
                     )
                 }
             }

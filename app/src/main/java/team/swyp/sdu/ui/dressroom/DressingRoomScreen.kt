@@ -288,8 +288,7 @@ private fun SuccessContent(
             ) {
                 CtaButton(
                     text = "구매하기",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    variant = CtaButtonVariant.SECONDARY,
                     enabled = cartItems.isNotEmpty(),
                     onClick = onShowCartDialog,
                     modifier = Modifier.weight(1f)
@@ -299,14 +298,7 @@ private fun SuccessContent(
                     text = "저장하기",
                     onClick = onSaveItem,
                     modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_forward),
-                            contentDescription = null,
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    iconResId = R.drawable.ic_arrow_forward
                 )
             }
         }

@@ -119,7 +119,7 @@ private fun getEmotionBackgroundColor(emotionType: EmotionType?): androidx.compo
         EmotionType.CONTENT -> SemanticColor.statePinkSecondary      // 행복 -> pinkSecondary
         EmotionType.DEPRESSED -> SemanticColor.stateBlueSecondary   // 우울 -> blueSecondary
         EmotionType.TIRED -> SemanticColor.statePurpleSecondary      // 지침 -> purpleSecondary
-        EmotionType.ANXIOUS -> SemanticColor.stateRedPrimary        // 짜증남 -> redPrimary
+        EmotionType.IRRITATED -> SemanticColor.stateRedPrimary        // 짜증남 -> redPrimary
         null -> SemanticColor.backgroundWhiteTertiary                // 기록 없음 -> whiteTertiary
     }
 }
@@ -136,7 +136,7 @@ private fun getEmotionTextColor(emotionType: EmotionType?): androidx.compose.ui.
         EmotionType.CONTENT -> SemanticColor.statePinkPrimary           // 행복 -> pinkPrimary
         EmotionType.DEPRESSED -> SemanticColor.stateBluePrimary         // 우울 -> bluePrimary
         EmotionType.TIRED -> SemanticColor.statePurplePrimary            // 지침 -> purplePrimary
-        EmotionType.ANXIOUS -> SemanticColor.stateRedTertiary           // 짜증남 -> redTertiary
+        EmotionType.IRRITATED -> SemanticColor.stateRedTertiary           // 짜증남 -> redTertiary
         null -> SemanticColor.textBorderSecondary                       // 기록 없음 -> textBorderSecondary
     }
 }
@@ -216,12 +216,12 @@ private fun DominantEmotionCardTiredPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "짜증남 (ANXIOUS)")
+@Preview(showBackground = true, name = "짜증남 (IRRITATED)")
 @Composable
 private fun DominantEmotionCardAnxiousPreview() {
     WalkItTheme {
         DominantEmotionCard(
-            emotionType = EmotionType.ANXIOUS,
+            emotionType = EmotionType.IRRITATED,
             modifier = Modifier.padding(16.dp),
         )
     }

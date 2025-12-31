@@ -13,7 +13,7 @@ fun getEmotionDrawableRes(emotionType: EmotionType): Int {
         EmotionType.CONTENT -> R.drawable.ic_rec_content
         EmotionType.DEPRESSED -> R.drawable.ic_rec_depressed
         EmotionType.TIRED -> R.drawable.ic_rec_tired
-        EmotionType.ANXIOUS -> R.drawable.ic_rec_anxious
+        EmotionType.IRRITATED -> R.drawable.ic_rec_anxious
     }
 }
 
@@ -24,7 +24,7 @@ fun getEmotionFaceDrawableRes(emotionType: EmotionType): Int {
         EmotionType.CONTENT -> R.drawable.ic_face_content
         EmotionType.DEPRESSED -> R.drawable.ic_face_depressed
         EmotionType.TIRED -> R.drawable.ic_face_tired
-        EmotionType.ANXIOUS -> R.drawable.ic_face_anxious
+        EmotionType.IRRITATED -> R.drawable.ic_face_anxious
     }
 }
 
@@ -38,7 +38,7 @@ fun getEmotionName(emotionType: EmotionType): String {
         EmotionType.CONTENT -> "행복함"
         EmotionType.DEPRESSED -> "우울함"
         EmotionType.TIRED -> "지침"
-        EmotionType.ANXIOUS -> "짜증남"
+        EmotionType.IRRITATED -> "짜증남"
     }
 }
 

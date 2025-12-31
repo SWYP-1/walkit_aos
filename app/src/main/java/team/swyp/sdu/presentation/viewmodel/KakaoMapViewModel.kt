@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.utils.LocationTestData
+import team.swyp.sdu.utils.WalkingTestData.generateRandomCityWalk
+import team.swyp.sdu.utils.WalkingTestData.generateRandomCityWalkPoints
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -127,7 +129,7 @@ constructor() : ViewModel() {
     private fun prepareLocations(locations: List<LocationPoint>): List<LocationPoint> {
         return if (locations.size <= 1) {
             Timber.d("위치 포인트가 ${locations.size}개 - 테스트용 하드코딩 위치(용인) 사용")
-            LocationTestData.getYonginTestLocations()
+            generateRandomCityWalkPoints()
         } else {
             Timber.d("위치 포인트가 ${locations.size}개 - 원래 값 사용")
             locations

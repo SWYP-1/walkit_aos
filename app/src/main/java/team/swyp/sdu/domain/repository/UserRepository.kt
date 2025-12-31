@@ -22,6 +22,8 @@ interface UserRepository {
 
     suspend fun updateUser(user: User): Result<User>
 
+    suspend fun checkNicknameDuplicate(nickname: String): Result<Boolean>
+
     suspend fun registerNickname(nickname: String): Result<Unit>
 
     suspend fun updateBirthDate(birthDate: String): Result<Unit>

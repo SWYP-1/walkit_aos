@@ -35,6 +35,6 @@ enum class EmotionType(
     // 부정 감정
     DEPRESSED("우울함", "Depressed"),
     TIRED("지침", "Tired"),
-    ANXIOUS("짜증남", "Anxious");
+    IRRITATED("짜증남", "Irritated");
 }
 

@@ -17,6 +17,24 @@ class UserManagementRemoteDataSource @Inject constructor(
 ) {
 
     /**
+     * 닉네임 중복 체크
+     */
+    suspend fun checkNicknameDuplicate(nickname: String): Response<Void> {
+        try {
+            val response = userApi.checkNicknameDuplicate(nickname)
+            if (response.isSuccessful) {
+                Timber.d("닉네임 중복 체크 성공 (중복 아님): $nickname")
+            } else {
+                Timber.d("닉네임 중복 체크 실패 (중복됨): $nickname (코드: ${response.code()})")
+            }
+            return response
+        } catch (e: Exception) {
+            Timber.e(e, "닉네임 중복 체크 실패: $nickname")
+            throw e
+        }
+    }
+
+    /**
      * 닉네임 등록
      */
     suspend fun registerNickname(nickname: String) {

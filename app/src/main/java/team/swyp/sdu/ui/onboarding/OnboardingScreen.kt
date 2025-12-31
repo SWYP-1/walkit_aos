@@ -50,9 +50,7 @@ fun OnboardingScreen(
                             }
                         },
                         onPrev = viewModel::previousStep,
-                        onCheckDuplicate = {
-                            //TODO: 중복 체크
-                        }
+                        onCheckDuplicate = viewModel::checkNicknameDuplicate
                     )
 
                     1 -> BirthYearStep(

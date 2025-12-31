@@ -113,6 +113,22 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun checkNicknameDuplicate(nickname: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = remoteDataSource.checkNicknameDuplicate(nickname)
+
+                // API 설계: 중복되지 않은 닉네임은 200 OK, 중복된 닉네임은 409 Conflict 등
+                val isDuplicate = !response.isSuccessful // API 실패 = 중복됨, API 성공 = 중복 아님
+
+                Timber.d("닉네임 중복 체크: $nickname -> ${if (isDuplicate) "중복" else "사용가능"} (HTTP ${response.code()})")
+                Result.Success(isDuplicate)
+            } catch (e: Exception) {
+                Timber.e(e, "닉네임 중복 체크 실패: $nickname")
+                Result.Error(e, e.message)
+            }
+        }
+
     override suspend fun registerNickname(nickname: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {

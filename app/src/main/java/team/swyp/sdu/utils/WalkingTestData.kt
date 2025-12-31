@@ -35,10 +35,10 @@ object WalkingTestData {
             listOf(EmotionType.HAPPY, EmotionType.CONTENT),
             listOf(EmotionType.JOYFUL, EmotionType.CONTENT),
             listOf(EmotionType.DEPRESSED, EmotionType.TIRED),
-            listOf(EmotionType.ANXIOUS, EmotionType.TIRED),
-            listOf(EmotionType.DEPRESSED, EmotionType.ANXIOUS),
+            listOf(EmotionType.IRRITATED, EmotionType.TIRED),
+            listOf(EmotionType.DEPRESSED, EmotionType.IRRITATED),
             listOf(EmotionType.HAPPY, EmotionType.DEPRESSED),
-            listOf(EmotionType.JOYFUL, EmotionType.ANXIOUS),
+            listOf(EmotionType.JOYFUL, EmotionType.IRRITATED),
             listOf(EmotionType.CONTENT, EmotionType.TIRED),
         )
 
@@ -106,7 +106,7 @@ object WalkingTestData {
                 EmotionType.CONTENT,
                 EmotionType.DEPRESSED,
                 EmotionType.TIRED,
-                EmotionType.ANXIOUS,
+                EmotionType.IRRITATED,
             )
             val preWalkEmotion = allEmotionTypes.random()
             val postWalkEmotion = allEmotionTypes.random()
@@ -225,7 +225,7 @@ object WalkingTestData {
             EmotionType.CONTENT,
             EmotionType.DEPRESSED,
             EmotionType.TIRED,
-            EmotionType.ANXIOUS,
+            EmotionType.IRRITATED,
         )
 
         // 감정 조합 패턴
@@ -235,13 +235,13 @@ object WalkingTestData {
             listOf(EmotionType.HAPPY, EmotionType.CONTENT),
             listOf(EmotionType.JOYFUL, EmotionType.CONTENT),
             listOf(EmotionType.DEPRESSED, EmotionType.TIRED),
-            listOf(EmotionType.ANXIOUS, EmotionType.TIRED),
-            listOf(EmotionType.DEPRESSED, EmotionType.ANXIOUS),
+            listOf(EmotionType.IRRITATED, EmotionType.TIRED),
+            listOf(EmotionType.DEPRESSED, EmotionType.IRRITATED),
             listOf(EmotionType.HAPPY, EmotionType.DEPRESSED),
-            listOf(EmotionType.JOYFUL, EmotionType.ANXIOUS),
+            listOf(EmotionType.JOYFUL, EmotionType.IRRITATED),
             listOf(EmotionType.CONTENT, EmotionType.TIRED),
             listOf(EmotionType.DEPRESSED, EmotionType.CONTENT),
-            listOf(EmotionType.ANXIOUS, EmotionType.HAPPY),
+            listOf(EmotionType.IRRITATED, EmotionType.HAPPY),
             listOf(EmotionType.TIRED, EmotionType.JOYFUL),
             listOf(EmotionType.DEPRESSED, EmotionType.JOYFUL),
         )
@@ -400,7 +400,7 @@ object WalkingTestData {
                     )
 
                 val stats = generateActivityStats(durationMillis, totalDistance)
-                val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
+                val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.IRRITATED)
                 val sessionEmotions =
                     listOf(
                         Emotion(
@@ -445,7 +445,7 @@ object WalkingTestData {
         val baseLat = 37.2411
         val baseLon = 127.1776
 
-        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
+        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.IRRITATED)
 
 
         for (day in startDay..endDay) {
@@ -502,7 +502,7 @@ object WalkingTestData {
 //            )
 
         // 산책 전/후 감정 랜덤 선택
-        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS)
+        val emotionTypes = listOf(EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT, EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.IRRITATED)
         val preWalkEmotion = emotionTypes.random()
         val postWalkEmotion = emotionTypes.random()
 
@@ -543,7 +543,7 @@ object WalkingTestData {
 
         val emotionTypes = listOf(
             EmotionType.HAPPY, EmotionType.JOYFUL, EmotionType.CONTENT,
-            EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.ANXIOUS
+            EmotionType.DEPRESSED, EmotionType.TIRED, EmotionType.IRRITATED
         )
 
         val baseTime = System.currentTimeMillis() - (10 * 24 * 60 * 60 * 1000L) // 10일 전

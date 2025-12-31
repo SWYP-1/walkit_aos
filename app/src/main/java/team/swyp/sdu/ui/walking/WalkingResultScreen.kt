@@ -77,6 +77,7 @@ import coil.request.ImageRequest
 import team.swyp.sdu.R
 import team.swyp.sdu.presentation.viewmodel.KakaoMapUiState
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.components.WalkingDiaryCard
@@ -603,8 +604,7 @@ private fun WalkingResultScreenContent(
                     ) {
                         CtaButton(
                             text = "이전으로",
-                            textColor = SemanticColor.buttonPrimaryDefault,
-                            buttonColor = SemanticColor.backgroundWhitePrimary,
+                            variant = CtaButtonVariant.SECONDARY,
                             onClick = onNavigateToPrevious,
                             modifier = Modifier.width(96.dp),
                             enabled = snapshotState is SnapshotState.Idle ||
@@ -612,9 +612,6 @@ private fun WalkingResultScreenContent(
                         )
 
                         CtaButton(
-                            text = "저장하기",
-                            textColor = SemanticColor.textBorderPrimaryInverse,
-                            buttonColor = SemanticColor.buttonPrimaryDefault,
                             onClick = {
                                 coroutineScope.launch {
                                     // 스냅샷 생성 및 저장
@@ -657,6 +654,7 @@ private fun WalkingResultScreenContent(
                             modifier = Modifier.weight(1f),
                             enabled = snapshotState is SnapshotState.Idle ||
                                     snapshotState is SnapshotState.Error,
+                            text = "저장하기"
                         )
                     }
                 }

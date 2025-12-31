@@ -34,7 +34,7 @@ class CustomTestViewModel @Inject constructor(
                     walkingSessionRepository.saveSessionLocalOnly(
                         session = session,
                         imageUri = null, // 이미지 없이 저장
-                        syncState = SyncState.NONE // 서버 동기화하지 않음
+                        syncState = SyncState.SYNCED // 서버 동기화하지 않음
                     )
                     Timber.d("✅ [${index + 1}/${dummySessions.size}] 세션 저장 완료: ${session.id}")
                 }

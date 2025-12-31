@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.goal.GoalRange
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.mypage.goal.component.GoalSettingCard
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
@@ -54,18 +55,12 @@ fun GoalStep(
     val goalRange = remember { GoalRange(min = 1, max = 7) }
 
     // 걸음 수 목표 범위: 1000~100000보 (1000보 단위, 미만, 초과 불가)
-    val stepRange = remember { GoalRange(min = 1000, max = 100000) }
+    val stepRange = remember { GoalRange(min = 1000, max = 30000) }
 
     // 현재 값이 범위를 벗어나면 조정
     val safeGoal = remember(goal) { goal.coerceIn(goalRange.min, goalRange.max) }
     val safeSteps = remember(steps) { steps.coerceIn(stepRange.min, stepRange.max) }
-
-    // 범위 도달 여부 확인
-    val isGoalMinReached = safeGoal <= goalRange.min
-    val isGoalMaxReached = safeGoal >= goalRange.max
-    val isStepsMinReached = safeSteps <= stepRange.min
-    val isStepsMaxReached = safeSteps >= stepRange.max
-
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -167,25 +162,17 @@ fun GoalStep(
                 ) {
                     CtaButton(
                         text = "이전으로",
-                        textColor = SemanticColor.buttonPrimaryDefault,
-                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        variant = CtaButtonVariant.SECONDARY,
                         onClick = onPrev,
                         modifier = Modifier.width(96.dp)
                     )
 
                     CtaButton(
                         text = "다음으로",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
                         onClick = onNext,
                         modifier = Modifier.weight(1f),
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_forward),
-                                contentDescription = "arrow forward",
-                                tint = SemanticColor.iconWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        iconResId = R.drawable.ic_arrow_forward,
+                        // iconTint 생략하면 자동으로 content 색상 사용
                     )
                 }
             }

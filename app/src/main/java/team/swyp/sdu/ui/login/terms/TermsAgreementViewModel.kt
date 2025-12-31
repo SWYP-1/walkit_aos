@@ -97,7 +97,6 @@ class TermsAgreementViewModel @Inject constructor(
      */
     fun submitTermsAgreement(
         onTermsAgreedUpdated: () -> Unit, // 약관 동의 상태 업데이트 콜백 추가
-        onSuccess: () -> Unit,
         onError: (String) -> Unit,
     ) {
         val currentState = _uiState.value
@@ -130,9 +129,6 @@ class TermsAgreementViewModel @Inject constructor(
 
                     // 약관 동의 상태 업데이트 콜백 호출 (OnboardingViewModel에서 상태 저장)
                     onTermsAgreedUpdated()
-
-                    // 약관 동의 상태가 업데이트된 후 콜백 호출
-                    onSuccess()
                 }
                 is Result.Error -> {
                     val errorMsg = result.message ?: "약관 동의 중 오류가 발생했습니다"

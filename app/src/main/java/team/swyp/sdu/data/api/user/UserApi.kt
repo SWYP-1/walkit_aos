@@ -40,6 +40,17 @@ interface UserApi {
     ): UserSearchResultDto
 
     /**
+     * 닉네임 중복 체크
+     *
+     * @param nickname 체크할 닉네임
+     * @return Response로 감싼 응답 (성공=중복아님, 실패=중복)
+     */
+    @GET("/users/check-nickname/{nickname}")
+    suspend fun checkNicknameDuplicate(
+        @Path("nickname") nickname: String
+    ): Response<Void>
+
+    /**
      * 닉네임 등록
      *
      * @param nickname 등록할 닉네임

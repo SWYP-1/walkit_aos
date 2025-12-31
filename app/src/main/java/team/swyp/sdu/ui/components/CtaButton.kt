@@ -9,10 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -24,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -35,92 +35,103 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.White
 import team.swyp.sdu.ui.theme.walkItTypography
 
-/**
- * CTA 버튼 컴포넌트
- *
- * Figma 디자인 기반 공용 버튼
- * - 기본 상태: 녹색 배경 (#52ce4b)
- * - 눌린 상태: 동일한 디자인 (Material3 기본 pressed 상태)
- *
- * @param text 버튼 텍스트
- * @param onClick 클릭 이벤트 핸들러
- * @param modifier Modifier
- * @param enabled 버튼 활성화 여부 (기본값: true)
- * @param icon 아이콘 (선택사항, 향후 확장 가능)
- */
+
+enum class CtaButtonVariant {
+    PRIMARY,    // 초록 배경 + 흰 글자
+    SECONDARY   // 흰 배경 + 초록 글자 + 초록 테두리
+}
+
+data class CtaButtonColors(
+    val container: Color,
+    val content: Color,
+    val border: Color? = null,
+)
+
+@Composable
+private fun ctaButtonColors(
+    variant: CtaButtonVariant,
+    enabled: Boolean,
+): CtaButtonColors {
+    return when {
+        !enabled -> CtaButtonColors(
+            container = SemanticColor.buttonPrimaryDisabled,
+            content = SemanticColor.iconGrey,
+        )
+
+        variant == CtaButtonVariant.PRIMARY -> CtaButtonColors(
+            container = SemanticColor.buttonPrimaryDefault,
+            content = SemanticColor.backgroundWhitePrimary,
+        )
+
+        else -> CtaButtonColors(
+            container = White,
+            content = SemanticColor.textBorderGreenPrimary,
+            border = SemanticColor.textBorderGreenPrimary,
+        )
+    }
+}
+
+
 @Composable
 fun CtaButton(
     text: String,
-    textColor: Color = SemanticColor.textBorderPrimaryInverse,
-    buttonColor: Color = SemanticColor.buttonPrimaryDefault,
-    buttonHeight : Dp = 47.dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    icon: @Composable (() -> Unit)? = null,
+    variant: CtaButtonVariant = CtaButtonVariant.PRIMARY,
+    buttonHeight: Dp = 47.dp,
+    iconResId: Int? = null,
+    iconTint: Color? = null, // null이면 content 색상 자동 적용
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Figma 디자인 색상
-    val disabledColor = Color(0xFFE0E0E0) // 비활성화 색상 (임시)
-    val borderWidth = if (buttonColor == SemanticColor.buttonPrimaryDefault) 1.dp else 0.dp
-
-    val showBorder =
-        enabled && buttonColor == SemanticColor.buttonPrimaryDefault
+    val colors = ctaButtonColors(variant, enabled)
+    val finalIconTint = iconTint ?: colors.content // 🔄 tint 지정 안하면 content 색상 따라감
 
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
+            .height(buttonHeight)
             .then(
-                if (showBorder) {
+                colors.border?.let {
                     Modifier.border(
                         width = 1.dp,
-                        color = SemanticColor.textBorderGreenPrimary,
+                        color = it,
                         shape = RoundedCornerShape(8.dp)
                     )
-                } else {
-                    Modifier
-                }
-            )
-            .height(buttonHeight),
-        enabled = enabled,
-        interactionSource = interactionSource,
+                } ?: Modifier
+            ),
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (enabled) buttonColor else disabledColor,
-            contentColor = textColor,
-            disabledContainerColor = disabledColor,
-            disabledContentColor = Color(0xFF9E9E9E),
+            containerColor = colors.container,
+            contentColor = colors.content,
+            disabledContainerColor = colors.container,
+            disabledContentColor = colors.content,
         ),
-        contentPadding = PaddingValues(
-            horizontal = 20.dp,
-            vertical = 10.dp,
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = if (isPressed) 0.dp else 0.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp,
-        ),
+        elevation = ButtonDefaults.buttonElevation(0.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = text,
                 style = MaterialTheme.walkItTypography.bodyM.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
-                color = textColor,
                 maxLines = 1
             )
 
-            icon?.let {
+            iconResId?.let {
                 Spacer(Modifier.width(8.dp))
-                it()
+                Icon(
+                    painter = painterResource(id = it),
+                    contentDescription = null,
+                    tint = finalIconTint,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -129,72 +140,50 @@ fun CtaButton(
 /**
  * CtaButton Preview
  */
-@Preview(name = "흰색 글자 + 초록 바탕 (아이콘 없음)")
+@Preview(name = "Primary")
 @Composable
-fun CtaButtonPreview1() {
+fun CtaPrimaryPreview() {
     WalkItTheme {
         CtaButton(
             text = "CTA button",
-            textColor = White,
-            buttonColor = Green4,
             onClick = {},
-        )
-    }
-
-}
-
-@Preview(name = "초록 글자 + 흰색 바탕 (아이콘 없음)")
-@Composable
-fun CtaButtonPreview2() {
-    WalkItTheme {
-        CtaButton(
-            text = "CTA button",
-            textColor = Green4,
-            buttonColor = White,
-            onClick = {},
-        )
-    }
-
-}
-
-@Preview(name = "흰색 글자 + 초록 바탕 (아이콘 있음)")
-@Composable
-fun CtaButtonPreview3() {
-    WalkItTheme {
-        CtaButton(
-            text = "CTA button",
-            textColor = White,
-            buttonColor = Green4,
-            onClick = {},
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    tint = White,
-                )
-            },
-        )
-    }
-
-}
-
-@Preview(name = "초록 글자 + 흰색 바탕 (아이콘 있음)")
-@Composable
-fun CtaButtonPreview4() {
-    WalkItTheme {
-        CtaButton(
-            text = "CTA button",
-            textColor = Green4,
-            buttonColor = White,
-            onClick = {},
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    tint = Green4,
-                )
-            },
+            variant = CtaButtonVariant.PRIMARY
         )
     }
 }
 
+@Preview(name = "Secondary")
+@Composable
+fun CtaSecondaryPreview() {
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            onClick = {},
+            variant = CtaButtonVariant.SECONDARY
+        )
+    }
+}
+
+@Preview(name = "Disabled")
+@Composable
+fun CtaDisabledPreview() {
+    WalkItTheme {
+        CtaButton(
+            text = "CTA button",
+            onClick = {},
+            enabled = false
+        )
+    }
+}
+
+@Preview(name = "With Icon")
+@Composable
+fun CtaWithIconPreview() {
+    WalkItTheme {
+        CtaButton(
+            text = "다음으로",
+            onClick = {},
+            iconResId = android.R.drawable.ic_media_next // 기본 아이콘 사용
+        )
+    }
+}

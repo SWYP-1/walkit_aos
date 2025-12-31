@@ -19,7 +19,7 @@ val EMOTION_TYPE_ORDER = listOf(
     EmotionType.CONTENT,
     EmotionType.DEPRESSED,
     EmotionType.TIRED,
-    EmotionType.ANXIOUS
+    EmotionType.IRRITATED
 )
 
 /**
@@ -70,7 +70,7 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
             value = 1
         )
 
-        EmotionType.ANXIOUS -> EmotionOption(
+        EmotionType.IRRITATED -> EmotionOption(
             imageResId = R.drawable.ic_circle_anxious,
             label = "짜증난다",
             boxColor = SemanticColor.stateRedTertiary,
@@ -112,7 +112,7 @@ fun emotionToValue(emotionType: EmotionType): Int {
         EmotionType.CONTENT -> 3
         EmotionType.DEPRESSED -> 2
         EmotionType.TIRED -> 1
-        EmotionType.ANXIOUS -> 0
+        EmotionType.IRRITATED -> 0
     }
 }
 
@@ -129,7 +129,7 @@ fun valueToEmotionType(value: Int): EmotionType {
         3 -> EmotionType.CONTENT
         2 -> EmotionType.DEPRESSED
         1 -> EmotionType.TIRED
-        0 -> EmotionType.ANXIOUS
+        0 -> EmotionType.IRRITATED
         else -> EmotionType.CONTENT // 기본값
     }
 }

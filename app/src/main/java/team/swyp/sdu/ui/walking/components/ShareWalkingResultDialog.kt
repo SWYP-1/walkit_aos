@@ -36,6 +36,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.utils.FormatUtils
 import team.swyp.sdu.utils.FormatUtils.formatDuration
 import timber.log.Timber
@@ -132,9 +133,9 @@ fun ShareWalkingResultDialog(
                         .padding(bottom = 16.dp, start = 16.dp)
                 ) {
                     // 산책 전 감정
-                    EmotionCircleIcon(preWalkEmotion)
+                    EmotionCircleIcon(preWalkEmotion,32.dp)
                     // 산책 후 감정
-                    EmotionCircleIcon(postWalkEmotion)
+                    EmotionCircleIcon(postWalkEmotion,32.dp)
                 }
 
                 Column(
@@ -173,25 +174,16 @@ fun ShareWalkingResultDialog(
             ) {
                 CtaButton(
                     text = "뒤로가기",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    variant = CtaButtonVariant.SECONDARY,
                     onClick = onPrev,
                     modifier = Modifier.weight(1f),
                 )
 
                 CtaButton(
                     text = "저장하기",
-                    textColor = SemanticColor.textBorderPrimaryInverse,
                     onClick = onSave,
                     modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_forward),
-                            contentDescription = "arrow forward",
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    iconResId = R.drawable.ic_arrow_forward
                 )
             }
         }

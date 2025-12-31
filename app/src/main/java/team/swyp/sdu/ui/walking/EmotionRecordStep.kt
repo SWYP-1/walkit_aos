@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
@@ -566,16 +567,13 @@ private fun EmotionRecordStepScreenContent(
             ) {
                 CtaButton(
                     text = "이전으로",
-                    textColor = SemanticColor.buttonPrimaryDefault,
-                    buttonColor = SemanticColor.backgroundWhitePrimary,
+                    variant = CtaButtonVariant.SECONDARY,
                     onClick = onPrevious,
                     modifier = Modifier.width(96.dp)
                 )
 
                 CtaButton(
                     text = "다음으로",
-                    textColor = if (canProceed) SemanticColor.textBorderPrimaryInverse else SemanticColor.textBorderSecondary,
-                    buttonColor = if (canProceed) SemanticColor.buttonPrimaryDefault else SemanticColor.buttonPrimaryDisabled,
                     enabled = canProceed,
                     onClick = {
                         coroutineScope.launch {
@@ -590,18 +588,11 @@ private fun EmotionRecordStepScreenContent(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_forward),
-                            contentDescription = "arrow forward",
-                            tint = if (canProceed) SemanticColor.iconWhite else SemanticColor.iconDisabled,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
+                    iconResId = R.drawable.ic_arrow_forward,
+                    )
             }
-            Spacer(modifier = Modifier.height(24.dp))
         }
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import java.time.LocalDate
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
@@ -324,25 +325,16 @@ fun BirthYearStep(
                 ) {
                     CtaButton(
                         text = "이전으로",
-                        textColor = SemanticColor.buttonPrimaryDefault,
-                        buttonColor = SemanticColor.backgroundWhitePrimary,
+                        variant = CtaButtonVariant.SECONDARY,
                         onClick = onPrev,
                         modifier = Modifier.width(96.dp)      // 1
                     )
 
                     CtaButton(
                         text = "다음으로",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
                         onClick = onNext,
                         modifier = Modifier.weight(1f),   // 2.4
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_forward),
-                                contentDescription = "arrow forward",
-                                tint = SemanticColor.iconWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        iconResId = R.drawable.ic_arrow_forward
                     )
                 }
             }

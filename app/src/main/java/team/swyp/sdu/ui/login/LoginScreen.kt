@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.android.awaitFrame
 import team.swyp.sdu.R
 import team.swyp.sdu.presentation.viewmodel.LoginUiState
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
@@ -60,11 +61,8 @@ fun LoginRoute(
     viewModel: LoginViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
 ) {
-    // 로그인 성공 후 사용자 상태에 따른 네비게이션 처리
-    LaunchedEffect(Unit) {
-        viewModel.setNavigationCallbacks(onNavigateToMain, onNavigateToTermsAgreement)
-    }
     val context = LocalContext.current
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val onboardingCompleted by onboardingViewModel.isCompleted.collectAsStateWithLifecycle(false)
@@ -72,58 +70,61 @@ fun LoginRoute(
 
     val naverLoginLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result: ActivityResult ->
+    ) { result ->
         viewModel.handleNaverLoginResult(result)
     }
 
+    /**
+     * ✅ 단 하나의 Navigation 진입점
+     */
     LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted) {
         if (!isLoggedIn) return@LaunchedEffect
 
         when {
-            onboardingCompleted -> onNavigateToMain()
-            termsAgreed -> onNavigateToTermsAgreement() // 약관 동의 완료 시 온보딩으로
-            // 그 외: 약관 동의 대기 (다이얼로그 표시)
+            onboardingCompleted -> {
+                awaitFrame()
+                onNavigateToMain()
+            }
+
+            termsAgreed -> {
+                awaitFrame()
+                onNavigateToTermsAgreement()
+            }
         }
     }
 
-    // 로그아웃 상태 감지 - 로그아웃 시 모든 상태 초기화
-    LaunchedEffect(isLoggedIn) {
-        if (!isLoggedIn) {
-            // 로그아웃 상태일 때는 약관 동의 다이얼로그를 표시하지 않음
-            // (필요시 추가적인 초기화 로직을 여기에 추가할 수 있음)
-        }
-    }
-
+    /**
+     * 로그인 화면
+     */
     LoginScreen(
         modifier = modifier,
         uiState = uiState,
         onKakaoLogin = { viewModel.loginWithKakaoTalk(context) },
         onNaverLogin = { viewModel.loginWithNaver(context, naverLoginLauncher) },
         onDismissError = {
-            // 에러 다이얼로그 닫기 - Idle 상태로 초기화
             viewModel.clearError()
         },
     )
 
-    // 로그인 성공 시 약관 동의 다이얼로그 표시 (로그아웃 상태일 때는 표시하지 않음)
+    /**
+     * ✅ 약관 동의 다이얼로그
+     * - navigate 절대 금지
+     * - 상태만 변경
+     */
     if (isLoggedIn && !termsAgreed && !onboardingCompleted) {
         TermsAgreementDialogRoute(
             onDismiss = {
-                // 다이얼로그 닫기 - 로그아웃 처리
+                // 약관 거부 → 로그아웃
                 viewModel.logout()
             },
-            onSuccess = {
-                // 약관 동의 성공 시 온보딩으로 이동
-                onNavigateToTermsAgreement()
-            },
             onTermsAgreedUpdated = {
-                // 약관 동의 상태를 OnboardingViewModel에 업데이트
                 onboardingViewModel.updateServiceTermsChecked(true)
                 onboardingViewModel.updatePrivacyPolicyChecked(true)
             },
         )
     }
 }
+
 
 /**
  * 로그인 화면

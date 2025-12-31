@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
@@ -936,7 +937,7 @@ private fun getEmotionKoreanName(emotionType: team.swyp.sdu.data.model.EmotionTy
         team.swyp.sdu.data.model.EmotionType.CONTENT -> "행복함"
         team.swyp.sdu.data.model.EmotionType.DEPRESSED -> "우울함"
         team.swyp.sdu.data.model.EmotionType.TIRED -> "지침"
-        team.swyp.sdu.data.model.EmotionType.ANXIOUS -> "짜증남"
+        team.swyp.sdu.data.model.EmotionType.IRRITATED -> "짜증남"
         null -> "보통"
     }
 
@@ -1082,30 +1083,29 @@ fun WalkingDiaryCard(
 }
 
 @Composable
-fun EmotionCircleIcon(emotion: EmotionType) {
+fun EmotionCircleIcon(emotion: EmotionType,size : Dp = 52.dp) {
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(Color.White),
+            .size(size)
+            .clip(CircleShape),
     ) {
-        Card(
-            modifier = Modifier.fillMaxSize(),
-            shape = CircleShape,
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                EmotionIcon(emotionType = emotion)
-            }
-        }
+        Image(
+            painter = painterResource(getCircleEmotionIcon(emotion = emotion)),
+            contentDescription = "emotion circle "
+        )
     }
 }
 
+fun getCircleEmotionIcon(emotion: EmotionType): Int {
+    return when (emotion) {
+        EmotionType.HAPPY -> R.drawable.ic_circle_happy
+        EmotionType.JOYFUL -> R.drawable.ic_circle_joyful
+        EmotionType.CONTENT -> R.drawable.ic_circle_content
+        EmotionType.DEPRESSED -> R.drawable.ic_circle_depressed
+        EmotionType.TIRED -> R.drawable.ic_circle_tired
+        EmotionType.IRRITATED -> R.drawable.ic_circle_anxious
+    }
+}
 
 /**
  * 산책 일기 더보기 메뉴 컴포넌트
@@ -1395,110 +1395,5 @@ fun DiaryMoreMenuPreview() {
                 }
             }
         }
-    }
-}
-
-/**
- * MonthSection Preview
- */
-@Preview(showBackground = true, name = "MonthSection Preview")
-@Composable
-fun MonthSectionPreview() {
-    val mockStats = WalkAggregate(
-        steps = 45000,
-        durationMillis = 7200000L, // 2시간
-    )
-
-    val mockSessions = listOf(
-        WalkingSession(
-            id = "1",
-            startTime = System.currentTimeMillis() - 86400000L, // 1일 전
-            endTime = System.currentTimeMillis() - 86400000L + 3600000L, // 1시간 산책
-            stepCount = 2500,
-            locations = emptyList(),
-            totalDistance = 1800.0f,
-            preWalkEmotion = EmotionType.HAPPY,
-            postWalkEmotion = EmotionType.ANXIOUS,
-            createdDate = "2024-01-01"
-        ),
-        WalkingSession(
-            id = "2",
-            startTime = System.currentTimeMillis() - 172800000L, // 2일 전
-            endTime = System.currentTimeMillis() - 172800000L + 2700000L, // 45분 산책
-            stepCount = 3200,
-            locations = emptyList(),
-            totalDistance = 2400.0f,
-            preWalkEmotion = EmotionType.CONTENT,
-            postWalkEmotion = EmotionType.HAPPY,
-            createdDate = "2024-01-01"
-        )
-    )
-
-    WalkItTheme {
-        MonthSection(
-            stats = mockStats,
-            sessions = mockSessions,
-            onNavigateToDailyRecord = {},
-            onMonthChanged = {},
-            missionsCompleted = emptyList()
-        )
-    }
-}
-
-/**
- * WeekSection Preview
- */
-@Preview(showBackground = true, name = "WeekSection Preview")
-@Composable
-fun WeekSectionPreview() {
-    val mockStats = WalkAggregate(
-        steps = 1200,
-        durationMillis = 123120459,
-    )
-
-    val mockSessions = listOf(
-        WalkingSession(
-            id = "1",
-            startTime = System.currentTimeMillis() - 86400000L, // 1일 전
-            endTime = System.currentTimeMillis() - 86400000L + 3600000L, // 1시간 산책
-            stepCount = 2500,
-            locations = emptyList(),
-            totalDistance = 1800.0f,
-            preWalkEmotion = EmotionType.HAPPY,
-            postWalkEmotion = EmotionType.DEPRESSED,
-            createdDate = "2024-01-01"
-        ),
-        WalkingSession(
-            id = "2",
-            startTime = System.currentTimeMillis() - 172800000L, // 2일 전
-            endTime = System.currentTimeMillis() - 172800000L + 2700000L, // 45분 산책
-            stepCount = 3200,
-            locations = emptyList(),
-            totalDistance = 2400.0f,
-            preWalkEmotion = EmotionType.DEPRESSED,
-            postWalkEmotion = EmotionType.HAPPY,
-            createdDate = "2024-01-01"
-        ),
-        WalkingSession(
-            id = "3",
-            startTime = System.currentTimeMillis() - 259200000L, // 3일 전
-            endTime = System.currentTimeMillis() - 259200000L + 1800000L, // 30분 산책
-            stepCount = 2800,
-            locations = emptyList(),
-            totalDistance = 2000.0f,
-            preWalkEmotion = EmotionType.TIRED,
-            postWalkEmotion = EmotionType.HAPPY,
-            createdDate = "2024-01-01"
-        )
-    )
-
-    WalkItTheme {
-        WeekSection(
-            stats = mockStats,
-            currentDate = LocalDate.now(),
-            onPrevWeek = {},
-            onNextWeek = {},
-            sessions = mockSessions
-        )
     }
 }

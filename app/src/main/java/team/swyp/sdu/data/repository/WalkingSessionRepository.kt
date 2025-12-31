@@ -89,7 +89,7 @@ constructor(
     suspend fun saveSessionLocalOnly(
         session: WalkingSession,
         imageUri: Uri? = null,
-        syncState: SyncState = SyncState.NONE,
+        syncState: SyncState = SyncState.SYNCED,
     ): String {
         // 1. 로컬 저장 (지정된 syncState로)
         val entity = WalkingSessionMapper.toEntity(

@@ -106,8 +106,6 @@ fun WalkingResultCompletionDialog(
                     // 확인 버튼
                     CtaButton(
                         text = "확인",
-                        textColor = SemanticColor.textBorderPrimaryInverse,
-                        buttonColor = SemanticColor.buttonPrimaryDefault,
                         onClick = onConfirm,
                         modifier = Modifier.fillMaxWidth(),
                     )
