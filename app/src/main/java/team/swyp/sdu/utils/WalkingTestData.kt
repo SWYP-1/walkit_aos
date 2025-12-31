@@ -722,6 +722,57 @@ object WalkingTestData {
     }
 
     /**
+     * 무작위 도시에서 단일 산책 세션 생성
+     */
+    fun generateRandomCityWalk(): WalkingSession {
+        val cities = listOf(
+            Triple("서울", 37.5665, 126.9780), // Seoul
+            Triple("부산", 35.1796, 129.0756), // Busan
+            Triple("대구", 35.8714, 128.6014), // Daegu
+            Triple("인천", 37.4563, 126.7052), // Incheon
+            Triple("광주", 35.1595, 126.8526), // Gwangju
+            Triple("대전", 36.3504, 127.3845), // Daejeon
+            Triple("울산", 35.5384, 129.3114), // Ulsan
+            Triple("세종", 36.4800, 127.2890), // Sejong
+            Triple("수원", 37.2636, 127.0286), // Suwon
+            Triple("강릉", 37.7519, 128.8762)  // Gangneung
+        )
+
+        val (cityName, baseLat, baseLon) = cities.random()
+        val today = LocalDate.now()
+        val date = today.minusDays(Random.nextInt(0, 7).toLong()) // 최근 7일 중 랜덤
+        val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val durationMinutes = Random.nextInt(30, 121) // 30분 ~ 120분
+        val endTime = startTime + (durationMinutes * 60 * 1000L)
+        val stepCount = durationMinutes * Random.nextInt(80, 131)
+        val totalDistance = stepCount * 0.7f
+
+        val locations = generateDenseLocationPoints(
+            baseLat = baseLat,
+            baseLon = baseLon,
+            startTime = startTime,
+            duration = durationMinutes,
+            pointCount = Random.nextInt(60, 101), // 60~100개 포인트
+            cityName = cityName
+        )
+
+        val preWalkEmotion = EmotionType.values().random()
+        val postWalkEmotion = EmotionType.values().random()
+
+        return WalkingSession(
+            startTime = startTime,
+            endTime = endTime,
+            stepCount = stepCount,
+            locations = locations,
+            totalDistance = totalDistance,
+            preWalkEmotion = preWalkEmotion,
+            postWalkEmotion = postWalkEmotion,
+            createdDate = DateUtils.millisToIsoUtc(startTime),
+            note = "${cityName}에서 즐거운 산책"
+        )
+    }
+
+    /**
      * 도시별 산책 경로 패턴
      */
     private enum class PathPattern {
