@@ -74,7 +74,7 @@ fun InfoBanner(
                 bottom = 16.dp,
             ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = if (description != null) Alignment.Top else Alignment.CenterVertically,
     ) {
         // 왼쪽: 정보 아이콘
         InfoIcon(iconTint = iconTint)
