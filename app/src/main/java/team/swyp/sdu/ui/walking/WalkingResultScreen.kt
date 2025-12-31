@@ -377,7 +377,7 @@ private fun WalkingResultScreenContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(320.dp),
+                            .aspectRatio(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
@@ -435,7 +435,7 @@ private fun WalkingResultScreenContent(
                                             .build()
                                     ),
                                     contentDescription = "사진",
-                                    modifier = modifier.height(320.dp).aspectRatio(1f),
+                                    modifier = modifier.fillMaxWidth().aspectRatio(1f),
                                     contentScale = ContentScale.Crop
                                 )
                             }

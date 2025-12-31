@@ -225,8 +225,9 @@ private fun TimePart(
     unitText: String,
 ) {
     Row(
-        verticalAlignment = Alignment.Bottom, // baseline 정렬
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
+        verticalAlignment = Alignment.CenterVertically, // baseline 정렬
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth()
     ) {
         // 숫자
         Text(
@@ -249,6 +250,27 @@ private fun TimePart(
             letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
             color = Color(0xFF191919), // color/text-border/primary
         )
+    }
+}
+
+@Preview(showBackground = true, name = "시간 부분 (TimePart)")
+@Composable
+private fun TimePartPreview() {
+    WalkItTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // 시간 예시
+            TimePart(number = "1", unitText = "시간")
+
+            // 분 예시
+            TimePart(number = "30", unitText = "분")
+
+            // 0시간 0분 예시
+            TimePart(number = "0", unitText = "시간")
+            TimePart(number = "0", unitText = "분")
+        }
     }
 }
 
