@@ -532,13 +532,32 @@ private fun EmotionRecordStepScreenContent(
             Spacer(modifier = Modifier.weight(1f))
 
             //
-            InfoBanner(
-                title = "산책 중 촬영한 사진만 업로드 가능합니다.",
-                backgroundColor = SemanticColor.backgroundDarkSecondary,
-                textColor = SemanticColor.textBorderPrimaryInverse,
-                iconTint = SemanticColor.textBorderPrimaryInverse,
-            )
-
+            if(!canProceed){
+                InfoBanner(
+                    title = "산책 중 사진이 아닙니다",
+                    description = "산책 중 촬영한 사진을 업로드 해주세요",
+                    backgroundColor = SemanticColor.stateRedTertiary,
+                    textColor = SemanticColor.stateRedPrimary,
+                    borderColor = SemanticColor.stateRedSecondary,
+                    iconTint = SemanticColor.stateRedPrimary,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_clear),
+                            contentDescription = "info warning",
+                            tint = SemanticColor.stateRedPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            } else {
+                InfoBanner(
+                    title = "산책 중 촬영한 사진만 업로드 가능합니다.",
+                    backgroundColor = SemanticColor.backgroundDarkSecondary,
+                    borderColor = SemanticColor.backgroundDarkSecondary,
+                    textColor = SemanticColor.textBorderPrimaryInverse,
+                    iconTint = SemanticColor.textBorderPrimaryInverse,
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             // 버튼 영역
             Row(
@@ -599,90 +618,58 @@ private fun PhotoInputArea(
     var showImageMenu by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .size(92.dp)
-            .background(
-                color = SemanticColor.textBorderTertiary,
-                shape = RoundedCornerShape(8.dp),
-            )
-            .clickable(onClick = { showImageMenu = true }),
-        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(92.dp)
     ) {
-        if (photoUri != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp))
-            ) {
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(photoUri)
-                            .build(),
-                    ),
-                    contentDescription = "선택한 사진",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+        // 실제 이미지 영역
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    color = SemanticColor.textBorderTertiary,
+                    shape = RoundedCornerShape(8.dp)
                 )
-
-                // X 버튼
-                IconButton(
-                    onClick = { onPhotoUriChange(null) },
+                .clickable { showImageMenu = true },
+            contentAlignment = Alignment.Center
+        ) {
+            if (photoUri != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(photoUri),
+                    contentDescription = "선택한 사진",
                     modifier = Modifier
-                        .align(Alignment.TopEnd)      // 상위 Box 기준 우측 상단
-                        .offset(x = 8.dp, y = (-8).dp) // 약간 튀어나오게
-                        .size(24.dp)
-                        .background(SemanticColor.iconDisabled, CircleShape)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_action_clear),
-                        contentDescription = "이미지 삭제",
-                        modifier = Modifier.size(16.dp),
-                        tint = SemanticColor.iconGrey
-                    )
-                }
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info_camera),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = SemanticColor.textBorderPrimaryInverse,
+                )
             }
-
-        } else {
-            Icon(
-                painter = painterResource(R.drawable.ic_info_camera),
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = SemanticColor.textBorderPrimaryInverse,
-            )
         }
 
-        // 이미지 선택 드랍다운 메뉴
-        DropdownMenu(
-            expanded = showImageMenu,
-            onDismissRequest = { showImageMenu = false },
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = "촬영하기",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-                onClick = {
-                    showImageMenu = false
-                    cameraLauncher()
-                }
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = "갤러리에서 가져오기",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-                onClick = {
-                    showImageMenu = false
-                    galleryLauncher()
-                }
-            )
+        // ❌ 잘리지 않는 X 버튼
+        if (photoUri != null) {
+            IconButton(
+                onClick = { onPhotoUriChange(null) },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 8.dp, y = (-8).dp)
+                    .size(24.dp)
+                    .background(SemanticColor.iconDisabled, CircleShape)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_clear),
+                    contentDescription = "이미지 삭제",
+                    modifier = Modifier.size(16.dp),
+                    tint = SemanticColor.iconGrey
+                )
+            }
         }
     }
+
 }
 
 @Preview(showBackground = true)

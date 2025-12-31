@@ -70,7 +70,7 @@ fun CtaButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .border(width = borderWidth, color = SemanticColor.buttonPrimaryDefault, shape = RoundedCornerShape(8.dp))
+            .border(width = borderWidth, color = SemanticColor.textBorderGreenPrimary, shape = RoundedCornerShape(8.dp))
             .height(buttonHeight),
         enabled = enabled,
         interactionSource = interactionSource,

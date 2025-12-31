@@ -43,6 +43,7 @@ val AquaBlue3 = Color(0xFFB2F2FF)
 val AquaBlue5 = Color(0xFF6EB3BF)
 
 
+val Red3 = Color(0xFFFFD0C9)
 val Red1 = Color(0xFFFFF0EE)
 val Red5 = Color(0xFFE65C4A)
 
