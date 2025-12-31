@@ -168,9 +168,49 @@ fun WeeklyRecordCard(
                         val durationText = FormatUtils.formatDurationCompat(session.duration)
 
                         Text(
-                            text = durationText,
-                            style = MaterialTheme.walkItTypography.bodyXL.copy(
-                                fontWeight = FontWeight.Medium
+                            text = buildAnnotatedString {
+                                // "0시간 12분"을 파싱해서 숫자와 단위 분리
+                                val parts = durationText.split(" ")
+                                for (part in parts) {
+                                    when {
+                                        part.endsWith("시간") -> {
+                                            val number = part.removeSuffix("시간")
+                                            append(number) // 숫자는 기존 스타일
+                                            withStyle(
+                                                SpanStyle(
+                                                    fontSize = MaterialTheme.walkItTypography.bodyXL.fontSize,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = SemanticColor.textBorderPrimary
+                                                )
+                                            ) {
+                                                append("시간")
+                                            }
+                                        }
+                                        part.endsWith("분") -> {
+                                            val number = part.removeSuffix("분")
+                                            append(number) // 숫자는 기존 스타일
+                                            withStyle(
+                                                SpanStyle(
+                                                    fontSize = MaterialTheme.walkItTypography.bodyXL.fontSize,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = SemanticColor.textBorderPrimary
+                                                )
+                                            ) {
+                                                append("분")
+                                            }
+                                        }
+                                        else -> {
+                                            append(part) // 예상치 못한 경우
+                                        }
+                                    }
+                                    if (part != parts.last()) {
+                                        append(" ") // 단어 사이 공백
+                                    }
+                                }
+                            },
+                            style = MaterialTheme.walkItTypography.bodyL.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = SemanticColor.textBorderPrimary
                             ),
                         )
                     }
