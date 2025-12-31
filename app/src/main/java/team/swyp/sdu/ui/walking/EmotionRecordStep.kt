@@ -82,7 +82,7 @@ sealed interface EmotionRecordStepUiState {
     data class Success(
         val emotionPhotoUri: Uri?,
         val emotionText: String,
-        val canUploadPhoto: Boolean = false,
+        val canProceed: Boolean = true,
     ) : EmotionRecordStepUiState
 
     data class Error(
@@ -105,20 +105,20 @@ fun EmotionRecordStepRoute(
     val emotionText by viewModel.emotionText.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // canUploadPhoto 계산
-    val canUploadPhoto = remember(emotionPhotoUri) {
+    // canProceed 계산 (사진이 없거나 유효한 사진이 있으면 다음으로 진행 가능)
+    val canProceed = remember(emotionPhotoUri) {
         emotionPhotoUri?.let { uri ->
-            // WalkingViewModel의 startTimeMillis를 cutoffTime으로 사용
+            // 사진이 있으면 canUploadPhoto 함수로 검증
             val walkingStartTime = Date(viewModel.getStartTimeMillis())
             canUploadPhoto(context, uri, walkingStartTime)
-        } ?: false
+        } ?: true  // 사진이 없으면 그냥 진행 가능
     }
 
     // UI 상태 결정 (현재는 항상 Success, 추후 로딩/에러 상태 추가 가능)
     val uiState: EmotionRecordStepUiState = EmotionRecordStepUiState.Success(
         emotionPhotoUri = emotionPhotoUri,
         emotionText = emotionText,
-        canUploadPhoto = canUploadPhoto,
+        canProceed = canProceed,
     )
 
     // 📸 개선된 미디어 선택: Photo Picker 우선 사용 (안전함)
@@ -243,7 +243,7 @@ private fun EmotionRecordStepScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     cameraImageUri: Uri?,
-    photoPickerLauncher : androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>,
+    photoPickerLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>,
     cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>,
     galleryLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     cameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
@@ -288,7 +288,7 @@ private fun EmotionRecordStepScreen(
             EmotionRecordStepScreenContent(
                 emotionPhotoUri = uiState.emotionPhotoUri,
                 emotionText = uiState.emotionText,
-                canUploadPhoto = uiState.canUploadPhoto,
+                canProceed = uiState.canProceed,
                 onPhotoUriChange = onPhotoUriChange,
                 onTextChange = onTextChange,
                 onUpdateSessionImageAndNote = onUpdateSessionImageAndNote,
@@ -314,7 +314,7 @@ private fun EmotionRecordStepScreen(
 private fun EmotionRecordStepScreenContent(
     emotionPhotoUri: Uri?,
     emotionText: String,
-    canUploadPhoto: Boolean,
+    canProceed: Boolean,
     onPhotoUriChange: (Uri?) -> Unit,
     onTextChange: (String) -> Unit,
     onUpdateSessionImageAndNote: suspend () -> Unit,
@@ -473,7 +473,7 @@ private fun EmotionRecordStepScreenContent(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                              // 텍스트 입력 영역
+                // 텍스트 입력 영역
                 Box(modifier = Modifier.fillMaxWidth()) {
                     BasicTextField(
                         value = emotionText,
@@ -532,7 +532,12 @@ private fun EmotionRecordStepScreenContent(
             Spacer(modifier = Modifier.weight(1f))
 
             //
-            InfoBanner(title = "산책 중 촬영한 사진만 업로드 가능합니다.")
+            InfoBanner(
+                title = "산책 중 촬영한 사진만 업로드 가능합니다.",
+                backgroundColor = SemanticColor.backgroundDarkSecondary,
+                textColor = SemanticColor.textBorderPrimaryInverse,
+                iconTint = SemanticColor.textBorderPrimaryInverse,
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             // 버튼 영역
@@ -550,9 +555,9 @@ private fun EmotionRecordStepScreenContent(
 
                 CtaButton(
                     text = "다음으로",
-                    textColor = if (canUploadPhoto) SemanticColor.textBorderPrimaryInverse else SemanticColor.textBorderSecondary,
-                    buttonColor = if (canUploadPhoto) SemanticColor.buttonPrimaryDefault else SemanticColor.buttonPrimaryDisabled,
-                    enabled = canUploadPhoto,
+                    textColor = if (canProceed) SemanticColor.textBorderPrimaryInverse else SemanticColor.textBorderSecondary,
+                    buttonColor = if (canProceed) SemanticColor.buttonPrimaryDefault else SemanticColor.buttonPrimaryDisabled,
+                    enabled = canProceed,
                     onClick = {
                         coroutineScope.launch {
                             try {
@@ -570,7 +575,7 @@ private fun EmotionRecordStepScreenContent(
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_forward),
                             contentDescription = "arrow forward",
-                            tint = if (canUploadPhoto) SemanticColor.iconWhite else SemanticColor.iconDisabled,
+                            tint = if (canProceed) SemanticColor.iconWhite else SemanticColor.iconDisabled,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -724,7 +729,7 @@ private fun EmotionRecordStepScreenPreview() {
             uiState = EmotionRecordStepUiState.Success(
                 emotionPhotoUri = null,
                 emotionText = "오늘 산책은 정말 좋았어요!",
-                canUploadPhoto = false,
+                canProceed = true,
             ),
             onPhotoUriChange = {},
             onTextChange = {},
