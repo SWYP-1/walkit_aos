@@ -180,9 +180,11 @@ fun FriendSearchDetailScreenContent(
     var isMoreMenuExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(263f / 375f)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(263f / 375f)
+        ) {
             // 배경 이미지
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -271,7 +273,7 @@ fun FriendSearchDetailScreenContent(
 
                             FollowStatus.PENDING -> Triple(
                                 "요청중",
-                                SemanticColor.buttonPrimaryDisabled,
+                                SemanticColor.iconDisabled,
                                 false
                             )
 
@@ -300,10 +302,10 @@ fun FriendSearchDetailScreenContent(
                                     color = buttonColor,
                                     shape = RoundedCornerShape(size = 8.dp),
                                 )
-                            .clickable(enabled = isEnabled && !isFollowing) {
-                                Timber.d("FriendSearchDetailScreenContent: follow button clicked, followStatus=$followStatus, isFollowing=$isFollowing")
-                                onRequestFollow()
-                            }
+                                .clickable(enabled = isEnabled && !isFollowing) {
+                                    Timber.d("FriendSearchDetailScreenContent: follow button clicked, followStatus=$followStatus, isFollowing=$isFollowing")
+                                    onRequestFollow()
+                                }
                                 .padding(
                                     horizontal = 16.dp,
                                     vertical = 8.dp,
@@ -315,7 +317,7 @@ fun FriendSearchDetailScreenContent(
                                     fontWeight = FontWeight.SemiBold,
                                 ),
                                 color = if (isEnabled) SemanticColor.textBorderPrimaryInverse
-                                else SemanticColor.textBorderSecondaryInverse,
+                                else SemanticColor.textBorderPrimaryInverse,
                             )
                         }
                     }

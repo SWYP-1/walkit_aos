@@ -157,7 +157,7 @@ fun WeeklyRecordCard(
                     VerticalDivider(
                         thickness = 1.dp,
                         modifier = Modifier.height(18.dp),
-                        color = SemanticColor.textBorderPrimary
+                        color = SemanticColor.backgroundWhiteQuaternary
                     )
 
                     // 시간 분 (AnnotatedString)
@@ -165,27 +165,10 @@ fun WeeklyRecordCard(
                         Modifier.weight(1f),
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        val timeString = FormatUtils.formatToMinutesSeconds(session.duration)
+                        val durationText = FormatUtils.formatDurationCompat(session.duration)
 
                         Text(
-                            text = buildAnnotatedString {
-                                // 분 부분 (콜론 앞)
-                                val colonIndex = timeString.indexOf(':')
-                                if (colonIndex > 0) {
-                                    append(timeString.substring(0, colonIndex))
-                                    withStyle(
-                                        SpanStyle(
-                                            fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
-                                            fontWeight = FontWeight.Normal,
-                                            color = SemanticColor.textBorderPrimary
-                                        )
-                                    ) {
-                                        append(timeString.substring(colonIndex)) // 콜론과 초 부분
-                                    }
-                                } else {
-                                    append(timeString)
-                                }
-                            },
+                            text = durationText,
                             style = MaterialTheme.walkItTypography.bodyXL.copy(
                                 fontWeight = FontWeight.Medium
                             ),
