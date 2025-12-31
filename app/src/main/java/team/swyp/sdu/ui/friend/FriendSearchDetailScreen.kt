@@ -271,7 +271,7 @@ fun FriendSearchDetailScreenContent(
 
                             FollowStatus.PENDING -> Triple(
                                 "요청중",
-                                SemanticColor.textBorderPrimary,
+                                SemanticColor.buttonPrimaryDisabled,
                                 false
                             )
 

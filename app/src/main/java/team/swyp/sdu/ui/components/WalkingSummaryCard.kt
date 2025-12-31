@@ -31,6 +31,39 @@ import team.swyp.sdu.utils.FormatUtils
 import java.text.DecimalFormat
 
 /**
+ * 시간 텍스트 파싱 결과
+ */
+private data class TimeParts(
+    val hours: Pair<String, String>?, // (숫자, "시간")
+    val minutes: Pair<String, String>?, // (숫자, "분")
+)
+
+/**
+ * 시간 텍스트 파싱 함수
+ * "0시간 0분" → TimeParts(hours=(0, "시간"), minutes=(0, "분"))
+ */
+private fun parseTimeText(timeText: String): TimeParts {
+    val parts = timeText.split(" ")
+    var hours: Pair<String, String>? = null
+    var minutes: Pair<String, String>? = null
+
+    for (part in parts) {
+        when {
+            part.endsWith("시간") -> {
+                val number = part.removeSuffix("시간")
+                hours = Pair(number, "시간")
+            }
+            part.endsWith("분") -> {
+                val number = part.removeSuffix("분")
+                minutes = Pair(number, "분")
+            }
+        }
+    }
+
+    return TimeParts(hours = hours, minutes = minutes)
+}
+
+/**
  * 요약 카드의 단위 타입
  * 
  * 각 타입별로 포맷팅 로직을 포함합니다.
@@ -183,6 +216,43 @@ fun WalkingSummaryCard(
 }
 
 /**
+ * 시간 표시의 숫자와 단위 부분
+ * 숫자: HeadingS/Medium, 단위: BodyM/Regular
+ */
+@Composable
+private fun TimePart(
+    number: String,
+    unitText: String,
+) {
+    Row(
+        verticalAlignment = Alignment.Bottom, // baseline 정렬
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        // 숫자
+        Text(
+            text = number,
+            fontFamily = Pretendard,
+            fontSize = TypeScale.HeadingS, // 22sp
+            fontWeight = FontWeight.Medium, // Medium
+            lineHeight = (TypeScale.HeadingS.value * 1.5f).sp, // lineHeight 1.5
+            letterSpacing = (-0.22f).sp, // letterSpacing -0.22px
+            color = Color(0xFF191919), // color/text-border/primary
+        )
+
+        // 단위 ("시간", "분")
+        Text(
+            text = unitText,
+            fontFamily = Pretendard,
+            fontSize = TypeScale.BodyM, // 16sp
+            fontWeight = FontWeight.Normal, // Regular
+            lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
+            letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
+            color = Color(0xFF191919), // color/text-border/primary
+        )
+    }
+}
+
+/**
  * 요약 섹션 (라벨 + 값 + 단위)
  */
 @Composable
@@ -207,34 +277,55 @@ private fun RowScope.SummarySection(
         )
 
         // 값 + 단위
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // 값
-            Text(
-                text = value,
-                fontFamily = Pretendard,
-                fontSize = TypeScale.HeadingS, // 22sp
-                fontWeight = FontWeight.Medium, // Medium
-                lineHeight = (TypeScale.HeadingS.value * 1.5f).sp, // lineHeight 1.5
-                letterSpacing = (-0.22f).sp, // letterSpacing -0.22px
-                color = Color(0xFF191919), // color/text-border/primary
-            )
-            Spacer(Modifier.width(4.dp))
+        if (unit == null && value.contains("시간") && value.contains("분")) {
+            // 시간 표시의 경우: 숫자는 HeadingS, 단위는 BodyM로 분리 표시
+            val timeParts = parseTimeText(value)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.Bottom, // baseline 정렬
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 시간 부분 (숫자 + "시간")
+                timeParts.hours?.let { (number, unitText) ->
+                    TimePart(number = number, unitText = unitText)
+                }
 
-            // 단위 (있는 경우만 표시)
-            unit?.let {
+                // 분 부분 (숫자 + "분")
+                timeParts.minutes?.let { (number, unitText) ->
+                    TimePart(number = number, unitText = unitText)
+                }
+            }
+        } else {
+            // 일반 값 + 단위 표시
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 값
                 Text(
-                    text = it,
+                    text = value,
                     fontFamily = Pretendard,
-                    fontSize = TypeScale.BodyM, // 16sp
-                    fontWeight = FontWeight.Normal, // Regular
-                    lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
-                    letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
+                    fontSize = TypeScale.HeadingS, // 22sp
+                    fontWeight = FontWeight.Medium, // Medium
+                    lineHeight = (TypeScale.HeadingS.value * 1.5f).sp, // lineHeight 1.5
+                    letterSpacing = (-0.22f).sp, // letterSpacing -0.22px
                     color = Color(0xFF191919), // color/text-border/primary
                 )
+                Spacer(Modifier.width(4.dp))
+
+                // 단위 (있는 경우만 표시)
+                unit?.let {
+                    Text(
+                        text = it,
+                        fontFamily = Pretendard,
+                        fontSize = TypeScale.BodyM, // 16sp
+                        fontWeight = FontWeight.Normal, // Regular
+                        lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
+                        letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
+                        color = Color(0xFF191919), // color/text-border/primary
+                    )
+                }
             }
         }
     }
