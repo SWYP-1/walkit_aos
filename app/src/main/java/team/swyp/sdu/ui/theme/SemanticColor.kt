@@ -8,6 +8,7 @@ object SemanticColor {
     val backgroundWhiteTertiary = Grey3
     val backgroundWhiteQuaternary = Grey4
     val backgroundDarkPrimary = Grey10
+    val backgroundDarkSecondary =Grey8
     val backgroundDisabled = Grey6
 
     // text / border

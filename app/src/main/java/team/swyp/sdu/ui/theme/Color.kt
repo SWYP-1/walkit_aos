@@ -58,7 +58,7 @@ val Grey4 = Color(0xFFD7D9E0)
 val Grey5 = Color(0xFFC2C3CA)
 val Grey6 = Color(0xFFE0E0E0)
 val Grey7 = Color(0xFF818185)
-val Grey8 = Color(0xFF9E9E9E)
+val Grey8 = Color(0xFF555555)
 val Grey10 = Color(0xFF191919)
 
 // Blue colors for info/alert components

@@ -1012,6 +1012,13 @@ class WalkingViewModel @Inject constructor(
     }
 
     /**
+     * 산책 시작 시간 가져오기 (외부에서 접근용)
+     */
+    fun getStartTimeMillis(): Long {
+        return startTimeMillis
+    }
+
+    /**
      * 총 이동 거리 계산 (미터)
      * LocationPoint 리스트를 기반으로 GPS 거리를 계산합니다.
      */
