@@ -28,7 +28,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun HomeEmptySession(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier = modifier
-            .background(Grey3)
+            .background(Grey3, shape = RoundedCornerShape(16.dp))
             .padding(vertical = 36.dp, horizontal = 28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally

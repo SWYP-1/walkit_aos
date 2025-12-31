@@ -115,7 +115,7 @@ fun NicknameStep(
                 Spacer(Modifier.height(14.dp))
 
                 Text(
-                    text = "캐릭터의 이름을 만들어주세요",
+                    text = "닉네임을 만들어주세요",
                     style = MaterialTheme.walkItTypography.headingM.copy(
                         fontWeight = FontWeight.Medium
                     ),

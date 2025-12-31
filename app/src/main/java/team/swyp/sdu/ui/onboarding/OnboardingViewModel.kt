@@ -41,9 +41,9 @@ data class OnboardingUiState(
     val nicknameState: NicknameState = NicknameState(),
     val goalCount: Int = 10,
     val stepTarget: Int = 0,
-    val birthYear: Int = LocalDate.now().year - 26,
-    val birthMonth: Int = 1,
-    val birthDay: Int = 1,
+    val birthYear: Int = 0,
+    val birthMonth: Int = 0,
+    val birthDay: Int = 0,
     val isLoading: Boolean = false,
 ) {
     /**
