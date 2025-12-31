@@ -416,13 +416,26 @@ private fun WalkingResultScreenContent(
                                     null
                                 }
                             }
-                            bitmap?.let {
-                                CoilBitmapImage(
-                                    context = context,
-                                    bitmap = bitmap,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f),
+//                            bitmap?.let {
+//                                CoilBitmapImage(
+//                                    context = context,
+//                                    bitmap = bitmap,
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .aspectRatio(1f),
+//                                    contentScale = ContentScale.Crop
+//                                )
+//                            }
+                            emotionPhotoUri?.let { uri ->
+                                Image(
+                                    painter = rememberAsyncImagePainter(
+                                        model = ImageRequest.Builder(context)
+                                            .data(uri)      // ✅ URI 그대로 전달
+                                            .crossfade(true)
+                                            .build()
+                                    ),
+                                    contentDescription = "사진",
+                                    modifier = modifier.height(320.dp).aspectRatio(1f),
                                     contentScale = ContentScale.Crop
                                 )
                             }

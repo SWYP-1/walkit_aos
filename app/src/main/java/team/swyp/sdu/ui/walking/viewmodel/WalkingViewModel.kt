@@ -221,6 +221,19 @@ class WalkingViewModel @Inject constructor(
     }
 
     /**
+     * PostWalkingEmotion이 설정되지 않았다면 PreWalkingEmotion으로 초기화
+     */
+    fun initializePostWalkingEmotionIfNeeded() {
+        if (_postWalkingEmotion.value == null) {
+            val preEmotion = _preWalkingEmotion.value
+            if (preEmotion != null) {
+                _postWalkingEmotion.value = preEmotion
+                Timber.d("🚶 initializePostWalkingEmotionIfNeeded - 초기화됨: $preEmotion")
+            }
+        }
+    }
+
+    /**
      * 산책 전 감정 초기화 (새 산책 시작 시)
      */
     fun resetPreWalkingEmotion() {

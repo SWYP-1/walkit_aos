@@ -59,9 +59,12 @@ fun PostWalkingEmotionSelectRoute(
     onClose: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    // ViewModel 인스턴스 확인 로그
+    // ViewModel 인스턴스 확인 로그 및 초기화
     LaunchedEffect(Unit) {
         Timber.d("🚶 PostWalkingEmotionSelectRoute - 진입: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
+
+        // postWalkingEmotion 초기화 (필요한 경우)
+        viewModel.initializePostWalkingEmotionIfNeeded()
     }
 
     val selectedEmotion by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()

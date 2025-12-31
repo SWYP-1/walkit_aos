@@ -532,7 +532,7 @@ private fun EmotionRecordStepScreenContent(
             Spacer(modifier = Modifier.weight(1f))
 
             //
-            if(!canProceed){
+            if (!canProceed) {
                 InfoBanner(
                     title = "산책 중 사진이 아닙니다",
                     description = "산책 중 촬영한 사진을 업로드 해주세요",
@@ -617,27 +617,28 @@ private fun PhotoInputArea(
 ) {
     var showImageMenu by remember { mutableStateOf(false) }
 
+    // 외부 Box: X 버튼 offset까지 포함
     Box(
-        modifier = Modifier.size(92.dp)
+        contentAlignment = Alignment.Center,
     ) {
-        // 실제 이미지 영역
+        // 이미지 영역
         Box(
             modifier = Modifier
-                .matchParentSize()
-                .background(
-                    color = SemanticColor.textBorderTertiary,
-                    shape = RoundedCornerShape(8.dp)
-                )
+                .size(92.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SemanticColor.textBorderTertiary)
                 .clickable { showImageMenu = true },
             contentAlignment = Alignment.Center
         ) {
             if (photoUri != null) {
                 Image(
-                    painter = rememberAsyncImagePainter(photoUri),
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(photoUri)
+                            .build()
+                    ),
                     contentDescription = "선택한 사진",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -645,20 +646,20 @@ private fun PhotoInputArea(
                     painter = painterResource(R.drawable.ic_info_camera),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = SemanticColor.textBorderPrimaryInverse,
+                    tint = SemanticColor.textBorderPrimaryInverse
                 )
             }
         }
 
-        // ❌ 잘리지 않는 X 버튼
+        // X 버튼 (외부 Box 기준으로 offset 적용 가능)
         if (photoUri != null) {
             IconButton(
                 onClick = { onPhotoUriChange(null) },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 8.dp, y = (-8).dp)
-                    .size(24.dp)
+                    .offset(x = 8.dp, y = (-8).dp) // Box 밖으로 살짝 튀어나옴
                     .background(SemanticColor.iconDisabled, CircleShape)
+                    .size(24.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_action_clear),
@@ -668,9 +669,31 @@ private fun PhotoInputArea(
                 )
             }
         }
-    }
 
+        // 이미지 선택 드랍다운 메뉴
+        DropdownMenu(
+            expanded = showImageMenu,
+            onDismissRequest = { showImageMenu = false },
+            modifier = Modifier.background(SemanticColor.backgroundWhitePrimary)
+        ) {
+            DropdownMenuItem(
+                text = { Text(text = "촬영하기", style = MaterialTheme.typography.bodyMedium) },
+                onClick = {
+                    showImageMenu = false
+                    cameraLauncher()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(text = "갤러리에서 가져오기", style = MaterialTheme.typography.bodyMedium) },
+                onClick = {
+                    showImageMenu = false
+                    galleryLauncher()
+                }
+            )
+        }
+    }
 }
+
 
 @Preview(showBackground = true)
 @Composable
