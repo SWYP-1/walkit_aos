@@ -95,6 +95,7 @@ data class MissionWithState(
 data class WalkingSessionData(
     val sessionsThisWeek: List<WalkingSession>,
     val dominantEmotion: EmotionType?,
+    val dominantEmotionCount: Int?,  // dominant emotion의 등장 횟수
     val recentEmotions: List<EmotionType?>
 )
 
@@ -276,11 +277,12 @@ class HomeViewModel @Inject constructor(
                     val thisWeekSessions = sessions.filterThisWeek()
                     val recentEmotions = sessions.sortedByDescending { it.startTime }.take(7)
                         .map { it.postWalkEmotion }
-                    val dominantEmotion = findDominantEmotion(thisWeekSessions)
+                    val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(thisWeekSessions)
 
                     val walkingSessionData = WalkingSessionData(
                         sessionsThisWeek = thisWeekSessions,
                         dominantEmotion = dominantEmotion,
+                        dominantEmotionCount = dominantEmotionCount,
                         recentEmotions = recentEmotions
                     )
 
@@ -503,6 +505,16 @@ class HomeViewModel @Inject constructor(
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
         return emotionCounts.maxByOrNull { it.value }?.key
+    }
+
+    /**
+     * 우세 감정과 그 등장 횟수를 반환
+     */
+    private fun findDominantEmotionWithCount(sessions: List<WalkingSession>): Pair<EmotionType?, Int?> {
+        val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
+
+        val dominantEntry = emotionCounts.maxByOrNull { it.value }
+        return Pair(dominantEntry?.key, dominantEntry?.value)
     }
 
     /**

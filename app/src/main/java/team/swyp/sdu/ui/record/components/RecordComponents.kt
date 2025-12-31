@@ -199,7 +199,7 @@ fun MonthSection(
 
         DominantEmotionCard(
             emotionType = monthlyStats.primaryMood,
-            emotionCnt = monthlyStats.emotionCount.toString(),
+            emotionCount = monthlyStats.emotionCount,
             periodText = "이번달",
         )
         Spacer(Modifier.height(16.dp))
@@ -242,9 +242,9 @@ fun WeekSection(
             // 가장 빈도가 높은 감정 찾기
             val mostFrequentEmotion = emotionFrequency.maxByOrNull { it.value }?.key
             val frequency = emotionFrequency[mostFrequentEmotion] ?: 0
-            Pair(mostFrequentEmotion, frequency.toString())
+            Pair(mostFrequentEmotion, frequency)
         } else {
-            Pair(null as EmotionType?, "0")
+            Pair(null as EmotionType?, 0)
         }
     }
 
@@ -281,7 +281,7 @@ fun WeekSection(
 
         DominantEmotionCard(
             emotionType = dominantEmotionInfo.first,
-            emotionCnt = dominantEmotionInfo.second,
+            emotionCount = dominantEmotionInfo.second,
             periodText = "이번주",
         )
 

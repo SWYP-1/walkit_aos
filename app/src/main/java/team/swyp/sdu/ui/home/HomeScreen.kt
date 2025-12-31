@@ -257,8 +257,10 @@ private fun HomeBottomSection(
 
                 // 이번주 주요 감정 카드
                 val dominantEmotion = walkingSessionDataState.data.dominantEmotion
+                val dominantEmotionCount = walkingSessionDataState.data.dominantEmotionCount
                 DominantEmotionCard(
                     emotionType = dominantEmotion,
+                    emotionCount = dominantEmotionCount,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
