@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.ui.friend.FriendViewModel
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.SearchBar
@@ -33,7 +34,7 @@ import team.swyp.sdu.ui.theme.SemanticColor
 fun FriendSearchScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
-    onNavigateToDetail: (String, String) -> Unit,
+    onNavigateToDetail: (String, FollowStatus) -> Unit,
     viewModel: FriendViewModel = hiltViewModel(),
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -94,7 +95,7 @@ fun FriendSearchScreen(
 private fun SearchResultScreen(
     searchUiState: SearchUiState,
     isFollowing: Boolean,
-    onNavigateToDetail: (String, String) -> Unit,
+    onNavigateToDetail: (String, FollowStatus) -> Unit,
     onFollowClick: () -> Unit,
 ) {
     Surface(

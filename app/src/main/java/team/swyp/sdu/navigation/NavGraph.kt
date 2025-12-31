@@ -219,7 +219,7 @@ fun NavGraph(
                 FriendSearchScreen(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateToDetail = { nickname, followStatus ->
-                        navController.navigate(Screen.FriendSearchDetail.createRoute(nickname, followStatus))
+                        navController.navigate(Screen.FriendSearchDetail.createRoute(nickname, followStatus.name))
                     },
                     onNavigateBack = {
                         if (!navController.popBackStack(Screen.Friends.route, false)) {

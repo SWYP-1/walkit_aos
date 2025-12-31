@@ -53,7 +53,6 @@ import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
-import timber.log.Timber
 
 /**
  * 친구 검색 상세 화면 Route
