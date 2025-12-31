@@ -344,7 +344,7 @@ private fun CharacterInfoSection(
                         color = SemanticColor.backgroundWhitePrimary
                     )
                     Text(
-                        text = "${walkProgressPercentage}%",
+                        text = "${walkProgressPercentage.toFloatOrNull()?.toInt() ?: 0}%",
                         style = MaterialTheme.walkItTypography.bodyM.copy(
                             fontWeight = FontWeight.Medium
                         ),

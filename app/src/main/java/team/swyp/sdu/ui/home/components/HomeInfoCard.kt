@@ -120,7 +120,7 @@ fun HomeNameAndGoalContent(
         Spacer(modifier = Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                text = "${goal.targetStepCount}일/ ${goal.targetWalkCount} 걸음씩",
+                text = "${goal.targetStepCount}일 / ${goal.targetWalkCount} 걸음씩",
 
                 // body M/medium
                 style = MaterialTheme.walkItTypography.bodyM.copy(
@@ -129,7 +129,7 @@ fun HomeNameAndGoalContent(
                 color = SemanticColor.backgroundWhitePrimary
             )
             Text(
-                text = "${walkProgressPercentage}%",
+                text = "${walkProgressPercentage.toFloatOrNull()?.toInt() ?: 0}%",
                 // body M/medium
                 style = MaterialTheme.walkItTypography.bodyM.copy(
                     fontWeight = FontWeight.Medium
