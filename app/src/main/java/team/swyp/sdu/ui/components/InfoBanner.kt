@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ fun InfoBanner(
     borderColor: Color = BlueSecondary,
     iconTint: Color = SemanticColor.stateBluePrimary,
     textColor: Color = BluePrimary,
+    icon: @Composable () -> Unit = { InfoIcon(iconTint = iconTint) },
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -77,7 +79,7 @@ fun InfoBanner(
         verticalAlignment = if (description != null) Alignment.Top else Alignment.CenterVertically,
     ) {
         // 왼쪽: 정보 아이콘
-        InfoIcon(iconTint = iconTint)
+        icon()
 
         // 오른쪽: 텍스트 영역
         Column(
