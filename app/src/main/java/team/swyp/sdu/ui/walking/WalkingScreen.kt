@@ -324,11 +324,16 @@ private fun WalkingScreenContent(
             ) {
                 val centerY = constraints.maxHeight / 2
 
-                // Character (bottom = center line)
+//                // Character (bottom = center line)
+//                character.place(
+//                    x = (constraints.maxWidth - character.width) / 2,
+//                    y = centerY - character.height
+//                )
                 character.place(
                     x = (constraints.maxWidth - character.width) / 2,
-                    y = centerY - character.height
+                    y = centerY - character.height / 2
                 )
+
 
                 // stepCounter (top = 94dp)
                 stepCounter?.place(

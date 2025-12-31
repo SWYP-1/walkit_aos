@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -73,7 +74,7 @@ fun LocationAgreementDialog(
                     color = White,
                     shape = RoundedCornerShape(12.dp),
                 )
-                .padding(24.dp),
+                .padding(top = 24.dp,start =24.dp, end = 24.dp),
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -139,15 +140,29 @@ fun LocationAgreementDialog(
                         )
 
                     }
-                    Spacer(Modifier.height(12.dp))
+                    val shape = RoundedCornerShape(8.dp)
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         text = "나중에 할게요",
-                        // caption M/medium
                         style = MaterialTheme.walkItTypography.captionM.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = SemanticColor.textBorderSecondary
+                        color = SemanticColor.textBorderSecondary,
+                        modifier = Modifier
+                            .clip(shape)
+                            .clickable(
+                                onClick = {
+                                    onDenyPermission()
+                                    onDismiss()
+                                }
+                            )
+                            .padding(
+                                horizontal = 16.dp,
+                                vertical = 12.dp
+                            )
                     )
+                    Spacer(Modifier.height(12.dp))
+
                 }
             }
         }

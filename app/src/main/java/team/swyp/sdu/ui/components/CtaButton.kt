@@ -66,11 +66,24 @@ fun CtaButton(
     val disabledColor = Color(0xFFE0E0E0) // 비활성화 색상 (임시)
     val borderWidth = if (buttonColor == SemanticColor.buttonPrimaryDefault) 1.dp else 0.dp
 
+    val showBorder =
+        enabled && buttonColor == SemanticColor.buttonPrimaryDefault
+
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .border(width = borderWidth, color = SemanticColor.textBorderGreenPrimary, shape = RoundedCornerShape(8.dp))
+            .then(
+                if (showBorder) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = SemanticColor.textBorderGreenPrimary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .height(buttonHeight),
         enabled = enabled,
         interactionSource = interactionSource,
