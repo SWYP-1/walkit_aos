@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -296,26 +298,29 @@ fun SessionDailyTab(
 ) {
     if (sessionCount <= 1) return // 세션이 1개 이하면 탭 표시하지 않음
 
-    val tabTitles = listOf("첫번째", "두번째", "세번째", "네번째", "다섯번째")
+    val tabTitles = listOf("첫번째", "두번째", "세번째", "네번째", "다섯번째", "여섯번째", "일곱번째", "여덟번째", "아홉번째", "열 번째")
 
-    TabRow(
-        selectedTabIndex = selectedSessionIndex,
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        containerColor = SemanticColor.backgroundWhitePrimary,
-        contentColor = SemanticColor.textBorderPrimary,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         repeat(sessionCount) { index ->
-            Tab(
-                selected = selectedSessionIndex == index,
-                onClick = { onSessionSelected(index) },
-                text = {
-                    Text(
-                        text = tabTitles.getOrElse(index) { "${index + 1}번째" },
-                        style = walkItTypography.bodyM.copy(
-                            fontWeight = if (selectedSessionIndex == index) FontWeight.SemiBold else FontWeight.Normal
-                        )
+            val isSelected = selectedSessionIndex == index
+            val tabText = tabTitles.getOrElse(index) { "${index + 1}번째" }
+
+            Text(
+                text = tabText,
+                style = MaterialTheme.walkItTypography.bodyM.copy(
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                ),
+                color = if (isSelected) SemanticColor.textBorderPrimary else SemanticColor.textBorderSecondary,
+                modifier = Modifier
+                    .background(
+                        color = if (isSelected) SemanticColor.backgroundGreenSecondary else SemanticColor.backgroundWhitePrimary,
+                        shape = RoundedCornerShape(16.dp)
                     )
-                }
+                    .clickable { onSessionSelected(index) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
     }
