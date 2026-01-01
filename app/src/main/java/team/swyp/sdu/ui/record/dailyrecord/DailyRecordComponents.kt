@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,9 +61,10 @@ fun SessionThumbnailList(
 
     LazyRow(
         state = listState,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth().aspectRatio(1f),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        
         itemsIndexed(sessions) { index, session ->
             SessionThumbnailItem(
                 session = session,

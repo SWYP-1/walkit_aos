@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -172,7 +174,7 @@ fun DailyRecordScreen(
 
             // 헤더
             AppHeader(
-                title = dateLabel,
+                title = "일일 산책 기록",
                 onNavigateBack = {
                     if (isEditing && editedNote != (selectedSession?.note ?: "")) {
                         // 실제 내용이 변경되었을 때만 확인 다이얼로그 표시
@@ -249,6 +251,13 @@ fun DailyRecordContent(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+
+        SessionDailyTab(
+            sessionCount = sessionsForDate.size,
+            selectedSessionIndex = selectedSessionIndex,
+            onSessionSelected = onSessionSelected,
+        )
+
         SessionThumbnailList(
             sessions = sessionsForDate,
             selectedIndex = selectedSessionIndex,
@@ -276,6 +285,39 @@ fun DailyRecordContent(
             setEditing = setEditing,
             focusRequester = focusRequester
         )
+    }
+}
+
+@Composable
+fun SessionDailyTab(
+    sessionCount: Int,
+    selectedSessionIndex: Int,
+    onSessionSelected: (Int) -> Unit,
+) {
+    if (sessionCount <= 1) return // 세션이 1개 이하면 탭 표시하지 않음
+
+    val tabTitles = listOf("첫번째", "두번째", "세번째", "네번째", "다섯번째")
+
+    TabRow(
+        selectedTabIndex = selectedSessionIndex,
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = SemanticColor.backgroundWhitePrimary,
+        contentColor = SemanticColor.textBorderPrimary,
+    ) {
+        repeat(sessionCount) { index ->
+            Tab(
+                selected = selectedSessionIndex == index,
+                onClick = { onSessionSelected(index) },
+                text = {
+                    Text(
+                        text = tabTitles.getOrElse(index) { "${index + 1}번째" },
+                        style = walkItTypography.bodyM.copy(
+                            fontWeight = if (selectedSessionIndex == index) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    )
+                }
+            )
+        }
     }
 }
 
