@@ -14,12 +14,16 @@ object WeeklyMissionMapper {
      * WeeklyMissionDto → WeeklyMission Domain Model
      */
     fun toDomain(dto: WeeklyMissionDto): WeeklyMission {
+        val missionType = dto.getMissionType() ?: MissionType.CHALLENGE_STEPS
+        val category = MissionCategory.fromTypeAndCategory(dto.category, dto.type)
+            ?: dto.getMissionCategory() // fallback to basic category logic
+
         return WeeklyMission(
             userWeeklyMissionId = dto.userWeeklyMissionId,
             missionId = dto.missionId,
             title = dto.title,
-            category = dto.getMissionCategory() ?: MissionCategory.CHALLENGE,
-            type = dto.getMissionType() ?: MissionType.CHALLENGE_STEPS,
+            category = category ?: MissionCategory.CHALLENGE_STEPS,
+            type = missionType,
             status = dto.getMissionStatus(),
             rewardPoints = dto.rewardPoints,
             assignedConfigJson = dto.assignedConfigJson,

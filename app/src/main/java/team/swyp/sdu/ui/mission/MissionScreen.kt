@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -111,7 +112,7 @@ fun MissionScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "카테고리별 미션",
+                            text = "오늘의 미션",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
@@ -121,7 +122,7 @@ fun MissionScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        MissionCategory.entries.forEach { category ->
+                        MissionCategory.getFilterCategories().forEach { category ->
                             CategoryChip(
                                 category = category,
                                 isSelected = selectedCategory == category,
@@ -139,13 +140,22 @@ fun MissionScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            // 미션 리스트
-            items(uiState.weeklyMissions) { missionCard ->
+            // 미션 리스트 (카테고리 필터링 적용)
+            val filteredMissions = if (selectedCategory != null) {
+                uiState.weeklyMissions.filter { missionCard ->
+                    missionCard.mission.category == selectedCategory
+                }
+            } else {
+                uiState.weeklyMissions
+            }
+
+            itemsIndexed(filteredMissions) { index, missionCard ->
                 MissionCard(
                     cardState = missionCard.cardState,
                     mission = missionCard.mission,
                     onChallengeClick = onNavigateToWalk,
-                    onRewardClick = { missionId -> onMissionClick(missionId) }
+                    onRewardClick = { missionId -> onMissionClick(missionId) },
+                    isActive = index == 0 // 첫 번째 카드(index 0)에만 특별 처리
                 )
             }
 

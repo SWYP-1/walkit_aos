@@ -39,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import team.swyp.sdu.R
@@ -211,10 +215,6 @@ private fun FriendScreenContent(
                 confirmTarget = friend
                 menuTargetId = null
             },
-            contentPaddingBottom =
-                with(LocalDensity.current) {
-                    WindowInsets.navigationBars.getBottom(this).toDp()
-                },
         )
     }
 
@@ -248,7 +248,6 @@ private fun FriendListScreen(
     onMoreClick: (Friend) -> Unit,
     onMenuDismiss: () -> Unit,
     onBlockClick: (Friend) -> Unit,
-    contentPaddingBottom: Dp,
 ) {
     Surface(
         tonalElevation = 0.dp,
@@ -257,8 +256,7 @@ private fun FriendListScreen(
                 .fillMaxSize(),
     ) {
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            contentPadding = PaddingValues(bottom = contentPaddingBottom + 12.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             items(friends) { friend ->
                 FriendRow(
@@ -308,8 +306,14 @@ private fun FriendRow(
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // TODO: 이미지 로딩 구현 시 Coil 사용
-                    // 현재는 placeholder로 빈 원형 배경만 표시
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(friend.avatarUrl)
+                            .build(),
+                        contentDescription = "기본 캐릭터",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 }
 
                 // 닉네임

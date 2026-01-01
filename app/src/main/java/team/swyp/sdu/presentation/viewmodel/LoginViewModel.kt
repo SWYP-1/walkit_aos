@@ -145,6 +145,11 @@ class LoginViewModel @Inject constructor(
     fun loginWithKakaoTalk(context: Context) {
         _uiState.value = LoginUiState.Loading
 
+        // 로그인 버튼 클릭 시 provider 저장
+        viewModelScope.launch {
+            authDataStore.saveProvider("kakao")
+        }
+
         // 카카오톡 로그인 가능 여부 확인
         if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
             UserApiClient.instance.loginWithKakaoTalk(context) { token, error ->
@@ -177,6 +182,11 @@ class LoginViewModel @Inject constructor(
     fun loginWithKakaoAccount(context: Context) {
         _uiState.value = LoginUiState.Loading
 
+        // 로그인 버튼 클릭 시 provider 저장
+        viewModelScope.launch {
+            authDataStore.saveProvider("kakao")
+        }
+
         UserApiClient.instance.loginWithKakaoAccount(context) { token, error ->
             if (error != null) {
                 Timber.e(error, "카카오계정으로 로그인 실패")
@@ -194,6 +204,12 @@ class LoginViewModel @Inject constructor(
      */
     fun loginWithNaver(context: Context, launcher: ActivityResultLauncher<Intent>) {
         _uiState.value = LoginUiState.Loading
+
+        // 로그인 버튼 클릭 시 provider 저장
+        viewModelScope.launch {
+            authDataStore.saveProvider("naver")
+        }
+
         NidOAuth.requestLogin(context, launcher)
     }
 
@@ -228,6 +244,11 @@ class LoginViewModel @Inject constructor(
      */
     fun loginWithNaver(context: Context) {
         _uiState.value = LoginUiState.Loading
+
+        // 로그인 버튼 클릭 시 provider 저장
+        viewModelScope.launch {
+            authDataStore.saveProvider("naver")
+        }
 
         val nidOAuthCallback = object : NidOAuthCallback {
             override fun onSuccess() {
@@ -344,13 +365,11 @@ class LoginViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         val tokenResponse = result.data
-                        // 서버 토큰 및 provider 저장
-                        val provider = if (isKakao) "카카오" else "네이버"
+                        // 서버 토큰 저장 (provider는 이미 로그인 버튼 클릭 시 저장됨)
                         authDataStore.saveTokens(
                             accessToken = tokenResponse.accessToken,
                             refreshToken = tokenResponse.refreshToken,
                         )
-                        authDataStore.saveProvider(provider)
                         // TokenProvider도 업데이트 (Flow 구독으로 자동 업데이트되지만 명시적으로 호출)
                         tokenProvider.updateTokens(
                             tokenResponse.accessToken,

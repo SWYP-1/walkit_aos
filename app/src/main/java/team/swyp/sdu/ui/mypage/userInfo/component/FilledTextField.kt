@@ -24,6 +24,8 @@ fun FilledTextField(
     placeholder: String,
     modifier: Modifier = Modifier,
     singleLine: Boolean = true,
+    isError: Boolean = false,
+    supportingText: @Composable (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -43,9 +45,12 @@ fun FilledTextField(
             unfocusedBorderColor = Color.Transparent,
             focusedTextColor = Grey10,
             unfocusedTextColor = Grey10,
+            errorBorderColor = Color.Red,
         ),
         shape = RoundedCornerShape(8.dp),
         textStyle = MaterialTheme.walkItTypography.bodyM,
         singleLine = singleLine,
+        isError = isError,
+        supportingText = supportingText,
     )
 }

@@ -81,14 +81,19 @@ class WalkingSessionListViewModel
                     
                     // 11월 데이터가 없으면 생성
                     if (!hasNovemberData) {
-                        val novemberSessions = WalkingTestData.generateNovemberSessions()
+                        // 현재 사용자 ID 가져오기
+                        val currentUserId = walkingSessionRepository.getCurrentUserId()
+                        Timber.d("📋 11월 더미 데이터 생성 - 현재 사용자 ID: $currentUserId")
+
+                        val novemberSessions = WalkingTestData.generateNovemberSessions(userId = currentUserId) // ✅ userId 전달
                         Timber.d("11월 더미 데이터 생성 시작: ${novemberSessions.size}개 세션")
-                        
+
                         novemberSessions.forEach { session ->
+                            Timber.d("💾 11월 세션 저장: userId=${session.userId}")
                             walkingSessionRepository.saveSession(session)
                         }
-                        
-                        Timber.d("11월 더미 데이터 저장 완료: ${novemberSessions.size}개 세션")
+
+                        Timber.d("11월 더미 데이터 저장 완료: ${novemberSessions.size}개 세션 (userId=$currentUserId)")
                     } else {
                         Timber.d("11월 데이터가 이미 존재하여 생성하지 않습니다")
                     }

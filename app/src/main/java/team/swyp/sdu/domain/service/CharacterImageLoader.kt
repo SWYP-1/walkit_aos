@@ -123,3 +123,4 @@ data class CacheStats(
     val memoryCacheSize: Int,
     val maxMemoryCacheSize: Int
 )
+

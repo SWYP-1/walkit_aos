@@ -104,23 +104,32 @@ fun MyPageStatsSection(
 
                 Spacer(Modifier.height(2.dp))
 
-                // 시간과 분을 나란히 표시
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // 시간 섹션 (50%)
-                    TimeValueSection(
-                        value = hours.toString(),
-                        unit = "시간",
-                    )
-                    Spacer(Modifier.width(cardHorizontalPadding))
-                    // 분 섹션 (50%)
-                    TimeValueSection(
-                        value = minutes.toString(),
-                        unit = "분",
-                    )
+                    if (hours >= 100) {
+                        // 100시간 이상 → 시간만
+                        TimeValueSection(
+                            value = hours.toString(),
+                            unit = "시간",
+                        )
+                    } else {
+                        // 100시간 미만 → 시간 + 분
+                        TimeValueSection(
+                            value = hours.toString(),
+                            unit = "시간",
+                        )
+
+                        Spacer(Modifier.width(cardHorizontalPadding))
+
+                        TimeValueSection(
+                            value = minutes.toString(),
+                            unit = "분",
+                        )
+                    }
                 }
+
             }
         }
     }

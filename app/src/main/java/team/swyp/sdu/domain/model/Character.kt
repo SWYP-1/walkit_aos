@@ -36,10 +36,43 @@ data class LottieCharacterState(
 /**
  * 캐릭터 파트 타입 열거형
  */
-enum class CharacterPart(val assetId: String, val lottieAssetId: String, val ribbonAssetId: String = lottieAssetId) {
-    HEAD("head", "head", "headribbon"),
+enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String) {
+    HEAD("head", "headtop", "headdocor"),
     BODY("body", "body"),
-    FEET("feet", "foot")
+    FEET("feet", "foot");
+
+    /**
+     * tags를 기반으로 적절한 Lottie assetId를 반환
+     * @param tags 코스메틱 아이템의 태그들 (콤마로 구분)
+     * @return 선택된 Lottie assetId
+     */
+    fun getLottieAssetId(tags: String? = null): String {
+        // tags가 없는 경우 기본 assetId 반환
+        if (tags.isNullOrBlank()) {
+            return lottieAssetIds.first()
+        }
+
+        return when (this) {
+            HEAD -> {
+                when {
+                    tags.contains("TOP", ignoreCase = true) -> "headtop"
+                    tags.contains("DECOR", ignoreCase = true) -> "headdocor"
+                    else -> lottieAssetIds.first() // 기본값
+                }
+            }
+            BODY -> lottieAssetIds.first()
+            FEET -> lottieAssetIds.first()
+        }
+    }
+
+    companion object {
+        /**
+         * position 문자열로부터 CharacterPart를 찾음
+         */
+        fun fromPosition(position: String): CharacterPart? {
+            return entries.find { it.name.equals(position, ignoreCase = true) }
+        }
+    }
 }
 
 

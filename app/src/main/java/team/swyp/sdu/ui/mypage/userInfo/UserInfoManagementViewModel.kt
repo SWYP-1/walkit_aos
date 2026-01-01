@@ -8,10 +8,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.Response
 import team.swyp.sdu.core.Result
+import team.swyp.sdu.core.onError
+import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.UserRepository
@@ -45,6 +49,13 @@ class UserInfoManagementViewModel @Inject constructor(
 
     // 연동된 계정 정보 (Flow를 StateFlow로 변환)
     val provider: StateFlow<String?> = authDataStore.provider
+        .map { providerValue ->
+            when (providerValue) {
+                "kakao" -> "카카오"
+                "naver" -> "네이버"
+                else -> providerValue
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
@@ -57,6 +68,14 @@ class UserInfoManagementViewModel @Inject constructor(
     // 프로필 이미지 삭제 상태
     private val _imageDeleted = MutableStateFlow(false)
     val imageDeleted: StateFlow<Boolean> = _imageDeleted.asStateFlow()
+
+    // 변경사항 추적 상태
+    private val _hasChange = MutableStateFlow(false)
+    val hasChange: StateFlow<Boolean> = _hasChange.asStateFlow()
+
+    // 현재 사용자 데이터 (UI 상태 복원을 위해)
+    private var currentUser: User? = null
+
 
     init {
         loadUserInfo()
@@ -82,12 +101,14 @@ class UserInfoManagementViewModel @Inject constructor(
             when (val result = userRepository.getUser()) {
                 is Result.Success -> {
                     val user = result.data
+                    currentUser = user // 현재 사용자 데이터 저장
                     _userInput.value = UserInput(
                         nickname = user.nickname ?: "",
                         birthDate = user.birthDate ?: "",
                         email = user.email,
                         imageName = user.imageName,
                     )
+                    _hasChange.value = false // 초기 로딩 시 변경사항 없음
                     _uiState.value = Success(user)
                 }
 
@@ -108,7 +129,10 @@ class UserInfoManagementViewModel @Inject constructor(
      * 사용자 입력 상태 업데이트
      */
     fun updateUserInput(input: UserInput) {
-        _userInput.value = input
+        Timber.d("updateUserInput: nickname=${input.nickname}, isDuplicate=${input.isNicknameDuplicate}, error=${input.nicknameValidationError}")
+        _userInput.value = input  // update 대신 직접 할당
+        _hasChange.value = true
+        Timber.d("userInput updated successfully")
     }
     /**
      * 사용자 입력 상태 업데이트
@@ -124,6 +148,7 @@ class UserInfoManagementViewModel @Inject constructor(
             _imageDeleted.value = false
             _uploadedImageUri.value = uri
         }
+        _hasChange.value = true // 이미지 변경 시 변경사항 표시
     }
 
     /**
@@ -138,13 +163,11 @@ class UserInfoManagementViewModel @Inject constructor(
                 else -> null
             }
 
-            val imageId = currentUser?.imageName?.toLongOrNull() ?: 0L
-
-            val result = userRepository.deleteImage(imageId)
+            val result = userRepository.deleteImage()
             when (result) {
                 is Result.Success -> {
                     if (result.data.isSuccessful) {
-                        Timber.d("프로필 이미지 삭제 성공: imageId=$imageId")
+                        Timber.d("프로필 이미지 삭제 성공: ")
                     } else {
                         Timber.e("프로필 이미지 삭제 실패: HTTP ${result.data.code()}")
                     }
@@ -196,31 +219,34 @@ class UserInfoManagementViewModel @Inject constructor(
                     return@launch
                 }
 
+                Timber.d("프로필 업데이트 시도: nickname=$nickname, birthDate=$birthDate")
+
                 val currentImageUri = _uploadedImageUri.value
                 val shouldDeleteImage = _imageDeleted.value
 
-                // 1️⃣ 병렬 실행
+                // 2️⃣ 닉네임 등록 성공 시에만 다른 필드들 업데이트
                 val imageDeferred = async {
                     when {
                         shouldDeleteImage -> {
-                            // 이미지 삭제 요청
+                            Timber.d("프로필 이미지 삭제 시도")
                             deleteProfileImage()
                             Result.Success(Unit)
                         }
                         currentImageUri != Uri.EMPTY -> {
-                            // 새 이미지 업로드
+                            Timber.d("새 프로필 이미지 업로드 시도")
                             userRepository.updateUserProfileImage(currentImageUri)
                         }
                         else -> {
-                            // 이미지 변경 없음
+                            Timber.d("프로필 이미지 변경 없음")
                             Result.Success(Unit)
                         }
                     }
                 }
 
                 val profileDeferred = async {
+                    Timber.d("프로필 정보 업데이트 시도: birthDate=$birthDate")
                     userRepository.updateUserProfile(
-                        nickname = nickname,
+                        nickname = nickname, // 이미 등록된 닉네임
                         birthDate = birthDate
                     )
                 }
@@ -228,22 +254,50 @@ class UserInfoManagementViewModel @Inject constructor(
                 val imageResult = imageDeferred.await()
                 val profileResult = profileDeferred.await()
 
-                // 2️⃣ 결과 합산
+                // 3️⃣ 결과 처리
                 when {
                     imageResult is Result.Error -> {
-                        _uiState.value =
-                            UserInfoUiState.Error(imageResult.message ?: "이미지 업데이트 실패")
+                        _uiState.value = UserInfoUiState.Error(imageResult.message ?: "이미지 업데이트 실패")
                         return@launch
                     }
 
                     profileResult is Result.Error -> {
-                        _uiState.value =
-                            UserInfoUiState.Error(profileResult.message ?: "프로필 업데이트 실패")
+                        // 프로필 업데이트 실패 시 닉네임 중복 에러 처리
+                        Timber.e(profileResult.exception, "프로필 업데이트 실패: ${profileResult.message}")
+
+                        // Onboarding과 동일한 에러 처리 방식
+                        when (profileResult.exception?.message) {
+                            "NICKNAME_VALIDATION_ERROR" -> {
+                                // 닉네임 규칙 위반
+                                _userInput.value = _userInput.value.copy(
+                                    isNicknameDuplicate = null,
+                                    nicknameValidationError = "닉네임 형식이 올바르지 않습니다."
+                                )
+                            }
+                            "DUPLICATE_NICKNAME" -> {
+                                // 닉네임 중복
+                                _userInput.value = _userInput.value.copy(
+                                    isNicknameDuplicate = true,
+                                    nicknameValidationError = "중복된 닉네임입니다."
+                                )
+                            }
+                            else -> {
+                                // 기타 에러
+                                _uiState.value = UserInfoUiState.Error(profileResult.message ?: "프로필 업데이트 실패")
+                                return@launch
+                            }
+                        }
+
+                        // 닉네임 에러의 경우 UI 상태를 복원하고 계속 진행
+                        currentUser?.let { user ->
+                            _uiState.value = UserInfoUiState.Success(user)
+                        }
                         return@launch
                     }
 
                     imageResult is Result.Success && profileResult is Result.Success -> {
-                        // ✅ 둘 다 성공한 후 최신 데이터를 가져와서 Room 업데이트
+                        Timber.d("모든 업데이트 성공, 최신 데이터 동기화 시도")
+                        // ✅ 모든 업데이트 성공 시 최신 데이터를 가져와서 UI 업데이트
                         val refreshResult = userRepository.refreshUser()
                         when (refreshResult) {
                             is Result.Success -> {
@@ -253,19 +307,21 @@ class UserInfoManagementViewModel @Inject constructor(
                                     birthDate = updatedUser.birthDate ?: "",
                                     email = updatedUser.email,
                                     imageName = updatedUser.imageName,
-                                    selectedImageUri = null // 저장 성공 시 선택된 이미지 URI 초기화
+                                    selectedImageUri = null, // 저장 성공 시 선택된 이미지 URI 초기화
+                                    isNicknameDuplicate = false, // 저장 성공 시 중복 상태 초기화
+                                    nicknameValidationError = null // 에러 상태 초기화
                                 )
                                 // 성공 시 상태 초기화
                                 _uploadedImageUri.value = Uri.EMPTY
                                 _imageDeleted.value = false
+                                _hasChange.value = false // 저장 성공 시 변경사항 리셋
                                 _uiState.value = Success(updatedUser)
-                                Timber.d("프로필 저장 완료: nickname=$nickname,imageName=${updatedUser.imageName}")
+                                Timber.d("프로필 저장 완료: nickname=$nickname, birthDate=$birthDate, imageName=${updatedUser.imageName}")
                             }
                             is Result.Error -> {
                                 _uiState.value = Error("프로필 데이터 동기화 실패")
-                                Timber.e("프로필 저장 후 데이터 동기화 실패")
+                                Timber.e("프로필 저장 후 데이터 동기화 실패: ${refreshResult.message}")
                             }
-
                             Result.Loading -> {}
                         }
                     }
@@ -278,12 +334,13 @@ class UserInfoManagementViewModel @Inject constructor(
         }
     }
 
+
     /**
      * 프로필 이미지 삭제
      */
-    suspend fun deleteImage(imageId: Long): Result<Response<Unit>> {
+    suspend fun deleteImage(): Result<Response<Unit>> {
         return try {
-            userRepository.deleteImage(imageId)
+            userRepository.deleteImage()
         } catch (e: Exception) {
             Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
             Result.Error(e, e.message ?: "프로필 이미지 삭제에 실패했습니다")
@@ -298,6 +355,7 @@ class UserInfoManagementViewModel @Inject constructor(
 sealed interface UserInfoUiState {
     data object Loading : UserInfoUiState
     data object Updating : UserInfoUiState
+    data object CheckingDuplicate : UserInfoUiState
     data class Success(val user: User) : UserInfoUiState
     data class Error(val message: String) : UserInfoUiState
 }

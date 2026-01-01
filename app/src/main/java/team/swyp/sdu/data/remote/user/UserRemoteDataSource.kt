@@ -1,6 +1,7 @@
 package team.swyp.sdu.data.remote.user
 
 import android.net.Uri
+import retrofit2.Response
 import team.swyp.sdu.data.remote.home.dto.UserPointDto
 import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.domain.model.UserSearchResult
@@ -38,23 +39,13 @@ class UserRemoteDataSource @Inject constructor(
     }
 
     /**
-     * 닉네임 중복 체크
-     *
-     * @param nickname 체크할 닉네임
-     * @return Response 객체 (isSuccessful로 중복 여부 판단)
-     */
-    suspend fun checkNicknameDuplicate(nickname: String): retrofit2.Response<Void> {
-        return userManagementRemoteDataSource.checkNicknameDuplicate(nickname)
-    }
-
-    /**
      * 닉네임 등록
      *
      * @param nickname 등록할 닉네임
      * @throws Exception API 호출 실패 시 예외 발생
      */
-    suspend fun registerNickname(nickname: String) {
-        userManagementRemoteDataSource.registerNickname(nickname)
+    suspend fun registerNickname(nickname: String): Response<Unit> {
+        return userManagementRemoteDataSource.registerNickname(nickname)
     }
 
     /**
@@ -83,8 +74,8 @@ class UserRemoteDataSource @Inject constructor(
     suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-    ) {
-        userProfileRemoteDataSource.updateUserProfile(nickname, birthDate)
+    ): Response<Unit> {
+        return userProfileRemoteDataSource.updateUserProfile(nickname, birthDate)
     }
 
 

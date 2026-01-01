@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,13 +58,20 @@ import timber.log.Timber
 @Composable
 fun WalkingScreenRoute(
     modifier: Modifier = Modifier,
-    viewModel: WalkingViewModel = hiltViewModel(),
+    viewModel: WalkingViewModel,
     onNavigateToPostWalkingEmotion: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
     val screenState by viewModel.walkingScreenState.collectAsStateWithLifecycle()
     val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
+
+    // 화면 진입 시 캐릭터 정보 로드 (최초 1회)
+    LaunchedEffect(Unit) {
+        Timber.d("🚶 WalkingScreen LaunchedEffect triggered - viewModel hash: ${viewModel.hashCode()}")
+        Timber.d("🚶 WalkingScreen: 캐릭터 정보 로드 시도")
+        viewModel.loadWalkingCharacterIfNeeded()
+    }
 
     val permissionsState =
         rememberMultiplePermissionsState(
@@ -242,7 +250,8 @@ private fun WalkingScreenContent(
             Image(
                 painter = painterResource(defaultBackground),
                 contentDescription = "walking background",
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         } else {
             AsyncImage(

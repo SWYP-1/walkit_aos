@@ -30,6 +30,17 @@ class CharacterRepositoryImpl @Inject constructor(
         characterDao.observeCharacter(nickname)
             .map { entity -> entity?.let(CharacterMapper::toDomain) }
 
+    override suspend fun getCharacterFromDb(nickname: String): Character? =
+        withContext(Dispatchers.IO) {
+            try {
+                val entity = characterDao.getCharacter(nickname)
+                entity?.let(CharacterMapper::toDomain)
+            } catch (e: Exception) {
+                Timber.e(e, "DB에서 캐릭터 정보 조회 실패: $nickname")
+                null
+            }
+        }
+
     override suspend fun getCharacter(nickname: String): Result<Character> =
         withContext(Dispatchers.IO) {
             try {

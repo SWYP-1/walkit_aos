@@ -12,11 +12,12 @@ data class FriendListItemDto(
     val nickname: String,
     
     @SerialName("userId")
-    val userId: Int,
+    val userId: Long,
     
     @SerialName("imageName")
     val userImageUrl: String? = null,
 )
+
 
 
 

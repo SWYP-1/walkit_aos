@@ -224,3 +224,4 @@ class PathSmootherTest {
         assertEquals(latitudes.last(), result.first.last(), 0.0001)
     }
 }
+

@@ -216,6 +216,9 @@ fun MainScreen(
                     onClickAlarm = { navController.navigate(Screen.Alarm.route) },
                     onClickMissionMore = {
                         navController.navigate(Screen.Mission.route)
+                    },
+                    onNavigateToRecord = {
+                        selectedTabIndex = 1
                     }
                 )
 

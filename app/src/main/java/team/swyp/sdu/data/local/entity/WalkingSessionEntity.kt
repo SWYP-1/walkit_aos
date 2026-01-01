@@ -18,6 +18,7 @@ import team.swyp.sdu.domain.service.ActivityType
 data class WalkingSessionEntity(
     @PrimaryKey
     val id: String,
+    val userId: Long, // 사용자 ID 추가
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,

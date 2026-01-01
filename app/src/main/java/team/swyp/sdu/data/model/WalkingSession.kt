@@ -33,6 +33,7 @@ data class ActivityStats(
 @Parcelize
 data class WalkingSession(
     val id: String = UUID.randomUUID().toString(),
+    val userId: Long = 0L, // 사용자 ID 추가 (기본값 0)
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,

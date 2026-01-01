@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
+import team.swyp.sdu.ui.record.components.customShadow
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -43,7 +44,7 @@ fun WalkingActionButton(
         onClick = onClick,
         shape = CircleShape,
         color = backgroundColor,
-        shadowElevation = 12.dp, // ⭐️ 이게 핵심
+        shadowElevation = 8.dp, // 원형 그림자
         modifier = modifier.size(92.dp)
     ) {
         Column(

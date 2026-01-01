@@ -58,7 +58,36 @@ class WalkRepositoryImpl @Inject constructor(
                         Result.Success(domainModel)
                     }
 
-                    is Result.Error -> dtoResult
+                    is Result.Error -> {
+                        // 서버 에러 코드에 따른 구체적인 처리
+                        val exception = dtoResult.exception
+                        val errorMessage = dtoResult.message ?: "알 수 없는 에러"
+
+                        when (exception?.message) {
+                            "NOT_FOLLOWING" -> {
+                                // 404, 2001: 팔로워가 아닌 유저 조회
+                                Timber.w("팔로워가 아닌 사용자 조회 시도: $nickname")
+                                Result.Error(
+                                    Exception("NOT_FOLLOWING"),
+                                    "${nickname}님을 팔로우하고 있지 않습니다"
+                                )
+                            }
+                            "NO_WALK_RECORDS" -> {
+                                // 404, 5001: 산책 기록이 없는 경우
+                                Timber.d("산책 기록이 없는 팔로워: $nickname")
+                                Result.Error(
+                                    Exception("NO_WALK_RECORDS"),
+                                    "${nickname}님의 산책 기록이 아직 없습니다"
+                                )
+                            }
+                            else -> {
+                                // 기타 에러는 그대로 전달
+                                Timber.e("팔로워 산책 기록 조회 에러: ${exception?.message}")
+                                dtoResult
+                            }
+                        }
+                    }
+
                     Result.Loading -> Result.Loading
                 }
             } catch (e: Exception) {

@@ -28,6 +28,18 @@ inline fun <T> Result<T>.onError(action: (Throwable, String?) -> Unit): Result<T
     return this
 }
 
+/**
+ * Result에서 성공 데이터를 가져오거나 null을 반환
+ */
+fun <T> Result<T>.getOrNull(): T? {
+    return when (this) {
+        is Result.Success -> data
+        is Result.Error -> null
+        Result.Loading -> null
+    }
+}
+
+
 
 
 

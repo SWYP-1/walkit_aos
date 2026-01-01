@@ -17,12 +17,13 @@ import java.time.ZoneId
  * 각 기록에는 감정(Emotion) 리스트가 포함됩니다.
  */
 object WalkingTestData {
-/**
- * 40일치 산책 기록 테스트 데이터 생성
- *
- * @return 40개의 WalkingSession 리스트
- */
-    fun generateTestSessions(): List<WalkingSession> {
+    /**
+     * 40일치 산책 기록 테스트 데이터 생성
+     *
+     * @param userId 사용자 ID (기본값: 0 - 테스트용)
+     * @return 40개의 WalkingSession 리스트
+     */
+    fun generateTestSessions(userId: Long = 0L): List<WalkingSession> {
         val sessions = mutableListOf<WalkingSession>()
         val today = LocalDate.now()
         val baseLat = 37.2411 // 용인시청 위도
@@ -58,7 +59,7 @@ object WalkingTestData {
 
         for (i in 0 until 40) {
             val date = today.minusDays((9 - i).toLong())
-            val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val startTime = date.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
             val durationMinutes = Random.nextInt(20, 61) // 20분 ~ 60분
             val endTime = startTime + (durationMinutes * 60 * 1000L)
 
@@ -120,7 +121,8 @@ object WalkingTestData {
                     totalDistance = totalDistance,
                     preWalkEmotion = preWalkEmotion,
                     postWalkEmotion = postWalkEmotion,
-                    createdDate = DateUtils.formatToIsoDateTime(startTime)
+                    createdDate = DateUtils.formatToIsoDateTime(startTime),
+                    userId = userId // ✅ userId 설정
                 ),
             )
         }
@@ -210,9 +212,10 @@ object WalkingTestData {
      * 각 기록에는 다양한 감정과 활동 통계가 포함됩니다.
      *
      * @param year 연도 (기본값: 현재 연도)
+     * @param userId 사용자 ID (기본값: 0 - 테스트용)
      * @return 11월의 WalkingSession 리스트
      */
-    fun generateNovemberSessions(year: Int = LocalDate.now().year): List<WalkingSession> {
+    fun generateNovemberSessions(year: Int = LocalDate.now().year, userId: Long = 0L): List<WalkingSession> {
         val sessions = mutableListOf<WalkingSession>()
         val november = YearMonth.of(year, 11)
         val baseLat = 37.2411 // 용인시청 위도
@@ -352,7 +355,8 @@ object WalkingTestData {
                         totalDistance = totalDistance,
                         preWalkEmotion = preWalkEmotion,
                         postWalkEmotion = postWalkEmotion,
-                        createdDate = DateUtils.millisToIsoUtc(startTime)
+                        createdDate = DateUtils.millisToIsoUtc(startTime),
+                        userId = userId // ✅ userId 설정
                     ),
                 )
             }
@@ -423,7 +427,8 @@ object WalkingTestData {
                         totalDistance = totalDistance,
                         preWalkEmotion = preWalkEmotion,
                         postWalkEmotion = postWalkEmotion,
-                        createdDate = DateUtils.millisToIsoUtc(startTime)
+                        createdDate = DateUtils.millisToIsoUtc(startTime),
+                        userId = 1 // ✅ userId 설정
                     ),
                 )
             }
@@ -439,6 +444,7 @@ object WalkingTestData {
         year: Int = LocalDate.now().year,
         startDay: Int = 1,
         endDay: Int = 16,
+        userId: Long = 0L, // ✅ userId 파라미터 추가
     ): List<WalkingSession> {
         val sessions = mutableListOf<WalkingSession>()
         val december = YearMonth.of(year, 12)
@@ -464,6 +470,7 @@ object WalkingTestData {
         date: LocalDate,
         baseLat: Double = 37.2411,
         baseLon: Double = 127.1776,
+        userId: Long = 0L, // ✅ userId 파라미터 추가
     ): WalkingSession {
 
         val hourOfDay = Random.nextInt(7, 21)
@@ -471,7 +478,7 @@ object WalkingTestData {
 
         val startTime = date
             .atTime(hourOfDay, minuteOfDay)
-            .atZone(ZoneId.systemDefault())
+            .atZone(ZoneId.of("UTC"))
             .toInstant()
             .toEpochMilli()
 
@@ -514,7 +521,8 @@ object WalkingTestData {
             totalDistance = totalDistance,
             preWalkEmotion = preWalkEmotion,
             postWalkEmotion = postWalkEmotion,
-            createdDate = DateUtils.millisToIsoUtc(startTime)
+            createdDate = DateUtils.millisToIsoUtc(startTime),
+            userId = userId // ✅ userId 설정
         )
     }
 

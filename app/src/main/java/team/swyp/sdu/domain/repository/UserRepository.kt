@@ -22,8 +22,6 @@ interface UserRepository {
 
     suspend fun updateUser(user: User): Result<User>
 
-    suspend fun checkNicknameDuplicate(nickname: String): Result<Boolean>
-
     suspend fun registerNickname(nickname: String): Result<Unit>
 
     suspend fun updateBirthDate(birthDate: String): Result<Unit>
@@ -31,7 +29,7 @@ interface UserRepository {
     suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-    ): Result<User>
+    ): Result<Unit>
 
     suspend fun updateUserProfileImage(
         imageUri: Uri,
@@ -82,8 +80,7 @@ interface UserRepository {
     /**
      * 프로필 이미지 삭제
      *
-     * @param imageId 삭제할 이미지 ID
      * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
-    suspend fun deleteImage(imageId: Long): Result<Response<Unit>>
+    suspend fun deleteImage(): Result<Response<Unit>>
 }

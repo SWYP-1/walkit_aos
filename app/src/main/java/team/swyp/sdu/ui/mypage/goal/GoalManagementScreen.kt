@@ -94,7 +94,8 @@ fun GoalManagementScreen(
                     onClickMinus = { if (selectedFrequency > 1) selectedFrequency-- },
                     onNumberChange = { selectedFrequency = it },
                     range = GoalRange(1, 7),
-                    unit = "회"
+                    unit = "회",
+                    accentColor = SemanticColor.textBorderPrimary
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -106,7 +107,8 @@ fun GoalManagementScreen(
                     onClickMinus = { if (selectedSteps > 1000) selectedSteps -= 1000 },
                     onNumberChange = { selectedSteps = it },
                     range = GoalRange(1000, 100_000),
-                    unit = "보"
+                    unit = "보",
+                    accentColor = SemanticColor.textBorderPrimary
                 )
 
                 Spacer(Modifier.weight(1f))

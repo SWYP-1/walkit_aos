@@ -56,7 +56,7 @@ fun InfoBanner(
     borderColor: Color = BlueSecondary,
     iconTint: Color = SemanticColor.stateBluePrimary,
     textColor: Color = BluePrimary,
-    icon: @Composable () -> Unit = { InfoIcon(iconTint = iconTint) },
+    icon: @Composable (iconTint: Color) -> Unit = { tint -> InfoIcon(iconTint = tint) },
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -79,7 +79,7 @@ fun InfoBanner(
         verticalAlignment = if (description != null) Alignment.Top else Alignment.CenterVertically,
     ) {
         // 왼쪽: 정보 아이콘
-        icon()
+        icon(iconTint)
 
         // 오른쪽: 텍스트 영역
         Column(

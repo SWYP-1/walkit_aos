@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -55,6 +56,7 @@ private fun parseTimeText(timeText: String): TimeParts {
                 val number = part.removeSuffix("시간")
                 hours = Pair(number, "시간")
             }
+
             part.endsWith("분") -> {
                 val number = part.removeSuffix("분")
                 minutes = Pair(number, "분")
@@ -67,7 +69,7 @@ private fun parseTimeText(timeText: String): TimeParts {
 
 /**
  * 요약 카드의 단위 타입
- * 
+ *
  * 각 타입별로 포맷팅 로직을 포함합니다.
  */
 sealed class SummaryUnit {
@@ -75,19 +77,19 @@ sealed class SummaryUnit {
      * 걸음 수 단위
      */
     data class Step(val unit: String) : SummaryUnit()
-    
+
     /**
      * 시간 단위 (밀리초를 시/분으로 포맷팅)
      * 예: 3660000ms -> "1시간 1분"
      */
     data class Time(val durationMs: Long) : SummaryUnit()
-    
+
     /**
      * 거리 단위 (미터를 km/m으로 포맷팅)
      * 예: 5200.0m -> "5.2" + "km"
      */
     data class Distance(val distanceMeters: Float) : SummaryUnit()
-    
+
     /**
      * 포맷팅된 값과 단위를 반환
      * @return Pair<값, 단위> (단위가 null이면 표시하지 않음)
@@ -99,6 +101,7 @@ sealed class SummaryUnit {
                 val value = FormatUtils.formatDurationCompat(durationMs)
                 Pair(value, null) // 시간은 값에 단위가 포함되어 있으므로 unit은 null
             }
+
             is Distance -> {
                 val (value, unit) = if (distanceMeters >= 1000) {
                     Pair(String.format("%.1f", distanceMeters / 1000f), "km")
@@ -225,11 +228,12 @@ fun WalkingSummaryCard(
 private fun TimePart(
     number: String,
     unitText: String,
+    modifier: Modifier = Modifier,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically, // baseline 정렬
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         // 숫자
         Text(
@@ -259,9 +263,8 @@ private fun TimePart(
 @Composable
 private fun TimePartPreview() {
     WalkItTheme {
-        Column(
+        Row(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 시간 예시
             TimePart(number = "1", unitText = "시간")
@@ -280,7 +283,7 @@ private fun TimePartPreview() {
  * 요약 섹션 (라벨 + 값 + 단위)
  */
 @Composable
-private fun RowScope.SummarySection(
+fun RowScope.SummarySection(
     label: String,
     value: String,
     unit: String?,
@@ -311,12 +314,11 @@ private fun RowScope.SummarySection(
             ) {
                 // 시간 부분 (숫자 + "시간")
                 timeParts.hours?.let { (number, unitText) ->
-                    TimePart(number = number, unitText = unitText)
+                    TimePart(number = number, unitText = unitText, modifier = Modifier.weight(1f))
                 }
-
                 // 분 부분 (숫자 + "분")
                 timeParts.minutes?.let { (number, unitText) ->
-                    TimePart(number = number, unitText = unitText)
+                    TimePart(number = number, unitText = unitText, modifier = Modifier.weight(1f))
                 }
             }
         } else {
@@ -357,4 +359,62 @@ private fun RowScope.SummarySection(
 
 // FormatUtils로 통합됨 - 아래 함수들은 하위 호환성을 위한 것들
 // 실제로는 FormatUtils.formatStepCountCompat, formatDurationCompat, formatDistanceCompat 사용 권장
+
+// Preview functions for SummarySection
+@Preview(showBackground = true, name = "SummarySection - 걸음수")
+@Composable
+private fun SummarySectionStepPreview() {
+    MaterialTheme {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SummarySection(
+                label = "걸음수",
+                value = "12,345",
+                unit = "걸음"
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "SummarySection - 거리")
+@Composable
+private fun SummarySectionDistancePreview() {
+    MaterialTheme {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SummarySection(
+                label = "거리",
+                value = "2.5",
+                unit = "km"
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "SummarySection - 시간")
+@Composable
+private fun SummarySectionTimePreview() {
+    MaterialTheme {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SummarySection(
+                label = "시간",
+                value = "1시간 30분",
+                unit = null
+            )
+        }
+    }
+}
 

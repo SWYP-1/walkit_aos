@@ -161,8 +161,9 @@ fun DressingRoomScreen(
                         myPoints = (uiState as? DressingRoomUiState.Success)?.myPoint ?: 0,
                         onDismiss = onDismissCartDialog,
                         onPurchase = { itemsToPurchase ->
+                            // 구매 시작 후 다이얼로그는 ViewModel에서 관리
                             onPerformPurchase()
-                            onDismissCartDialog()
+                            // onDismissCartDialog() 제거 - ViewModel에서 구매 완료 시 닫음
                         }
                     )
                 }

@@ -19,6 +19,14 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import timber.log.Timber
 
 /**
+ * WalkIt 앱의 Lottie 애니메이션 리소스 상수
+ */
+// Lottie 리소스 상수들
+const val LOTTIE_DEFAULT_CHARACTER = R.raw.seed
+const val LOTTIE_LOADING = R.raw.loading_gray
+const val LOTTIE_ERROR = R.raw.seed
+
+/**
  * 범용 캐릭터 표시용 Lottie 컴포넌트
  *
  * 캐릭터 데이터를 받아서 head/body/feet 파트를 Lottie JSON asset으로 교체하여 표시합니다.
@@ -34,7 +42,7 @@ fun LottieCharacterDisplay(
     characterLottieState: LottieCharacterState?,
     modifier: Modifier = Modifier,
     size: Int = 200,
-    defaultAnimationResId: Int = R.raw.seedblueribbon
+    defaultAnimationResId: Int = LOTTIE_DEFAULT_CHARACTER
 ) {
     Timber.d("🎭 LottieCharacterDisplay 렌더링: state=${characterLottieState?.isLoading}, hasModified=${characterLottieState?.modifiedJson != null}")
 
@@ -42,76 +50,82 @@ fun LottieCharacterDisplay(
         modifier = modifier.size(size.dp),
         contentAlignment = Alignment.Center
     ) {
-        when {
-            // 로딩 중
-            characterLottieState?.isLoading == true -> {
-                Timber.d("⏳ Lottie 로딩 중 표시")
-                LottieAnimation(
-                    composition = rememberLottieComposition(
-                        LottieCompositionSpec.RawRes(defaultAnimationResId)
-                    ).value,
-                    iterations = LottieConstants.IterateForever,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
 
-            // 에러 상태
-            characterLottieState?.error != null -> {
-                Timber.e("❌ Lottie 에러 상태: ${characterLottieState.error}")
-                LottieAnimation(
-                    composition = rememberLottieComposition(
-                        LottieCompositionSpec.RawRes(defaultAnimationResId)
-                    ).value,
-                    iterations = LottieConstants.IterateForever,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        // ✅ Keyed Composition: 같은 JSON이면 기존 composition 재사용하여 깜빡임 방지
+        val compositionKey = when (compositionSpec) {
+            is LottieCompositionSpec.JsonString -> compositionSpec.jsonString.hashCode().toString()
+            is LottieCompositionSpec.RawRes -> compositionSpec.resId.toString()
+            else -> "default"
+        }
 
-            // 수정된 JSON이 있는 경우 (캐릭터 파트 교체된 상태)
-            characterLottieState?.modifiedJson != null -> {
-                Timber.d("✅ 수정된 Lottie JSON으로 애니메이션 표시")
-                val composition by rememberLottieComposition(
-                    LottieCompositionSpec.JsonString(characterLottieState.modifiedJson)
-                )
+        val composition by rememberLottieComposition(
+            cacheKey = compositionKey, // 🔑 같은 key면 composition 재사용
+            spec = compositionSpec
+        )
 
-                composition?.let {
-                    LottieAnimation(
-                        composition = it,
-                        iterations = LottieConstants.IterateForever,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
+        // ✅ Composition이 준비될 때까지 기본 애니메이션 표시 (깜빡임 방지)
+        if (composition != null) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // Composition 로드 중일 때 기본 애니메이션 표시
+            val fallbackComposition by rememberLottieComposition(
+                LottieCompositionSpec.RawRes(defaultAnimationResId)
+            )
+            LottieAnimation(
+                composition = fallbackComposition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
 
-            // 기본 상태 (수정 전 base JSON)
-            characterLottieState?.baseJson != null -> {
-                Timber.d("🎨 기본 Lottie JSON으로 애니메이션 표시")
-                val composition by rememberLottieComposition(
-                    LottieCompositionSpec.JsonString(characterLottieState.baseJson)
-                )
+/**
+ * 캐릭터 상태에 따른 Lottie CompositionSpec 결정
+ * 깜빡임 방지를 위해 로딩 상태 제거하고 기존 composition 유지
+ */
+@Composable
+private fun getLottieCompositionSpec(
+    characterLottieState: LottieCharacterState?,
+    defaultAnimationResId: Int
+): LottieCompositionSpec {
+    return when {
+        // ✅ 로딩 중에도 기존 composition 유지 (깜빡임 방지)
+        characterLottieState?.isLoading == true -> {
+            Timber.d("⏳ Lottie 로딩 중 - 기존 composition 유지")
+            // 로딩 중에는 마지막으로 유효했던 composition 사용
+            characterLottieState.modifiedJson?.let { LottieCompositionSpec.JsonString(it) }
+                ?: characterLottieState.baseJson?.let { LottieCompositionSpec.JsonString(it) }
+                ?: LottieCompositionSpec.RawRes(defaultAnimationResId)
+        }
 
-                composition?.let {
-                    LottieAnimation(
-                        composition = it,
-                        iterations = LottieConstants.IterateForever,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
+        // 에러 상태
+        characterLottieState?.error != null -> {
+            Timber.e("❌ Lottie 에러 상태: ${characterLottieState.error}")
+            LottieCompositionSpec.RawRes(LOTTIE_ERROR)
+        }
 
-            // 초기 상태 (아직 데이터가 없는 경우)
-            else -> {
-                Timber.d("🎯 초기 상태 - 기본 Lottie 표시")
-                val composition by rememberLottieComposition(
-                    LottieCompositionSpec.RawRes(defaultAnimationResId)
-                )
+        // 수정된 JSON이 있는 경우 (캐릭터 파트 교체된 상태)
+        characterLottieState?.modifiedJson != null -> {
+            Timber.d("✅ 수정된 Lottie JSON으로 애니메이션 표시")
+            LottieCompositionSpec.JsonString(characterLottieState.modifiedJson)
+        }
 
-                LottieAnimation(
-                    composition = composition,
-                    iterations = LottieConstants.IterateForever,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        // 기본 상태 (수정 전 base JSON)
+        characterLottieState?.baseJson != null -> {
+            Timber.d("🎨 기본 Lottie JSON으로 애니메이션 표시")
+            LottieCompositionSpec.JsonString(characterLottieState.baseJson)
+        }
+
+        // 초기 상태 (아직 데이터가 없는 경우)
+        else -> {
+            Timber.d("🎯 초기 상태 - 기본 Lottie 표시")
+            LottieCompositionSpec.RawRes(defaultAnimationResId)
         }
     }
 }
@@ -151,3 +165,4 @@ fun LottieCharacterDisplayWithDataPreview() {
         )
     }
 }
+

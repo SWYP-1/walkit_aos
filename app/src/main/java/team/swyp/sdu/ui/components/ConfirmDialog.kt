@@ -18,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -27,8 +30,10 @@ import androidx.compose.ui.window.DialogProperties
 import team.swyp.sdu.ui.theme.Green4
 import team.swyp.sdu.ui.theme.Grey7
 import team.swyp.sdu.ui.theme.Grey10
+import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.White
 import team.swyp.sdu.ui.theme.walkItTypography
+import kotlin.math.max
 
 /**
  * 확인 다이얼로그 컴포넌트
@@ -48,6 +53,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun ConfirmDialog(
     title: String,
     message: String,
+    highlightedWords: Map<String, Color> = emptyMap(), // key: 강조할 단어, value: 색
     negativeButtonText: String = "아니요",
     positiveButtonText: String = "예",
     onDismiss: () -> Unit,
@@ -82,47 +88,70 @@ fun ConfirmDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                // 제목 및 메시지 영역
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    // 제목
-                    Text(
-                        text = title,
-                        style = MaterialTheme.walkItTypography.bodyL.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        color = Grey10,
-                        textAlign = TextAlign.Center,
-                    )
+                // 제목
+                Text(
+                    text = title,
+                    style = MaterialTheme.walkItTypography.bodyL.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Grey10,
+                    textAlign = TextAlign.Center,
+                )
 
-                    // 메시지
-                    Text(
-                        text = message,
-                        style = MaterialTheme.walkItTypography.bodyS.copy(
-                            fontWeight = FontWeight.Normal,
-                        ),
-                        color = Grey7,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                // 메시지
+                Text(
+                    text = buildAnnotatedString {
+                        var startIndex = 0
+                        while (startIndex < message.length) {
+                            // 강조할 단어 중 가장 먼저 나오는 위치 찾기
+                            val nextHighlight = highlightedWords.entries
+                                .mapNotNull { (word, color) ->
+                                    val index = message.indexOf(word, startIndex)
+                                    if (index >= 0) index to word to color else null
+                                }
+                                .minByOrNull { it.first.first } // 가장 가까운 단어
 
-                // 버튼 영역
+                            if (nextHighlight == null) {
+                                append(message.substring(startIndex))
+                                break
+                            }
+
+                            val (indexWordPair, color) = nextHighlight
+                            val (index, word) = indexWordPair
+
+                            // 강조 단어 앞까지 일반 텍스트
+                            if (index > startIndex) {
+                                append(message.substring(startIndex, index))
+                            }
+
+                            // 강조 단어
+                            withStyle(style = SpanStyle(color = color)) {
+                                append(word)
+                            }
+
+                            startIndex = index + word.length
+                        }
+                    },
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Normal,
+                    ),
+                    textAlign = TextAlign.Center,
+                )
+
+                // 버튼 영역 (기존 코드 그대로)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // 부정 버튼 (아니요)
+                    // 부정 버튼
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(47.dp)
-                            .clickable(onClick = {
+                            .clickable {
                                 onNegative()
                                 onDismiss()
-                            })
+                            }
                             .border(
                                 width = 1.dp,
                                 color = Green4,
@@ -131,8 +160,7 @@ fun ConfirmDialog(
                             .background(
                                 color = White,
                                 shape = RoundedCornerShape(8.dp),
-                            )
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -144,20 +172,19 @@ fun ConfirmDialog(
                         )
                     }
 
-                    // 긍정 버튼 (예)
+                    // 긍정 버튼
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(47.dp)
-                            .clickable(onClick = {
+                            .clickable {
                                 onPositive()
                                 onDismiss()
-                            })
+                            }
                             .background(
                                 color = Green4,
                                 shape = RoundedCornerShape(8.dp),
-                            )
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -174,6 +201,7 @@ fun ConfirmDialog(
     }
 }
 
+
 @Preview(showBackground = true, name = "기본 확인 다이얼로그")
 @Composable
 private fun ConfirmDialogPreview() {
@@ -181,12 +209,14 @@ private fun ConfirmDialogPreview() {
         ConfirmDialog(
             title = "변경된 사항이 있습니다.",
             message = "저장하시겠습니까?",
+            highlightedWords = mapOf("저장" to SemanticColor.stateRedPrimary),
             onDismiss = {},
             onNegative = {},
             onPositive = {},
         )
     }
 }
+
 
 
 

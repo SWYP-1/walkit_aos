@@ -35,6 +35,20 @@ sealed interface FriendRecordUiState {
     ) : FriendRecordUiState
 
     /**
+     * 팔로우하지 않은 사용자
+     */
+    data class NotFollowing(
+        val message: String,
+    ) : FriendRecordUiState
+
+    /**
+     * 산책 기록이 없는 경우
+     */
+    data class NoRecords(
+        val message: String,
+    ) : FriendRecordUiState
+
+    /**
      * 에러 상태
      */
     data class Error(

@@ -1,5 +1,7 @@
 package team.swyp.sdu.ui.dressroom.component
 
+import android.graphics.drawable.Icon
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.model.EquipSlot
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -61,6 +64,10 @@ fun CartDialog(
         .filter { it.value } // 체크된 것만
         .mapNotNull { entry -> cartItems.find { it.itemId == entry.key }?.point }
         .sum()
+
+    // 3️⃣ 포인트 부족 여부 확인
+    val isInsufficientPoints = totalPrice > myPoints
+    val hasCheckedItems = checkedItems.values.any { it }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -204,12 +211,33 @@ fun CartDialog(
                     }
 
                 }
+
+
                 Spacer(Modifier.height(24.dp))
+
+                // 포인트 부족 시 InfoBanner 표시
+                if (isInsufficientPoints) {
+                    InfoBanner(
+                        title = "보유 포인트를 초과해 구매가 어렵습니다",
+                        backgroundColor = SemanticColor.stateRedTertiary,
+                        textColor = SemanticColor.stateRedPrimary,
+                        iconTint = SemanticColor.stateRedPrimary,
+                        borderColor = SemanticColor.stateRedSecondary,
+                        icon = { tint ->
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_clear),
+                                contentDescription = "",
+                                tint = tint
+                            )
+                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
 
                 // 4️⃣ 하단 구매 버튼
                 CtaButton(
                     text = "구매하기 (${checkedItems.values.count { it }})",
-                    enabled = checkedItems.values.any { it },
+                    enabled = hasCheckedItems && !isInsufficientPoints, // 체크된 아이템 있고 포인트 충분할 때만 활성화
                     onClick = {
                         val itemsToPurchase = cartItems.filter { checkedItems[it.itemId] == true }
                         onPurchase(itemsToPurchase)
@@ -254,7 +282,38 @@ fun CartDialogPreview_SomeUnchecked() {
     WalkItTheme {
         CartDialog(
             cartItems = dummyItems,
-            myPoints = 1000,
+            myPoints = 1000, // 총합 2250P > 1000P → 포인트 부족 상태
+            onDismiss = {},
+            onPurchase = {}
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun CartDialogPreview_SufficientPoints() {
+    val dummyItems = listOf(
+        CosmeticItem(
+            itemId = 1,
+            name = "헤어1",
+            point = 100,
+            owned = false,
+            imageName = "df",
+            position = EquipSlot.HEAD
+        ),
+        CosmeticItem(
+            itemId = 2,
+            name = "헤어2",
+            point = 200,
+            owned = false,
+            imageName = "df",
+            position = EquipSlot.BODY
+        ),
+    )
+    WalkItTheme {
+        CartDialog(
+            cartItems = dummyItems,
+            myPoints = 500, // 총합 300P < 500P → 포인트 충분 상태
             onDismiss = {},
             onPurchase = {}
         )

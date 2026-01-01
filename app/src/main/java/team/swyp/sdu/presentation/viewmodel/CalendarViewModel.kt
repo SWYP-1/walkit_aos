@@ -201,11 +201,18 @@ class CalendarViewModel @Inject constructor(
                         Timber.d("Dummy data skipped: early-December data already exists")
 
                     } else {
-                        val decemberRange = WalkingTestData.generateDecemberRangeSessions()
-                        val todaySession = WalkingTestData.generateSessionForDate(LocalDate.now())
+                        // 현재 사용자 ID 가져오기
+                        val currentUserId = walkingSessionRepository.getCurrentUserId()
+                        Timber.d("📋 캘린더 더미 데이터 생성 - 현재 사용자 ID: $currentUserId")
+
+                        val decemberRange = WalkingTestData.generateDecemberRangeSessions(userId = currentUserId) // ✅ userId 전달
+                        val todaySession = WalkingTestData.generateSessionForDate(LocalDate.now(), userId = currentUserId) // ✅ userId 전달
                         val all = decemberRange + todaySession
-                        Timber.d("Dummy data generating: decRange=${decemberRange.size}, today=1")
-                        all.forEach { walkingSessionRepository.saveSession(it) }
+                        Timber.d("Dummy data generating: decRange=${decemberRange.size}, today=1, userId=$currentUserId")
+                        all.forEach { session ->
+                            Timber.d("💾 캘린더 세션 저장: userId=${session.userId}")
+                            walkingSessionRepository.saveSession(session)
+                        }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Dummy data generation failed")
@@ -224,8 +231,17 @@ class CalendarViewModel @Inject constructor(
     }
     fun deleteSessionNote(id: String){
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                walkingSessionRepository.updateSessionNote(id, "")
+            try {
+                withContext(Dispatchers.IO) {
+                    walkingSessionRepository.updateSessionNote(id, "")
+                }
+                Timber.d("세션 노트 삭제 완료: $id")
+                // 삭제 성공 시 UI 즉시 업데이트를 위해 로딩 상태 토글
+                _isLoadingDaySessions.value = true
+                _isLoadingDaySessions.value = false
+            } catch (e: Exception) {
+                Timber.e(e, "세션 노트 삭제 실패: $id")
+                // UI에 에러 표시를 위해서는 추가 구현 필요
             }
         }
     }

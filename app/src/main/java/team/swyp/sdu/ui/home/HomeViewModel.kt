@@ -500,21 +500,46 @@ class HomeViewModel @Inject constructor(
 
     /**
      * 이번주 산책에서 가장 많이 경험된 감정 찾기
+     *
+     * 동일한 등장 횟수를 가진 감정이 여러 개일 경우 우선순위에 따라 결정:
+     * 1. HAPPY (기쁨) > 2. JOYFUL (즐거움) > 3. CONTENT (행복함)
+     * > 4. DEPRESSED (우울함) > 5. TIRED (지침) > 6. IRRITATED (짜증남)
      */
     private fun findDominantEmotion(sessions: List<WalkingSession>): EmotionType? {
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
-        return emotionCounts.maxByOrNull { it.value }?.key
+        if (emotionCounts.isEmpty()) return null
+
+        // 1. 최대 등장 횟수 찾기
+        val maxCount = emotionCounts.values.max()
+
+        // 2. 최대 등장 횟수를 가진 감정들 필터링
+        val candidates = emotionCounts.filter { it.value == maxCount }.keys
+
+        // 3. 우선순위가 가장 높은 감정 선택 (priority 값이 낮을수록 우선)
+        return candidates.minByOrNull { it.priority }
     }
 
     /**
      * 우세 감정과 그 등장 횟수를 반환
+     *
+     * 동일한 등장 횟수를 가진 감정이 여러 개일 경우 우선순위에 따라 결정
      */
     private fun findDominantEmotionWithCount(sessions: List<WalkingSession>): Pair<EmotionType?, Int?> {
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
-        val dominantEntry = emotionCounts.maxByOrNull { it.value }
-        return Pair(dominantEntry?.key, dominantEntry?.value)
+        if (emotionCounts.isEmpty()) return Pair(null, null)
+
+        // 1. 최대 등장 횟수 찾기
+        val maxCount = emotionCounts.values.max()
+
+        // 2. 최대 등장 횟수를 가진 감정들 필터링
+        val candidates = emotionCounts.filter { it.value == maxCount }.keys
+
+        // 3. 우선순위가 가장 높은 감정 선택
+        val dominantEmotion = candidates.minByOrNull { it.priority }
+
+        return Pair(dominantEmotion, maxCount)
     }
 
     /**

@@ -10,6 +10,7 @@ object SemanticColor {
     val backgroundDarkPrimary = Grey10
     val backgroundDarkSecondary =Grey8
     val backgroundDisabled = Grey6
+    val backgroundGreenPrimary = Green1
 
     // text / border
     val textBorderPrimary = Black

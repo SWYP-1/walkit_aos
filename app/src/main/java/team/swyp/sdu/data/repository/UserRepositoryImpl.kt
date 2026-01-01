@@ -1,4 +1,4 @@
-package team.swyp.sdu.data.repository
+    package team.swyp.sdu.data.repository
 
 import android.net.Uri
 import javax.inject.Inject
@@ -12,7 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import retrofit2.Response
+import team.swyp.sdu.data.remote.dto.ApiErrorResponse
+import kotlinx.serialization.json.Json
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.local.dao.UserDao
 import team.swyp.sdu.data.local.datastore.AuthDataStore
@@ -51,7 +54,7 @@ class UserRepositoryImpl @Inject constructor(
 
     init {
         // ✅ Room 만이 userState 를 변경한다
-        userDao.observeUser()
+        userDao.observeCurrentUser()
             .onEach { entity ->
                 userState.value = entity?.let(UserMapper::toDomain)
             }
@@ -62,7 +65,7 @@ class UserRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 // ✅ Room에서 직접 값을 가져옴 (Single Source of Truth)
-                val entity = userDao.getUser()
+                val entity = userDao.getCurrentUser()
                 if (entity != null) {
                     val user = UserMapper.toDomain(entity)
                     Timber.d("Room에서 사용자 조회: nickname=${user.nickname}, imageName=${user.imageName}")
@@ -82,17 +85,18 @@ class UserRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val user = remoteDataSource.fetchUser() // DTO 직접 가져오기
-                Timber.d("사용자 정보 API 응답: nickname=${user.nickname}, imageName=${user.imageName}")
+                Timber.d("사용자 정보 API 응답: userId=${user.userId}, nickname=${user.nickname}, imageName=${user.imageName}")
 
                 // ✅ 이전 사용자 데이터 삭제 후 새 사용자 데이터 저장
                 // PrimaryKey가 nickname이므로 다른 사용자로 로그인 시 여러 레코드가 쌓일 수 있음
                 userDao.clear()
                 val entity = UserMapper.toEntity(user)
                 userDao.upsert(entity)
+                Timber.d("사용자 정보 DB 저장: userId=${entity.userId}, nickname=${entity.nickname}")
 
                 // 저장 확인
-                val savedEntity = userDao.getUser()
-                Timber.d("Room 저장 확인: nickname=${savedEntity?.nickname}, imageName=${savedEntity?.imageName}")
+                val savedEntity = userDao.getCurrentUser()
+                Timber.d("Room 저장 확인: userId=${savedEntity?.userId}, nickname=${savedEntity?.nickname}, imageName=${savedEntity?.imageName}")
 
                 Result.Success(user)
             } catch (e: Exception) {
@@ -113,32 +117,41 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun checkNicknameDuplicate(nickname: String): Result<Boolean> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = remoteDataSource.checkNicknameDuplicate(nickname)
-
-                // API 설계: 중복되지 않은 닉네임은 200 OK, 중복된 닉네임은 409 Conflict 등
-                val isDuplicate = !response.isSuccessful // API 실패 = 중복됨, API 성공 = 중복 아님
-
-                Timber.d("닉네임 중복 체크: $nickname -> ${if (isDuplicate) "중복" else "사용가능"} (HTTP ${response.code()})")
-                Result.Success(isDuplicate)
-            } catch (e: Exception) {
-                Timber.e(e, "닉네임 중복 체크 실패: $nickname")
-                Result.Error(e, e.message)
-            }
-        }
-
     override suspend fun registerNickname(nickname: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                remoteDataSource.registerNickname(nickname)
-                Result.Success(Unit)
+                val response = remoteDataSource.registerNickname(nickname)
+
+                if (response.isSuccessful) {
+                    // HTTP 2xx 성공
+                    Result.Success(Unit)
+                } else {
+                    // HTTP 실패 (4xx, 5xx)
+                    val errorBody = response.errorBody()?.string()
+                    val apiError = errorBody?.let { Json.decodeFromString<ApiErrorResponse>(it) }
+
+                    return@withContext when (response.code()) {
+                        409 -> Result.Error(
+                            Exception("NICKNAME_DUPLICATE_ERROR"),
+                            apiError?.message ?: "중복된 닉네임입니다"
+                        )
+                        400 -> Result.Error(
+                            Exception("NICKNAME_VALIDATION_ERROR"),
+                            apiError?.message ?: "닉네임 규칙 위반"
+                        )
+                        else -> Result.Error(
+                            Exception("HTTP_ERROR"),
+                            apiError?.message ?: "닉네임 등록 실패"
+                        )
+                    }
+                }
             } catch (e: Exception) {
+                // 네트워크 오류, JSON 파싱 오류 등
                 Timber.e(e, "닉네임 등록 실패: $nickname")
-                Result.Error(e, e.message)
+                Result.Error(e, e.message ?: "닉네임 등록 실패")
             }
         }
+
 
     override suspend fun updateBirthDate(birthDate: String): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -167,16 +180,36 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun updateUserProfile(
         nickname: String,
         birthDate: String,
-    ): Result<User> =
+    ): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                remoteDataSource.updateUserProfile(
+                val response = remoteDataSource.updateUserProfile(
                     nickname = nickname,
                     birthDate = birthDate,
                 )
-                // 서버에만 업데이트하고 Room은 ViewModel에서 refreshUser()로 처리
-                val updatedUser = remoteDataSource.fetchUser()
-                Result.Success(updatedUser)
+                if (response.isSuccessful) {
+                    // HTTP 2xx 성공
+                    Result.Success(Unit)
+                } else {
+                    // HTTP 실패 (4xx, 5xx)
+                    val errorBody = response.errorBody()?.string()
+                    val apiError = errorBody?.let { Json.decodeFromString<ApiErrorResponse>(it) }
+
+                    return@withContext when (response.code()) {
+                        409 -> Result.Error(
+                            Exception("NICKNAME_DUPLICATE_ERROR"),
+                            apiError?.message ?: "중복된 닉네임입니다"
+                        )
+                        400 -> Result.Error(
+                            Exception("NICKNAME_VALIDATION_ERROR"),
+                            apiError?.message ?: "닉네임 규칙 위반"
+                        )
+                        else -> Result.Error(
+                            Exception("HTTP_ERROR"),
+                            apiError?.message ?: "닉네임 등록 실패"
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
                 Result.Error(e, e.message)
@@ -271,14 +304,14 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun deleteImage(imageId: Long): Result<Response<Unit>> =
+    override suspend fun deleteImage(): Result<Response<Unit>> =
         withContext(Dispatchers.IO) {
             try {
-                val response = userProfileRemoteDataSource.deleteImage(imageId)
-                Timber.d("프로필 이미지 삭제 요청 완료: $imageId")
+                val response = userProfileRemoteDataSource.deleteImage()
+                Timber.d("프로필 이미지 삭제 요청 완료:")
                 Result.Success(response)
             } catch (e: Exception) {
-                Timber.e(e, "프로필 이미지 삭제 실패: $imageId")
+                Timber.e(e, "프로필 이미지 삭제 실패:")
                 Result.Error(e, e.message)
             }
         }

@@ -572,3 +572,4 @@ UI에 최신 데이터 표시
 - `WalkingResultRoute.kt`: collectAsStateWithLifecycle() 사용
 - `WalkingSessionMapper.kt`: 도메인 ↔ 엔티티 변환 (변경 없음)
 
+

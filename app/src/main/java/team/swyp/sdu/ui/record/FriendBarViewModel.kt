@@ -64,3 +64,4 @@ class FriendBarViewModel @Inject constructor(
         loadFriends(force = false)
     }
 }
+

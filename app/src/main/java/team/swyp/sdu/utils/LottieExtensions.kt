@@ -70,3 +70,4 @@ fun JSONObject.findAssetSize(assetId: String): LottieAssetSize {
     error("assetId not found: $assetId")
 }
 
+

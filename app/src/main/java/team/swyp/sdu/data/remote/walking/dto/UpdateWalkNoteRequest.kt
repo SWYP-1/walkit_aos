@@ -17,3 +17,4 @@ data class UpdateWalkNoteResponse(
     val message: String? = null
 )
 
+

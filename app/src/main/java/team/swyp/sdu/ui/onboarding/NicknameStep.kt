@@ -4,73 +4,71 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.LoadingOverlay
+import team.swyp.sdu.ui.onboarding.NicknameStepConstants.MAX_LENGTH
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 
-/**
- * 닉네임 입력 관련 상수들
- */
+/* ---------------------------------------------
+ * Constants
+ * --------------------------------------------- */
+
 private object NicknameStepConstants {
     const val MAX_LENGTH = 20
     const val NICKNAME_STEP_INDEX = 0
 }
 
-/**
- * 닉네임 입력 단계의 UI 상태 계산
- */
+/* ---------------------------------------------
+ * UI State
+ * --------------------------------------------- */
+
 private data class NicknameStepUiState(
     val isLoading: Boolean,
     val isError: Boolean,
     val errorMessage: String?,
     val canGoNext: Boolean,
-    val maxLength: Int
 )
 
+/* ---------------------------------------------
+ * UI State Mapper
+ * --------------------------------------------- */
+
 private fun calculateNicknameStepUiState(uiState: OnboardingUiState): NicknameStepUiState {
-    val isLoading = uiState.isLoading && uiState.currentStep == NicknameStepConstants.NICKNAME_STEP_INDEX
     val nicknameState = uiState.nicknameState
 
     val isError = nicknameState.isDuplicate == true || nicknameState.validationError != null
@@ -79,68 +77,57 @@ private fun calculateNicknameStepUiState(uiState: OnboardingUiState): NicknameSt
         nicknameState.validationError != null -> nicknameState.validationError
         else -> null
     }
-    val canGoNext = nicknameState.value.isNotBlank() &&
-            nicknameState.isDuplicate == false &&
-            nicknameState.validationError == null
+
+    val canGoNext =
+        nicknameState.value.isNotBlank() &&
+                nicknameState.validationError == null &&
+                (nicknameState.isDuplicate == false || nicknameState.isDuplicate == null)
+
 
     return NicknameStepUiState(
-        isLoading = isLoading,
+        isLoading = uiState.isLoading && uiState.currentStep == NicknameStepConstants.NICKNAME_STEP_INDEX,
         isError = isError,
         errorMessage = errorMessage,
-        canGoNext = canGoNext,
-        maxLength = NicknameStepConstants.MAX_LENGTH
+        canGoNext = canGoNext
     )
 }
 
-/**
- * 닉네임 입력 단계 컴포넌트
- */
+/* ---------------------------------------------
+ * Step Root
+ * --------------------------------------------- */
+
 @Composable
 fun NicknameStep(
     uiState: OnboardingUiState,
     onNicknameChange: (String) -> Unit,
     onCheckDuplicate: () -> Unit,
     onNext: () -> Unit,
-    onPrev: () -> Unit,
 ) {
     val stepUiState = calculateNicknameStepUiState(uiState)
-
-    // 키보드 상태 관리
-    val (isImeVisible, safeKeyboardController, focusRequester) = rememberKeyboardState()
+    val (isImeVisible, keyboardController, focusRequester) = rememberKeyboardState()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhiteSecondary)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
             AppHeader(
-                "",
+                title = "",
                 showBackButton = false,
                 background = SemanticColor.backgroundWhiteSecondary
-            ) {
-//            Icon(
-//                painter = painterResource(R.drawable.ic_action_clear),
-//                contentDescription = null,
-//                tint = SemanticColor.iconBlack,
-//                modifier = Modifier.size(24.dp),
-//            )
-            }
+            )
 
             Column(
-                horizontalAlignment = CenterHorizontally,
                 modifier = Modifier
                     .weight(1f)
-                    .imePadding()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+
                 Spacer(Modifier.height(24.dp))
-
                 OnBoardingStepTag(text = "준비 단계")
-
                 Spacer(Modifier.height(14.dp))
 
                 Text(
@@ -155,234 +142,188 @@ fun NicknameStep(
 
                 Image(
                     painter = painterResource(R.drawable.walk_it_character),
-                    contentDescription = "walkit character"
+                    contentDescription = null
                 )
 
-                // 키보드가 올라왔을 때는 Spacer 높이를 줄이고, 평상시에는 92.dp 유지
                 Spacer(
-                    modifier = Modifier.height(
+                    Modifier.height(
                         if (isImeVisible) 16.dp else 92.dp
                     )
                 )
+
+                NicknameInputField(
+                    value = uiState.nicknameState.value,
+                    isError = stepUiState.isError,
+                    errorMessage = stepUiState.errorMessage,
+                    focusRequester = focusRequester,
+                    keyboardController = keyboardController,
+                    onValueChange = onNicknameChange,
+                    onDone = {
+                        keyboardController.hide()
+//                        if (stepUiState.canGoNext) {
+//                            onCheckDuplicate()
+//                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.weight(1f, fill = true))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 46.dp)
-                        .clickable {
-                            focusRequester.requestFocus()
-                            safeKeyboardController.show()
-                        }
-                        .border(
-                            width = 1.dp,
-                            color = if (isError) SemanticColor.stateRedPrimary
-                            else SemanticColor.textBorderPrimary,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .imePadding() // 🔥 여기만
+                        .padding(bottom = 24.dp)
                 ) {
-                    BasicTextField(
-                        value = nicknameState.value,
-                        onValueChange = onNicknameChange,
-                        singleLine = true,
-                        textStyle = MaterialTheme.walkItTypography.bodyM,
-                        modifier = Modifier.focusRequester(focusRequester),
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                // 키보드 내리기
-                                safeKeyboardController.hide()
-                                // 유효성 검증 통과 시 중복 체크 수행
-                                if (stepUiState.canGoNext) {
-                                    onCheckDuplicate()
-                                }
-                            }
-                        ),
-                        decorationBox = { innerTextField ->
-                            if (nicknameState.value.isEmpty()) {
-                                Text(
-                                    "닉네임을 입력해주세요",
-                                    style = MaterialTheme.walkItTypography.bodyM,
-                                    color = SemanticColor.textBorderSecondary
-                                )
-                            }
-                            innerTextField()
-                        }
-                    )
-                }
-                if (stepUiState.isError && stepUiState.errorMessage != null) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = stepUiState.errorMessage!!,
-                            style = MaterialTheme.walkItTypography.bodyS.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = SemanticColor.stateRedPrimary,
+                    if (!isImeVisible) {
+                        CtaButton(
+                            text = "다음으로",
+                            enabled = stepUiState.canGoNext,
+                            onClick = onNext,
+                            iconResId = R.drawable.ic_arrow_forward
                         )
                     }
-
                 }
 
+            }
+        }
 
-                Spacer(modifier = Modifier.weight(1f))
+        LoadingOverlay(isLoading = stepUiState.isLoading)
+    }
+}
 
-                if (!isImeVisible) {
-                    CtaButton(
-                        text = "다음으로",
-                        enabled = true,
-                        onClick = onNext,
-                        iconResId = R.drawable.ic_arrow_forward
-                    )
+/* ---------------------------------------------
+ * Nickname Input (Pure UI)
+ * --------------------------------------------- */
 
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
+@Composable
+fun NicknameInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean,
+    errorMessage: String?,
+    focusRequester: FocusRequester,
+    keyboardController: SoftwareKeyboardController,
+    modifier: Modifier = Modifier,
+    maxLength: Int = MAX_LENGTH,
+    onDone: () -> Unit = {}
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .background(Color.White, RoundedCornerShape(12.dp))
+                .border(
+                    width = 1.dp,
+                    color = when {
+                        isError -> Color.Red
+                        isFocused -> Color.Black
+                        else -> Color.LightGray
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart // 🔹 입력 텍스트와 placeholder 중앙 정렬
+        ) {
+
+            // ===== Placeholder =====
+            if (value.isEmpty()) {
+                Text(
+                    text = "닉네임을 입력해주세요",
+                    color = Color.Gray,
+                    fontSize = 16.sp
+                )
             }
 
-            // API 요청 시 로딩 오버레이 표시
-            LoadingOverlay(isLoading = stepUiState.isLoading)
+            // ===== BasicTextField =====
+            BasicTextField(
+                value = value,
+                onValueChange = { newValue ->
+                    val filtered = if (newValue.length <= maxLength) newValue else newValue.take(maxLength)
+                    onValueChange(filtered)
+                },
+                singleLine = true,
+                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                cursorBrush = SolidColor(Color.Black),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { isFocused = it.isFocused },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        keyboardController.hide()
+                        onDone()
+                    }
+                )
+            )
+
+            // ===== 글자 수 표시 =====
+            Text(
+                text = "${value.length}/$maxLength",
+                fontSize = 12.sp,
+                color = if (value.length > maxLength) Color.Red else Color.Gray,
+                modifier = Modifier.align(Alignment.CenterEnd) // 오른쪽 끝에 정렬
+            )
+        }
+
+        // ===== 에러 메시지 =====
+        if (errorMessage != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                fontSize = 12.sp
+            )
         }
     }
 }
 
 
-@Preview(showBackground = true)
-@Composable
-private fun NicknameStepFilledPreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "닉네임예시",
-                    validationError = null // 유효성 검증 통과 상태
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
 
-@Preview(showBackground = true)
-@Composable
-private fun NicknameStepEmptyPreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "",
-                    validationError = null // 빈 문자열은 에러 표시하지 않음
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
 
-@Preview(showBackground = true, name = "유효하지 않은 닉네임")
-@Composable
-private fun NicknameStepInvalidPreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "닉네임@123", // 특수문자 포함
-                    validationError = "닉네임은 한글과 영문(대소문자)만 사용할 수 있습니다"
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
 
-@Preview(showBackground = true, name = "중복 닉네임")
-@Composable
-private fun NicknameStepDuplicatePreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "중복닉네임",
-                    isDuplicate = true,
-                    validationError = null
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
 
-@Preview(showBackground = true, name = "긴 닉네임 (21자)")
-@Composable
-private fun NicknameStepTooLongPreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "매우매우매우매우매우긴닉네임", // 21자
-                    validationError = "닉네임은 최대 20자까지 입력 가능합니다"
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
+/* ---------------------------------------------
+ * Keyboard Helper
+ * --------------------------------------------- */
 
-@Preview(showBackground = true, name = "띄어쓰기 포함 닉네임")
 @Composable
-private fun NicknameStepWithSpacePreview() {
-    WalkItTheme {
-        NicknameStep(
-            uiState = OnboardingUiState(
-                nicknameState = NicknameState(
-                    value = "닉네 임 예시",
-                    validationError = "닉네임에 띄어쓰기를 사용할 수 없습니다"
-                ),
-            ),
-            onCheckDuplicate = {},
-            onNext = {},
-            onNicknameChange = {},
-            onPrev = {},
-        )
-    }
-}
-
-/**
- * 키보드 상태를 관리하는 헬퍼 함수
- * Preview 안전성을 위해 null 처리를 포함
- */
-@Composable
-private fun rememberKeyboardState(): Triple<Boolean, SoftwareKeyboardController, FocusRequester> {
-    val density = LocalDensity.current
+public fun rememberKeyboardState(): Triple<Boolean, SoftwareKeyboardController, FocusRequester> {
     val imePadding = WindowInsets.ime.asPaddingValues()
     val isImeVisible = imePadding.calculateBottomPadding().value > 0
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
-    // Preview에서 composition local들이 null일 수 있으므로 기본 구현 제공
     val safeKeyboardController = keyboardController ?: object : SoftwareKeyboardController {
-        override fun hide() {}
         override fun show() {}
+        override fun hide() {}
     }
 
     return Triple(isImeVisible, safeKeyboardController, focusRequester)
+}
+
+/* ---------------------------------------------
+ * Preview
+ * --------------------------------------------- */
+
+@Preview(showBackground = true)
+@Composable
+private fun NicknameStepPreview() {
+    WalkItTheme {
+        NicknameStep(
+            uiState = OnboardingUiState(
+                nicknameState = NicknameState(
+                    value = "닉네임예시",
+                    validationError = null,
+                    isDuplicate = false
+                )
+            ),
+            onNicknameChange = {},
+            onCheckDuplicate = {},
+            onNext = {}
+        )
+    }
 }

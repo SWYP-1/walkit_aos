@@ -437,7 +437,7 @@ class DressingRoomViewModel @Inject constructor(
                 CharacterPart.FEET -> character.feetImageName
             }
 
-            val assetId = part.lottieAssetId
+            val assetId = part.getLottieAssetId()
             val imageData = characterImageLoader.loadCharacterPartImage(imageName, part)
 
             assetMap[assetId] = LottieAsset(
@@ -764,10 +764,6 @@ class DressingRoomViewModel @Inject constructor(
      */
     fun performPurchase() {
         viewModelScope.launch {
-            // 구매 전 현재 UI 상태 저장 (실패 시 복원을 위해)
-            val previousState = _uiState.value
-
-            _uiState.value = DressingRoomUiState.Loading
             val items = cartItems.value.toList()
             Timber.d("코스메틱 아이템 실제 구매 시작: ${items.size}개")
 
@@ -808,7 +804,8 @@ class DressingRoomViewModel @Inject constructor(
                     // ✅ 장바구니 다이얼로그 닫기
                     dismissCartDialog()
 
-                    // ✅ 저장하기 완료 시 캐릭터 정보 동기화
+
+                    // ✅ 저장하기 완료 시 캐릭터 정보 동기화 (백그라운드)
                     viewModelScope.launch {
                         refreshCharacterInfo()
                     }
@@ -818,9 +815,10 @@ class DressingRoomViewModel @Inject constructor(
 
                 is Result.Error -> {
                     Timber.e(result.exception, "코스메틱 아이템 구매 실패")
-                    // 구매 실패 시 이전 상태로 복원
-                    _uiState.value = previousState
-                    Timber.d("구매 실패 - 이전 UI 상태로 복원: $previousState")
+
+                    // 실패 시에도 다이얼로그 닫기
+                    dismissCartDialog()
+
                     // TODO: 에러 처리 UI 표시 (Snackbar 등)
                 }
 

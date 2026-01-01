@@ -24,6 +24,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -44,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,51 +95,6 @@ fun Modifier.customShadow(): Modifier = this.graphicsLayer {
     spotShadowColor = Color(0x0F000000)
     shape = RoundedCornerShape(12.dp)
     clip = false
-}
-
-/**
- * 헤더 행 컴포넌트
- */
-@Composable
-fun HeaderRow(
-    onDummyClick: () -> Unit,
-    onStartOnboarding: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "기록",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-        )
-
-        Row {
-            Button(
-                onClick = onDummyClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Gray,
-                ),
-            ) {
-                Text("더미 데이터")
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Button(
-                onClick = onStartOnboarding,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Blue,
-                ),
-            ) {
-                Text("온보딩 시작")
-            }
-        }
-    }
 }
 
 /**
@@ -290,109 +252,6 @@ fun WeekSection(
         Spacer(Modifier.height(22.dp))
     }
 }
-
-///**
-// * 일간 섹션 컴포넌트
-// */
-//@Composable
-//fun DaySection(
-//    stats: WalkAggregate,
-//    sessions: List<WalkingSession>,
-//    dateLabel: String,
-//    onPrev: () -> Unit,
-//    onNext: () -> Unit,
-//) {
-//    val listState = rememberLazyListState()
-//    val scope = rememberCoroutineScope()
-//    val currentIndex by remember {
-//        derivedStateOf {
-//            listState.firstVisibleItemIndex.coerceAtMost(
-//                (sessions.size - 1).coerceAtLeast(
-//                    0
-//                )
-//            )
-//        }
-//    }
-//    val totalDistanceMeters by remember(sessions) {
-//        mutableStateOf(
-//            sessions.fold(0.0) { acc, session ->
-//                acc + computeRouteDistanceMeters(session.locations).coerceAtLeast(session.totalDistance.toDouble())
-//            },
-//        )
-//    }
-//
-//    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-//        // 날짜 네비게이터
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            horizontalArrangement = Arrangement.SpaceBetween,
-//            verticalAlignment = Alignment.CenterVertically,
-//        ) {
-//            IconButton(onClick = onPrev) {
-//                Icon(Icons.AutoMirrored.Filled.ArrowBack, "이전 날짜")
-//            }
-//
-//            Text(
-//                text = dateLabel,
-//                style = MaterialTheme.typography.titleMedium,
-//                fontWeight = FontWeight.Bold,
-//            )
-//
-//            IconButton(onClick = onNext) {
-//                Icon(Icons.AutoMirrored.Filled.ArrowForward, "다음 날짜")
-//            }
-//        }
-//
-//        // 일간 통계 카드 (평균 걸음, 산책 시간)
-//        WalkingStatsCard(
-//            sessions = sessions,
-//            modifier = Modifier.fillMaxWidth(),
-//        )
-//
-//        // 세션 목록 (좌우 스크롤)
-//        if (sessions.isNotEmpty()) {
-////            LazyRow(
-////                state = listState,
-////                horizontalArrangement = Arrangement.spacedBy(8.dp),
-////                modifier = Modifier.fillMaxWidth(),
-////            ) {
-////                items(sessions.size) { index ->
-////                    val session = sessions[index]
-////                    WalkingDiaryCard(session = session)
-////                }
-////            }
-//            LazyRow(
-//                state = listState,
-//                horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                modifier = Modifier.fillMaxWidth(),
-//            ) {
-//                items(sessions.size) { index ->
-//                    WalkingDiaryCard(
-//                        session = sessions[index],
-//                        onEditClick = {},
-//                        onDeleteClick = {},
-//                        modifier = Modifier
-//                            .fillParentMaxWidth()
-//                    )
-//                }
-//            }
-//
-//        } else {
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .height(200.dp),
-//                contentAlignment = Alignment.Center,
-//            ) {
-//                Text(
-//                    text = "이 날짜에 산책 기록이 없습니다.",
-//                    style = MaterialTheme.typography.bodyMedium,
-//                    color = Color.Gray,
-//                )
-//            }
-//        }
-//    }
-//}
 
 /**
  * 월 네비게이터 컴포넌트
@@ -986,8 +845,30 @@ fun WalkingDiaryCard(
     setEditing: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
+    focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
+    // TextFieldValue를 사용하여 커서 위치 제어
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(text = note, selection = TextRange(note.length)))
+    }
+
+    // note가 변경될 때 TextFieldValue 업데이트 (편집 취소 등)
+    LaunchedEffect(note) {
+        if (!isEditMode) {
+            textFieldValue = TextFieldValue(text = note, selection = TextRange(note.length))
+        }
+    }
+
+    // 포커스 요청 시 텍스트 끝으로 커서 이동
+    LaunchedEffect(isEditMode, focusRequester) {
+        if (isEditMode && focusRequester != null) {
+            focusRequester.requestFocus()
+            // 약간의 딜레이 후 커서 위치 설정
+            kotlinx.coroutines.delay(100)
+            textFieldValue = textFieldValue.copy(selection = TextRange(textFieldValue.text.length))
+        }
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     Card(
@@ -1047,52 +928,55 @@ fun WalkingDiaryCard(
                         })
                 }
             }
-
-            HorizontalDivider(color = Color(0xFFF3F3F5), thickness = 1.dp)
-
             // 일기 내용
             val innerPadding = 10.dp
-            SectionCard {
-                if (isEditMode) {
-                    BasicTextField(
-                        value = note,
-                        onValueChange = onNoteChange,
-                        textStyle = MaterialTheme.walkItTypography.captionM.copy(
-                            color = SemanticColor.textBorderSecondary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(138.dp)
-                            .padding(10.dp) // 기존 높이 유지
-                    )
-                } else {
-                    Text(
-                        text = note.ifEmpty { "감정 일기 내용" },
-                        style = MaterialTheme.walkItTypography.captionM,
-                        color = SemanticColor.textBorderSecondary,
-                        maxLines = Int.MAX_VALUE,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(138.dp)
-                            .padding(10.dp)
-                    )
+            if(note.isNotEmpty() || isEditMode){
+                HorizontalDivider(color = Color(0xFFF3F3F5), thickness = 1.dp)
+                SectionCard {
+                    if (isEditMode) {
+                        TextField(
+                            value = textFieldValue,
+                            onValueChange = { newValue ->
+                                textFieldValue = newValue
+                                onNoteChange(newValue.text)
+                            },
+                            textStyle = MaterialTheme.walkItTypography.captionM.copy(
+                                color = SemanticColor.textBorderSecondary
+                            ),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                errorContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                                errorIndicatorColor = Color.Transparent,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(138.dp)
+                                .then(
+                                    if (focusRequester != null) Modifier.focusRequester(focusRequester)
+                                    else Modifier
+                                )
+                        )
+                    } else {
+                        Text(
+                            text = note.ifEmpty { "감정 일기 내용" },
+                            style = MaterialTheme.walkItTypography.captionM,
+                            color = SemanticColor.textBorderSecondary,
+                            maxLines = Int.MAX_VALUE,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(138.dp)
+                                .padding(10.dp)
+                        )
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun EmotionCircleIcon(emotion: EmotionType,size : Dp = 52.dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape),
-    ) {
-        Image(
-            painter = painterResource(getCircleEmotionIcon(emotion = emotion)),
-            contentDescription = "emotion circle "
-        )
+        }
     }
 }
 
@@ -1104,6 +988,19 @@ fun getCircleEmotionIcon(emotion: EmotionType): Int {
         EmotionType.DEPRESSED -> R.drawable.ic_circle_depressed
         EmotionType.TIRED -> R.drawable.ic_circle_tired
         EmotionType.IRRITATED -> R.drawable.ic_circle_anxious
+    }
+}
+@Composable
+fun EmotionCircleIcon(emotion: EmotionType,size : Dp = 52.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape),
+    ) {
+        Image(
+            painter = painterResource(getCircleEmotionIcon(emotion = emotion)),
+            contentDescription = "emotion circle "
+        )
     }
 }
 

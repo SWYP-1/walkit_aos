@@ -63,9 +63,10 @@ object DatabaseModule {
     fun provideWalkingSessionRepository(
         walkingSessionDao: WalkingSessionDao,
         walkRemoteDataSource: WalkRemoteDataSource,
+        userDao: UserDao,
         @ApplicationContext context: Context,
     ): WalkingSessionRepository =
-        WalkingSessionRepository(walkingSessionDao, walkRemoteDataSource, context)
+        WalkingSessionRepository(walkingSessionDao, walkRemoteDataSource, userDao, context)
 
     @Provides
     @Singleton

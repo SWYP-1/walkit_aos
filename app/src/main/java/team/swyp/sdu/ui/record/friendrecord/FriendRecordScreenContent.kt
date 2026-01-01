@@ -33,7 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -131,6 +133,24 @@ fun FriendRecordScreenContent(
                 onClickMore = onClickMore,
                 showMenu = showMenu,
                 onDismissMenu = onDismissMenu,
+                modifier = modifier,
+            )
+        }
+
+        is FriendRecordUiState.NotFollowing -> {
+            FriendRecordEmptyState(
+                icon = R.drawable.ic_face_default,
+                title = "팔로우하지 않은 사용자",
+                message = state.message,
+                modifier = modifier,
+            )
+        }
+
+        is FriendRecordUiState.NoRecords -> {
+            FriendRecordEmptyState(
+                icon = R.drawable.ic_empty_session,
+                title = "산책 기록이 없어요",
+                message = state.message,
                 modifier = modifier,
             )
         }
@@ -426,6 +446,26 @@ private fun FriendRecordScreenLoadingPreview() {
     }
 }
 
+@Preview(showBackground = true, name = "팔로우하지 않은 사용자")
+@Composable
+private fun FriendRecordScreenNotFollowingPreview() {
+    WalkItTheme {
+        FriendRecordScreenContent(
+            uiState = FriendRecordUiState.NotFollowing("팔로우하고 있지 않습니다"),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "산책 기록 없음")
+@Composable
+private fun FriendRecordScreenNoRecordsPreview() {
+    WalkItTheme {
+        FriendRecordScreenContent(
+            uiState = FriendRecordUiState.NoRecords("산책 기록이 아직 없습니다"),
+        )
+    }
+}
+
 @Preview(showBackground = true, name = "에러 상태")
 @Composable
 private fun FriendRecordScreenErrorPreview() {
@@ -435,5 +475,46 @@ private fun FriendRecordScreenErrorPreview() {
                 message = "데이터를 불러오는 중 오류가 발생했습니다",
             ),
         )
+    }
+}
+
+/**
+ * 빈 상태 표시 컴포저블
+ */
+@Composable
+private fun FriendRecordEmptyState(
+    @DrawableRes icon: Int,
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = SemanticColor.textBorderSecondary,
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.walkItTypography.headingM,
+                color = SemanticColor.textBorderPrimary,
+            )
+
+            Text(
+                text = message,
+                style = MaterialTheme.walkItTypography.bodyM,
+                color = SemanticColor.textBorderSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

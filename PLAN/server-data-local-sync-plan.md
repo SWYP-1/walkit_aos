@@ -148,3 +148,4 @@
 ### 데이터 일관성
 - [sync-strategy-rules.mdc](../../.cursor/rules/sync-strategy-rules.mdc) - 오프라인-first 전략
 - 서버 데이터를 신뢰할 수 있는 소스로 간주
+

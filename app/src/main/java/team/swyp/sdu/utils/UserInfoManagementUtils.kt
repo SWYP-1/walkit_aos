@@ -17,10 +17,10 @@ data class ProfileImageState(
 ) {
     /**
      * 현재 표시할 이미지 URL 반환
-     * 우선순위: selectedImageUri > originalImageName
+     * 우선순위: displayUrl > selectedImageUri > originalImageName
      */
     val currentDisplayUrl: String?
-        get() = selectedImageUri?.toString() ?: originalImageName
+        get() = displayUrl ?: selectedImageUri?.toString() ?: originalImageName
 
     /**
      * 변경사항이 있는지 확인
@@ -43,7 +43,7 @@ data class ProfileImageState(
             return ProfileImageState(
                 originalImageName = imageName,
                 selectedImageUri = selectedImageUri,
-                displayUrl = selectedImageUri?.toString() ?: imageName
+                displayUrl = selectedImageUri?.toString() ?: imageName // 로컬 선택 이미지를 우선 표시
             )
         }
     }

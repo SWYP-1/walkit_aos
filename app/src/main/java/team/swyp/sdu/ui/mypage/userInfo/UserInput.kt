@@ -10,4 +10,6 @@ data class UserInput(
     val email: String? = null,
     val imageName: String? = null,
     val selectedImageUri: String? = null,
+    val isNicknameDuplicate: Boolean? = null,  // null=확인전, true=중복, false=사용가능
+    val nicknameValidationError: String? = null,
 )

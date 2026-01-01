@@ -31,6 +31,7 @@ import team.swyp.sdu.ui.record.components.customShadow
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.utils.DateUtils.getMonthWeek
 
 
 /* =====================================================
@@ -135,7 +136,6 @@ fun Modifier.missionCardBorder(
 }
 
 
-
 /* =====================================================
  * 4. MissionCard
  * ===================================================== */
@@ -146,6 +146,7 @@ fun MissionCard(
     cardState: MissionCardState,
     onChallengeClick: () -> Unit,
     onRewardClick: (Long) -> Unit,
+    isActive: Boolean = false, // 첫 번째 카드(index 0) 특별 처리용
     modifier: Modifier = Modifier
 ) {
 
@@ -182,6 +183,26 @@ fun MissionCard(
                             color = cardState.categoryTextColor()
                         )
                     }
+                    if (isActive) {
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SemanticColor.statePurpleTertiary)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            val (month, week) = getMonthWeek(mission.weekStart)
+                            Text(
+                                text = "${month}월 ${week}주차",
+                                style = MaterialTheme.walkItTypography.captionM.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = SemanticColor.statePurplePrimary
+                            )
+                        }
+                    }
+
+
                 }
                 Text(
                     text = mission.title,
@@ -250,7 +271,7 @@ private fun previewMission(status: MissionStatus) = WeeklyMission(
     missionId = 100L,
     title = "주간 5만보 걷기",
     description = "이번 주 목표 걸음수를 달성하세요",
-    category = MissionCategory.CHALLENGE,
+    category = MissionCategory.CHALLENGE_ATTENDANCE,
     type = MissionType.CHALLENGE_STEPS,
     status = status,
     rewardPoints = 500,
@@ -267,7 +288,8 @@ fun PreviewActiveChallenge() {
             mission = previewMission(MissionStatus.IN_PROGRESS),
             cardState = MissionCardState.ACTIVE_CHALLENGE,
             onChallengeClick = {},
-            onRewardClick = {}
+            onRewardClick = {},
+            isActive = true,
         )
     }
 }

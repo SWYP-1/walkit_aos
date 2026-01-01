@@ -96,3 +96,4 @@ class GpsFilter @Inject constructor(
         )
     }
 }
+

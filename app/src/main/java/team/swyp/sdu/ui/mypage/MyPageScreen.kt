@@ -134,6 +134,7 @@ fun MyPageRoute(
                 showWithdrawConfirmDialog = false
                 viewModel.withdraw()
             },
+            highlightedWords = mapOf("탈퇴" to SemanticColor.stateRedPrimary)
         )
     }
 }

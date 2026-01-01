@@ -82,3 +82,4 @@ class SpeedFilter(
         lastTimestamp = 0L
     }
 }
+

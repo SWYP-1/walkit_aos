@@ -40,6 +40,8 @@ import team.swyp.sdu.ui.theme.walkItTypography
 fun ImageUploadMenu(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
+    showDeleteOption: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val greenPrimary = SemanticColor.stateGreenPrimary
@@ -121,38 +123,55 @@ fun ImageUploadMenu(
                 },
                 modifier = modifier.height(32.dp)
             )
-            DropdownMenuItem(
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_action_minus),
-                        tint = SemanticColor.iconBlack,
-                        contentDescription = "minus",
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                text = {
-                    Text(
-                        text = "삭제하기",
-                        style = MaterialTheme.walkItTypography.bodyM,
-                    )
-                },
-                onClick = {
-                    showImageMenu = false
-                    onGalleryClick()
-                },
-                modifier = modifier.height(32.dp)
-            )
+            if (showDeleteOption) {
+                DropdownMenuItem(
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_minus),
+                            tint = SemanticColor.iconBlack,
+                            contentDescription = "minus",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "삭제하기",
+                            style = MaterialTheme.walkItTypography.bodyM,
+                        )
+                    },
+                    onClick = {
+                        showImageMenu = false
+                        onDeleteClick()
+                    },
+                    modifier = modifier.height(32.dp)
+                )
+            }
         }
     }
 }
 
-@Preview(showBackground = true, name = "이미지 업로드 메뉴")
+@Preview(showBackground = true, name = "이미지 업로드 메뉴 (삭제하기 포함)")
 @Composable
 private fun ImageUploadMenuPreview() {
     WalkItTheme {
         ImageUploadMenu(
             onCameraClick = {},
-            onGalleryClick = {}
+            onGalleryClick = {},
+            onDeleteClick = {},
+            showDeleteOption = true
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "이미지 업로드 메뉴 (삭제하기 제외)")
+@Composable
+private fun ImageUploadMenuWithoutDeletePreview() {
+    WalkItTheme {
+        ImageUploadMenu(
+            onCameraClick = {},
+            onGalleryClick = {},
+            onDeleteClick = {},
+            showDeleteOption = false
         )
     }
 }

@@ -191,15 +191,13 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
 
     /**
      * 커스텀 알림 표시 (data-only 메시지용)
-     * data 필드의 type에 따라 알림 내용 결정
+     * 서버에서 제공하는 title과 body를 그대로 사용
      */
     private fun showCustomNotification(data: Map<String, String>) {
-        val type = data["type"] ?: "general"
-        val senderName = data["senderName"] ?: "알림"
-        val message = data["message"] ?: ""
+        val typeString = data["type"] ?: "GENERAL"
 
-        // FRIEND_UPDATED 이벤트 처리 (silent push)
-        if (type == "FRIEND_UPDATED") {
+        // FRIEND_UPDATED 같은 특수 케이스 처리 (silent push)
+        if (typeString.uppercase() == "FRIEND_UPDATED") {
             Timber.d("친구 상태 변경 이벤트 수신 - 캐시 무효화 및 이벤트 발행")
             serviceScope.launch {
                 friendRepository.invalidateCache()
@@ -208,28 +206,11 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
             return // silent push는 알림 표시하지 않음
         }
 
-        val (title, body) = when (type) {
-            "follow" -> {
-                "팔로우 알림" to "${senderName}님이 팔로우했습니다"
-            }
-            "like" -> {
-                "좋아요 알림" to "${senderName}님이 좋아요를 눌렀습니다"
-            }
-            "comment" -> {
-                "댓글 알림" to "${senderName}님이 댓글을 남겼습니다"
-            }
-            "mission" -> {
-                "미션 알림" to "새로운 미션이 도착했습니다"
-            }
-            "goal" -> {
-                "목표 알림" to "걸음 목표 달성 축하합니다!"
-            }
-            else -> {
-                "알림" to (message.takeIf { it.isNotEmpty() } ?: "새로운 알림이 있습니다")
-            }
-        }
+        // 서버에서 제공하는 title과 body를 그대로 사용
+        val title = data["title"] ?: "알림"
+        val body = data["body"] ?: "새로운 알림이 있습니다"
 
-        Timber.d("커스텀 알림 생성: type=$type, title=$title, body=$body")
+        Timber.d("커스텀 알림 생성: type=$typeString, title=$title, body=$body")
 
         showSystemNotification(title, body, data)
     }

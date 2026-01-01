@@ -26,15 +26,16 @@ data class Emotion(
 enum class EmotionType(
     val ko: String,
     val en: String,
+    val priority: Int, // 낮을수록 높은 우선순위 (1이 가장 높음)
 ) {
     // 긍정 감정
-    HAPPY("기쁨", "Happy"),
-    JOYFUL("즐거움", "Joyful"),
-    CONTENT("행복함", "Content"),
+    HAPPY("기쁨", "Happy", 1),        // 1위: 긍정 - 기쁘다
+    JOYFUL("즐거움", "Joyful", 2),    // 2위: 긍정 - 즐겁다
+    CONTENT("행복함", "Content", 3),  // 3위: 긍정 - 행복하다
 
     // 부정 감정
-    DEPRESSED("우울함", "Depressed"),
-    TIRED("지침", "Tired"),
-    IRRITATED("짜증남", "Irritated");
+    DEPRESSED("우울함", "Depressed", 4), // 4위: 부정 - 우울하다
+    TIRED("지침", "Tired", 5),       // 5위: 부정 - 지친다
+    IRRITATED("짜증남", "Irritated", 6); // 6위: 부정 - 짜증난다
 }
 

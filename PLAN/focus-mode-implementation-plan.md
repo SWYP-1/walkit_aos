@@ -227,3 +227,4 @@ LaunchedEffect 감지 → focus_mode에서 popBackStack → Main 화면 복귀
 4. FocusModeScreen 컴포넌트 구현
 5. MainScreen의 FloatingActionButton에서 LocationService 시작하도록 수정
 6. 각 시나리오별 테스트 진행
+

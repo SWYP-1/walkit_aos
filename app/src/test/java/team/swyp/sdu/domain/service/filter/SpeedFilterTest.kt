@@ -175,3 +175,4 @@ class SpeedFilterTest {
         assertEquals(37.5665, fastResult.first, 0.0001)   // 필터링됨
     }
 }
+

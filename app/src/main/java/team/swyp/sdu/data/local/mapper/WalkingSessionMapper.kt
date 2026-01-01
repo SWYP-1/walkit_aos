@@ -26,6 +26,7 @@ object WalkingSessionMapper {
     ): WalkingSessionEntity =
         WalkingSessionEntity(
             id = session.id,
+            userId = session.userId,
             startTime = session.startTime,
             endTime = session.endTime ?: 0L,
             stepCount = session.stepCount,
@@ -62,6 +63,8 @@ object WalkingSessionMapper {
         }
 
         return WalkingSession(
+            id = entity.id,  // ✅ DB의 실제 ID를 사용해야 함!
+            userId = entity.userId,
             startTime = entity.startTime,
             endTime = entity.endTime,
             stepCount = entity.stepCount,

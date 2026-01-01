@@ -30,31 +30,34 @@ interface WalkingSessionDao {
     fun getAllSessions(): Flow<List<WalkingSessionEntity>>
 
     /**
-     * 기간 내 세션 조회 (startTime 기준)
+     * 기간 내 세션 조회 (startTime 기준) - 현재 사용자만
      */
     @Query(
         """
         SELECT * FROM walking_sessions
-        WHERE startTime BETWEEN :startMillis AND :endMillis
+        WHERE userId = :userId AND startTime BETWEEN :startMillis AND :endMillis
         ORDER BY startTime DESC
         """,
     )
-    fun getSessionsBetween(
+    fun getSessionsBetweenForUser(
+        userId: Long,
         startMillis: Long,
         endMillis: Long,
     ): Flow<List<WalkingSessionEntity>>
 
     /**
-     * ID로 세션 조회 (Flow로 실시간 관찰)
+     * ID로 세션 조회 (Flow로 실시간 관찰) - 현재 사용자만
      */
-    @Query("SELECT * FROM walking_sessions WHERE id = :id")
-    fun observeSessionById(id: String): Flow<WalkingSessionEntity?>
+    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND id = :id")
+    fun observeSessionByIdForUser(userId: Long, id: String): Flow<WalkingSessionEntity?>
+
 
     /**
-     * ID로 세션 조회
+     * ID로 세션 조회 - 현재 사용자만
      */
-    @Query("SELECT * FROM walking_sessions WHERE id = :id")
-    suspend fun getSessionById(id: String): WalkingSessionEntity?
+    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND id = :id")
+    suspend fun getSessionByIdForUser(userId: Long, id: String): WalkingSessionEntity?
+
 
     /**
      * 세션 삭제
@@ -80,11 +83,17 @@ interface WalkingSessionDao {
     @Query("SELECT * FROM walking_sessions WHERE syncState IN ('PENDING', 'FAILED') ORDER BY startTime ASC")
     suspend fun getUnsyncedSessions(): List<WalkingSessionEntity>
 
+    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND syncState IN ('PENDING', 'SYNCING')")
+    suspend fun getUnsyncedSessionsForUser(userId: Long): List<WalkingSessionEntity>
+
     /**
      * 동기화된 세션 조회 (SYNCED 상태)
      */
     @Query("SELECT * FROM walking_sessions WHERE syncState = 'SYNCED' ORDER BY startTime DESC")
     suspend fun getSyncedSessions(): List<WalkingSessionEntity>
+
+    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND syncState = 'SYNCED'")
+    suspend fun getSyncedSessionsForUser(userId: Long): List<WalkingSessionEntity>
 
     /**
      * 동기화 상태 업데이트 (SyncState 사용)

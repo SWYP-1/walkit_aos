@@ -26,20 +26,25 @@ class CustomTestViewModel @Inject constructor(
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Timber.d("🚀 더미 세션 데이터 추가 시작")
-                val dummySessions = WalkingTestData.generateTestSessions() // 40개 생성
+
+                // 현재 사용자 ID 가져오기
+                val currentUserId = walkingSessionRepository.getCurrentUserId()
+                Timber.d("📋 현재 사용자 ID: $currentUserId")
+
+                val dummySessions = WalkingTestData.generateTestSessions(userId = currentUserId) // ✅ userId 전달
                 Timber.d("📊 생성된 더미 세션 수: ${dummySessions.size}")
 
                 dummySessions.forEachIndexed { index, session ->
-                    Timber.d("💾 [${index + 1}/${dummySessions.size}] 세션 저장 시도: ${session.startTime}")
+                    Timber.d("💾 [${index + 1}/${dummySessions.size}] 세션 저장 시도: ${session.startTime}, userId=${session.userId}")
                     walkingSessionRepository.saveSessionLocalOnly(
                         session = session,
                         imageUri = null, // 이미지 없이 저장
                         syncState = SyncState.SYNCED // 서버 동기화하지 않음
                     )
-                    Timber.d("✅ [${index + 1}/${dummySessions.size}] 세션 저장 완료: ${session.id}")
+                    Timber.d("✅ [${index + 1}/${dummySessions.size}] 세션 저장 완료: ${session.id}, userId=${session.userId}")
                 }
 
-                Timber.d("🎉 더미 세션 데이터 추가 완료: ${dummySessions.size}개 (로컬 전용)")
+                Timber.d("🎉 더미 세션 데이터 추가 완료: ${dummySessions.size}개 (로컬 전용, userId=$currentUserId)")
                 onComplete()
             } catch (e: Exception) {
                 Timber.e(e, "❌ 더미 세션 데이터 추가 실패: ${e.message}")

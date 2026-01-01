@@ -39,16 +39,16 @@ interface UserApi {
         @Query("nickname") nickname: String
     ): UserSearchResultDto
 
-    /**
-     * 닉네임 중복 체크
-     *
-     * @param nickname 체크할 닉네임
-     * @return Response로 감싼 응답 (성공=중복아님, 실패=중복)
-     */
-    @GET("/users/check-nickname/{nickname}")
-    suspend fun checkNicknameDuplicate(
-        @Path("nickname") nickname: String
-    ): Response<Void>
+//    /**
+//     * 닉네임 중복 체크
+//     *
+//     * @param nickname 체크할 닉네임
+//     * @return Response로 감싼 응답 (성공=중복아님, 실패=중복)
+//     */
+//    @GET("/users/nickname/{nickname}")
+//    suspend fun checkNicknameDuplicate(
+//        @Path("nickname") nickname: String
+//    ): Response<Void>
 
     /**
      * 닉네임 등록
@@ -59,7 +59,7 @@ interface UserApi {
     @POST("/users/nickname/{nickname}")
     suspend fun registerNickname(
         @Path("nickname") nickname: String
-    ): Response<Void>
+    ): Response<Unit>
 
     /**
      * 생년월일 업데이트
@@ -95,9 +95,8 @@ interface UserApi {
      * @param imageId 삭제할 이미지 ID
      * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
-    @DELETE("/images/delete/{imageId}")
+    @DELETE("/users/delete")
     suspend fun deleteImage(
-        @Path("imageId") imageId: Long
     ): Response<Unit>
 
     /**

@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ import team.swyp.sdu.ui.walking.utils.findSelectedEmotionIndex
 import team.swyp.sdu.ui.walking.utils.valueToEmotionType
 import team.swyp.sdu.ui.walking.viewmodel.WalkingUiState
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
+import timber.log.Timber
 
 
 /**
@@ -59,6 +61,21 @@ fun PreWalkingEmotionSelectRoute(
     val selectedEmotion = when (uiState) {
         is WalkingUiState.PreWalkingEmotionSelection -> (uiState as WalkingUiState.PreWalkingEmotionSelection).preWalkingEmotion
         else -> null
+    }
+
+    // 사용자 로그인 상태 확인
+    LaunchedEffect(Unit) {
+        try {
+            val userId = viewModel.getCurrentUserId()
+            if (userId == 0L) {
+                Timber.w("로그인되지 않은 사용자가 산책을 시도함")
+                // 로그인 필요 메시지를 표시하거나 이전 화면으로 돌아감
+                onPrev()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "사용자 상태 확인 실패")
+            onPrev()
+        }
     }
 
     PreWalkingEmotionSelectScreen(

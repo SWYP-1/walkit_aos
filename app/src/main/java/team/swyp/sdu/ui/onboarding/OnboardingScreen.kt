@@ -39,17 +39,11 @@ fun OnboardingScreen(
                         uiState = uiState,
                         onNicknameChange = viewModel::updateNickname,
                         onNext = {
-                            Timber.d("onNext Button Clicked!!")
-                            Timber.d("viewModel 상태 확인: ${viewModel}")
                             try {
-                                Timber.d("registerNickname() 호출 직전")
                                 viewModel.registerNickname()
-                                Timber.d("registerNickname() 호출 완료")
                             } catch (e: Exception) {
-                                Timber.e(e, "registerNickname() 호출 중 예외 발생")
                             }
                         },
-                        onPrev = viewModel::previousStep,
                         onCheckDuplicate = viewModel::checkNicknameDuplicate
                     )
 

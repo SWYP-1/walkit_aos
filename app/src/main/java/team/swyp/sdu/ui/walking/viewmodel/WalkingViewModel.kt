@@ -248,15 +248,18 @@ class WalkingViewModel @Inject constructor(
     }
 
     init {
+        Timber.d("WalkingViewModel init 시작 - hashCode: ${this.hashCode()}")
         observeRawEvents()
         observeTrackingStatus()
         updateSensorAvailability()
         restoreWalkingStateFromDataStore() // DataStore에서 산책 상태 복원
-        loadWalkingCharacter() // 산책용 캐릭터 정보 로드
+        loadWalkingCharacterIfNeeded() // 산책용 캐릭터 정보 로드 (API 호출 최소화)
 
         // 세션 저장 상태 초기화
         _isSessionSaved.value = false
+        Timber.d("WalkingViewModel init 완료 - hashCode: ${this.hashCode()}")
     }
+
 
     /**
      * 산책 상태를 DataStore에 저장
@@ -285,6 +288,16 @@ class WalkingViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "DataStore 저장 실패")
             }
+        }
+    }
+
+    /**
+     * 산책용 캐릭터 정보 로드 (현재 위치 기반)
+     * 화면에서 필요할 때 호출하기 위해 public으로 변경
+     */
+    fun loadWalkingCharacterIfNeeded() {
+        if (_walkingCharacter.value == null) {
+            loadWalkingCharacter()
         }
     }
 
@@ -521,6 +534,17 @@ class WalkingViewModel @Inject constructor(
         val preEmotion = _preWalkingEmotion.value
         require(preEmotion != null) { "산책 전 감정을 선택해야 합니다" }
 
+        // 로그인된 사용자인지 확인 (임시 세션 방지)
+        Timber.d("산책 시작 전 사용자 ID 확인")
+        val currentUserId = walkingSessionRepository.getCurrentUserId()
+        Timber.d("산책 시작: currentUserId=$currentUserId")
+        require(currentUserId != 0L) { "로그인이 필요합니다. 산책을 시작할 수 없습니다." }
+
+        // 산책 시작 시 캐릭터 정보 로드 (최초 1회만)
+        if (_walkingCharacter.value == null) {
+            loadWalkingCharacter()
+        }
+
         // 새로운 산책 시작 전 DataStore 초기화 (이전 잔여 데이터 제거)
         clearWalkingStateFromDataStore()
 
@@ -631,12 +655,14 @@ class WalkingViewModel @Inject constructor(
         // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
         try {
             Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=${_currentSessionLocalId.value}")
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전 세션 정보: userId=${completedSession.userId}, localId=${completedSession.id}")
             val sessionId = walkingSessionRepository.createSessionPartial(completedSession)
             Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
-            Timber.d("부분 세션 저장 완료: localId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
+            Timber.d("부분 세션 저장 완료: localId=$sessionId, userId=${completedSession.userId}, postEmotion=${completedSession.postWalkEmotion}")
 
             // ⭐ DB 저장이 완료된 후 세션 ID만 설정 (UI 상태는 이미 변경됨)
             _currentSessionLocalId.value = sessionId
+            Timber.d("🚶 WalkingViewModel.stopWalking - _currentSessionLocalId 설정 완료: ${_currentSessionLocalId.value}, ViewModel hashCode: ${this.hashCode()}")
             _isSessionSaved.value = true  // 세션 저장 완료 플래그 설정
             _isSavingSession.value = false  // 세션 저장 완료
             // _uiState.value는 이미 버튼 클릭 시 finishWalking()에서 변경됨
@@ -777,7 +803,7 @@ class WalkingViewModel @Inject constructor(
      *
      * 하이브리드 접근: 메모리에서 즉시 세션 객체를 생성하여 Completed 상태로 사용
      */
-    private fun createCompletedSession(targetStepCount: Int = 0): WalkingSession {
+    private suspend fun createCompletedSession(targetStepCount: Int = 0): WalkingSession {
         val preEmotion = _preWalkingEmotion.value
             ?: throw IllegalStateException("산책 전 감정이 선택되지 않았습니다")
 
@@ -787,6 +813,10 @@ class WalkingViewModel @Inject constructor(
         val endTime = System.currentTimeMillis()
         val collectedLocations = _locations.value
         val totalDistance = calculateTotalDistance(collectedLocations)
+
+        // 현재 사용자 ID 가져오기
+        val currentUserId = walkingSessionRepository.getCurrentUserId()
+        Timber.d("createCompletedSession: currentUserId=$currentUserId")
 
         // 완료된 세션 생성 (note, localImagePath, serverImageUrl은 null, 나중에 업데이트됨)
         return WalkingSession(
@@ -801,7 +831,8 @@ class WalkingViewModel @Inject constructor(
             localImagePath = null, // 나중에 업데이트
             serverImageUrl = null, // 서버 동기화 후 업데이트
             createdDate = DateUtils.formatToIsoDateTime(startTimeMillis),
-            targetStepCount = targetStepCount
+            targetStepCount = targetStepCount,
+            userId = currentUserId // ✅ 현재 사용자 ID 설정
         )
     }
 
@@ -846,9 +877,13 @@ class WalkingViewModel @Inject constructor(
      * @return 업데이트 성공 여부
      */
     fun updateSessionImageAndNote() {
+        Timber.d("updateSessionImageAndNote 호출 - ViewModel hashCode: ${this.hashCode()}, currentSessionLocalId: ${_currentSessionLocalId.value}")
         viewModelScope.launch {
             val localId = _currentSessionLocalId.value
                 ?: throw IllegalStateException("저장된 세션이 없습니다. 산책을 먼저 완료해주세요.")
+
+            // ViewModel 공유가 제대로 된다면 여기에 도달하지 않아야 함
+            Timber.d("✅ ViewModel 공유 성공 - localId: $localId")
 
             val imageUri = _emotionPhotoUri.value // URI 그대로 전달
             val note = _emotionText.value.ifEmpty { null }
@@ -898,8 +933,10 @@ class WalkingViewModel @Inject constructor(
                     note = null // 노트를 null로 설정하여 삭제
                 )
                 Timber.d("세션 노트 삭제 완료: localId=$localId")
+                // TODO: 삭제 성공 시 관련 UI 상태 업데이트 (필요시 구현)
             } catch (e: Exception) {
                 Timber.e(e, "세션 노트 삭제 실패: localId=$localId")
+                // Repository에서 이미 에러 처리를 하므로 여기서는 추가 처리 불필요
             }
         }
     }
@@ -994,6 +1031,13 @@ class WalkingViewModel @Inject constructor(
      */
     val currentSessionLocalIdValue: String?
         get() = _currentSessionLocalId.value
+
+    /**
+     * 현재 사용자 ID 확인 (로그인 상태 체크용)
+     */
+    suspend fun getCurrentUserId(): Long {
+        return walkingSessionRepository.getCurrentUserId()
+    }
 
     /**
      * ID로 세션 조회 (WalkingResultScreen에서 사용)

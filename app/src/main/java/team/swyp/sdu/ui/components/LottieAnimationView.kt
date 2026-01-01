@@ -26,23 +26,26 @@ import team.swyp.sdu.R
 import timber.log.Timber
 
 /**
- * Lottie 애니메이션 뷰 컴포넌트
+ * 범용 Lottie 애니메이션 뷰 컴포넌트
  *
- * @param animationUrl Lottie 파일의 URL (나중에 URL로 변경 가능)
+ * @param animationResId 표시할 Lottie 애니메이션 리소스 ID
  * @param isPlaying 재생 중인지 여부
  * @param modifier Modifier
  * @param size 애니메이션 크기 (기본값: 200.dp)
  * @param speed 재생 속도 (기본값: 1.0f)
+ * @param iterations 반복 횟수 (기본값: 무한 반복)
  */
 @Composable
 fun LottieAnimationView(
+    animationResId: Int = R.raw.walking_avocado,
     modifier: Modifier = Modifier,
     size: Dp = 200.dp,
     isPlaying: Boolean = true,
-    speed: Float = 1f
+    speed: Float = 1f,
+    iterations: Int = LottieConstants.IterateForever
 ) {
     val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.walking_avocado)
+        LottieCompositionSpec.RawRes(animationResId)
     )
 
     val anim = rememberLottieAnimatable()

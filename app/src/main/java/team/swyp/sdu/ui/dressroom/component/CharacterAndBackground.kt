@@ -157,7 +157,7 @@ fun CharacterAndBackground(
             LottieCompositionSpec.JsonString(it)
         } ?: run {
             Timber.d("🎨 LottieCompositionSpec.RawRes 사용 (기본 리소스)")
-            LottieCompositionSpec.RawRes(R.raw.seedblueribbon)
+            LottieCompositionSpec.RawRes(R.raw.seed)
         }
     )
 

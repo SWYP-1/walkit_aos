@@ -208,14 +208,6 @@ fun NotificationSettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // GET 테스트 버튼
-            Button(
-                onClick = onGetNotificationSettings,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("알림 설정 GET")
-            }
         }
     }
 }

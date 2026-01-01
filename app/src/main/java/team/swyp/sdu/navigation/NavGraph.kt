@@ -399,9 +399,23 @@ fun NavGraph(
 inline fun <reified T : ViewModel> NavBackStackEntry.sharedViewModel(
     navController: NavHostController,
 ): T {
-    val navGraphRoute = destination.parent?.route ?: return hiltViewModel()
-    val parentEntry = remember(this) { navController.getBackStackEntry(navGraphRoute) }
-    return hiltViewModel(parentEntry)
+    return when (T::class) {
+        WalkingViewModel::class -> {
+            // WalkingGraph의 backstack entry를 찾아서 ViewModel 공유
+            val walkingGraphRoute = Screen.WalkingGraph.route
+            val walkingGraphEntry = remember(this) {
+                navController.getBackStackEntry(walkingGraphRoute)
+            }
+            Timber.d("WalkingViewModel: sharedViewModel - WalkingGraph entry 사용 (route=$walkingGraphRoute, hash=${walkingGraphEntry.hashCode()})")
+            hiltViewModel(walkingGraphEntry)
+        }
+        else -> {
+            val navGraphRoute = destination.parent?.route ?: return hiltViewModel()
+            val parentEntry = remember(this) { navController.getBackStackEntry(navGraphRoute) }
+            Timber.d("${T::class.simpleName}: sharedViewModel - parent entry 사용 (route=$navGraphRoute, hash=${parentEntry.hashCode()})")
+            hiltViewModel(parentEntry)
+        }
+    }
 }
 
 

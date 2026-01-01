@@ -101,7 +101,29 @@ class FriendRecordViewModel @Inject constructor(
                         )
                     )
                 }
-                is Result.Error -> _uiState.value = FriendRecordUiState.Error(result.message)
+                is Result.Error -> {
+                    // 서버 에러 코드에 따른 구체적인 UI 처리
+                    when (result.exception?.message) {
+                        "NOT_FOLLOWING" -> {
+                            // 팔로워가 아닌 경우
+                            _uiState.value = FriendRecordUiState.NotFollowing(
+                                message = result.message ?: "팔로우하고 있지 않습니다"
+                            )
+                        }
+                        "NO_WALK_RECORDS" -> {
+                            // 산책 기록이 없는 경우
+                            _uiState.value = FriendRecordUiState.NoRecords(
+                                message = result.message ?: "산책 기록이 아직 없습니다"
+                            )
+                        }
+                        else -> {
+                            // 기타 에러
+                            _uiState.value = FriendRecordUiState.Error(
+                                result.message ?: "데이터를 불러올 수 없습니다"
+                            )
+                        }
+                    }
+                }
                 Result.Loading -> {} // 이미 Loading 상태
             }
         }

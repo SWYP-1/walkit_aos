@@ -5,6 +5,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.WeekFields
+import java.util.Locale
 
 /**
  * 계절 타입
@@ -15,6 +17,11 @@ enum class Season {
     AUTUMN,    // 가을
     WINTER     // 겨울
 }
+
+data class MonthWeek(
+    val month: Int,
+    val week: Int,
+)
 
 /**
  * 날짜/시간 유틸리티 함수
@@ -35,7 +42,7 @@ object DateUtils {
      */
     fun formatToIsoDateTime(timestampMillis: Long): String {
         return Instant.ofEpochMilli(timestampMillis)
-            .atZone(ZoneId.systemDefault())
+            .atZone(ZoneId.of("UTC"))
             .format(isoDateTimeFormatter)
     }
 
@@ -129,6 +136,19 @@ object DateUtils {
             isoDateTime
         }
     }
+
+    fun getMonthWeek(dateString: String): MonthWeek {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val date = LocalDate.parse(dateString, formatter)
+
+        val weekFields = WeekFields.of(Locale.KOREA)
+
+        return MonthWeek(
+            month = date.monthValue,
+            week = date.get(weekFields.weekOfMonth())
+        )
+    }
+
 
 }
 

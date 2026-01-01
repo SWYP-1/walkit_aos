@@ -8,28 +8,57 @@ import kotlinx.coroutines.flow.Flow
 import team.swyp.sdu.data.local.entity.UserEntity
 
 /**
- * 사용자 캐시 DAO
+ * 사용자 캐시 DAO - UID 기반 단일 유저 관리
  */
 @Dao
 interface UserDao {
-    @Query("SELECT * FROM user_profile LIMIT 1")
-    fun observeUser(): Flow<UserEntity?>
+    /**
+     * UID로 사용자 관찰 (단일 유저 캐시)
+     *
+     * @param uid 사용자 UID
+     * @return 해당 UID의 사용자 Flow, 없으면 null
+     */
+    @Query("SELECT * FROM user_profile WHERE userId = :uid LIMIT 1")
+    fun observeUserByUid(uid: Long): Flow<UserEntity?>
 
+    /**
+     * UID로 사용자 조회 (단일 유저 캐시)
+     *
+     * @param uid 사용자 UID
+     * @return 해당 UID의 사용자, 없으면 null
+     */
+    @Query("SELECT * FROM user_profile WHERE userId = :uid LIMIT 1")
+    suspend fun getUserByUid(uid: Long): UserEntity?
+
+    /**
+     * 현재 저장된 사용자 관찰 (단일 유저 캐시)
+     *
+     * @return 저장된 사용자 Flow, 없으면 null
+     */
     @Query("SELECT * FROM user_profile LIMIT 1")
-    suspend fun getUser(): UserEntity?
+    fun observeCurrentUser(): Flow<UserEntity?>
+
+    /**
+     * 현재 저장된 사용자 조회 (단일 유저 캐시)
+     *
+     * @return 저장된 사용자, 없으면 null
+     */
+    @Query("SELECT * FROM user_profile LIMIT 1")
+    suspend fun getCurrentUser(): UserEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: UserEntity)
 
     /**
-     * 닉네임으로 프로필 이미지 업데이트
+     * UID로 프로필 이미지 업데이트
      *
-     * @param nickname 사용자 닉네임
+     * @param uid 사용자 UID
      * @param imageName 업데이트할 이미지 이름
+     * @param updatedAt 업데이트 시간
      */
-    @Query("UPDATE user_profile SET imageName = :imageName, updatedAt = :updatedAt WHERE nickname = :nickname")
-    suspend fun updateImageNameByNickname(
-        nickname: String,
+    @Query("UPDATE user_profile SET imageName = :imageName, updatedAt = :updatedAt WHERE userId = :uid")
+    suspend fun updateImageNameByUid(
+        uid: Long,
         imageName: String?,
         updatedAt: Long = System.currentTimeMillis()
     )

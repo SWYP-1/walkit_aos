@@ -18,12 +18,12 @@ import javax.inject.Singleton
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.decodeFromString
+import team.swyp.sdu.data.remote.dto.ApiErrorResponse
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import team.swyp.sdu.core.Result
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Response
-import team.swyp.sdu.data.remote.walking.dto.ErrorResponseDto
 import team.swyp.sdu.data.remote.walking.dto.FollowerWalkRecordDto
 import team.swyp.sdu.data.remote.walking.dto.UpdateWalkNoteRequest
 import team.swyp.sdu.data.remote.walking.dto.WalkingSessionRequest
@@ -258,7 +258,7 @@ class WalkRemoteDataSource @Inject constructor(
     ): Result<FollowerWalkRecordDto> {
         return try {
             val response = followerApi.getFollowerWalkRecord(nickname, lat, lon)
-            
+
             if (response.isSuccessful) {
                 val data = response.body()
                 if (data != null) {
@@ -272,20 +272,31 @@ class WalkRemoteDataSource @Inject constructor(
                     )
                 }
             } else {
-                Timber.w("팔로워 산책 기록 조회 실패: HTTP ${response.code()}, 메시지: ${response.message()}")
-                // 응답 본문이 있으면 로깅
-                response.errorBody()?.let { errorBody ->
+                // ApiErrorResponse 파싱
+                val errorBody = response.errorBody()?.string()
+                val apiError = errorBody?.let {
                     try {
-                        val errorString = errorBody.string()
-                        Timber.w("에러 응답 본문: $errorString")
+                        Json.decodeFromString<ApiErrorResponse>(it)
                     } catch (e: Exception) {
-                        Timber.w(e, "에러 응답 본문 읽기 실패")
+                        Timber.e(e, "ApiErrorResponse 파싱 실패: $errorBody")
+                        null
                     }
                 }
-                Result.Error(
-                    Exception("HTTP ${response.code()}: ${response.message()}"),
-                    "서버 오류가 발생했습니다"
-                )
+
+                val errorCode = apiError?.code ?: response.code()
+                val errorName = apiError?.name ?: "HTTP_ERROR"
+                val errorMessage = apiError?.message ?: "알 수 없는 에러가 발생했습니다"
+
+                Timber.w("팔로워 산책 기록 조회 실패: HTTP ${response.code()}, Code: $errorCode, Name: $errorName")
+
+                // 서버 에러 코드에 따른 구체적인 예외 생성
+                val exception = when (errorCode) {
+                    2001 -> Exception("NOT_FOLLOWING") // 팔로워가 아닌 유저 조회
+                    5001 -> Exception("NO_WALK_RECORDS") // 산책 기록 없음
+                    else -> Exception(errorName)
+                }
+
+                Result.Error(exception, errorMessage)
             }
         } catch (e: CancellationException) {
             Timber.d("팔로워 산책 기록 조회 취소됨 (Coroutine 취소)")
@@ -436,7 +447,7 @@ class WalkRemoteDataSource @Inject constructor(
                     ignoreUnknownKeys = true
                     isLenient = true
                 }
-                val errorResponse = json.decodeFromString<ErrorResponseDto>(errorString)
+                val errorResponse = json.decodeFromString<ApiErrorResponse>(errorString)
                 errorResponse.code
             }
         } catch (e: Exception) {

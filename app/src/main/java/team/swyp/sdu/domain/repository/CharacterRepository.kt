@@ -22,6 +22,11 @@ interface CharacterRepository {
     suspend fun getCharacter(nickname: String): Result<Character>
 
     /**
+     * nickname으로 캐릭터 정보 조회 (DB만, API 호출 없음)
+     */
+    suspend fun getCharacterFromDb(nickname: String): Character?
+
+    /**
      * 캐릭터 정보 조회 (API 직접 호출 - 위치 기반)
      */
     suspend fun getCharacterFromApi(lat: Double = 37.5665, lon: Double = 126.9780): Result<Character>

@@ -188,12 +188,7 @@ class LottieImageProcessor @Inject constructor(
             EquipSlot.BODY -> CharacterPart.BODY
             EquipSlot.FEET -> CharacterPart.FEET
         }
-
-        return if (slot == EquipSlot.HEAD && item?.name?.contains("ribbon") == true) {
-            part.ribbonAssetId
-        } else {
-            part.lottieAssetId
-        }
+        return part.getLottieAssetId()
     }
 
     /**
@@ -254,7 +249,7 @@ class LottieImageProcessor @Inject constructor(
                 // 각 캐릭터 파트 처리
                 CharacterPart.entries.forEach { part ->
                     val imageName = getImageNameForPart(character, part)
-                    val assetId = part.lottieAssetId
+                    val assetId = part.getLottieAssetId()
 
                     Timber.d("🔄 파트 ${part.name} 처리: imageName=$imageName, assetId=$assetId")
 

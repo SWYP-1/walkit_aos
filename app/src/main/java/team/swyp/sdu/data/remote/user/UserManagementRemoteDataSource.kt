@@ -17,38 +17,16 @@ class UserManagementRemoteDataSource @Inject constructor(
 ) {
 
     /**
-     * 닉네임 중복 체크
-     */
-    suspend fun checkNicknameDuplicate(nickname: String): Response<Void> {
-        try {
-            val response = userApi.checkNicknameDuplicate(nickname)
-            if (response.isSuccessful) {
-                Timber.d("닉네임 중복 체크 성공 (중복 아님): $nickname")
-            } else {
-                Timber.d("닉네임 중복 체크 실패 (중복됨): $nickname (코드: ${response.code()})")
-            }
-            return response
-        } catch (e: Exception) {
-            Timber.e(e, "닉네임 중복 체크 실패: $nickname")
-            throw e
-        }
-    }
-
-    /**
      * 닉네임 등록
      */
-    suspend fun registerNickname(nickname: String) {
-        try {
+    // HTTP 호출만 담당, 예외 throw하지 않고 Response<Unit> 그대로 반환
+    suspend fun registerNickname(nickname: String): Response<Unit> {
+        return try {
             val response = userApi.registerNickname(nickname)
-            if (response.isSuccessful) {
-                Timber.d("닉네임 등록 성공: $nickname")
-            } else {
-                val errorMessage = response.errorBody()?.string() ?: "닉네임 등록 실패"
-                Timber.e("닉네임 등록 실패: $errorMessage (코드: ${response.code()})")
-                throw Exception("닉네임 등록 실패: ${response.code()}")
-            }
+            Timber.d("닉네임 등록 호출 완료: $nickname (HTTP ${response.code()})")
+            response
         } catch (e: Exception) {
-            Timber.e(e, "닉네임 등록 실패: $nickname")
+            Timber.e(e, "닉네임 등록 호출 실패: $nickname")
             throw e
         }
     }

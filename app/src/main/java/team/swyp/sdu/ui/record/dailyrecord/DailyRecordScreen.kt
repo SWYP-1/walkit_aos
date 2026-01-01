@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,7 +97,6 @@ fun DailyRecordRoute(
             sessionDate == selectedDate
         }
     }
-
     DailyRecordScreen(
         selectedDate = selectedDate,
         sessionsForDate = sessionsForDate,
@@ -138,12 +139,23 @@ fun DailyRecordScreen(
 
     // 상위에서 편집 상태와 note 관리
     var isEditing by remember { mutableStateOf(false) }
-    var editedNote by remember { mutableStateOf(selectedSession?.note ?: "") }
+    var editedNote by remember(selectedSession) { mutableStateOf(selectedSession?.note ?: "") }
     var showConfirmDialog by remember { mutableStateOf(false) }
+
+    // 포커스 관리를 위한 FocusRequester
+    val focusRequester = remember { FocusRequester() }
+
+    // 수정 모드로 전환 시 포커스 요청
+    LaunchedEffect(isEditing) {
+        if (isEditing) {
+            focusRequester.requestFocus()
+        }
+    }
 
     // 시스템/물리 뒤로가기 처리
     BackHandler(enabled = true) {
-        if (isEditing) {
+        if (isEditing && editedNote != (selectedSession?.note ?: "")) {
+            // 실제 내용이 변경되었을 때만 확인 다이얼로그 표시
             showConfirmDialog = true
         } else {
             onNavigateBack()
@@ -162,8 +174,12 @@ fun DailyRecordScreen(
             AppHeader(
                 title = dateLabel,
                 onNavigateBack = {
-                    if (isEditing) showConfirmDialog = true
-                    else onNavigateBack()
+                    if (isEditing && editedNote != (selectedSession?.note ?: "")) {
+                        // 실제 내용이 변경되었을 때만 확인 다이얼로그 표시
+                        showConfirmDialog = true
+                    } else {
+                        onNavigateBack()
+                    }
                 },
             )
 
@@ -171,9 +187,11 @@ fun DailyRecordScreen(
                 isLoading -> {
                     LoadingSessionContent()
                 }
+
                 selectedSession == null -> {
                     EmptySessionContent()
                 }
+
                 else -> {
                     DailyRecordContent(
                         sessionsForDate = sessionsForDate,
@@ -184,7 +202,8 @@ fun DailyRecordScreen(
                         onSessionSelected = { selectedSessionIndex = it },
                         onDeleteClick = onDeleteClick,
                         isEditing = isEditing,
-                        setEditing = { isEditing = it }
+                        setEditing = { isEditing = it },
+                        focusRequester = focusRequester
                     )
                 }
             }
@@ -222,6 +241,7 @@ fun DailyRecordContent(
     onDeleteClick: (String) -> Unit,
     isEditing: Boolean,
     setEditing: (Boolean) -> Unit,
+    focusRequester: FocusRequester? = null,
 ) {
     Column(
         modifier = Modifier
@@ -253,7 +273,8 @@ fun DailyRecordContent(
             onNoteChange = onNoteChange,
             onDeleteClick = onDeleteClick,
             isEditMode = isEditing,
-            setEditing = setEditing
+            setEditing = setEditing,
+            focusRequester = focusRequester
         )
     }
 }
