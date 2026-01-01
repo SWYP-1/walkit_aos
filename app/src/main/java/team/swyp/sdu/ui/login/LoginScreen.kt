@@ -20,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.android.awaitFrame
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import team.swyp.sdu.R
 import team.swyp.sdu.presentation.viewmodel.LoginUiState
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
@@ -73,6 +76,8 @@ fun LoginRoute(
     ) { result ->
         viewModel.handleNaverLoginResult(result)
     }
+    val scope = rememberCoroutineScope()
+
 
     /**
      * ✅ 단 하나의 Navigation 진입점
@@ -108,18 +113,25 @@ fun LoginRoute(
 
     /**
      * ✅ 약관 동의 다이얼로그
-     * - navigate 절대 금지
-     * - 상태만 변경
+     * - 조건 단순화: onboardingCompleted 체크 제거
+     * - termsAgreed 상태 변경 시 LaunchedEffect가 자동으로 navigation 처리
      */
-    if (isLoggedIn && !termsAgreed && !onboardingCompleted) {
+    if (isLoggedIn && !termsAgreed) {
         TermsAgreementDialogRoute(
             onDismiss = {
                 // 약관 거부 → 로그아웃
                 viewModel.logout()
             },
             onTermsAgreedUpdated = {
+                // 상태만 업데이트 (navigation은 LaunchedEffect에서 처리)
                 onboardingViewModel.updateServiceTermsChecked(true)
                 onboardingViewModel.updatePrivacyPolicyChecked(true)
+
+                // 깜빡임 방지
+                scope.launch {
+                    delay(200L)
+                }
+
             },
         )
     }
@@ -139,8 +151,6 @@ fun LoginScreen(
     onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-
-
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -158,7 +168,6 @@ fun LoginScreen(
                 .padding(38.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
             when {
                 uiState is LoginUiState.Loading -> {
                     Box(
@@ -295,4 +304,3 @@ private fun LoginScreenWithTermsDialogPreview() {
         }
     }
 }
-

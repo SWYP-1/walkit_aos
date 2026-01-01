@@ -163,58 +163,48 @@ fun WeeklyRecordCard(
                         color = SemanticColor.backgroundWhiteQuaternary
                     )
 
-                    // 시간 분 (AnnotatedString)
+                    // 시간 분 (WalkingStatsCard와 동일한 형식)
                     Row(
                         Modifier.weight(1f),
-                        verticalAlignment = Alignment.Bottom
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        val durationText = FormatUtils.formatDurationCompat(session.duration)
+                        val durationMillis = session.duration
+                        val totalHours = (durationMillis / (1000 * 60 * 60)).toInt()
+                        val totalMinutes = ((durationMillis / (1000 * 60)) % 60).toInt()
 
-                        Text(
-                            text = buildAnnotatedString {
-                                // "0시간 12분"을 파싱해서 숫자와 단위 분리
-                                val parts = durationText.split(" ")
-                                for (part in parts) {
-                                    when {
-                                        part.endsWith("시간") -> {
-                                            val number = part.removeSuffix("시간")
-                                            append(number) // 숫자는 기존 스타일
-                                            withStyle(
-                                                SpanStyle(
-                                                    fontSize = MaterialTheme.walkItTypography.bodyXL.fontSize,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = SemanticColor.textBorderPrimary
-                                                )
-                                            ) {
-                                                append("시간")
-                                            }
-                                        }
-                                        part.endsWith("분") -> {
-                                            val number = part.removeSuffix("분")
-                                            append(number) // 숫자는 기존 스타일
-                                            withStyle(
-                                                SpanStyle(
-                                                    fontSize = MaterialTheme.walkItTypography.bodyXL.fontSize,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = SemanticColor.textBorderPrimary
-                                                )
-                                            ) {
-                                                append("분")
-                                            }
-                                        }
-                                        else -> {
-                                            append(part) // 예상치 못한 경우
-                                        }
-                                    }
-                                    if (part != parts.last()) {
-                                        append(" ") // 단어 사이 공백
-                                    }
-                                }
-                            },
-                            style = MaterialTheme.walkItTypography.bodyL.copy(
-                                fontWeight = FontWeight.Medium,
+                        // 시간 표시 (있는 경우에만)
+                        if (totalHours > 0) {
+                            Text(
+                                text = totalHours.toString(),
+                                style = MaterialTheme.walkItTypography.bodyL.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
                                 color = SemanticColor.textBorderPrimary
+                            )
+                            Text(
+                                text = "시간",
+                                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = SemanticColor.textBorderPrimary
+                            )
+                        }
+
+                        // 분 표시
+                        Text(
+                            text = totalMinutes.toString(),
+                            style = MaterialTheme.walkItTypography.bodyL.copy(
+                                fontWeight = FontWeight.Medium
                             ),
+                            color = SemanticColor.textBorderPrimary
+                        )
+                        Text(
+                            text = "분",
+                            style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = SemanticColor.textBorderPrimary
                         )
                     }
                 }

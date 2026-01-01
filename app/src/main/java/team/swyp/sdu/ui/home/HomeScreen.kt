@@ -231,10 +231,12 @@ private fun HomeBottomSection(
         )
         Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))  // 1️⃣ 클릭 영역 자르기
                 .clickable(onClick = onClickMore)
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         )
         {
             Text(

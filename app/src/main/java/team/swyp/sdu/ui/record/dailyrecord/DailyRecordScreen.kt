@@ -244,6 +244,7 @@ fun DailyRecordScreen(
                 onDismiss = { showShareDialog = false },
                 onPrev = { showShareDialog = false },
                 onSave = {
+                    //TODO : Download 구현
 //                    downloadImage()
                 }
             )
