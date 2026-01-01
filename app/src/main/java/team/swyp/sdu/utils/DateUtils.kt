@@ -149,6 +149,30 @@ object DateUtils {
         )
     }
 
+    /**
+     * 밀리초 타임스탬프를 시:분 형식으로 변환 (예: "12:23")
+     *
+     * @param timestampMillis 밀리초 타임스탬프
+     * @return 시:분 형식의 시간 문자열 (예: "12:23")
+     */
+    fun formatToTimeHHMM(timestampMillis: Long): String {
+        return Instant.ofEpochMilli(timestampMillis)
+            .atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("HH:mm"))
+    }
+
+    /**
+     * 밀리초 타임스탬프를 시:분:초 형식으로 변환 (예: "12:23:45")
+     *
+     * @param timestampMillis 밀리초 타임스탬프
+     * @return 시:분:초 형식의 시간 문자열 (예: "12:23:45")
+     */
+    fun formatToTimeHHMMSS(timestampMillis: Long): String {
+        return Instant.ofEpochMilli(timestampMillis)
+            .atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+    }
+
 
 }
 

@@ -63,7 +63,7 @@ fun SessionThumbnailList(
             listState.animateScrollToItem(selectedIndex)
         }
     }
-    Column {
+    Column(modifier.fillMaxWidth().aspectRatio(1f)) {
         Text(
             text = "2025년 12월 15일 ",
             // body L/medium
@@ -110,7 +110,7 @@ fun SessionThumbnailItem(
 
     Box(
         modifier = modifier
-            .height(200.dp)
+            .fillMaxSize()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .then(
@@ -147,8 +147,8 @@ fun SessionThumbnailItem(
                         .crossfade(true)
                         .build(),
                     contentDescription = "산책 기록 썸네일",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.matchParentSize()
                 )
             } else {
                 // 이미지가 없으면 경로 썸네일 표시
@@ -161,51 +161,3 @@ fun SessionThumbnailItem(
         }
     }
 }
-
-/**
- * 세션 인디케이터 행 (하단 원형 indicator)
- *
- * 현재 선택된 세션을 8dp 크기의 원형 indicator로 표시합니다.
- *
- * @param totalCount 전체 세션 개수
- * @param selectedIndex 현재 선택된 세션 인덱스
- * @param modifier Modifier
- */
-@Composable
-fun SessionIndicatorRow(
-    totalCount: Int,
-    selectedIndex: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(totalCount) { index ->
-            val isSelected = index == selectedIndex
-
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isSelected) {
-                            SemanticColor.textBorderSecondary // 선택된 경우: 검은색
-                        } else {
-                            SemanticColor.iconDisabled // 선택되지 않은 경우: 연한 회색
-                        }
-                    ),
-            )
-
-            // 마지막이 아니면 간격 추가
-            if (index < totalCount - 1) {
-                Spacer(modifier = Modifier.size(4.dp))
-            }
-        }
-    }
-}
-
-
-
-

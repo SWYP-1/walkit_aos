@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -29,12 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import team.swyp.sdu.R
@@ -267,12 +270,6 @@ fun DailyRecordContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SessionIndicatorRow(
-            totalCount = sessionsForDate.size,
-            selectedIndex = selectedSessionIndex,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
         WalkingStatsCard(
             sessions = listOf(selectedSession),
             modifier = Modifier.fillMaxWidth(),
@@ -296,37 +293,60 @@ fun SessionDailyTab(
     selectedSessionIndex: Int,
     onSessionSelected: (Int) -> Unit,
 ) {
-
     fun getKoreanNumber(num: Int): String {
-        val koreanNumbers = listOf("", "첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열")
+        val koreanNumbers =
+            listOf("", "첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열")
         return if (num in 1..10) koreanNumbers[num] else "$num"
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            // 👇 뒤에 깔리는 색을 "비선택 탭 색"으로
+            .background(SemanticColor.backgroundWhitePrimary)
     ) {
-        repeat(sessionCount) { index ->
-            val isSelected = selectedSessionIndex == index
-            val tabText = "${getKoreanNumber(index + 1)}번째 기록"
+        Row {
+            repeat(sessionCount) { index ->
+                val isSelected = selectedSessionIndex == index
+                val tabText = "${getKoreanNumber(index + 1)}번째 기록"
+                val offsetX = if (index == 0) 0.dp else (-6).dp
 
-            Text(
-                text = tabText,
-                style = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                ),
-                color = if (isSelected) SemanticColor.textBorderPrimary else SemanticColor.textBorderSecondary,
-                modifier = Modifier
-                    .background(
-                        color = if (isSelected) SemanticColor.backgroundWhitePrimary else SemanticColor.backgroundDarkSecondary,
-                        shape = RoundedCornerShape(16.dp)
+                val shape = RoundedCornerShape(
+                    topStart = if (index == 0) 8.dp else 0.dp,
+                    topEnd = 8.dp
+                )
+
+                Box(
+                    modifier = Modifier
+                        .offset(x = offsetX)
+                        .clip(shape)
+                        .background(
+                            if (isSelected)
+                                SemanticColor.backgroundWhitePrimary
+                            else
+                                SemanticColor.backgroundDarkSecondary
+                        )
+                        .zIndex(if (isSelected) 1f else 0f)
+                        .clickable { onSessionSelected(index) }
+                ) {
+                    Text(
+                        text = tabText,
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = if (isSelected)
+                            SemanticColor.textBorderSecondary
+                        else
+                            SemanticColor.textBorderTertiary,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
-                    .clickable { onSessionSelected(index) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun LoadingSessionContent() {
