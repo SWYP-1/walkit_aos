@@ -296,9 +296,11 @@ fun SessionDailyTab(
     selectedSessionIndex: Int,
     onSessionSelected: (Int) -> Unit,
 ) {
-    if (sessionCount <= 1) return // 세션이 1개 이하면 탭 표시하지 않음
 
-    val tabTitles = listOf("첫번째", "두번째", "세번째", "네번째", "다섯번째", "여섯번째", "일곱번째", "여덟번째", "아홉번째", "열 번째")
+    fun getKoreanNumber(num: Int): String {
+        val koreanNumbers = listOf("", "첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열")
+        return if (num in 1..10) koreanNumbers[num] else "$num"
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -306,7 +308,7 @@ fun SessionDailyTab(
     ) {
         repeat(sessionCount) { index ->
             val isSelected = selectedSessionIndex == index
-            val tabText = tabTitles.getOrElse(index) { "${index + 1}번째" }
+            val tabText = "${getKoreanNumber(index + 1)}번째 기록"
 
             Text(
                 text = tabText,
@@ -316,7 +318,7 @@ fun SessionDailyTab(
                 color = if (isSelected) SemanticColor.textBorderPrimary else SemanticColor.textBorderSecondary,
                 modifier = Modifier
                     .background(
-                        color = if (isSelected) SemanticColor.backgroundGreenSecondary else SemanticColor.backgroundWhitePrimary,
+                        color = if (isSelected) SemanticColor.backgroundWhitePrimary else SemanticColor.backgroundDarkSecondary,
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable { onSessionSelected(index) }
