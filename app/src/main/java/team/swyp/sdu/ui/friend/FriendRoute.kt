@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +56,7 @@ import kotlinx.coroutines.flow.flowOf
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Friend
 import team.swyp.sdu.ui.components.AppHeader
+import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.components.SearchBar
 import team.swyp.sdu.ui.theme.Pretendard
@@ -219,20 +218,14 @@ private fun FriendScreenContent(
     }
 
     confirmTarget?.let { target ->
-        AlertDialog(
-            onDismissRequest = { confirmTarget = null },
-            title = { Text("친구 차단하기") },
-            text = { Text("${target.nickname} 을(를) 차단하시겠습니까?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onBlockFriend(target.id)
-                        confirmTarget = null
-                    },
-                ) { Text("네") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmTarget = null }) { Text("아니오") }
+        ConfirmDialog(
+            title = "친구 차단하기",
+            message = "${target.nickname} 을(를) 차단하시겠습니까?",
+            onDismiss = { confirmTarget = null },
+            onNegative = { confirmTarget = null },
+            onPositive = {
+                onBlockFriend(target.id)
+                confirmTarget = null
             },
         )
     }

@@ -7,17 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,6 +48,8 @@ import team.swyp.sdu.ui.components.ConfirmDialog
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.ui.walking.components.ShareWalkingResultDialog
+import team.swyp.sdu.utils.downloadImage
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.ZoneId
@@ -143,6 +140,9 @@ fun DailyRecordScreen(
     val selectedSession = remember(selectedSessionIndex, sessionsForDate, isLoading) {
         if (isLoading) null else sessionsForDate.getOrNull(selectedSessionIndex)
     }
+    // 고유 팝업 표시 여부
+    var showShareDialog by remember { mutableStateOf(false) }
+
 
     // 상위에서 편집 상태와 note 관리
     var isEditing by remember { mutableStateOf(false) }
@@ -234,6 +234,20 @@ fun DailyRecordScreen(
                 onDismiss = { showConfirmDialog = false }
             )
         }
+        if (showShareDialog && selectedSession != null) {
+            ShareWalkingResultDialog(
+                stepCount = selectedSession.stepCount.toString(),
+                duration = selectedSession.duration,
+                sessionThumbNailUri = selectedSession.getImageUri() ?: "",
+                preWalkEmotion = selectedSession.preWalkEmotion,
+                postWalkEmotion = selectedSession.postWalkEmotion,
+                onDismiss = { showShareDialog = false },
+                onPrev = { showShareDialog = false },
+                onSave = {
+//                    downloadImage()
+                }
+            )
+        }
     }
 }
 
@@ -266,7 +280,7 @@ fun DailyRecordContent(
         SessionThumbnailList(
             sessions = sessionsForDate,
             selectedIndex = selectedSessionIndex,
-            onSessionSelected = onSessionSelected,
+            onClickExternal = { },
             modifier = Modifier.fillMaxWidth(),
         )
 
