@@ -233,13 +233,10 @@ fun PathThumbnail(
     modifier: Modifier = Modifier,
     pathColor: Color = Color(0xFF444444),
 ) {
-    val source =
-        if (locations.size < 2) {
-            // TODO(2025-12-10): 더미 경로 제거하고 실제 위치 데이터만 사용하도록 교체
-            generateRandomCityWalkPoints()
-        } else {
-            locations
-        }
+    // locations이 비어있으면 아무것도 그리지 않음 (NoSuchElementException 방지)
+    if (locations.isEmpty()) return
+
+    val source = locations
 
     Canvas(modifier = modifier) {
         val minLat = source.minOf { it.latitude }
