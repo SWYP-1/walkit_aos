@@ -1179,6 +1179,82 @@ class WalkingViewModel @Inject constructor(
     fun finishWalking() {
         _uiState.value = WalkingUiState.SessionSaved
     }
+
+    /**
+     * 산책 세션 저장 (실제 데이터 저장)
+     */
+    fun saveWalkingSession() {
+        viewModelScope.launch {
+            try {
+                Timber.d("🚶 WalkingViewModel: 산책 세션 저장 시작")
+
+                // 현재 Walking 상태에서 데이터 추출
+                val currentState = _uiState.value
+                if (currentState !is WalkingUiState.Walking) {
+                    Timber.w("🚶 WalkingViewModel: Walking 상태가 아니어서 세션 저장 스킵")
+                    return@launch
+                }
+
+                // 세션 데이터 생성
+                val walkingSession = WalkingSession(
+                    id = generateSessionId(),
+                    stepCount = currentState.stepCount,
+                    duration = currentState.duration,
+                    startTime = System.currentTimeMillis() - currentState.duration,
+                    endTime = System.currentTimeMillis(),
+                    calories = calculateCalories(currentState.stepCount),
+                    distance = calculateDistance(currentState.stepCount),
+                    averagePace = calculateAveragePace(currentState.stepCount, currentState.duration),
+                    emotionType = _preWalkingEmotion.value,
+                    postWalkingEmotion = _postWalkingEmotion.value
+                )
+
+                Timber.d("🚶 WalkingViewModel: 세션 데이터 생성 - 걸음수: ${walkingSession.stepCount}, 시간: ${walkingSession.duration}")
+
+                // 세션 저장
+                walkingSessionRepository.saveWalkingSession(walkingSession)
+
+                Timber.d("🚶 WalkingViewModel: 산책 세션 저장 완료")
+
+            } catch (e: Exception) {
+                Timber.e(e, "🚶 WalkingViewModel: 산책 세션 저장 실패")
+                // 실패 시에도 UI 상태는 유지 (이미 SessionSaved로 변경됨)
+            }
+        }
+    }
+
+    /**
+     * 세션 ID 생성
+     */
+    private fun generateSessionId(): String {
+        return "session_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(8)}"
+    }
+
+    /**
+     * 칼로리 계산 (걸음수 기반 간단 계산)
+     */
+    private fun calculateCalories(stepCount: Int): Double {
+        // 1걸음당 약 0.04kcal (평균적인 계산)
+        return stepCount * 0.04
+    }
+
+    /**
+     * 거리 계산 (걸음수 기반)
+     */
+    private fun calculateDistance(stepCount: Int): Double {
+        // 평균 걸음당 0.7m (평균적인 계산)
+        return stepCount * 0.7 / 1000.0 // km 단위
+    }
+
+    /**
+     * 평균 페이스 계산 (걸음수와 시간 기반)
+     */
+    private fun calculateAveragePace(stepCount: Int, durationMs: Long): Double {
+        if (durationMs == 0L) return 0.0
+        val distanceKm = calculateDistance(stepCount)
+        val durationHours = durationMs / (1000.0 * 60.0 * 60.0)
+        return distanceKm / durationHours // km/h
+    }
 }
 
 /**
