@@ -3,6 +3,11 @@ package team.swyp.sdu.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import team.swyp.sdu.R
+import team.swyp.sdu.ui.components.CharacterDisplayUtils
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -118,6 +123,8 @@ class HomeViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val locationManager: LocationManager,
     private val missionCardStateMapper: MissionCardStateMapper,
+    private val lottieImageProcessor: team.swyp.sdu.domain.service.LottieImageProcessor, // ✅ Lottie 이미지 프로세서 추가
+    private val application: android.app.Application, // ✅ Application 추가
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -126,6 +133,108 @@ class HomeViewModel @Inject constructor(
     // Section별 UiState 관리 (토스/배민 스타일)
     private val _profileUiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
     val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
+
+    // 캐릭터 Lottie 상태 관리
+    private val _characterLottieState = MutableStateFlow<team.swyp.sdu.domain.model.LottieCharacterState?>(null)
+    val characterLottieState: StateFlow<team.swyp.sdu.domain.model.LottieCharacterState?> = _characterLottieState.asStateFlow()
+
+    /**
+     * 캐릭터 Lottie 표시 상태 로드
+     */
+    fun loadCharacterDisplay() {
+        viewModelScope.launch {
+            try {
+                Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 시작")
+
+                // 현재 사용자 ID 가져오기
+                val userResult = userRepository.getUser()
+                val userId = when (userResult) {
+                    is Result.Success -> userResult.data.userId.toString()
+                    else -> {
+                        Timber.w("🏠 HomeViewModel: 사용자 정보를 가져올 수 없음")
+                        _characterLottieState.value = null
+                        return@launch
+                    }
+                }
+
+                // userId로 캐릭터 정보 가져오기
+                val characterResult = characterRepository.getCharacter(userId)
+                val character = when (characterResult) {
+                    is Result.Success -> characterResult.data
+                    is Result.Error -> {
+                        Timber.w("🏠 HomeViewModel: 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
+                        null
+                    }
+                    Result.Loading -> null
+                }
+
+                if (character == null) {
+                    Timber.w("🏠 HomeViewModel: 캐릭터 정보가 없음")
+                    _characterLottieState.value = null
+                    return@launch
+                }
+
+                // 캐릭터 등급에 따른 base Lottie JSON 로드
+                val baseJson = loadBaseLottieJson(character)
+
+                // Lottie 캐릭터 상태 생성
+                val lottieState = CharacterDisplayUtils.createLottieCharacterState(
+                    character = character,
+                    lottieImageProcessor = lottieImageProcessor,
+                    baseLottieJson = baseJson.toString()
+                )
+
+                _characterLottieState.value = lottieState
+                Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 완료")
+
+            } catch (e: Exception) {
+                Timber.e(e, "🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 실패")
+                _characterLottieState.value = team.swyp.sdu.domain.model.LottieCharacterState(
+                    baseJson = "{}",
+                    modifiedJson = null,
+                    assets = emptyMap(),
+                    isLoading = false,
+                    error = e.message ?: "캐릭터 표시 준비 실패"
+                )
+            }
+        }
+    }
+
+    /**
+     * 캐릭터 등급에 따른 Base Lottie JSON 로드
+     */
+    private suspend fun loadBaseLottieJson(character: team.swyp.sdu.domain.model.Character): JSONObject =
+        withContext(Dispatchers.IO) {
+            val resourceId = when (character.grade) {
+                Grade.SEED -> R.raw.seed
+                Grade.SPROUT -> R.raw.sprout
+                Grade.TREE -> R.raw.tree
+            }
+
+            Timber.d("🎭 HomeViewModel.loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
+
+            try {
+                Timber.d("📂 HomeViewModel: Lottie 파일 로드 시도")
+                val inputStream = application.resources.openRawResource(resourceId)
+                val jsonString = inputStream.bufferedReader().use { it.readText() }
+
+                Timber.d("📄 HomeViewModel: JSON 문자열 길이: ${jsonString.length}")
+
+                if (jsonString.isEmpty()) {
+                    Timber.e("❌ HomeViewModel: JSON 문자열이 비어있음!")
+                    return@withContext JSONObject()
+                }
+
+                val jsonObject = JSONObject(jsonString)
+                Timber.d("✅ HomeViewModel: JSONObject 생성 성공, 키 개수: ${jsonObject.length()}")
+
+                jsonObject
+
+            } catch (e: Exception) {
+                Timber.e(e, "❌ HomeViewModel: Lottie 파일 로드 실패")
+                JSONObject() // 실패 시 빈 JSON 반환
+            }
+        }
 
     private val _missionUiState = MutableStateFlow<MissionUiState>(MissionUiState.Loading)
     val missionUiState: StateFlow<MissionUiState> = _missionUiState.asStateFlow()

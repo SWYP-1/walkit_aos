@@ -40,7 +40,7 @@ object CosmeticItemMapper {
             name = dto.name,
             owned = dto.owned,
             point = dto.point,
-            tags = dto.tags,  // 서버에서 받은 tags 정보
+            tags = dto.tag,  // 서버에서 받은 tags 정보
         )
     }
 

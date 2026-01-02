@@ -50,15 +50,14 @@ fun DressingRoomRoute(
     val isWearLoading by viewModel.isWearLoading.collectAsStateWithLifecycle()
     val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
     val serverWornItems by viewModel.serverWornItems.collectAsStateWithLifecycle()
-    val showOwnedOnly by viewModel.showOwnedOnly.collectAsStateWithLifecycle()
 
     // 선택 상태 변경 로깅
     LaunchedEffect(selectedItemIds) {
         Timber.d("🎨 선택 상태 변경 - selectedItemIds: $selectedItemIds")
     }
+    val scope = rememberCoroutineScope()
 
     val showCartDialog by viewModel.showCartDialog.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
 
     DressingRoomScreen(
         modifier = modifier,
@@ -66,7 +65,6 @@ fun DressingRoomRoute(
         cartItems = cartItems,
         lottieImageProcessor = viewModel.lottieImageProcessor, // 실제 주입
         isWearLoading = isWearLoading,
-        showOwnedOnly = showOwnedOnly,
         showCartDialog = showCartDialog,
         selectedItemIds = selectedItemIds,
         wornItemsByPosition = wornItemsByPosition,
@@ -101,7 +99,6 @@ fun DressingRoomScreen(
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?, // ⭐ nullable
     isWearLoading: Boolean = false,
-    showOwnedOnly: Boolean = false,
     showCartDialog: Boolean = false,
     selectedItemIds : LinkedHashSet<Int>,
     wornItemsByPosition: Map<EquipSlot, Int> = emptyMap(),
@@ -137,7 +134,6 @@ fun DressingRoomScreen(
                         uiState = uiState,
                         cartItems = cartItems,
                         lottieImageProcessor = lottieImageProcessor,
-                        showOwnedOnly = showOwnedOnly,
 
                         onBackClick = onBackClick,
                         onRefreshClick = onRefreshClick,
@@ -195,7 +191,6 @@ private fun SuccessContent(
     uiState: DressingRoomUiState.Success,
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?,
-    showOwnedOnly: Boolean,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
@@ -258,7 +253,7 @@ private fun SuccessContent(
 
             // 체크박스 토글 가능한 헤더
             ItemHeader(
-                checked = showOwnedOnly,
+                checked = uiState.showOwnedOnly,
                 onCheckedChange = { onToggleOwnedOnly() }
             )
 
@@ -326,7 +321,7 @@ private fun ItemGrid(
     onItemClick: (Int) -> Unit,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Fixed(3),
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
@@ -339,7 +334,8 @@ private fun ItemGrid(
             Timber.d("🎴 ItemCard - itemId: ${item.itemId}, isSelected: $isSelected, selectedItemIds: $selectedItemIds")
             ItemCard(
                 itemImageUrl = item.imageName,
-                name = item.name,
+                position = item.position, // EquipSlot 직접 전달
+                name = item.position.displayName,
                 point = item.point,
                 isMine = item.owned,
                 isSelected = isSelected,
@@ -426,11 +422,11 @@ fun PreviewDressingRoomFullSample() {
                 selectedItemId = 2,
                 selectedItemIdSet = linkedSetOf(1, 2), // 다중 선택 예시
                 character = character,
-                myPoint = 12500 // API에서 가져온 포인트 값 예시
+                myPoint = 12500, // API에서 가져온 포인트 값 예시
+                showOwnedOnly = false
             ),
             cartItems = linkedSetOf(items[1], items[2]),
             lottieImageProcessor = null, // ⭐ Preview 핵심
-            showOwnedOnly = false,
             showCartDialog = false,
             wornItemsByPosition = mapOf(
                 // 착용 상태 예시

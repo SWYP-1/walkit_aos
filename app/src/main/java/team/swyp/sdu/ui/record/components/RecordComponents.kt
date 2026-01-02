@@ -498,19 +498,26 @@ private fun CalendarDayCellRecord(
             .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
             .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(4.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null, // Ripple 효과는 선택 가능
-                onClick = {
-                    Log.d("CalendarDayCellRecord", "Clicked $date")
-                    onNavigateToDailyRecord(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-                }),
+            .then(
+                if (hasWalkSession) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(), // Ripple 효과 활성화
+                        onClick = {
+                            Log.d("CalendarDayCellRecord", "Clicked $date")
+                            onNavigateToDailyRecord(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                        }
+                    )
+                } else {
+                    Modifier // 클릭 불가능
+                }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = day.toString(),
             style = MaterialTheme.walkItTypography.bodyS,
-            color = Color(0xFF171717),
+            color = if (hasWalkSession) Color(0xFF171717) else Color(0xFFCCCCCC), // 산책 기록 없는 날짜는 회색
             modifier = Modifier.padding(vertical = 8.dp)
         )
 

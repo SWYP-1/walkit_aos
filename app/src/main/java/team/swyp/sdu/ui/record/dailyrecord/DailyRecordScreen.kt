@@ -149,7 +149,6 @@ fun DailyRecordScreen(
     val scope = rememberCoroutineScope()
 
 
-
     // 상위에서 편집 상태와 note 관리
     var isEditing by remember { mutableStateOf(false) }
     var editedNote by remember(selectedSession) { mutableStateOf(selectedSession?.note ?: "") }
@@ -279,20 +278,34 @@ fun DailyRecordContent(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-
         SessionDailyTab(
             sessionCount = sessionsForDate.size,
             selectedSessionIndex = selectedSessionIndex,
             onSessionSelected = onSessionSelected,
         )
 
-        SessionThumbnailList(
-            session = selectedSession,
-            onExternalClick = onExternalClick,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    SemanticColor.backgroundWhitePrimary,
+                    shape = RoundedCornerShape(
+                        topEnd = 12.dp,
+                        bottomStart = 12.dp,
+                        bottomEnd = 12.dp
+                    )
+                ).padding(16.dp)
+        ) {
+
+            SessionThumbnailList(
+                session = selectedSession,
+                onExternalClick = onExternalClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         WalkingStatsCard(
             stepsLabel = "걸음",
@@ -300,6 +313,8 @@ fun DailyRecordContent(
             sessions = listOf(selectedSession),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Spacer(Modifier.height(16.dp))
 
         WalkingDiaryCard(
             session = selectedSession,
@@ -330,7 +345,6 @@ fun SessionDailyTab(
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
             .height(tabHeight)
             .background(SemanticColor.backgroundWhitePrimary)
     ) {

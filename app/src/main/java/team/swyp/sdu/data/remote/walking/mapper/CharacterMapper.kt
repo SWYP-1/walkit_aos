@@ -17,6 +17,7 @@ object CharacterMapper {
     fun toDomain(dto: CharacterDto): Character {
         return Character(
             headImageName = dto.headImage?.imageName,
+            headImageTag = dto.headImage?.itemTag,  // HEAD 영역의 tag 정보
             bodyImageName = dto.bodyImage?.imageName,
             feetImageName = dto.feetImage?.imageName,
             characterImageName = dto.characterImageName,
@@ -32,7 +33,7 @@ object CharacterMapper {
      */
     fun toDto(domain: Character): CharacterDto {
         return CharacterDto(
-            headImage = domain.headImageName?.let { ItemImageDto(imageName = it, itemPosition = "HEAD", itemTag = null) },
+            headImage = domain.headImageName?.let { ItemImageDto(imageName = it, itemPosition = "HEAD", itemTag = domain.headImageTag) },
             bodyImage = domain.bodyImageName?.let { ItemImageDto(imageName = it, itemPosition = "BODY", itemTag = null) },
             feetImage = domain.feetImageName?.let { ItemImageDto(imageName = it, itemPosition = "FEET", itemTag = null) },
             characterImageName = domain.characterImageName,

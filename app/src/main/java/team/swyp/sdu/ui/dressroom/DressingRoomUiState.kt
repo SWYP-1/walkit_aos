@@ -28,8 +28,8 @@ sealed interface DressingRoomUiState {
         val selectedItemIdSet : LinkedHashSet<Int> = LinkedHashSet(),
         val currentPosition: String? = null,
         val myPoint : Int = 0,
-        val availablePositions: List<String> = listOf("HEAD", "BODY", "FEET"),
         val processedLottieJson: String? = null,  // Lottie 미리보기 JSON
+        val showOwnedOnly: Boolean = false,  // 보유한 아이템만 보기 필터 상태
     ) : DressingRoomUiState
 
     /**

@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -218,6 +219,7 @@ fun WalkingResultScreen(
     snapshotState: SnapshotState,
     onCaptureSnapshot: suspend (suspend () -> String?) -> Boolean,
     onSyncSessionToServer: () -> Unit,
+    onUpdateNote: (String, String) -> Unit,
     onDeleteNote: (String) -> Unit,
     mapViewModel: KakaoMapViewModel = hiltViewModel(),
 ) {
@@ -258,6 +260,7 @@ fun WalkingResultScreen(
                 snapshotState = snapshotState,
                 onCaptureSnapshot = onCaptureSnapshot,
                 onSyncSessionToServer = onSyncSessionToServer,
+                onUpdateNote = onUpdateNote,
                 onDeleteNote = onDeleteNote,
                 mapViewModel = mapViewModel,
             )
@@ -283,6 +286,7 @@ private fun WalkingResultScreenContent(
     snapshotState: SnapshotState,
     onCaptureSnapshot: suspend (suspend () -> String?) -> Boolean,
     onSyncSessionToServer: () -> Unit,
+    onUpdateNote: (String, String) -> Unit,
     onDeleteNote: (String) -> Unit,
     mapViewModel: KakaoMapViewModel = hiltViewModel(),
 ) {
@@ -375,171 +379,142 @@ private fun WalkingResultScreenContent(
             }
 
             item {
-                Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .aspectRatio(1f)
+                        .onGloballyPositioned { coordinates ->
+                            // 사진이 있는 경우에만 위치 정보 저장 (스냅샷 생성용)
+                            if (emotionPhotoUri != null) {
+                                photoWithPathBoxCoordinates = coordinates
+                            }
+                        }
+                        .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(12.dp)) // Card 대신 배경 + 모서리 둥글게
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .onGloballyPositioned { coordinates ->
-                                // 사진이 있는 경우에만 위치 정보 저장 (스냅샷 생성용)
-                                if (emotionPhotoUri != null) {
-                                    photoWithPathBoxCoordinates = coordinates
-                                }
-                            }
-                    ) {
-                        if (emotionPhotoUri != null) {
-                            // 케이스 1: 사진이 있는 경우 - 사진 + 경로만 표시 (맵뷰 로딩하지 않음)
-                            val bitmap = remember(emotionPhotoUri) {
-                                try {
-                                    // 🚨 영상 파일 검증: URI가 영상인지 확인
-                                    val mimeType =
-                                        context.contentResolver.getType(emotionPhotoUri!!)
-                                    val isVideo = mimeType?.startsWith("video/") == true
+                    if (emotionPhotoUri != null) {
+                        // 케이스 1: 사진이 있는 경우
+                        val bitmap = remember(emotionPhotoUri) {
+                            try {
+                                val mimeType = context.contentResolver.getType(emotionPhotoUri!!)
+                                val isVideo = mimeType?.startsWith("video/") == true
 
-                                    if (isVideo) {
-                                        // 영상 파일인 경우 Bitmap 변환 생략
-                                        Timber.w("영상 파일이 감정 기록에 설정됨 - 이미지 표시 불가: $mimeType")
-                                        null
-                                    } else {
-                                        // 사진 파일인 경우 정상 변환
-                                        val inputStream =
-                                            context.contentResolver.openInputStream(emotionPhotoUri)
-                                        android.graphics.BitmapFactory.decodeStream(inputStream)
-                                    }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "이미지 변환 실패")
+                                if (isVideo) {
+                                    Timber.w("영상 파일이 감정 기록에 설정됨 - 이미지 표시 불가: $mimeType")
                                     null
+                                } else {
+                                    val inputStream = context.contentResolver.openInputStream(emotionPhotoUri)
+                                    android.graphics.BitmapFactory.decodeStream(inputStream)
                                 }
+                            } catch (e: Exception) {
+                                Timber.e(e, "이미지 변환 실패")
+                                null
                             }
-//                            bitmap?.let {
-//                                CoilBitmapImage(
-//                                    context = context,
-//                                    bitmap = bitmap,
-//                                    modifier = Modifier
-//                                        .fillMaxWidth()
-//                                        .aspectRatio(1f),
-//                                    contentScale = ContentScale.Crop
-//                                )
-//                            }
-                            emotionPhotoUri?.let { uri ->
-                                Image(
-                                    painter = rememberAsyncImagePainter(
-                                        model = ImageRequest.Builder(context)
-                                            .data(uri)      // ✅ URI 그대로 전달
-                                            .crossfade(true)
-                                            .build()
-                                    ),
-                                    contentDescription = "사진",
-                                    modifier = modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                        }
 
-                            // 다이얼로그 스타일 오버레이 + 경로 표시
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.5f)) // 다이얼로그 같은 반투명 회색 오버레이
-                            ) {
-                                // 경로 표시 (하얀색 선)
-                                PathThumbnail(
-                                    locations = currentSession.locations,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(20.dp),
-                                    pathColor = Color.White, // 하얀색 선
-                                    endpointColor = Color.White, // 하얀색 끝점
-                                )
-                            }
-                        } else {
-                            // 케이스 2: 사진이 없는 경우 - MapView 직접 표시
-                            KakaoMapView(
-                                locations = currentSession.locations,
+                        emotionPhotoUri?.let { uri ->
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    model = ImageRequest.Builder(context)
+                                        .data(uri)
+                                        .crossfade(true)
+                                        .build()
+                                ),
+                                contentDescription = "사진",
                                 modifier = Modifier.fillMaxSize(),
-                                viewModel = mapViewModel,
-                                onMapViewReady = { mapView ->
-                                    // MapView 참조 저장 (스냅샷 생성용)
-                                    mapViewRef = mapView
-                                },
+                                contentScale = ContentScale.Crop
                             )
                         }
 
-                        Row(
+                        // 다이얼로그 스타일 오버레이 + 경로 표시
+                        Box(
                             modifier = Modifier
-                                .padding(16.dp)
-                                .align(Alignment.TopEnd),
-                            verticalAlignment = Alignment.CenterVertically
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.5f))
                         ) {
+                            PathThumbnail(
+                                locations = currentSession.locations,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(20.dp),
+                                pathColor = Color.White,
+                                endpointColor = Color.White,
+                            )
+                        }
+                    } else {
+                        // 케이스 2: 사진이 없는 경우 - MapView 직접 표시
+                        KakaoMapView(
+                            locations = currentSession.locations,
+                            modifier = Modifier.fillMaxSize(),
+                            viewModel = mapViewModel,
+                            onMapViewReady = { mapView ->
+                                mapViewRef = mapView
+                            },
+                        )
+                    }
 
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            IconButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        // 공유하기를 누를 때 스냅샷이 없으면 생성 (저장하기와 동일한 로직)
-                                        if (capturedSnapshotPath == null) {
-                                            Timber.d("공유하기: 스냅샷이 없어 생성 시작")
-                                            var snapshotPath: String? = null
-                                            val success = onCaptureSnapshot {
-                                                try {
-                                                    snapshotPath = if (emotionPhotoUri != null) {
-                                                        // 케이스 1: 사진 + 경로 스냅샷 (맵뷰 로딩 없음)
-                                                        capturePhotoWithPathSnapshot(
-                                                            photoWithPathBoxCoordinates,
+                    // 공유 버튼
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .align(Alignment.TopEnd),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (capturedSnapshotPath == null) {
+                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+                                        var snapshotPath: String? = null
+                                        val success = onCaptureSnapshot {
+                                            try {
+                                                snapshotPath = if (emotionPhotoUri != null) {
+                                                    capturePhotoWithPathSnapshot(
+                                                        photoWithPathBoxCoordinates,
+                                                        context
+                                                    )
+                                                } else {
+                                                    if (mapViewRef != null) {
+                                                        captureMapViewSnapshot(
+                                                            mapViewRef!!,
                                                             context
                                                         )
                                                     } else {
-                                                        // 케이스 2: 지도 + 경로 스냅샷
-                                                        if (mapViewRef != null) {
-                                                            captureMapViewSnapshot(
-                                                                mapViewRef!!,
-                                                                context
-                                                            )
-                                                        } else {
-                                                            Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
-                                                            null
-                                                        }
+                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+                                                        null
                                                     }
-                                                    snapshotPath
-                                                } catch (e: Exception) {
-                                                    Timber.e(e, "공유용 스냅샷 생성 실패")
-                                                    null
                                                 }
-                                            }
-
-                                            // 스냅샷 생성 성공 시 경로 저장 (서버 동기화는 하지 않음)
-                                            if (success && snapshotPath != null) {
-                                                capturedSnapshotPath = snapshotPath
-                                            } else {
-                                                Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
-                                                return@launch
+                                                snapshotPath
+                                            } catch (e: Exception) {
+                                                Timber.e(e, "공유용 스냅샷 생성 실패")
+                                                null
                                             }
                                         }
 
-                                        showShareDialog = true
+                                        if (success && snapshotPath != null) {
+                                            capturedSnapshotPath = snapshotPath
+                                        } else {
+                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+                                            return@launch
+                                        }
                                     }
+
+                                    showShareDialog = true
                                 }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_action_external),
-                                    tint = SemanticColor.iconWhite,
-                                    contentDescription = "external",
-                                    modifier = Modifier.size(24.dp)
-                                )
                             }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_external),
+                                tint = SemanticColor.iconWhite,
+                                contentDescription = "external",
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
             }
+
 
             item {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -587,7 +562,10 @@ private fun WalkingResultScreenContent(
                     isEditMode = isEditing,
                     setEditing = { isEditing = it },
                     onNoteChange = { editedNote = it },
-                    onDeleteClick = { onDeleteNote("") },
+                    onDeleteClick = {
+                        onDeleteNote(currentSession.id)
+                        editedNote = "" // 삭제 후 UI 상태 초기화
+                    },
                 )
             }
 
@@ -613,6 +591,11 @@ private fun WalkingResultScreenContent(
                         CtaButton(
                             onClick = {
                                 coroutineScope.launch {
+                                    // 수정된 노트 저장 (editedNote가 원본과 다른 경우에만)
+                                    if (editedNote != currentSession.note.orEmpty()) {
+                                        onUpdateNote(currentSession.id, editedNote)
+                                    }
+
                                     // 스냅샷 생성 및 저장
                                     var snapshotPath: String? = null
                                     val success = onCaptureSnapshot {
@@ -726,6 +709,7 @@ private fun WalkingResultScreenPreview() {
             snapshotState = SnapshotState.Idle,
             onCaptureSnapshot = { false },
             onSyncSessionToServer = {},
+            onUpdateNote = { _, _ -> },
             weekWalkOrder = 2,
             onDeleteNote = {},
         )

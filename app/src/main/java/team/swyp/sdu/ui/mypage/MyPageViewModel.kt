@@ -85,12 +85,12 @@ constructor(
                     // 캐릭터 등급 정보 로드 (API 호출 없이 DB만 조회)
                     var grade: Grade? = null
                     try {
-                        val character = characterRepository.getCharacterFromDb(user.nickname ?: "")
+                        val character = characterRepository.getCharacterFromDb(user.userId.toString())
                         if (character != null) {
                             grade = character.grade
-                            Timber.d("캐릭터 등급 로드 성공: ${user.nickname} - $grade")
+                            Timber.d("캐릭터 등급 로드 성공: ${user.userId} - $grade")
                         } else {
-                            Timber.d("DB에 캐릭터 정보 없음: ${user.nickname}")
+                            Timber.d("DB에 캐릭터 정보 없음: ${user.userId}")
                         }
                     } catch (e: Exception) {
                         Timber.w(e, "캐릭터 등급 로드 중 예외 발생")

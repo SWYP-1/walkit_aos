@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -128,19 +129,19 @@ fun CharacterAndBackground(
     onRefreshClick: () -> Unit = {},
     processedLottieJson: String? = null, // ViewModel에서 처리된 Lottie JSON
 ) {
-    Timber.d("🎭 CharacterAndBackground 컴포넌트 렌더링")
-    Timber.d("📄 processedLottieJson 길이: ${processedLottieJson?.length ?: 0}")
-    Timber.d("🧷 wornItemsByPosition: $wornItemsByPosition")
-
-    // processedLottieJson이 null인지 아닌지, 그리고 어떤 내용인지 확인
-    if (processedLottieJson.isNullOrEmpty()) {
-        Timber.w("⚠️ processedLottieJson이 null 또는 비어있음 - 기본 Lottie 사용")
-    } else {
-        Timber.d("✅ processedLottieJson 존재 - 커스텀 Lottie 사용")
-        // JSON이 너무 길어서 앞부분만 로깅
-        val preview = processedLottieJson.take(200) + if (processedLottieJson.length > 200) "..." else ""
-        Timber.d("📋 Lottie JSON 미리보기: $preview")
-    }
+//    Timber.d("🎭 CharacterAndBackground 컴포넌트 렌더링")
+//    Timber.d("📄 processedLottieJson 길이: ${processedLottieJson?.length ?: 0}")
+//    Timber.d("🧷 wornItemsByPosition: $wornItemsByPosition")
+//
+//    // processedLottieJson이 null인지 아닌지, 그리고 어떤 내용인지 확인
+//    if (processedLottieJson.isNullOrEmpty()) {
+//        Timber.w("⚠️ processedLottieJson이 null 또는 비어있음 - 기본 Lottie 사용")
+//    } else {
+//        Timber.d("✅ processedLottieJson 존재 - 커스텀 Lottie 사용")
+//        // JSON이 너무 길어서 앞부분만 로깅
+//        val preview = processedLottieJson.take(200) + if (processedLottieJson.length > 200) "..." else ""
+//        Timber.d("📋 Lottie JSON 미리보기: $preview")
+//    }
     // 오늘 날짜의 계절 확인
     val backgroundRes =
         when (currentSeason) {
@@ -191,7 +192,7 @@ fun CharacterAndBackground(
         // 중앙에 캐릭터 Lottie 애니메이션 표시
         Box(
             modifier = Modifier
-                .align(Alignment.Center),
+                .align(Alignment.Center).offset(y = 40.dp),
             contentAlignment = Alignment.Center
         ) {
             if (processedComposition != null) {

@@ -33,6 +33,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.components.RouteThumbnail
+import team.swyp.sdu.ui.theme.Grey4
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.DateUtils
@@ -99,7 +100,6 @@ fun SessionThumbnailItem(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
             .then(
                 if (isSelected) {
                     Modifier
@@ -146,17 +146,28 @@ fun SessionThumbnailItem(
             }
         }
 
-        IconButton(
-            onClick = onClick, modifier = Modifier
+        Box(
+            modifier = Modifier
                 .padding(12.dp)
-                .size(24.dp)
                 .align(Alignment.TopEnd)
+                .clickable(onClick = onClick)
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_action_external),
-                contentDescription = "external",
-                tint = SemanticColor.iconWhite
-            )
+            IconButton(
+                modifier = Modifier
+                    .padding(top = 4.dp, end = 4.dp) // 👈 부모로부터 여백
+                    .size(24.dp)
+                    .background(
+                        color = Grey4.copy(alpha = 0.40f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .align(Alignment.TopEnd)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_external),
+                    contentDescription = "external",
+                    tint = SemanticColor.iconWhite
+                )
+            }
         }
 
         val startTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.startTime)
@@ -169,7 +180,9 @@ fun SessionThumbnailItem(
                 fontWeight = FontWeight.SemiBold
             ),
             color = SemanticColor.textBorderPrimaryInverse,
-            modifier = Modifier.align(alignment = Alignment.BottomEnd).padding(16.dp)
+            modifier = Modifier
+                .align(alignment = Alignment.BottomEnd)
+                .padding(16.dp)
         )
     }
 }

@@ -127,13 +127,13 @@ constructor() : ViewModel() {
      * 경로 데이터 준비 (테스트 데이터 처리 포함)
      */
     private fun prepareLocations(locations: List<LocationPoint>): List<LocationPoint> {
-        return if (locations.size <= 1) {
-            Timber.d("위치 포인트가 ${locations.size}개 - 테스트용 하드코딩 위치(용인) 사용")
-            generateRandomCityWalkPoints()
-        } else {
-            Timber.d("위치 포인트가 ${locations.size}개 - 원래 값 사용")
-            locations
-        }
+//        return if (locations.size <= 1) {
+//            Timber.d("위치 포인트가 ${locations.size}개 - 테스트용 하드코딩 위치(용인) 사용")
+//            generateRandomCityWalkPoints()
+//        } else {
+//
+//        }
+        return locations
     }
 
     /**

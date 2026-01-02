@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ fun HomeRoute(
     val profileUiState by viewModel.profileUiState.collectAsStateWithLifecycle()
     val missionUiState by viewModel.missionUiState.collectAsStateWithLifecycle()
     val walkingSessionDataState by viewModel.walkingSessionDataState.collectAsStateWithLifecycle()
+    val characterLottieState by viewModel.characterLottieState.collectAsStateWithLifecycle() // ✅ 캐릭터 Lottie 상태 추가
     val userState by userViewModel.userState.collectAsStateWithLifecycle()
 
     // 사용자 프로필 이미지 URL 추출
@@ -65,12 +67,18 @@ fun HomeRoute(
         else -> null
     }
 
+    // 캐릭터 Lottie 표시 초기화
+    LaunchedEffect(Unit) {
+        viewModel.loadCharacterDisplay()
+    }
+
     HomeScreen(
         uiState = uiState,
         goalState = goalState,
         profileUiState = profileUiState,
         missionUiState = missionUiState,
         walkingSessionDataState = walkingSessionDataState,
+        characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
         profileImageUrl = profileImageUrl,
         onClickWalk = onClickWalk,
         onClickAlarm = onClickAlarm,
@@ -94,6 +102,7 @@ private fun HomeScreenContent(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
+    characterLottieState: team.swyp.sdu.domain.model.LottieCharacterState?, // ✅ 캐릭터 Lottie 상태 추가
     profileImageUrl: String? = null,
     onClickMissionMore: () -> Unit,
     onClickAlarm: () -> Unit,
@@ -117,6 +126,7 @@ private fun HomeScreenContent(
         ProfileSection(
             goalState = goalState,
             uiState = profileUiState,
+            characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
             modifier = Modifier.fillMaxWidth(),
             onRetry = onRetry
         )
@@ -165,6 +175,7 @@ fun HomeScreen(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
+    characterLottieState: team.swyp.sdu.domain.model.LottieCharacterState?, // ✅ 캐릭터 Lottie 상태 추가
     profileImageUrl: String? = null,
     onClickWalk: () -> Unit = {},
     onClickAlarm: () -> Unit = {},
@@ -180,6 +191,7 @@ fun HomeScreen(
         profileUiState = profileUiState,
         missionUiState = missionUiState,
         walkingSessionDataState = walkingSessionDataState,
+        characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
         profileImageUrl = profileImageUrl,
         onClickAlarm = onClickAlarm,
         onClickMission = onClickWalk,

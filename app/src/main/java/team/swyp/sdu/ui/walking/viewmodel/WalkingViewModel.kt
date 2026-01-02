@@ -651,7 +651,6 @@ class WalkingViewModel @Inject constructor(
 
         // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
         val targetStepCount = currentGoal?.targetStepCount ?: 0
-        //TODO : 삭제 테스트용
         val completedSession = createCompletedSession(targetStepCount = targetStepCount)
 
         // 세션 저장 중 상태로 변경
@@ -827,7 +826,7 @@ class WalkingViewModel @Inject constructor(
         return WalkingSession(
             startTime = startTimeMillis,
             endTime = endTime,
-            stepCount = 2001,
+            stepCount = lastStepCount,
             locations = collectedLocations,
             totalDistance = totalDistance,
             preWalkEmotion = preEmotion,

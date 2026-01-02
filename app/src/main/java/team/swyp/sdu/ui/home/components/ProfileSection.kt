@@ -40,6 +40,8 @@ import team.swyp.sdu.data.remote.home.dto.WeatherDto
 import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.TestCharacterWithAnchor
 import team.swyp.sdu.ui.components.createCharacterParts
+import team.swyp.sdu.domain.model.LottieCharacterState
+import team.swyp.sdu.ui.components.LottieCharacterDisplay
 import team.swyp.sdu.ui.home.utils.WeatherType
 import team.swyp.sdu.utils.NumberUtils.formatNumber
 import kotlin.toString
@@ -51,6 +53,7 @@ import kotlin.toString
 fun ProfileSection(
     uiState: ProfileUiState,
     goalState: DataState<Goal>,
+    characterLottieState: LottieCharacterState?, // ✅ Lottie 캐릭터 상태 추가
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -61,7 +64,7 @@ fun ProfileSection(
     ) {
         when (uiState) {
             is ProfileUiState.Loading -> ProfileSkeleton()
-            is ProfileUiState.Success -> ProfileContent(uiState, goalState)
+            is ProfileUiState.Success -> ProfileContent(uiState, goalState, characterLottieState)
             is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = onRetry)
         }
     }
@@ -72,7 +75,10 @@ fun ProfileSection(
  */
 @Composable
 private fun ProfileContent(
-    uiState: ProfileUiState.Success, goalState: DataState<Goal>, modifier: Modifier = Modifier
+    uiState: ProfileUiState.Success,
+    goalState: DataState<Goal>,
+    characterLottieState: LottieCharacterState?, // ✅ Lottie 캐릭터 상태 추가
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
@@ -127,31 +133,12 @@ private fun ProfileContent(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 캐릭터 이미지
-            uiState.character.characterImageName?.let { charImageUrl ->
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(charImageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "캐릭터 이미지",
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    modifier = Modifier.size(130.dp)
-                )
-                val (feetPart, bodyPart, headPart) = createCharacterParts(
-                    feetUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_FEET_BLACK_BOOTS.png",
-                    bodyUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_BODY_RED_SCARF.png",
-                    headUrl = "https://kr.object.ncloudstorage.com/walkit-bucket/ITEM_HEAD_BLUE_RIBBON.png",
-                )
-// Compose에서
-//                TestCharacterWithAnchor(
-//                    feet = feetPart,
-//                    body = bodyPart,
-//                    head = headPart,
-//                    characterUrl = charImageUrl.toString(),
-//                    modifier = Modifier.size(120.dp)
-//                )
-            }
+            // Lottie 캐릭터 표시
+            LottieCharacterDisplay(
+                characterLottieState = characterLottieState,
+                size = 130, // 기존 캐릭터 이미지 크기와 동일
+                modifier = Modifier.size(130.dp)
+            )
 
             // 사용자 정보 및 목표
             HomeNameAndGoalContent(
@@ -353,7 +340,9 @@ private fun ProfileError(
 private fun ProfileSectionLoadingPreview() {
     WalkItTheme {
         ProfileSection(
-            uiState = ProfileUiState.Loading, goalState = DataState.Loading
+            uiState = ProfileUiState.Loading,
+            goalState = DataState.Loading,
+            characterLottieState = null
         )
     }
 }
@@ -381,7 +370,8 @@ private fun ProfileSectionSuccessPreview() {
                 Goal(
                     targetStepCount = 10000, targetWalkCount = 30
                 )
-            )
+            ),
+            characterLottieState = null // Preview에서는 null로 설정
         )
     }
 }
@@ -391,7 +381,9 @@ private fun ProfileSectionSuccessPreview() {
 private fun ProfileSectionErrorPreview() {
     WalkItTheme {
         ProfileSection(
-            uiState = ProfileUiState.Error("서버 연결에 문제가 있습니다"), goalState = DataState.Loading
+            uiState = ProfileUiState.Error("서버 연결에 문제가 있습니다"),
+            goalState = DataState.Loading,
+            characterLottieState = null
         )
     }
 }

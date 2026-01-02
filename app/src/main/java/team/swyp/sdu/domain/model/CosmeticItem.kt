@@ -1,10 +1,10 @@
 package team.swyp.sdu.domain.model
 
 
-enum class EquipSlot(val value: String) {
-    HEAD("HEAD"),
-    BODY("BODY"),
-    FEET("FEET")
+enum class EquipSlot(val value: String, val displayName: String) {
+    HEAD("HEAD", "머리"),
+    BODY("BODY", "상의"),
+    FEET("FEET", "하의")
 }
 
 data class CosmeticItem(

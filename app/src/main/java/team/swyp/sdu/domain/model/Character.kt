@@ -5,6 +5,7 @@ package team.swyp.sdu.domain.model
  */
 data class Character(
     val headImageName: String? = null,
+    val headImageTag: String? = null,  // HEAD 영역의 tag 정보 (TOP/DECOR)
     val bodyImageName: String? = null,
     val feetImageName: String? = null,
     val characterImageName: String? = null,

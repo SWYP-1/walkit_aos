@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -152,7 +153,9 @@ fun PathThumbnail(
             locations
         }
 
-    Canvas(modifier = modifier) {
+    // locations 데이터를 기반으로 key 생성하여 불필요한 재구성 방지
+    key(source) {
+        Canvas(modifier = modifier) {
         val minLat = source.minOf { it.latitude }
         val maxLat = source.maxOf { it.latitude }
         val minLon = source.minOf { it.longitude }
@@ -184,6 +187,7 @@ fun PathThumbnail(
             radius = 10f,
             center = points.last(),
         )
+        }
     }
 }
 

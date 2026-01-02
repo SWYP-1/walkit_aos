@@ -22,8 +22,8 @@ data class CosmeticItemDto(
     val point: Int,
     @SerialName("worn")
     val worn: Boolean? = null, // 선택적 필드
-    @SerialName("tags")
-    val tags: String? = null // 선택적 필드 - 서버에서 추가 예정
+    @SerialName("tag")
+    val tag: String? = null // 선택적 필드 - 서버에서 추가 예정
 ) {
 
     /**
@@ -35,8 +35,8 @@ data class CosmeticItemDto(
             "HEAD" -> {
                 // tags에 따라 headtop 또는 headdecor 결정
                 when {
-                    tags?.contains("TOP", ignoreCase = true) == true -> "headtop"
-                    tags?.contains("DECOR", ignoreCase = true) == true -> "headdecor"
+                    tag?.contains("TOP", ignoreCase = true) == true -> "headtop"
+                    tag?.contains("DECOR", ignoreCase = true) == true -> "headdecor"
                     else -> "headtop" // 기본값
                 }
             }

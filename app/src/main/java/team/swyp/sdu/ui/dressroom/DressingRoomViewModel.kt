@@ -69,8 +69,6 @@ class DressingRoomViewModel @Inject constructor(
     private val _selectedItemIds = MutableStateFlow<LinkedHashSet<Int>>(LinkedHashSet())
     val selectedItemIds: StateFlow<LinkedHashSet<Int>> = _selectedItemIds.asStateFlow()
 
-    private val _showOwnedOnly = MutableStateFlow(false)
-    val showOwnedOnly: StateFlow<Boolean> = _showOwnedOnly.asStateFlow()
 
     // 서버에 반영된 실제 착용 상태
     private val _serverWornItems = MutableStateFlow<Map<EquipSlot, Int>>(emptyMap())
@@ -118,14 +116,14 @@ class DressingRoomViewModel @Inject constructor(
                 _uiState.value = DressingRoomUiState.Loading
 
                 // 사용자 정보 확보
-                var nickname: String? = null
+                var userId: String? = null
                 val userResult = userRepository.getUser()
                 Timber.d("사용자 정보 API 호출 결과: $userResult")
 
                 userResult
                     .onSuccess {
-                        nickname = it.nickname
-                        Timber.d("사용자 정보 로드 성공: $nickname")
+                        userId = it.userId.toString()
+                        Timber.d("사용자 정보 로드 성공: $userId")
                     }
                     .onError { exception, message ->
                         Timber.e(exception, "사용자 정보 로드 실패: $message")
@@ -134,15 +132,15 @@ class DressingRoomViewModel @Inject constructor(
                         return@launch
                     }
 
-                if (nickname == null) {
-                    Timber.e("사용자 정보가 null입니다")
-                    Timber.e("UI 상태를 Error로 설정: 사용자 정보 null")
-                    _uiState.value = DressingRoomUiState.Error("사용자 정보가 없습니다.")
+                if (userId == null) {
+                    Timber.e("사용자 ID가 null입니다")
+                    Timber.e("UI 상태를 Error로 설정: 사용자 ID null")
+                    _uiState.value = DressingRoomUiState.Error("사용자 ID가 없습니다.")
                     return@launch
                 }
 
                 // 캐릭터 & 아이템 & 포인트 병렬 로딩
-                val characterDeferred = async { characterRepository.getCharacter(nickname) }
+                val characterDeferred = async { characterRepository.getCharacter(userId) }
                 val itemsDeferred = async { cosmeticItemRepository.getCosmeticItems(position) }
                 val pointDeferred = async { pointRepository.getUserPoint() }
 
@@ -260,10 +258,10 @@ class DressingRoomViewModel @Inject constructor(
                     selectedItemId = null,
                     selectedItemIdSet = LinkedHashSet(),
                     currentPosition = position,
-                    availablePositions = listOf("HEAD", "BODY", "FEET"),
                     character = character,
                     myPoint = userPoint,
-                    processedLottieJson = initialLottieJson
+                    processedLottieJson = initialLottieJson,
+                    showOwnedOnly = false // 초기에는 전체 아이템 표시
                 )
                 Timber.d("Success 상태 설정: character=${character?.nickName}, items=${items.size}개, points=$userPoint")
                 _uiState.value = newSuccessState
@@ -535,47 +533,17 @@ class DressingRoomViewModel @Inject constructor(
                         Timber.d("📋 Asset[$i]: id=$id, size=${w}x${h}")
                     }
 
-                    // ⭐ CharacterPart 레벨에서 모든 Lottie asset들을 투명 PNG로 교체
-                    Timber.d("🔄 CharacterPart 레벨 투명 PNG 교체 시작")
+                    // ⭐ 캐릭터의 기본 이미지를 설정하여 깨끗한 baseJson 생성
+                    Timber.d("🔄 캐릭터 기본 이미지 설정 시작")
                     Timber.d("👤 캐릭터 레벨: ${character.level}")
 
-                    var replacedCount = 0
-                    var skippedCount = 0
+                    // 캐릭터의 기본 이미지로 asset들을 교체
+                    val characterBaseJson = lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
 
-                    // CharacterPart의 모든 asset ID들을 투명화
-                    for (part in CharacterPart.entries) {
-                        Timber.d("🔍 파트 투명 교체 시도: $part")
+                    Timber.d("✅ 캐릭터 기본 이미지 설정 완료")
 
-                        // 각 파트의 모든 lottieAssetIds를 투명화
-                        for (assetId in part.lottieAssetIds) {
-                            Timber.d("🎯 Asset 투명 교체 시도: $assetId")
-
-                            try {
-                                // 투명 PNG 생성 및 교체
-                                val transparentPng = createTransparentPng(256, 256)
-                                val dataUrl = transparentPng.toBase64DataUrl()
-                                jsonObject.replaceAssetP(assetId, dataUrl)
-                                Timber.d("✅ 투명 PNG 교체 성공: $assetId")
-                                replacedCount++
-                            } catch (e: IllegalArgumentException) {
-                                Timber.w("⚠️ Asset을 찾을 수 없음, 투명 교체 건너뜀: $assetId")
-                                skippedCount++
-                            } catch (e: Exception) {
-                                Timber.e(e, "❌ 투명 교체 중 예외 발생: $assetId")
-                                skippedCount++
-                            }
-                        }
-                    }
-
-                    Timber.d("🎉 CharacterPart 투명 PNG 교체 완료: 성공=$replacedCount, 건너뜀=$skippedCount")
-
-                    if (replacedCount == 0) {
-                        Timber.e("❌ 모든 슬롯 투명 교체 실패! baseJson이 깨끗하지 않음")
-                    } else if (replacedCount < CharacterPart.entries.size) {
-                        Timber.w("⚠️ 일부 슬롯만 투명 교체 성공 (${replacedCount}/${CharacterPart.entries.size})")
-                    } else {
-                        Timber.d("✅ 모든 슬롯 투명 교체 성공 - 깨끗한 baseJson 생성됨")
-                    }
+                    // cleanBaseJson으로 저장
+                    cleanBaseJson = characterBaseJson
                 } else {
                     Timber.e("❌ 로드된 Lottie 파일에 assets 배열이 없음 - 파일 손상 가능성")
                     // 다른 필드들 확인
@@ -753,21 +721,17 @@ class DressingRoomViewModel @Inject constructor(
     }
 
     fun toggleShowOwnedOnly() {
-        _showOwnedOnly.value = !_showOwnedOnly.value
-        // UI 갱신
-        refreshFilteredItems()
-    }
-
-    private fun refreshFilteredItems() {
         val currentState = _uiState.value
         if (currentState is DressingRoomUiState.Success) {
-            val filtered = if (_showOwnedOnly.value) {
+            val newShowOwnedOnly = !currentState.showOwnedOnly
+            val filteredItems = if (newShowOwnedOnly) {
                 allItems.filter { it.owned } // 전체 아이템에서 보유 아이템만 필터링
             } else {
                 allItems // 전체 아이템 표시
             }
             _uiState.value = currentState.copy(
-                items = filtered
+                items = filteredItems,
+                showOwnedOnly = newShowOwnedOnly
             )
         }
     }
@@ -832,17 +796,31 @@ class DressingRoomViewModel @Inject constructor(
                     // UI 상태 업데이트 (아이템 소유 상태 변경)
                     if (_uiState.value is DressingRoomUiState.Success) {
                         val currentState = _uiState.value as DressingRoomUiState.Success
-                        val updatedItems = currentState.items.map { item ->
+
+                        // 구매된 아이템들의 owned 상태 업데이트 (서버와 동일하게)
+                        val updatedItems = allItems.map { item ->
                             if (items.any { purchased -> purchased.itemId == item.itemId }) {
                                 item.copy(owned = true)
                             } else {
                                 item
                             }
                         }
-                        // 포인트 정보 새로고침
+
+                        // allItems 업데이트 (필터링용)
+                        allItems = updatedItems
+
+                        // 포인트 정보 업데이트 및 필터링 재적용
                         val currentPoints = currentState.myPoint - totalPrice
-                        _uiState.value =
-                            currentState.copy(items = updatedItems, myPoint = currentPoints)
+                        val filteredItems = if (currentState.showOwnedOnly) {
+                            updatedItems.filter { it.owned }
+                        } else {
+                            updatedItems
+                        }
+
+                        _uiState.value = currentState.copy(
+                            items = filteredItems,
+                            myPoint = currentPoints
+                        )
                     }
 
                     // 구매 성공 후 착용 상태 저장
@@ -852,13 +830,12 @@ class DressingRoomViewModel @Inject constructor(
                     // ✅ 장바구니 다이얼로그 닫기
                     dismissCartDialog()
 
-
-                    // ✅ 저장하기 완료 시 캐릭터 정보 동기화 (백그라운드)
+                    // 캐릭터 정보 백그라운드 동기화 (선택사항)
                     viewModelScope.launch {
                         refreshCharacterInfo()
                     }
 
-                    Timber.d("코스메틱 아이템 구매 완료 및 UI 업데이트")
+                    Timber.d("코스메틱 아이템 구매 완료 및 로컬 상태 업데이트")
                 }
 
                 is Result.Error -> {

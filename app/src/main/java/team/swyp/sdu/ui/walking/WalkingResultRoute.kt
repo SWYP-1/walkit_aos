@@ -160,6 +160,9 @@ fun WalkingResultRoute(
             onSyncSessionToServer = {
                 viewModel.syncSessionToServer()
             },
+            onUpdateNote = { localId, note ->
+                viewModel.updateSessionNote(localId, note)
+            },
             onDeleteNote = { localId ->
                 viewModel.deleteSessionNote(localId)
             },

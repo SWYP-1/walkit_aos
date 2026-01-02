@@ -58,8 +58,10 @@ fun DressingRoomHeader(
         // 닉네임 + 등급
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
             modifier = Modifier.weight(1f) // 남는 공간 채우기
         ) {
+
             GradeBadge(grade)
             Spacer(Modifier.width(8.dp))
             Text(

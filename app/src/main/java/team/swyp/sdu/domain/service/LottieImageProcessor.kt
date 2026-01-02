@@ -117,6 +117,8 @@ class LottieImageProcessor @Inject constructor(
                     val wornItemId = wornItemsByPosition[slot]
                     val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
 
+                    Timber.d("🎯 슬롯 $slot - wornItemId: $wornItemId, cosmeticItem: ${cosmeticItem?.name}")
+
                     // CharacterPart로 변환
                     val characterPart = when (slot) {
                         EquipSlot.HEAD -> CharacterPart.HEAD
@@ -124,24 +126,39 @@ class LottieImageProcessor @Inject constructor(
                         EquipSlot.FEET -> CharacterPart.FEET
                     }
 
+                    Timber.d("🎯 슬롯 $slot → CharacterPart: $characterPart, assetIds: ${characterPart.lottieAssetIds.joinToString()}")
+
                     // 해당 파트의 모든 asset ID들을 처리
                     characterPart.lottieAssetIds.forEach { assetId ->
-                        val imageUrl = getImageUrlForSlot(slot, wornItemsByPosition, cosmeticItems, character)
-                        val finalAssetId = characterPart.getLottieAssetId(cosmeticItem?.tags)
+                        val imageUrl = if (cosmeticItem != null) {
+                            // 코스메틱 아이템이 있으면 tags에 따라 적용
+                            val targetAssetId = characterPart.getLottieAssetId(cosmeticItem.tags)
+                            if (assetId == targetAssetId) cosmeticItem.imageName else null
+                        } else {
+                            // 코스메틱 아이템이 없으면 캐릭터 기본값
+                            when (slot) {
+                                EquipSlot.HEAD -> {
+                                    val targetAssetId = CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
+                                    if (assetId == targetAssetId) character.headImageName else null
+                                }
+                                EquipSlot.BODY -> character.bodyImageName
+                                EquipSlot.FEET -> character.feetImageName
+                            }
+                        }
 
-                        Timber.d("📋 슬롯 $slot - assetId: $finalAssetId, imageUrl: $imageUrl")
+                        Timber.d("📋 슬롯 $slot - assetId: $assetId, imageUrl: $imageUrl")
 
                         if (imageUrl != null && imageUrl.isNotEmpty()) {
-                            Timber.d("✅ Lottie asset 교체 실행: slot=${slot}, assetId=$finalAssetId")
-                            modifiedJson = replaceAssetWithImageUrl(modifiedJson, finalAssetId, imageUrl)
-                            Timber.d("✅ 슬롯 $slot asset $finalAssetId 교체 완료")
+                            Timber.d("✅ Lottie asset 교체 실행: slot=${slot}, assetId=$assetId")
+                            modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageUrl)
+                            Timber.d("✅ 슬롯 $slot asset $assetId 교체 완료")
                         } else {
-                            Timber.d("🔍 슬롯 $slot asset $finalAssetId 이미지 없음 - 투명 PNG로 교체")
+                            Timber.d("🔍 슬롯 $slot asset $assetId 이미지 없음 - 투명 PNG로 교체")
                             // 투명 PNG로 교체하여 stroke 제거
                             val transparentPng = createTransparentPng(256, 256)
                             modifiedJson =
-                                replaceAssetWithByteArray(modifiedJson, finalAssetId, transparentPng)
-                            Timber.d("✅ 슬롯 $slot asset $finalAssetId 투명 PNG로 교체 완료")
+                                replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
+                            Timber.d("✅ 슬롯 $slot asset $assetId 투명 PNG로 교체 완료")
                         }
                     }
                 }
@@ -156,142 +173,135 @@ class LottieImageProcessor @Inject constructor(
     }
 
     /**
-     * 착용된 아이템들을 기반으로 Lottie JSON의 모든 슬롯 asset을 업데이트
+     * 캐릭터 기본 이미지들을 baseJson에 적용하여 기본 캐릭터 Lottie 생성
      */
-    suspend fun updateAssetsForWornItems(
+    suspend fun applyCharacterDefaultsToBaseJson(
         baseLottieJson: JSONObject,
-        wornItemsByPosition: Map<EquipSlot, Int>,
-        cosmeticItems: List<CosmeticItem>,
         character: Character
     ): JSONObject {
-        Timber.d("🎨 LottieImageProcessor.updateAssetsForWornItems 시작")
-        Timber.d("👤 캐릭터: ${character.nickName}, level: ${character.level}, grade: ${character.grade}")
-        Timber.d("🧷 착용 상태: $wornItemsByPosition")
-        Timber.d("📦 코스메틱 아이템 수: ${cosmeticItems.size}")
-        val level = character.level
-
-        // 🔍 baseJson 유효성 검증
-        if (baseLottieJson.length() == 0) {
-            Timber.e("❌ baseJson이 빈 객체입니다! Lottie 파일 로드 실패")
-            return baseLottieJson // 빈 객체 그대로 반환
-        }
-
-        Timber.d("✅ baseJson 유효함, 길이: ${baseLottieJson.toString().length}")
-
-        // 디버깅: baseJson의 assets 구조 확인
-        try {
-            val assets = baseLottieJson.optJSONArray("assets")
-            if (assets != null) {
-                Timber.d("📋 Base Lottie assets 개수: ${assets.length()}")
-                for (i in 0 until minOf(assets.length(), 10)) {
-                    val asset = assets.optJSONObject(i)
-                    val id = asset?.optString("id", "unknown")
-                    val w = asset?.optInt("w", 0)
-                    val h = asset?.optInt("h", 0)
-                    Timber.d("📋 Asset[$i]: id=$id, size=${w}x${h}")
-                }
-            } else {
-                Timber.e("❌ Base Lottie에 assets 배열이 없음 - JSON 구조 문제")
-                // assets가 없으면 다른 필드들도 확인
-                val keys = baseLottieJson.keys()
-                while (keys.hasNext()) {
-                    Timber.d("📋 JSON 키: ${keys.next()}")
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Base Lottie assets 구조 확인 실패")
-        }
+        Timber.d("🎨 LottieImageProcessor.applyCharacterDefaultsToBaseJson 시작")
+        Timber.d("👤 캐릭터 기본 이미지 적용: head=${character.headImageName}, body=${character.bodyImageName}, feet=${character.feetImageName}")
 
         return withContext(Dispatchers.IO) {
             try {
                 var modifiedJson = baseLottieJson
 
-                // 각 슬롯별 이미지 설정 생성 및 적용
+                // 각 슬롯의 캐릭터 기본값 적용
                 EquipSlot.entries.forEach { slot ->
-                    Timber.d("🔍 슬롯 처리 시작: $slot")
+                    Timber.d("🔍 캐릭터 기본값 적용 시작: $slot")
 
-                    val wornItemId = wornItemsByPosition[slot]
-                    val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
-                    val assetId = getAssetIdForSlot(slot, item = cosmeticItem)
-                    val imageUrl =
-                        getImageUrlForSlot(slot, wornItemsByPosition, cosmeticItems, character)
+                    val characterPart = when (slot) {
+                        EquipSlot.HEAD -> CharacterPart.HEAD
+                        EquipSlot.BODY -> CharacterPart.BODY
+                        EquipSlot.FEET -> CharacterPart.FEET
+                    }
 
-                    Timber.d("📋 슬롯 $slot - assetId: $assetId, imageUrl: $imageUrl")
+                    // 해당 파트의 모든 asset ID들을 처리
+                    characterPart.lottieAssetIds.forEach { assetId ->
+                        val imageUrl = when (slot) {
+                            EquipSlot.HEAD -> {
+                                // HEAD의 경우 tag에 따라 정확한 영역에 적용 (기본값: headtop)
+                                Timber.d("🔍 HEAD 처리 - headImageTag: '${character.headImageTag}', assetId: $assetId")
+                                val targetAssetId = CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
+                                Timber.d("🎯 HEAD targetAssetId: $targetAssetId")
+                                val shouldApply = assetId == targetAssetId
+                                Timber.d("✅ HEAD shouldApply: $shouldApply (assetId: $assetId == targetAssetId: $targetAssetId)")
+                                if (shouldApply) character.headImageName else null
+                            }
+                            EquipSlot.BODY -> character.bodyImageName
+                            EquipSlot.FEET -> character.feetImageName
+                        }
 
-                    if (imageUrl != null && imageUrl.isNotEmpty()) {
-                        Timber.d("✅ Lottie asset 교체 실행: slot=${slot}, assetId=$assetId")
-                        modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageUrl)
-                        Timber.d("✅ 슬롯 $slot asset 교체 완료")
-                    } else {
-                        Timber.d("🔍 슬롯 $slot 이미지 없음 - 투명 PNG로 교체")
-                        // 투명 PNG로 교체하여 stroke 제거
-                        val transparentPng = createTransparentPng(256, 256)
-                        modifiedJson =
-                            replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
-                        Timber.d("✅ 슬롯 $slot 투명 PNG로 교체 완료")
+                        Timber.d("📋 캐릭터 기본 $slot - assetId: $assetId, imageUrl: $imageUrl")
+
+                        if (imageUrl != null && imageUrl.isNotEmpty()) {
+                            Timber.d("✅ 캐릭터 기본 이미지 적용: slot=${slot}, assetId=$assetId")
+                            modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageUrl)
+                            Timber.d("✅ 캐릭터 기본 $slot asset $assetId 적용 완료")
+                        } else {
+                            Timber.d("🔍 캐릭터 기본 $slot asset $assetId 이미지 없음 - 투명 PNG로 교체")
+                            // 투명 PNG로 교체하여 stroke 제거
+                            val transparentPng = createTransparentPng(256, 256)
+                            modifiedJson =
+                                replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
+                            Timber.d("✅ 캐릭터 기본 $slot asset $assetId 투명 PNG로 교체 완료")
+                        }
                     }
                 }
 
-                Timber.d("🎉 모든 슬롯 asset 교체 완료")
+                Timber.d("🎉 캐릭터 기본 이미지 적용 완료")
                 modifiedJson
             } catch (e: Exception) {
-                Timber.e(e, "❌ Lottie asset들 교체 실패")
+                Timber.e(e, "❌ 캐릭터 기본 이미지 적용 실패")
                 baseLottieJson // 실패 시 원본 반환
             }
         }
     }
 
     /**
-     * 슬롯별 asset ID 매핑 (level 기반)
+     * 기본 캐릭터 Lottie에 착용된 아이템들을 덮어씌워 최종 Lottie 생성
      */
-    private fun getAssetIdForSlot(slot: EquipSlot, item: CosmeticItem?): String {
-        val part = when (slot) {
-            EquipSlot.HEAD -> CharacterPart.HEAD
-            EquipSlot.BODY -> CharacterPart.BODY
-            EquipSlot.FEET -> CharacterPart.FEET
-        }
-        return part.getLottieAssetId()
-    }
-
-    /**
-     * 슬롯별 이미지 URL 결정 (착용된 아이템 우선, 없으면 캐릭터 기본값)
-     * 캐릭터 기본 이미지가 없으면 투명 PNG로 교체하여 stroke 제거
-     */
-    private fun getImageUrlForSlot(
-        slot: EquipSlot,
+    suspend fun updateAssetsForWornItems(
+        baseCharacterJson: JSONObject,
         wornItemsByPosition: Map<EquipSlot, Int>,
-        cosmeticItems: List<CosmeticItem>,
-        character: Character
-    ): String? {
-        Timber.d("🔍 getImageUrlForSlot: slot=$slot")
+        cosmeticItems: List<CosmeticItem>
+    ): JSONObject {
+        Timber.d("🎨 LottieImageProcessor.updateAssetsForWornItems 시작")
+        Timber.d("🧷 착용 상태: $wornItemsByPosition")
+        Timber.d("📦 코스메틱 아이템 수: ${cosmeticItems.size}")
 
-        val wornItemId = wornItemsByPosition[slot]
-        Timber.d("🎯 슬롯 $slot 착용 아이템 ID: $wornItemId")
+        return withContext(Dispatchers.IO) {
+            try {
+                var modifiedJson = baseCharacterJson
 
-        return if (wornItemId != null) {
-            // 착용된 아이템이 있으면 해당 아이템의 이미지
-            val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
-            val imageUrl = cosmeticItem?.imageName
-            Timber.d("🧷 착용 아이템 이미지: $imageUrl (item: ${cosmeticItem?.name})")
-            imageUrl
-        } else {
-            // 착용된 아이템 없으면 캐릭터 기본값
-            val defaultImageUrl = when (slot) {
-                EquipSlot.HEAD -> character.headImageName
-                EquipSlot.BODY -> character.bodyImageName
-                EquipSlot.FEET -> character.feetImageName
-            }
-            Timber.d("🏠 캐릭터 기본 이미지: $defaultImageUrl")
+                // 각 슬롯별 코스메틱 아이템 적용
+                EquipSlot.entries.forEach { slot ->
+                    Timber.d("🔍 코스메틱 아이템 적용 시작: $slot")
 
-            // 캐릭터 기본 이미지가 없으면 null을 반환하여 투명 PNG로 교체
-            if (defaultImageUrl.isNullOrBlank()) {
-                Timber.d("🔍 캐릭터 기본 이미지 없음 - 투명 PNG로 교체")
-                null // null 반환 시 투명 PNG로 교체
-            } else {
-                defaultImageUrl
+                    val wornItemId = wornItemsByPosition[slot]
+                    val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
+
+                    // CharacterPart로 변환
+                    val characterPart = when (slot) {
+                        EquipSlot.HEAD -> CharacterPart.HEAD
+                        EquipSlot.BODY -> CharacterPart.BODY
+                        EquipSlot.FEET -> CharacterPart.FEET
+                    }
+
+                    Timber.d("🎯 슬롯 $slot → CharacterPart: $characterPart, assetIds: ${characterPart.lottieAssetIds.joinToString()}")
+
+                    // 해당 파트의 모든 asset ID들을 처리
+                    characterPart.lottieAssetIds.forEach { assetId ->
+                        val imageUrl = if (cosmeticItem != null) {
+                            // 코스메틱 아이템이 있으면 tags에 따라 적용
+                            val targetAssetId = characterPart.getLottieAssetId(cosmeticItem.tags)
+                            if (assetId == targetAssetId) cosmeticItem.imageName else null
+                        } else {
+                            // 코스메틱 아이템이 없으면 null (기본 캐릭터 이미지가 이미 적용되어 있음)
+                            null
+                        }
+
+                        Timber.d("📋 코스메틱 $slot - assetId: $assetId, imageUrl: $imageUrl, item: ${cosmeticItem?.name}")
+
+                        if (imageUrl != null && imageUrl.isNotEmpty()) {
+                            Timber.d("✅ 코스메틱 아이템 적용: slot=${slot}, assetId=$assetId, item=${cosmeticItem?.name}")
+                            modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageUrl)
+                            Timber.d("✅ 코스메틱 $slot asset $assetId 적용 완료")
+                        }
+                        // 코스메틱 아이템이 없거나 해당 asset에 적용되지 않으면 기본 캐릭터 이미지가 유지됨
+                    }
+                }
+
+                Timber.d("🎉 코스메틱 아이템 적용 완료")
+                modifiedJson
+            } catch (e: Exception) {
+                Timber.e(e, "❌ 코스메틱 아이템 적용 실패")
+                baseCharacterJson // 실패 시 원본 반환
             }
         }
     }
+
+
 
     /**
      * 캐릭터 데이터의 각 파트를 Lottie JSON asset으로 교체
@@ -311,22 +321,56 @@ class LottieImageProcessor @Inject constructor(
                 // 각 캐릭터 파트 처리
                 CharacterPart.entries.forEach { part ->
                     val imageName = getImageNameForPart(character, part)
-                    val assetId = part.getLottieAssetId()
 
-                    Timber.d("🔄 파트 ${part.name} 처리: imageName=$imageName, assetId=$assetId")
+                    Timber.d("🔄 파트 ${part.name} 처리: imageName=$imageName")
 
-                    if (!imageName.isNullOrBlank()) {
-                        // 실제 이미지가 있으면 다운로드하여 교체
-                        Timber.d("🎨 파트 ${part.name}: 이미지 '${imageName}'로 교체 시작")
-                        modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
-                        Timber.d("✅ 파트 ${part.name} 이미지 교체 완료")
-                    } else {
-                        // 이미지가 없으면 투명 PNG로 교체
-                        val transparentPng = createTransparentPng(256, 256)
-                        Timber.d("🔍 파트 ${part.name}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
-                        modifiedJson =
-                            replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
-                        Timber.d("🔍 파트 ${part.name} 투명 PNG로 교체 완료")
+                    when (part) {
+                        CharacterPart.HEAD -> {
+                            // HEAD 파트는 tag를 고려해서 하나의 assetId에만 적용
+                            val targetAssetId = CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
+                            Timber.d("🎯 HEAD 파트 - targetAssetId: $targetAssetId (tag: ${character.headImageTag})")
+
+                            part.lottieAssetIds.forEach { assetId ->
+                                Timber.d("🎯 Asset ${assetId} 처리 시작")
+
+                                val shouldApplyImage = !imageName.isNullOrBlank() && assetId == targetAssetId
+                                val shouldApplyTransparent = imageName.isNullOrBlank() || assetId != targetAssetId
+
+                                if (shouldApplyImage) {
+                                    // 실제 이미지가 있고 target asset이면 이미지 적용
+                                    Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
+                                    modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
+                                    Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
+                                } else if (shouldApplyTransparent) {
+                                    // 이미지가 없거나 target asset이 아니면 투명 PNG로 교체
+                                    val transparentPng = createTransparentPng(256, 256)
+                                    Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
+                                    modifiedJson =
+                                        replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
+                                    Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
+                                }
+                            }
+                        }
+                        else -> {
+                            // BODY, FEET 파트는 기존처럼 모든 assetId에 동일하게 적용
+                            part.lottieAssetIds.forEach { assetId ->
+                                Timber.d("🎯 Asset ${assetId} 처리 시작")
+
+                                if (!imageName.isNullOrBlank()) {
+                                    // 실제 이미지가 있으면 다운로드하여 교체
+                                    Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
+                                    modifiedJson = replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
+                                    Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
+                                } else {
+                                    // 이미지가 없으면 투명 PNG로 교체
+                                    val transparentPng = createTransparentPng(256, 256)
+                                    Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
+                                    modifiedJson =
+                                        replaceAssetWithByteArray(modifiedJson, assetId, transparentPng)
+                                    Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -33,14 +34,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import team.swyp.sdu.domain.model.EquipSlot
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
+
 
 @Composable
 fun ItemCard(
     itemImageUrl: String,
     name: String,
+    position: EquipSlot,
     point: Int,
     isMine: Boolean,
     isSelected: Boolean,
@@ -48,103 +52,136 @@ fun ItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val (nameBackGround, textColor) = when (position) {
+        EquipSlot.HEAD -> SemanticColor.statePinkTertiary to SemanticColor.statePinkPrimary
+        EquipSlot.BODY -> SemanticColor.statePurpleTertiary to SemanticColor.statePurplePrimary
+        EquipSlot.FEET -> SemanticColor.stateBlueTertiary to SemanticColor.stateBluePrimary
+    }
+
+    // 배경색 우선순위: 착용 > 선택 > 기본
+    val cardBackgroundColor = when {
+        isWorn -> SemanticColor.stateAquaBlueTertiary // 착용 중 파란색 배경
+        isSelected -> SemanticColor.backgroundGreenPrimary // 선택 시 초록색 배경
+        else -> SemanticColor.backgroundWhitePrimary // 기본 흰색
+    }
+
     Box(
         modifier = modifier
-            .aspectRatio(0.75f)
+            .fillMaxWidth()
+            .wrapContentHeight() // ⭐ 컨텐츠 기준 높이
             .background(
-                color = SemanticColor.backgroundWhitePrimary, shape = RoundedCornerShape(12.dp)
+                color = cardBackgroundColor, shape = RoundedCornerShape(12.dp)
             )
             .border(
-                width = 1.5.dp,
-                color = when {
-                    isWorn -> SemanticColor.stateBluePrimary // 착용됨: 파란색
-                    isSelected -> SemanticColor.stateGreenPrimary // 선택됨: 초록색
-                    else -> SemanticColor.textBorderSecondaryInverse // 기본
-                },
-                shape = RoundedCornerShape(12.dp)
+                width = 1.5.dp, color = when {
+                    isWorn -> SemanticColor.stateAquaBluePrimary
+                    isSelected -> SemanticColor.stateGreenPrimary
+                    else -> SemanticColor.textBorderSecondaryInverse
+                }, shape = RoundedCornerShape(12.dp)
             )
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
+
         // MY 뱃지
         if (isMine) {
             Box(
                 modifier = Modifier
                     .padding(8.dp)
-                    .size(32.dp)
+                    .size(24.dp)
+                    .offset(x = -4.dp, y = -4.dp)
                     .background(
-                        color = SemanticColor.textBorderTertiary,
-                        shape = CircleShape
+                        color = SemanticColor.textBorderTertiary, shape = CircleShape
                     )
-                    .align(Alignment.TopStart),
-                contentAlignment = Alignment.Center
+                    .align(Alignment.TopStart), contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "MY",
-                    // caption M/semibold
-                    style = MaterialTheme.walkItTypography.captionM.copy(
+                    text = "MY", style = MaterialTheme.walkItTypography.captionM.copy(
                         fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.textBorderPrimaryInverse,
+                    ), color = SemanticColor.textBorderPrimaryInverse
                 )
             }
-//            QuarterCircleWithText(text = "MY", color = Color.Black)
-
         }
 
         // 아이템 콘텐츠
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current).data(itemImageUrl)
-                    .crossfade(true).build(),
-                contentDescription = name,
+
+            // 이미지
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .aspectRatio(1f),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = name,
-                // caption M/semibold
-                style = MaterialTheme.walkItTypography.captionM.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = Color(0xFFFF6B9D),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row {
-                Text(
-                    text = "$point",
-                    // body S/medium
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium
-                    ), color = SemanticColor.textBorderPrimary
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "P",
-                    // body S/medium
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium
-                    ), color = SemanticColor.stateYellowPrimary
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .border(
+                        1.dp, SemanticColor.backgroundWhiteTertiary, CircleShape
+                    ), contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current).data(itemImageUrl)
+                        .crossfade(true).build(),
+                    contentDescription = name,
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .aspectRatio(1f),
+                    contentScale = ContentScale.Fit
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // 이름 배지
+            Box(
+                modifier = Modifier.background(
+                        nameBackGround, RoundedCornerShape(16.dp)
+                    ), contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = name, modifier = Modifier.padding(
+                        horizontal = 8.dp, vertical = 4.dp
+                    ), style = MaterialTheme.walkItTypography.captionM.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ), color = textColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 포인트
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp) // ⭐ 가로 = 세로
+                        .background(
+                            SemanticColor.stateYellowTertiary,
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "P",
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.stateYellowPrimary
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "$point", style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Medium
+                    ), color = SemanticColor.textBorderPrimary
+                )
+            }
         }
     }
 }
+
 
 @Composable
 fun QuarterCircleWithText(
@@ -177,14 +214,39 @@ fun QuarterCircleWithText(
 @Composable
 fun ItemCardPreview() {
     WalkItTheme {
-        ItemCard(
-            itemImageUrl = "https://picsum.photos/200", // 임시 이미지
-            name = "모자",
-            point = 1200,
-            isMine = true,
-            isSelected = true,
-            onClick = {},
-            modifier = Modifier.width(140.dp) // Grid에서 쓰일 카드 크기 가정
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ItemCard(
+                itemImageUrl = "https://picsum.photos/200",
+                name = "모자",
+                point = 1200,
+                isMine = true,
+                isSelected = false,
+                position = EquipSlot.HEAD,
+                onClick = {},
+                modifier = Modifier.width(100.dp)
+            )
+            ItemCard(
+                itemImageUrl = "https://picsum.photos/200",
+                name = "상의",
+                point = 1500,
+                isMine = false,
+                isSelected = true,
+                position = EquipSlot.BODY,
+                onClick = {},
+                modifier = Modifier.width(100.dp)
+            )
+            ItemCard(
+                itemImageUrl = "https://picsum.photos/200",
+                name = "신발",
+                point = 800,
+                isMine = true,
+                isSelected = false,
+                position = EquipSlot.FEET,
+                onClick = {},
+                modifier = Modifier.width(100.dp)
+            )
+        }
     }
 }
