@@ -29,10 +29,12 @@ import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.service.ActivityType
 import team.swyp.sdu.domain.service.LocationManager
+import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.domain.service.MovementState
 import team.swyp.sdu.utils.DateUtils
 import android.content.Context
@@ -69,6 +71,7 @@ class WalkingViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
     private val locationManager: LocationManager,
     private val characterRepository: CharacterRepository,
+    private val lottieImageProcessor: LottieImageProcessor,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -117,16 +120,21 @@ class WalkingViewModel @Inject constructor(
     private val _walkingCharacter = MutableStateFlow<Character?>(null)
     val walkingCharacter: StateFlow<Character?> = _walkingCharacter.asStateFlow()
 
+    // 산책 중 사용할 캐릭터 Lottie JSON
+    private val _walkingCharacterLottieJson = MutableStateFlow<String?>(null)
+    val walkingCharacterLottieJson: StateFlow<String?> = _walkingCharacterLottieJson.asStateFlow()
+
     // WalkingScreen 통합 상태 (UI에서 하나의 StateFlow로 사용)
     val walkingScreenState: StateFlow<WalkingScreenState> = combine(
         _uiState,
-        _walkingCharacter
-    ) { uiState, character ->
-        WalkingScreenState(uiState, character)
+        _walkingCharacter,
+        _walkingCharacterLottieJson
+    ) { uiState, character, lottieJson ->
+        WalkingScreenState(uiState, character, lottieJson)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = WalkingScreenState(WalkingUiState.Loading, null)
+        initialValue = WalkingScreenState(WalkingUiState.Loading, null, null)
     )
 
     // 현재 목표 정보를 저장 (targetStepCount 추출용)
@@ -329,6 +337,9 @@ class WalkingViewModel @Inject constructor(
                         .onSuccess { character ->
                             _walkingCharacter.value = character
                             Timber.d("산책용 캐릭터 정보 로드 성공: ${character.nickName}")
+
+                            // 캐릭터 정보가 있으면 Lottie JSON 생성
+                            generateWalkingCharacterLottie(character)
                         }
                         .onError { exception, message ->
                             Timber.e(exception, "산책용 캐릭터 정보 로드 실패: $message")
@@ -340,6 +351,56 @@ class WalkingViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "산책용 캐릭터 정보 로드 중 예외 발생")
             }
+        }
+    }
+
+    /**
+     * 산책용 캐릭터 Lottie JSON 생성
+     */
+    private fun generateWalkingCharacterLottie(character: Character) {
+        viewModelScope.launch {
+            try {
+                Timber.d("산책용 캐릭터 Lottie JSON 생성 시작")
+
+                // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
+                val baseJson = loadBaseLottieJson(character)
+
+                // 캐릭터 기본 이미지 적용
+                val characterJson = lottieImageProcessor.applyCharacterDefaultsToBaseJson(baseJson, character)
+
+                // 생성된 JSON을 문자열로 변환해서 저장
+                val lottieJsonString = characterJson.toString()
+                _walkingCharacterLottieJson.value = lottieJsonString
+
+                Timber.d("산책용 캐릭터 Lottie JSON 생성 완료: ${lottieJsonString.length} chars")
+            } catch (e: Exception) {
+                Timber.e(e, "산책용 캐릭터 Lottie JSON 생성 실패")
+                _walkingCharacterLottieJson.value = null
+            }
+        }
+    }
+
+    /**
+     * 기본 Lottie JSON 로드
+     */
+    private suspend fun loadBaseLottieJson(character: Character): JSONObject = withContext(Dispatchers.IO) {
+        try {
+            // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
+            val resourceId = when (character.grade) {
+                Grade.SEED -> R.raw.seed
+                Grade.SPROUT -> R.raw.sprout
+                Grade.TREE -> R.raw.tree
+            }
+
+            Timber.d("🎭 Walking loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
+
+            // res/raw에서 기본 캐릭터 Lottie JSON 로드
+            val inputStream = context.resources.openRawResource(resourceId)
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            JSONObject(jsonString)
+        } catch (e: Exception) {
+            Timber.e(e, "기본 Lottie JSON 로드 실패, 빈 JSON 사용")
+            JSONObject("{}")
         }
     }
 
@@ -1154,7 +1215,8 @@ sealed class SnapshotState {
  */
 data class WalkingScreenState(
     val uiState: WalkingUiState,
-    val character: Character?
+    val character: Character?,
+    val characterLottieJson: String? = null
 )
 
 sealed interface WalkingUiState {

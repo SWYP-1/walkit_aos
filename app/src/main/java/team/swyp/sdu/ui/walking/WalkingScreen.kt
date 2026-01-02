@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
@@ -306,7 +309,10 @@ private fun WalkingScreenContent(
 
             /* ---------- Character ---------- */
             val character = subcompose("character") {
-                WalkitCharacter(character = characterState)
+                WalkitCharacter(
+                    character = characterState,
+                    lottieJson = lottieJson
+                )
             }[0].measure(Constraints())
 
             /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
@@ -601,6 +607,7 @@ fun WalkingScreen(
     onNavigateBack: () -> Unit = {},
     permissionsGranted: Boolean = false,
 ) {
+    val lottieJson = screenState.characterLottieJson
     Column(
         modifier = modifier.fillMaxSize()
     ) {
@@ -628,6 +635,7 @@ fun WalkingScreen(
             is WalkingUiState.Walking -> {
                 WalkingContent(
                     screenState = screenState,
+                    lottieJson = lottieJson,
                     onNextClick = onNextClick
                 )
             }
@@ -636,6 +644,7 @@ fun WalkingScreen(
                 // 세션 저장 완료 화면
                 WalkingContent(
                     screenState = screenState,
+                    lottieJson = lottieJson,
                     onNextClick = onNextClick
                 )
             }
@@ -646,6 +655,7 @@ fun WalkingScreen(
 @Composable
 private fun WalkingContent(
     screenState: WalkingScreenState,
+    lottieJson: String?,
     onNextClick: () -> Unit,
 ) {
     val walkingState = screenState.uiState as? WalkingUiState.Walking ?: return
@@ -681,7 +691,10 @@ private fun WalkingContent(
 
             /* ---------- Character ---------- */
             val character = subcompose("character") {
-                WalkitCharacter(character = characterState)
+                WalkitCharacter(
+                    character = characterState,
+                    lottieJson = lottieJson
+                )
             }[0].measure(Constraints())
 
             /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
@@ -751,8 +764,19 @@ private fun WalkingContent(
 }
 
 @Composable
-fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?) {
-    if (character != null) {
+fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?, lottieJson: String? = null) {
+    // Lottie JSON이 있으면 Lottie 애니메이션 사용, 없으면 기존 AsyncImage 사용
+    if (lottieJson != null && character != null) {
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.JsonString(lottieJson)
+        )
+
+        LottieAnimation(
+            composition = composition,
+            modifier = modifier,
+            iterations = Int.MAX_VALUE // 무한 반복
+        )
+    } else if (character != null) {
         AsyncImage(
             model = character.characterImageName,
             contentDescription = null,
@@ -769,14 +793,15 @@ fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?) {
 @Composable
 fun WalkingScreenPreviewFinished() {
     WalkItTheme {
-        WalkingScreenContent(
+        WalkingScreen(
             screenState = WalkingScreenState(
                 uiState = WalkingUiState.Walking(
                     stepCount = 1250,
                     duration = 1800000L, // 30분
                     isPaused = true
                 ),
-                character = null // 캐릭터 정보 없음
+                character = null,
+                characterLottieJson = null
             ),
             onNextClick = {}
         )
