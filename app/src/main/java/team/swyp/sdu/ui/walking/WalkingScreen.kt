@@ -34,9 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
@@ -134,35 +131,10 @@ fun WalkingScreenRoute(
         showBackDialog.value = true
     }
 
-    // TODO: LottieImageProcessor 주입 필요
-    WalkingScreen(
-        screenState = screenState,
-        onNextClick = {
-            coroutineScope.launch {
-                viewModel.saveWalkingSession()
-                onNavigateToPostWalkingEmotion()
-            }
-        }
-    )
-
-    // TODO: LottieImageProcessor 주입 필요
-    WalkingScreen(
-        screenState = screenState,
-        onNextClick = {
-            coroutineScope.launch {
-                viewModel.stopWalking()
-                onNavigateToPostWalkingEmotion()
-            }
-        },
-        onStartWalking = {
-            coroutineScope.launch {
-                viewModel.startWalking()
-            }
-        },
-        onNavigateBack = onNavigateBack,
-        permissionsGranted = permissionsState.allPermissionsGranted
-    )
-}
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
+        when (val state = screenState.uiState) {
             is WalkingUiState.Loading -> {
                 // 초기 로딩 화면
                 Box(
@@ -309,10 +281,7 @@ private fun WalkingScreenContent(
 
             /* ---------- Character ---------- */
             val character = subcompose("character") {
-                WalkitCharacter(
-                    character = characterState,
-                    lottieJson = lottieJson
-                )
+                WalkitCharacter(character = characterState)
             }[0].measure(Constraints())
 
             /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
@@ -588,7 +557,7 @@ fun WalkingScreenPreviewPaused() {
                     duration = 1800000L, // 30분
                     isPaused = true
                 ),
-                character = null
+                character = null // 캐릭터 정보 없음
             )
         )
     }
@@ -599,209 +568,16 @@ fun WalkingScreenPreviewPaused() {
     showBackground = true
 )
 @Composable
-fun WalkingScreen(
-    modifier: Modifier = Modifier,
-    screenState: WalkingScreenState,
-    onNextClick: () -> Unit,
-    onStartWalking: () -> Unit = {},
-    onNavigateBack: () -> Unit = {},
-    permissionsGranted: Boolean = false,
-) {
-    val lottieJson = screenState.characterLottieJson
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        when (val state = screenState.uiState) {
-            is WalkingUiState.Loading -> {
-                // 초기 로딩 화면
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-                }
-            }
-
-            is WalkingUiState.PreWalkingEmotionSelection -> {
-                // 산책 전 감정 선택
-                PreWalkingEmotionSelectRoute(
-                    viewModel = hiltViewModel(), // TODO: ViewModel 주입 수정 필요
-                    onNext = onStartWalking,
-                    onPrev = onNavigateBack,
-                    permissionsGranted = permissionsGranted,
-                )
-            }
-
-            is WalkingUiState.Walking -> {
-                WalkingContent(
-                    screenState = screenState,
-                    lottieJson = lottieJson,
-                    onNextClick = onNextClick
-                )
-            }
-
-            is WalkingUiState.SessionSaved -> {
-                // 세션 저장 완료 화면
-                WalkingContent(
-                    screenState = screenState,
-                    lottieJson = lottieJson,
-                    onNextClick = onNextClick
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WalkingContent(
-    screenState: WalkingScreenState,
-    lottieJson: String?,
-    onNextClick: () -> Unit,
-) {
-    val walkingState = screenState.uiState as? WalkingUiState.Walking ?: return
-    val characterState = screenState.character
-
-    val currentSeason = DateUtils.getCurrentSeason()
-    val defaultBackground = when (currentSeason) {
-        Season.SPRING -> R.drawable.bg_spring_full
-        Season.SUMMER -> R.drawable.bg_summer_full
-        Season.AUTUMN -> R.drawable.bg_autumn_full
-        Season.WINTER -> R.drawable.bg_winter_full
-    }
-
-    Box(modifier = Modifier.fillMaxSize()){
-        if (characterState == null) {
-            Image(
-                painter = painterResource(defaultBackground),
-                contentDescription = "walking background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            AsyncImage(
-                model = characterState.backgroundImageName,
-                error = painterResource(defaultBackground),
-                contentDescription = "walking background"
-            )
-        }
-
-        SubcomposeLayout(
-            modifier = Modifier.fillMaxSize()
-        ) { constraints ->
-
-            /* ---------- Character ---------- */
-            val character = subcompose("character") {
-                WalkitCharacter(
-                    character = characterState,
-                    lottieJson = lottieJson
-                )
-            }[0].measure(Constraints())
-
-            /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
-            val stepCounter =
-                if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
-                    subcompose("stepCounter") {
-                        WalkitStepInfo(stepCount = walkingState.stepCount)
-                    }[0].measure(Constraints())
-                } else null
-
-            /* ---------- Timer (SessionSaved 상태가 아닐 때) ---------- */
-            val timer =
-                if (screenState.uiState !is WalkingUiState.SessionSaved && walkingState != null) {
-                    subcompose("timer") {
-                        val painterResource = painterResource(id = R.drawable.ic_info_timer)
-                        Image(
-                            painter = painterResource,
-                            contentDescription = "timer icon",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = walkingState.duration.formatToHoursMinutesSeconds(),
-                            style = MaterialTheme.walkItTypography.bodyM.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = SemanticColor.iconGrey,
-                        )
-                    }[0].measure(Constraints())
-                } else null
-
-            /* ---------- Action Buttons ---------- */
-            val actionButtons = subcompose("actionButtons") {
-                WalkingActionButtonRow(
-                    walkingState = walkingState,
-                    onNextClick = onNextClick
-                )
-            }[0].measure(Constraints())
-
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                // 캐릭터 배치 (화면 중앙 하단)
-                character.placeRelative(
-                    x = (constraints.maxWidth - character.width) / 2,
-                    y = constraints.maxHeight - character.height - 120.dp.roundToPx()
-                )
-
-                // 걸음 수 배치 (캐릭터 위쪽)
-                stepCounter?.placeRelative(
-                    x = (constraints.maxWidth - (stepCounter.width)) / 2,
-                    y = constraints.maxHeight - character.height - 200.dp.roundToPx()
-                )
-
-                // 타이머 배치 (걸음 수 위쪽)
-                timer?.placeRelative(
-                    x = (constraints.maxWidth - (timer.width)) / 2,
-                    y = constraints.maxHeight - character.height - 240.dp.roundToPx()
-                )
-
-                // 액션 버튼 배치 (화면 하단)
-                actionButtons.placeRelative(
-                    x = (constraints.maxWidth - actionButtons.width) / 2,
-                    y = constraints.maxHeight - actionButtons.height - 16.dp.roundToPx()
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?, lottieJson: String? = null) {
-    // Lottie JSON이 있으면 Lottie 애니메이션 사용, 없으면 기존 AsyncImage 사용
-    if (lottieJson != null && character != null) {
-        val composition by rememberLottieComposition(
-            LottieCompositionSpec.JsonString(lottieJson)
-        )
-
-        LottieAnimation(
-            composition = composition,
-            modifier = modifier,
-            iterations = Int.MAX_VALUE // 무한 반복
-        )
-    } else if (character != null) {
-        AsyncImage(
-            model = character.characterImageName,
-            contentDescription = null,
-            modifier = modifier
-        )
-    } else {
-        Image(
-            painter = painterResource(R.drawable.walk_it_character),
-            contentDescription = null,
-        )
-    }
-}
-
-@Composable
 fun WalkingScreenPreviewFinished() {
     WalkItTheme {
-        WalkingScreen(
+        WalkingScreenContent(
             screenState = WalkingScreenState(
                 uiState = WalkingUiState.Walking(
                     stepCount = 1250,
                     duration = 1800000L, // 30분
                     isPaused = true
                 ),
-                character = null,
-                characterLottieJson = null
+                character = null // 캐릭터 정보 없음
             ),
             onNextClick = {}
         )
