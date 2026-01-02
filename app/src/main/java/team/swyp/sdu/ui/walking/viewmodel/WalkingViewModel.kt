@@ -356,20 +356,18 @@ class WalkingViewModel @Inject constructor(
 
     /**
      * 산책용 캐릭터 Lottie JSON 생성
+     * DressingRoom과 동일한 방식으로 캐릭터 기본 이미지가 적용된 깨끗한 baseJson 사용
      */
     private fun generateWalkingCharacterLottie(character: Character) {
         viewModelScope.launch {
             try {
                 Timber.d("산책용 캐릭터 Lottie JSON 생성 시작")
 
-                // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
-                val baseJson = loadBaseLottieJson(character)
-
-                // DressingRoom과 동일한 방식으로 캐릭터 파트별 Lottie JSON 수정
-                val characterJson = lottieImageProcessor.updateCharacterPartsInLottie(baseJson, character)
+                // DressingRoom과 동일하게 캐릭터 기본 이미지가 적용된 깨끗한 baseJson 생성
+                val cleanBaseJson = createCleanBaseJson(character)
 
                 // 생성된 JSON을 문자열로 변환해서 저장
-                val lottieJsonString = characterJson.toString()
+                val lottieJsonString = cleanBaseJson.toString()
                 _walkingCharacterLottieJson.value = lottieJsonString
 
                 Timber.d("산책용 캐릭터 Lottie JSON 생성 완료: ${lottieJsonString.length} chars")
@@ -377,6 +375,28 @@ class WalkingViewModel @Inject constructor(
                 Timber.e(e, "산책용 캐릭터 Lottie JSON 생성 실패")
                 _walkingCharacterLottieJson.value = null
             }
+        }
+    }
+
+    /**
+     * DressingRoom과 동일한 방식으로 캐릭터 기본 이미지가 적용된 깨끗한 baseJson 생성
+     */
+    private suspend fun createCleanBaseJson(character: Character): JSONObject = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("🧹 Walking createCleanBaseJson 시작")
+
+            // 기본 Lottie JSON 로드
+            val jsonObject = loadBaseLottieJson(character)
+            Timber.d("📂 기본 Lottie JSON 로드 완료")
+
+            // 캐릭터의 기본 이미지로 asset들을 교체 (투명 PNG 적용)
+            val characterBaseJson = lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
+            Timber.d("✅ 캐릭터 기본 이미지 설정 완료")
+
+            characterBaseJson
+        } catch (e: Exception) {
+            Timber.e(e, "❌ cleanBaseJson 생성 실패")
+            JSONObject("{}") // 빈 JSON 반환
         }
     }
 
