@@ -33,10 +33,10 @@ data class CosmeticItemDto(
     fun toLottieAssetId(): String {
         return when (position.uppercase()) {
             "HEAD" -> {
-                // tags에 따라 headtop 또는 headdocor 결정
+                // tags에 따라 headtop 또는 headdecor 결정
                 when {
                     tags?.contains("TOP", ignoreCase = true) == true -> "headtop"
-                    tags?.contains("DECOR", ignoreCase = true) == true -> "headdocor"
+                    tags?.contains("DECOR", ignoreCase = true) == true -> "headdecor"
                     else -> "headtop" // 기본값
                 }
             }
@@ -52,7 +52,7 @@ data class CosmeticItemDto(
     companion object {
         // assetId 상수들
         const val ASSET_HEAD_TOP = "headtop"
-        const val ASSET_HEAD_DECOR = "headdocor"
+        const val ASSET_HEAD_DECOR = "headdecor"
         const val ASSET_BODY = "body"
         const val ASSET_FEET = "feet"
     }

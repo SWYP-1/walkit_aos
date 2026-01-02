@@ -37,7 +37,7 @@ data class LottieCharacterState(
  * 캐릭터 파트 타입 열거형
  */
 enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String) {
-    HEAD("head", "headtop", "headdocor"),
+    HEAD("head", "headtop", "headdecor"),
     BODY("body", "body"),
     FEET("feet", "foot");
 
@@ -56,7 +56,7 @@ enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String)
             HEAD -> {
                 when {
                     tags.contains("TOP", ignoreCase = true) -> "headtop"
-                    tags.contains("DECOR", ignoreCase = true) -> "headdocor"
+                    tags.contains("DECOR", ignoreCase = true) -> "headdecor"
                     else -> lottieAssetIds.first() // 기본값
                 }
             }

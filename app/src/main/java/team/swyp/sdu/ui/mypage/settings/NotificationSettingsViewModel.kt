@@ -209,7 +209,16 @@ constructor(
      */
     fun setNotificationEnabled(enabled: Boolean) {
         viewModelScope.launch {
+            // 전체 알림 상태 업데이트
             notificationRepository.updateLocalNotificationEnabled(enabled)
+
+            // 전체 알림 on/off 시 모든 하위 항목도 함께 변경
+            notificationRepository.updateLocalGoalNotificationEnabled(enabled)
+            notificationRepository.updateLocalMissionNotificationEnabled(enabled)
+            notificationRepository.updateLocalFriendNotificationEnabled(enabled)
+            notificationRepository.updateLocalMarketingPushEnabled(enabled)
+
+            Timber.d("전체 알림 ${if (enabled) "ON" else "OFF"} → 모든 하위 항목도 ${if (enabled) "ON" else "OFF"}")
         }
     }
 
@@ -219,6 +228,9 @@ constructor(
     fun setGoalNotificationEnabled(enabled: Boolean) {
         viewModelScope.launch {
             notificationRepository.updateLocalGoalNotificationEnabled(enabled)
+
+            // 하위 항목 변경 시 전체 알림 상태 자동 조정
+            updateMasterNotificationBasedOnSubItems()
         }
     }
 
@@ -228,6 +240,9 @@ constructor(
     fun setMissionNotificationEnabled(enabled: Boolean) {
         viewModelScope.launch {
             notificationRepository.updateLocalMissionNotificationEnabled(enabled)
+
+            // 하위 항목 변경 시 전체 알림 상태 자동 조정
+            updateMasterNotificationBasedOnSubItems()
         }
     }
 
@@ -237,6 +252,9 @@ constructor(
     fun setFriendNotificationEnabled(enabled: Boolean) {
         viewModelScope.launch {
             notificationRepository.updateLocalFriendNotificationEnabled(enabled)
+
+            // 하위 항목 변경 시 전체 알림 상태 자동 조정
+            updateMasterNotificationBasedOnSubItems()
         }
     }
 
@@ -246,6 +264,43 @@ constructor(
     fun setMarketingPushEnabled(enabled: Boolean) {
         viewModelScope.launch {
             notificationRepository.updateLocalMarketingPushEnabled(enabled)
+
+            // 하위 항목 변경 시 전체 알림 상태 자동 조정
+            updateMasterNotificationBasedOnSubItems()
+        }
+    }
+
+    /**
+     * 하위 항목 변경 시 전체 알림 상태 자동 조정
+     * - 모든 하위 항목이 on이면 전체 알림도 on
+     * - 전체 알림이 on 상태에서 하위 항목을 하나라도 off하면 전체 알림도 off
+     */
+    private suspend fun updateMasterNotificationBasedOnSubItems() {
+        val currentState = uiState.value as? NotificationSettingsUiState.Ready ?: return
+
+        // 모든 하위 항목 상태 확인
+        val allSubItemsEnabled = currentState.goalNotificationEnabled &&
+                                 currentState.missionNotificationEnabled &&
+                                 currentState.friendNotificationEnabled &&
+                                 currentState.marketingPushEnabled
+
+        val anySubItemDisabled = !currentState.goalNotificationEnabled ||
+                                 !currentState.missionNotificationEnabled ||
+                                 !currentState.friendNotificationEnabled ||
+                                 !currentState.marketingPushEnabled
+
+        when {
+            // 모든 하위 항목이 on이면 전체 알림도 on
+            allSubItemsEnabled && !currentState.notificationEnabled -> {
+                notificationRepository.updateLocalNotificationEnabled(true)
+                Timber.d("모든 하위 항목이 ON → 전체 알림 자동 ON")
+            }
+
+            // 전체 알림이 on 상태에서 하위 항목을 하나라도 off하면 전체 알림도 off
+            anySubItemDisabled && currentState.notificationEnabled -> {
+                notificationRepository.updateLocalNotificationEnabled(false)
+                Timber.d("하위 항목 중 하나 이상이 OFF → 전체 알림 자동 OFF")
+            }
         }
     }
 

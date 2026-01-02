@@ -1,31 +1,19 @@
 package team.swyp.sdu.ui.home
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +30,8 @@ import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.home.components.HomeEmptySession
 import team.swyp.sdu.ui.home.components.ProfileSection
 import team.swyp.sdu.ui.home.components.MissionSection
+import team.swyp.sdu.ui.home.components.WeeklyRecordSection
+import team.swyp.sdu.ui.home.components.EmotionRecordSection
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 
@@ -107,6 +97,7 @@ private fun HomeScreenContent(
     profileImageUrl: String? = null,
     onClickMissionMore: () -> Unit,
     onClickAlarm: () -> Unit,
+    onClickWalk : () -> Unit,
     onClickMission: () -> Unit,
     onRewardClick: (Long) -> Unit,
     onRetry: () -> Unit,
@@ -156,7 +147,8 @@ private fun HomeScreenContent(
             // ==============================
             HomeBottomSection(
                 walkingSessionDataState = walkingSessionDataState,
-                onClickMore = onNavigateToRecord
+                onClickMore = onNavigateToRecord,
+                onClickWalk = onClickWalk,
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -195,6 +187,7 @@ fun HomeScreen(
         onClickMissionMore = onClickMissionMore,
         onRetry = onRetry,
         onNavigateToRecord = onNavigateToRecord,
+        onClickWalk = onClickWalk,
         modifier = modifier,
     )
 }
@@ -213,116 +206,31 @@ fun HomeScreen(
 @Composable
 private fun HomeBottomSection(
     walkingSessionDataState: DataState<WalkingSessionData>,
-    onClickMore: () -> Unit = {}
+    onClickMore: () -> Unit = {},
+    onClickWalk : () -> Unit = {},
 ) {
-
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "나의 산책 기록",
-
-            // body XL/semibold
-            style = MaterialTheme.walkItTypography.bodyXL.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = SemanticColor.textBorderPrimary
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))  // 1️⃣ 클릭 영역 자르기
-                .clickable(onClick = onClickMore)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        )
-        {
-            Text(
-                text = "더보기",
-                // body M/medium
-                style = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderSecondary,
-            )
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_forward),
-                contentDescription = "더보기", tint = SemanticColor.iconGrey
-            )
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-
     when (walkingSessionDataState) {
         is DataState.Success -> {
-            val records = walkingSessionDataState.data.sessionsThisWeek
+            val data = walkingSessionDataState.data
 
             Column {
-                if (records.isNotEmpty()) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        records.forEach { session ->
-                            WeeklyRecordCard(
-                                session = session,
-                                modifier = Modifier.width(260.dp),
-                            )
-                        }
-                    }
-                } else {
-                    HomeEmptySession(onClick = onClickMore)
-                }
+                // 주간 기록 섹션
+                WeeklyRecordSection(
+                    records = data.sessionsThisWeek,
+                    onClickMore = onClickMore,
+                    onClickWalk = onClickWalk,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Spacer(Modifier.height(32.dp))
 
-                Text(
-                    text = "나의 감정 기록",
-                    // body XL/semibold
-                    style = MaterialTheme.walkItTypography.bodyXL.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.textBorderPrimary
+                // 감정 기록 섹션
+                EmotionRecordSection(
+                    dominantEmotion = data.dominantEmotion,
+                    dominantEmotionCount = data.dominantEmotionCount,
+                    recentEmotions = data.recentEmotions,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
-
-                // 이번주 주요 감정 카드
-                val dominantEmotion = walkingSessionDataState.data.dominantEmotion
-                val dominantEmotionCount = walkingSessionDataState.data.dominantEmotionCount
-                DominantEmotionCard(
-                    emotionType = dominantEmotion,
-                    emotionCount = dominantEmotionCount,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val recentEmotions = walkingSessionDataState.data.recentEmotions
-                    val itemCount = recentEmotions.size.coerceAtMost(7)
-
-                    repeat(7) { index ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                        ) {
-                            if (index < itemCount) {
-                                recentEmotions[index]?.let { emotion ->
-                                    EmotionIcon(emotionType = emotion)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(24.dp))
             }
         }
 

@@ -16,6 +16,14 @@ import team.swyp.sdu.ui.mypage.goal.model.GoalState
 import timber.log.Timber
 import javax.inject.Inject
 
+/**
+ * 목표 관리 에러 타입
+ */
+sealed class GoalError {
+    data object UpdateNotAllowed : GoalError()
+    data object SaveFailed : GoalError()
+}
+
 
 
 /**
@@ -29,6 +37,10 @@ class GoalManagementViewModel @Inject constructor(
     // UI 상태
     private val _uiState = MutableStateFlow(GoalState())
     val uiState: StateFlow<GoalState> = _uiState.asStateFlow()
+
+    // 에러 상태
+    private val _goalError = MutableStateFlow<GoalError?>(null)
+    val goalError: StateFlow<GoalError?> = _goalError.asStateFlow()
 
     init {
         // 서버 캐시 구독
@@ -69,10 +81,33 @@ class GoalManagementViewModel @Inject constructor(
 
             // 2. 서버 업데이트
             val goal = Goal(targetStepCount = targetSteps, targetWalkCount = walkFrequency)
-            goalRepository.updateGoal(goal).onError { t, msg ->
-                Timber.e(t, "목표 업데이트 실패: $msg")
-                // 실패 시 서버에서 다시 가져와 UI 동기화
-                refreshGoal()
+            val result = goalRepository.updateGoal(goal)
+
+            when (result) {
+                is Result.Success -> {
+                    Timber.d("목표 업데이트 성공: 걸음=${targetSteps}, 빈도=${walkFrequency}회")
+                }
+                is Result.Error -> {
+                    val exception = result.exception
+                    // CancellationException은 정상적인 취소이므로 에러 처리하지 않음
+                    if (exception is kotlinx.coroutines.CancellationException) {
+                        Timber.d("목표 업데이트가 취소되었습니다")
+                    } else {
+                        // 특정 에러 코드에 따른 처리
+                        val goalError = when (exception.message) {
+                            "GOAL_UPDATE_NOT_ALLOWED" -> GoalError.UpdateNotAllowed
+                            else -> GoalError.SaveFailed
+                        }
+                        Timber.e(exception, "목표 업데이트 실패: $goalError")
+                        _goalError.value = goalError
+
+                        // 실제 에러인 경우 서버에서 다시 가져와 UI 동기화
+                        refreshGoal()
+                    }
+                }
+                is Result.Loading -> {
+                    // 로딩 상태는 여기서는 처리하지 않음
+                }
             }
         }
     }
@@ -85,6 +120,13 @@ class GoalManagementViewModel @Inject constructor(
         // UI 상태만 초기화 (서버 저장하지 않음)
         _uiState.value = defaultState
         Timber.d("목표 UI 초기화됨: 걸음 수=${defaultState.targetSteps}, 빈도=${defaultState.walkFrequency}회")
+    }
+
+    /**
+     * 에러 상태 클리어
+     */
+    fun clearGoalError() {
+        _goalError.value = null
     }
 
     /**

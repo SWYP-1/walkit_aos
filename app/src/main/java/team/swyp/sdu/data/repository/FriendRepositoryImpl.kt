@@ -34,7 +34,7 @@ class FriendRepositoryImpl @Inject constructor(
     )
 
     private var cache: FriendCache? = null
-    private val cacheTtlMillis = 60_000L // 1분 TTL
+    private val cacheTtlMillis = 30_000L // 30초 TTL
 
     /**
      * 친구 목록 상태 (UI에 노출되는 StateFlow)

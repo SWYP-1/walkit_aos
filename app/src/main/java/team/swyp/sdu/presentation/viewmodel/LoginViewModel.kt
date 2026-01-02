@@ -23,6 +23,7 @@ import team.swyp.sdu.core.Result
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.data.local.datastore.AuthDataStore
+import team.swyp.sdu.data.local.datastore.OnboardingDataStore
 import team.swyp.sdu.data.remote.auth.AuthRemoteDataSource
 import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.data.remote.auth.TokenProvider
@@ -48,6 +49,7 @@ sealed class LoginUiState {
 class LoginViewModel @Inject constructor(
     private val authRemoteDataSource: AuthRemoteDataSource,
     private val authDataStore: AuthDataStore,
+    private val onboardingDataStore: OnboardingDataStore,
     private val userRepository: UserRepository,
     private val tokenProvider: TokenProvider,
     private val fcmTokenManager: FcmTokenManager,
@@ -315,6 +317,8 @@ class LoginViewModel @Inject constructor(
                 authDataStore.clear()
                 // 🔥 Room 사용자 데이터도 삭제 (로그인 전환 시 캐시된 이전 사용자 데이터 제거)
                 userRepository.clearAuth()
+                // 🔥 온보딩 데이터도 초기화 (로그인 전환 시 이전 온보딩 상태 제거)
+                onboardingDataStore.clearAllOnboardingData()
                 Timber.i("로컬 토큰 및 데이터 삭제 완료")
             } catch (e: Exception) {
                 Timber.e(e, "로컬 데이터 삭제 실패")
@@ -429,7 +433,7 @@ class LoginViewModel @Inject constructor(
                         _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
                         _uiState.value = LoginUiState.Idle
                         Timber.i("로그인 완료 - 닉네임 없음, 약관 동의 필요")
-                        // 약관 동의 다이얼로그는 UI에서 처리됨
+                        // 약관 동의 다이얼로그는 LoginRoute에서 처리됨
                     }
                 }.onError { throwable, message ->
                     // 사용자 정보 조회 실패 (토큰 만료 등)

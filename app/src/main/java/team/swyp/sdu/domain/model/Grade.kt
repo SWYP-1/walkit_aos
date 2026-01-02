@@ -34,6 +34,18 @@ enum class Grade(val level: Int, val displayName: String) {
         }
 
         /**
+         * API String을 도메인 Grade로 변환합니다.
+         */
+        fun fromApiString(apiGrade: String): Grade {
+            return when (apiGrade.uppercase()) {
+                "SEED" -> SEED
+                "SPROUT" -> SPROUT
+                "TREE" -> TREE
+                else -> SEED // 기본값
+            }
+        }
+
+        /**
          * 도메인 Grade를 API DTO Grade로 변환합니다.
          */
         fun toApiGrade(domainGrade: Grade): team.swyp.sdu.data.remote.walking.dto.Grade {

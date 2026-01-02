@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
@@ -131,41 +134,49 @@ fun CartDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // 3️⃣ 아이템 리스트
-                cartItems.forEach { item ->
-                    val checked = checkedItems[item.itemId] ?: true
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { isChecked ->
-                                checkedItems[item.itemId] = isChecked
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = SemanticColor.stateGreenPrimary,
-                                uncheckedColor = SemanticColor.textBorderSecondary
-                            )
-                        )
-                        Spacer(Modifier.width(12.dp))
+                // 3️⃣ 아이템 리스트 (스크롤 가능)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false) // 콘텐츠에 따라 높이 조정
+                        .heightIn(max = 300.dp), // 최대 높이 제한
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(cartItems) { item ->
+                        val checked = checkedItems[item.itemId] ?: true
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = item.name,
-                                style = MaterialTheme.walkItTypography.bodyM.copy(fontWeight = FontWeight.Medium),
-                                color = SemanticColor.textBorderPrimary,
-                                modifier = Modifier.weight(1f)
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { isChecked ->
+                                    checkedItems[item.itemId] = isChecked
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = SemanticColor.stateGreenPrimary,
+                                    uncheckedColor = SemanticColor.textBorderSecondary
+                                )
                             )
-                            Text(
-                                text = "${formatNumber(item.point)}P",
-                                style = MaterialTheme.walkItTypography.bodyS,
-                                color = SemanticColor.textBorderPrimary
-                            )
+                            Spacer(Modifier.width(12.dp))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = item.name,
+                                    style = MaterialTheme.walkItTypography.bodyM.copy(fontWeight = FontWeight.Medium),
+                                    color = SemanticColor.textBorderPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${formatNumber(item.point)}P",
+                                    style = MaterialTheme.walkItTypography.bodyS,
+                                    color = SemanticColor.textBorderPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -252,37 +263,25 @@ fun CartDialog(
 @Composable
 @Preview(showBackground = true)
 fun CartDialogPreview_SomeUnchecked() {
-    val dummyItems = listOf(
+    val dummyItems = List(8) { index -> // 8개 아이템으로 스크롤 테스트
         CosmeticItem(
-            itemId = 1,
-            name = "헤어1",
-            point = 100,
+            itemId = index + 1,
+            name = "아이템${index + 1}",
+            point = (index + 1) * 100,
             owned = false,
             imageName = "df",
-            position = EquipSlot.HEAD
-        ),
-        CosmeticItem(
-            itemId = 2,
-            name = "헤어2",
-            point = 2000,
-            owned = false,
-            imageName = "df",
-            position = EquipSlot.BODY
-        ),
-        CosmeticItem(
-            itemId = 3,
-            name = "헤어3",
-            point = 150,
-            owned = false,
-            imageName = "df",
-            position = EquipSlot.FEET
-        ),
-    )
+            position = when (index % 3) {
+                0 -> EquipSlot.HEAD
+                1 -> EquipSlot.BODY
+                else -> EquipSlot.FEET
+            }
+        )
+    }
     // Preview용으로 일부 체크 해제
     WalkItTheme {
         CartDialog(
             cartItems = dummyItems,
-            myPoints = 1000, // 총합 2250P > 1000P → 포인트 부족 상태
+            myPoints = 1000, // 포인트 부족 상태
             onDismiss = {},
             onPurchase = {}
         )

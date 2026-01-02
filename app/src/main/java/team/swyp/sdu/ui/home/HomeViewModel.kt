@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -17,12 +18,17 @@ import team.swyp.sdu.core.DataState
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import team.swyp.sdu.domain.model.Goal
 import timber.log.Timber
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.repository.WalkingSessionRepository
+import team.swyp.sdu.data.local.dao.RecentSessionEmotion
+import team.swyp.sdu.data.local.dao.EmotionCount
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.domain.repository.MissionRepository
@@ -31,10 +37,10 @@ import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.worker.SessionSyncWorker
 import team.swyp.sdu.domain.service.LocationManager
 import team.swyp.sdu.domain.model.Character
-import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.domain.model.WeeklyMission
 import team.swyp.sdu.domain.model.WalkRecord
 import team.swyp.sdu.domain.model.Grade
+import team.swyp.sdu.ui.home.utils.WeatherType
 import team.swyp.sdu.data.mapper.MissionCardStateMapper
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.utils.CalenderUtils.weekRange
@@ -49,7 +55,8 @@ sealed interface HomeUiState {
         // 최소한의 필드만 유지 - 다른 상태들로 분리됨
         val character: Character,
         val walkProgressPercentage: String = "0",
-        val weather: Weather? = null,
+        val temperature: Double? = null,
+        val weather: WeatherType? = null,
         val goal: Goal? = null,
     ) : HomeUiState
 
@@ -64,7 +71,8 @@ sealed interface ProfileUiState {
         val character: Character,
         val walkProgressPercentage: String,
         val goal: Goal?,
-        val weather: Weather?,
+        val weather: WeatherType?,
+        val temperature: Double?,
         val todaySteps: Int = 0
     ) : ProfileUiState
 
@@ -150,6 +158,7 @@ class HomeViewModel @Inject constructor(
                     Timber.d("오늘 세션 개수: ${todaySessions.size}, 총 걸음: ${todaySessions.sumOf { it.stepCount }}")
                     todaySessions.sumOf { it.stepCount }
                 }
+
                 else -> {
                     Timber.d("walkingSessionDataState가 Success가 아님: $state")
                     0
@@ -162,7 +171,19 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadHomeData()
-        loadWalkingSessionsFromRoom()  // API 독립적 로드
+
+        // 사용자 로그인 상태에 따라 세션 데이터 로드
+        viewModelScope.launch {
+            userRepository.userFlow.collect { user ->
+                if (user != null) {
+                    // 로그인 상태: 세션 데이터 로드
+                    loadWalkingSessionsFromRoom()
+                } else {
+                    // 로그아웃 상태: 세션 데이터 초기화 도달해선안됨
+                    Timber.d("🏠 로그아웃 상태: 세션 데이터 초기화")
+                }
+            }
+        }
     }
 
     val goalUiState: StateFlow<DataState<Goal>> = goalRepository.goalFlow.map { goal ->
@@ -270,25 +291,64 @@ class HomeViewModel @Inject constructor(
     private fun loadWalkingSessionsFromRoom() {
         viewModelScope.launch {
             try {
-                walkingSessionRepository.getAllSessions().catch { e ->
-                    _walkingSessionDataState.value =
-                        DataState.Error(e.message ?: "세션을 불러오지 못했습니다.")
-                }.collect { sessions ->
-                    val thisWeekSessions = sessions.filterThisWeek()
-                    val recentEmotions = sessions.sortedByDescending { it.startTime }.take(7)
-                        .map { it.postWalkEmotion }
-                    val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(thisWeekSessions)
+                // 이번 주 범위 계산
+                val (weekStart, weekEnd) = weekRange(today.value)
+                Timber.d("🏠 이번 주 범위: ${weekStart.formatTimestamp()} ~ ${weekEnd.formatTimestamp()}")
 
-                    val walkingSessionData = WalkingSessionData(
+                // 🚀 최적화: DB 쿼리로 이번 주 우세 감정 계산 (suspend 함수)
+                val dominantEmotionData = walkingSessionRepository.getDominantEmotionInPeriod(weekStart, weekEnd)
+
+                val dominantEmotion = dominantEmotionData?.let { data ->
+                    try {
+                        EmotionType.valueOf(data.emotion)
+                    } catch (e: IllegalArgumentException) {
+                        Timber.w("Unknown dominant emotion type: ${data.emotion}")
+                        null
+                    }
+                }
+
+                val dominantEmotionCount = dominantEmotionData?.count ?: 0
+
+                Timber.d("🏠 [dominantEmotion] DB 쿼리로 계산된 우세 감정: $dominantEmotion (카운트: $dominantEmotionCount)")
+
+                // 🚀 최적화: 여러 Flow를 combine으로 결합
+                combine(
+                    walkingSessionRepository.getRecentSessionsForEmotions(),
+                    walkingSessionRepository.getSessionsBetween(weekStart, weekEnd)
+                ) { recentSessionEmotions, thisWeekSessions ->
+                    // recentEmotions 추출 과정 로깅 (최적화된 데이터 사용)
+                    Timber.d("🏠 [recentEmotions] 최적화된 쿼리로 조회된 최근 세션 수: ${recentSessionEmotions.size}")
+                    Timber.d("🏠 [recentEmotions] 최근 감정 데이터:")
+                    recentSessionEmotions.forEachIndexed { index, emotionData ->
+                        Timber.d("🏠 [recentEmotions] 세션 ${index + 1}: 시작시간=${emotionData.startTime.formatTimestamp()}, 산책후감정=${emotionData.postWalkEmotion}")
+                    }
+
+                    // EmotionType으로 변환 (String -> EmotionType)
+                    val recentEmotions = recentSessionEmotions.mapNotNull { emotionData ->
+                        try {
+                            EmotionType.valueOf(emotionData.postWalkEmotion)
+                        } catch (e: IllegalArgumentException) {
+                            Timber.w("Unknown emotion type: ${emotionData.postWalkEmotion}")
+                            null
+                        }
+                    }
+                    Timber.d("🏠 [recentEmotions] 최종 추출된 감정들: $recentEmotions")
+
+                    WalkingSessionData(
                         sessionsThisWeek = thisWeekSessions,
                         dominantEmotion = dominantEmotion,
                         dominantEmotionCount = dominantEmotionCount,
                         recentEmotions = recentEmotions
                     )
-
+                }.catch { e ->
+                    Timber.e(e, "세션 데이터 결합 중 오류")
+                    _walkingSessionDataState.value = DataState.Error(e.message ?: "세션을 불러오지 못했습니다.")
+                    return@catch
+                }.collect { walkingSessionData ->
                     _walkingSessionDataState.value = DataState.Success(walkingSessionData)
                 }
             } catch (e: Exception) {
+                Timber.e(e, "세션 로드 중 오류")
                 _walkingSessionDataState.value = DataState.Error(e.message ?: "세션 로드 중 오류가 발생했습니다.")
             }
         }
@@ -312,7 +372,8 @@ class HomeViewModel @Inject constructor(
             walkProgressPercentage = homeData.walkProgressPercentage,
             goal = goal,
             weather = homeData.weather,
-            todaySteps = todayStepsFlow.value
+            todaySteps = todayStepsFlow.value,
+            temperature = homeData.temperature
         )
         Timber.d("프로필 상태: Success")
     }
@@ -350,7 +411,8 @@ class HomeViewModel @Inject constructor(
                         val currentTodaySteps = todayStepsFlow.value
                         Timber.d("현재 HomeViewModel todaySteps: $currentTodaySteps")
 
-                        val cardState = missionCardStateMapper.mapToCardState(mission, isActive = true)
+                        val cardState =
+                            missionCardStateMapper.mapToCardState(mission, isActive = true)
                         Timber.d("미션 카드 상태 계산 결과: $cardState")
                         MissionWithState(mission, cardState)
                     }
@@ -364,7 +426,12 @@ class HomeViewModel @Inject constructor(
                     // 매핑 실패 시 기존 로직으로 fallback
                     _missionUiState.value = MissionUiState.Success(
                         missions = missions,
-                        missionCardStates = missions.map { MissionWithState(it, team.swyp.sdu.ui.mission.model.MissionCardState.INACTIVE) }
+                        missionCardStates = missions.map {
+                            MissionWithState(
+                                it,
+                                team.swyp.sdu.ui.mission.model.MissionCardState.INACTIVE
+                            )
+                        }
                     )
                 }
             }
@@ -383,8 +450,16 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = HomeUiState.Error(e.message ?: "세션을 불러오지 못했습니다.")
             }.collect { sessions ->
                 val thisWeekSessions = sessions.filterThisWeek()
-                val recentEmotions = sessions.sortedByDescending { it.startTime }.take(7)
-                    .map { it.postWalkEmotion }
+
+                // recentEmotions 추출 과정 로깅 (loadSessionsWithHomeData)
+                Timber.d("🏠 [loadSessionsWithHomeData] 총 세션 수: ${sessions.size}")
+                val sortedSessions = sessions.sortedByDescending { it.startTime }.take(7)
+                Timber.d("🏠 [loadSessionsWithHomeData] 최근 7개 세션 추출:")
+                sortedSessions.forEachIndexed { index, session ->
+                    Timber.d("🏠 [loadSessionsWithHomeData] 세션 ${index + 1}: id=${session.id}, 시작시간=${session.startTime.formatTimestamp()}, 산책후감정=${session.postWalkEmotion}")
+                }
+                val recentEmotions = sortedSessions.map { it.postWalkEmotion }
+                Timber.d("🏠 [loadSessionsWithHomeData] 최종 추출된 감정들: $recentEmotions")
                 val dominantEmotion = findDominantEmotion(thisWeekSessions)
 
                 // 주간 미션
@@ -395,6 +470,7 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = HomeUiState.Success(
                     character = homeData.character,
                     walkProgressPercentage = homeData.walkProgressPercentage,
+                    temperature = homeData.temperature,
                     weather = homeData.weather,
                     goal = goal,
                 )
@@ -460,8 +536,16 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = HomeUiState.Error(e.message ?: "세션을 불러오지 못했습니다.")
             }.collect { sessions ->
                 val thisWeekSessions = sessions.filterThisWeek()
-                val recentEmotions = sessions.sortedByDescending { it.startTime }.take(7)
-                    .map { it.postWalkEmotion }
+
+                // recentEmotions 추출 과정 로깅 (loadSessions)
+                Timber.d("🏠 [loadSessions] 총 세션 수: ${sessions.size}")
+                val sortedSessions = sessions.sortedByDescending { it.startTime }.take(7)
+                Timber.d("🏠 [loadSessions] 최근 7개 세션 추출:")
+                sortedSessions.forEachIndexed { index, session ->
+                    Timber.d("🏠 [loadSessions] 세션 ${index + 1}: id=${session.id}, 시작시간=${session.startTime.formatTimestamp()}, 산책후감정=${session.postWalkEmotion}")
+                }
+                val recentEmotions = sortedSessions.map { it.postWalkEmotion }
+                Timber.d("🏠 [loadSessions] 최종 추출된 감정들: $recentEmotions")
                 val dominantEmotion = findDominantEmotion(thisWeekSessions)
 
                 // 기본 Character Domain 모델 생성 (Fallback용)
@@ -479,6 +563,7 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = HomeUiState.Success(
                     character = defaultCharacter,
                     walkProgressPercentage = "0",
+                    temperature = null,
                     weather = null,
                     goal = goal,
                 )
@@ -578,10 +663,12 @@ class HomeViewModel @Inject constructor(
 
                     // TODO: 보상 지급 성공 UI 피드백 추가
                 }
+
                 is Result.Error -> {
                     Timber.e(result.exception, "미션 보상 검증 실패: $userWeeklyMissionId")
                     // TODO: 에러 처리 UI 피드백 추가
                 }
+
                 Result.Loading -> {
                     // 로딩 상태 처리 (필요시)
                 }
@@ -626,7 +713,8 @@ class HomeViewModel @Inject constructor(
                     val updatedMissionCardStates = updatedMissions.map { mission ->
                         Timber.d("업데이트된 미션 카드 상태 계산: ${mission.title}")
                         val missionConfig = mission.getMissionConfig()
-                        val cardState = missionCardStateMapper.mapToCardState(mission, isActive = true)
+                        val cardState =
+                            missionCardStateMapper.mapToCardState(mission, isActive = true)
                         MissionWithState(mission, cardState)
                     }
 
@@ -649,5 +737,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+}
+
+/**
+ * Long 타입 timestamp를 읽기 쉬운 날짜 형식으로 변환
+ */
+private fun Long.formatTimestamp(): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    return sdf.format(Date(this))
 }
 

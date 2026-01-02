@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel
@@ -143,6 +146,9 @@ fun DailyRecordScreen(
     // 고유 팝업 표시 여부
     var showShareDialog by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
+
 
     // 상위에서 편집 상태와 note 관리
     var isEditing by remember { mutableStateOf(false) }
@@ -172,7 +178,7 @@ fun DailyRecordScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(SemanticColor.backgroundWhitePrimary)
+            .background(SemanticColor.backgroundWhiteSecondary)
     ) {
         Column(modifier = modifier) {
             val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일"))
@@ -210,6 +216,7 @@ fun DailyRecordScreen(
                         onDeleteClick = onDeleteClick,
                         isEditing = isEditing,
                         setEditing = { isEditing = it },
+                        onExternalClick = { showShareDialog = true },
                         focusRequester = focusRequester
                     )
                 }
@@ -244,8 +251,9 @@ fun DailyRecordScreen(
                 onDismiss = { showShareDialog = false },
                 onPrev = { showShareDialog = false },
                 onSave = {
-                    //TODO : Download 구현
-//                    downloadImage()
+                    scope.launch {
+//                        downloadImage()
+                    }
                 }
             )
         }
@@ -263,11 +271,13 @@ fun DailyRecordContent(
     onDeleteClick: (String) -> Unit,
     isEditing: Boolean,
     setEditing: (Boolean) -> Unit,
+    onExternalClick: () -> Unit,
     focusRequester: FocusRequester? = null,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -279,13 +289,14 @@ fun DailyRecordContent(
         )
 
         SessionThumbnailList(
-            sessions = sessionsForDate,
-            selectedIndex = selectedSessionIndex,
-            onClickExternal = { },
+            session = selectedSession,
+            onExternalClick = onExternalClick,
             modifier = Modifier.fillMaxWidth(),
         )
 
         WalkingStatsCard(
+            stepsLabel = "걸음",
+            durationLabel = "산책 시간",
             sessions = listOf(selectedSession),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -314,49 +325,44 @@ fun SessionDailyTab(
         return if (num in 1..10) koreanNumbers[num] else "$num"
     }
 
+    val overlap = 80.dp   // 탭 실제 너비 중 겹칠 값
+    val tabHeight = 32.dp
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // 👇 뒤에 깔리는 색을 "비선택 탭 색"으로
+            .height(tabHeight)
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
-        Row {
-            repeat(sessionCount) { index ->
-                val isSelected = selectedSessionIndex == index
-                val tabText = "${getKoreanNumber(index + 1)}번째 기록"
-                val offsetX = if (index == 0) 0.dp else (-6).dp
+        repeat(sessionCount) { index ->
+            val isSelected = index == selectedSessionIndex
 
-                val shape = RoundedCornerShape(
-                    topStart = if (index == 0) 8.dp else 0.dp,
-                    topEnd = 8.dp
-                )
-
-                Box(
-                    modifier = Modifier
-                        .offset(x = offsetX)
-                        .clip(shape)
-                        .background(
-                            if (isSelected)
-                                SemanticColor.backgroundWhitePrimary
-                            else
-                                SemanticColor.backgroundDarkSecondary
-                        )
-                        .zIndex(if (isSelected) 1f else 0f)
-                        .clickable { onSessionSelected(index) }
-                ) {
-                    Text(
-                        text = tabText,
-                        style = MaterialTheme.walkItTypography.bodyS.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = if (isSelected)
-                            SemanticColor.textBorderSecondary
+            Box(
+                modifier = Modifier
+                    // ⭐ 핵심: 직접 위치 계산
+                    .offset(x = overlap * index)
+                    .clip(RoundedCornerShape(topEnd = 8.dp))
+                    .background(
+                        if (isSelected)
+                            SemanticColor.backgroundWhitePrimary
                         else
-                            SemanticColor.textBorderTertiary,
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            SemanticColor.backgroundDarkSecondary
                     )
-                }
+                    // ⭐ 항상 앞 index가 위
+                    .zIndex((sessionCount - index).toFloat())
+                    .clickable { onSessionSelected(index) }
+            ) {
+                Text(
+                    text = "${getKoreanNumber(index + 1)}번째 기록",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = if (isSelected)
+                        SemanticColor.textBorderSecondary
+                    else
+                        SemanticColor.textBorderTertiary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -441,6 +447,18 @@ fun DailyRecordScreenWithSessionsPreview() {
                 preWalkEmotion = EmotionType.IRRITATED,
                 postWalkEmotion = EmotionType.CONTENT,
                 note = "스트레스 해소를 위해 짧게 산책했어요.",
+                createdDate = "2024-12-05",
+            ),
+            WalkingSession(
+                id = "session-3",
+                startTime = now - 7200000,
+                endTime = now - 5400000,
+                stepCount = 3000,
+                locations = testLocations.take(10),
+                totalDistance = 2000f,
+                preWalkEmotion = EmotionType.IRRITATED,
+                postWalkEmotion = EmotionType.CONTENT,
+                note = "스트레스 해소를 위해 짧게 산책했어요.!",
                 createdDate = "2024-12-05",
             ),
         )

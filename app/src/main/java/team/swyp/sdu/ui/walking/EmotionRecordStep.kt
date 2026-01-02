@@ -591,8 +591,8 @@ private fun EmotionRecordStepScreenContent(
                     iconResId = R.drawable.ic_arrow_forward,
                     )
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

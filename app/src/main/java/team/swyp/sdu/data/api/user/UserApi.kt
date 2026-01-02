@@ -95,7 +95,7 @@ interface UserApi {
      * @param imageId 삭제할 이미지 ID
      * @return Response로 감싼 응답 (성공/실패 확인 가능)
      */
-    @DELETE("/users/delete")
+    @DELETE("/users/image")
     suspend fun deleteImage(
     ): Response<Unit>
 

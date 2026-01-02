@@ -36,18 +36,28 @@ class WalkingBuddyApplication : Application() {
         // 릴리즈 빌드에서는 Crashlytics 등으로 로그 전송 가능
         Timber.plant(Timber.DebugTree())
 
+        // ✅ 안전하게 BuildConfig에서 API 키 가져오기
+        val kakaoAppKey = BuildConfig.KAKAO_APP_KEY
+        if (kakaoAppKey.isBlank()) {
+            Timber.e("Kakao App Key가 설정되지 않았습니다. local.properties에 KAKAO_APP_KEY를 추가하세요.")
+            return
+        }
+
         // Kakao SDK 초기화
-        // AndroidManifest.xml의 meta-data에서 앱 키를 읽어옴
-        val kakaoAppKey = "42a206965aff02858c74267290ba5ab6"
         KakaoSdk.init(this, kakaoAppKey)
 
         // KakaoMap SDK 초기화
         KakaoMapSdk.init(this, kakaoAppKey)
 
         // Naver OAuth SDK 초기화
-        val naverClientId = "pqYCAiLlppKm8_M3VnNA"
-        val naverClientSecret = "V_NACUpG7I"
+        val naverClientId = BuildConfig.NAVER_CLIENT_ID
+        val naverClientSecret = BuildConfig.NAVER_CLIENT_SECRET
         val naverClientName = "walkit"
+
+        if (naverClientId.isBlank() || naverClientSecret.isBlank()) {
+            Timber.e("Naver Client 정보가 설정되지 않았습니다. local.properties에 NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET을 추가하세요.")
+            return
+        }
         NidOAuth.initialize(
             this,
             naverClientId,

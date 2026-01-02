@@ -22,6 +22,7 @@ import team.swyp.sdu.navigation.NavGraph
 import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.presentation.viewmodel.UserViewModel
 import team.swyp.sdu.ui.theme.WalkItTheme
+import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -37,11 +38,27 @@ class MainActivity : ComponentActivity() {
                 val isWorkoutActive by LocationTrackingService.isRunning.collectAsStateWithLifecycle()
 
                 androidx.compose.runtime.LaunchedEffect(isWorkoutActive) {
+                    Timber.d("🏃 LocationService 상태 변경: isWorkoutActive=$isWorkoutActive, currentRoute=${navController.currentBackStackEntry?.destination?.route}")
                     if (isWorkoutActive) {
-                        // Walking 화면으로 이동 (집중모드)
-                        navController.navigate(Screen.Walking.route) {
-                            popUpTo(Screen.Main.route) { saveState = true }
-                            launchSingleTop = true
+                        // WalkingGraph가 이미 backstack에 있는지 확인
+                        val isWalkingGraphInBackStack = try {
+                            navController.getBackStackEntry(Screen.WalkingGraph.route)
+                            true
+                        } catch (e: Exception) {
+                            false
+                        }
+
+                        Timber.d("🏃 WalkingGraph가 backstack에 존재: $isWalkingGraphInBackStack")
+
+                        if (!isWalkingGraphInBackStack) {
+                            // WalkingGraph가 backstack에 없으면 이동
+                            Timber.d("🏃 WalkingGraph로 자동 이동")
+                            navController.navigate(Screen.WalkingGraph.route) {
+                                popUpTo(Screen.Main.route) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            Timber.d("🏃 이미 WalkingGraph가 backstack에 있으므로 이동하지 않음")
                         }
                     } else {
                         // 현재 Walking 화면이면 홈으로 복귀

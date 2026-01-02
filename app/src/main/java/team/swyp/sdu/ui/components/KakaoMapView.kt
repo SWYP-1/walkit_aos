@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -92,6 +93,7 @@ fun KakaoMapView(
     onMapViewReady: ((MapView?) -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val localDensity = LocalDensity.current
 
     // ViewModel 상태 구독
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -149,18 +151,20 @@ fun KakaoMapView(
             else -> {}
         }
     }
+    val strokePx = with(LocalDensity.current) { 4.dp.toPx() }
 
     // UI 상태 변경 시 지도 업데이트
     LaunchedEffect(uiState, kakaoMapInstance, mapViewRef) {
         val map = kakaoMapInstance
         val mapView = mapViewRef
         if (map != null && mapView != null && mapStarted) {
-            updateMapFromState(map, mapView, uiState, viewModel, context)
+            updateMapFromState(map, mapView, uiState, viewModel, context, strokePx)
         }
     }
 
     // 로딩 상태 확인: Complete 상태가 아니면 로딩 중
     val isLoading = renderState != MapRenderState.Complete
+
 
     // 지도뷰와 로딩 인디케이터를 겹쳐서 표시
     Box(
@@ -192,7 +196,7 @@ fun KakaoMapView(
 
                 if (!mapStarted) {
                     mapStarted = true
-                    initializeMapView(mapView, viewModel, uiState, context) { kakaoMap ->
+                    initializeMapView(mapView, viewModel, uiState, context, strokePx) { kakaoMap ->
                         kakaoMapInstance = kakaoMap
                     }
                 }
@@ -226,6 +230,7 @@ private fun initializeMapView(
     viewModel: KakaoMapViewModel,
     uiState: KakaoMapUiState,
     context: Context,
+    strokePx: Float,
     onMapReady: (KakaoMap) -> Unit,
 ) {
     mapView.start(
@@ -243,7 +248,7 @@ private fun initializeMapView(
                 Timber.d("KakaoMap ready")
                 setupCameraListener(kakaoMap, viewModel)
                 onMapReady(kakaoMap)
-                updateMapFromState(kakaoMap, mapView, uiState, viewModel, context)
+                updateMapFromState(kakaoMap, mapView, uiState, viewModel, context, strokePx)
             }
         },
     )
@@ -276,6 +281,7 @@ private fun updateMapFromState(
     uiState: KakaoMapUiState,
     viewModel: KakaoMapViewModel,
     context: Context,
+    strokePx: Float,  // ← 파라미터로 받
 ) {
     when (uiState) {
         is KakaoMapUiState.Ready -> {
@@ -295,7 +301,7 @@ private fun updateMapFromState(
 
                 // 경로 그리기
                 if (uiState.shouldDrawPath) {
-                    drawPath(kakaoMap, uiState.locations, viewModel, mapView)
+                    drawPath(kakaoMap, uiState.locations, viewModel, context, mapView, strokePx)
                 }
             } catch (e: Exception) {
                 Timber.e(e, "지도 업데이트 실패")
@@ -534,7 +540,9 @@ private fun drawPath(
     kakaoMap: KakaoMap,
     locations: List<LocationPoint>,
     viewModel: KakaoMapViewModel,
+    context: Context,
     mapView: MapView,
+    strokePx: Float
 ) {
     if (locations.isEmpty()) {
         Timber.d("경로 포인트가 없습니다")
@@ -556,7 +564,7 @@ private fun drawPath(
                 return
             }
 
-        val (outlineOptions, mainOptions) = createRouteLineOptions(locations)
+        val (outlineOptions, mainOptions) = createRouteLineOptions(locations, context, strokePx)
 
         // 윤곽선 먼저 추가
         routeLineManager.layer.addRouteLine(outlineOptions) { _, _ ->
@@ -613,14 +621,18 @@ private fun waitForFramesToRender(
 /**
  * RouteLine 옵션 생성 - 윤곽선과 본선을 별도의 라인으로 생성
  */
-private fun createRouteLineOptions(locations: List<LocationPoint>): Pair<RouteLineOptions, RouteLineOptions> {
+private fun createRouteLineOptions(
+    locations: List<LocationPoint>,
+    context: Context,
+    strokePx: Float
+): Pair<RouteLineOptions, RouteLineOptions> {
     val latLngList = locations.map { location ->
         LatLng.from(location.latitude, location.longitude)
     }
 
     // 윤곽선 옵션 (#1C1C1E, 더 굵은 선)
     val outlineStyle = RouteLineStyle.from(
-        20f, // 윤곽선은 더 굵게
+        strokePx, // 윤곽선은 더 굵게
         Color(0xFF1C1C1E).toArgb()
     )
     val outlineStyles = RouteLineStyles.from(outlineStyle)
@@ -632,8 +644,8 @@ private fun createRouteLineOptions(locations: List<LocationPoint>): Pair<RouteLi
 
     // 본선 옵션 (흰색, 기존 너비)
     val mainLineStyle = RouteLineStyle.from(
-        MapSnapshotConstants.ROUTE_LINE_WIDTH,
-        White.toArgb()
+        strokePx,
+        SemanticColor.stateAquaBluePrimary.toArgb()
     )
     val mainStyles = RouteLineStyles.from(mainLineStyle)
     val mainStylesSet = RouteLineStylesSet.from(mainStyles)
@@ -662,9 +674,12 @@ private fun moveCameraToPath(
 
         // 경계 정보가 있으면 로그 출력
         if (cameraSettings.minLat != null && cameraSettings.maxLat != null &&
-            cameraSettings.minLon != null && cameraSettings.maxLon != null) {
-            Timber.d("경계 정보: minLat=${cameraSettings.minLat}, maxLat=${cameraSettings.maxLat}, " +
-                    "minLon=${cameraSettings.minLon}, maxLon=${cameraSettings.maxLon}")
+            cameraSettings.minLon != null && cameraSettings.maxLon != null
+        ) {
+            Timber.d(
+                "경계 정보: minLat=${cameraSettings.minLat}, maxLat=${cameraSettings.maxLat}, " +
+                        "minLon=${cameraSettings.minLon}, maxLon=${cameraSettings.maxLon}"
+            )
         }
     } catch (e: Exception) {
         Timber.e(e, "카메라 이동 실패: ${e.message}")

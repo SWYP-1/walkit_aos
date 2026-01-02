@@ -31,13 +31,13 @@ object FollowerWalkRecordMapper {
      */
     private fun toDomain(dto: team.swyp.sdu.data.remote.walking.dto.CharacterDto): Character {
         return Character(
-            headImageName = dto.headImageName,
-            bodyImageName = dto.bodyImageName,
-            feetImageName = dto.feetImageName,
+            headImageName = dto.headImage?.imageName,
+            bodyImageName = dto.bodyImage?.imageName,
+            feetImageName = dto.feetImage?.imageName,
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
-            grade = Grade.fromApiGrade(dto.grade), // API Grade → Domain Grade 변환
+            grade = Grade.fromApiString(dto.grade), // API String → Domain Grade 변환
             nickName = dto.nickName ?: "게스트",
         )
     }

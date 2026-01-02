@@ -482,9 +482,16 @@ object WalkingTestData {
             .toInstant()
             .toEpochMilli()
 
+        // startTime이 현재 시간보다 미래인 경우 하루 전으로 조정
+        val adjustedStartTime = if (startTime > System.currentTimeMillis()) {
+            startTime - (24 * 60 * 60 * 1000L) // 1일 전으로 조정
+        } else {
+            startTime
+        }
+
         val durationMinutes = Random.nextInt(25, 80)
         val durationMillis = durationMinutes * 60 * 1000L
-        val endTime = startTime + durationMillis
+        val endTime = adjustedStartTime + durationMillis
         val stepCount = durationMinutes * Random.nextInt(100, 131)
         val totalDistance = stepCount * 0.7f
 
@@ -492,7 +499,7 @@ object WalkingTestData {
             generateLocationPoints(
                 baseLat = baseLat + Random.nextDouble(-0.01, 0.01),
                 baseLon = baseLon + Random.nextDouble(-0.01, 0.01),
-                startTime = startTime,
+                startTime = adjustedStartTime,
                 duration = durationMinutes,
                 pointCount = Random.nextInt(12, 20),
             )
@@ -514,14 +521,14 @@ object WalkingTestData {
         val postWalkEmotion = emotionTypes.random()
 
         return WalkingSession(
-            startTime = startTime,
+            startTime = adjustedStartTime,
             endTime = endTime,
             stepCount = stepCount,
             locations = locations,
             totalDistance = totalDistance,
             preWalkEmotion = preWalkEmotion,
             postWalkEmotion = postWalkEmotion,
-            createdDate = DateUtils.millisToIsoUtc(startTime),
+            createdDate = DateUtils.millisToIsoUtc(adjustedStartTime),
             userId = userId // ✅ userId 설정
         )
     }
@@ -559,8 +566,8 @@ object WalkingTestData {
         koreanCities.forEachIndexed { index, (coords, cityName) ->
             val (baseLat, baseLon) = coords
 
-            // 각 도시마다 다른 시작 시간 (하루 간격)
-            val startTime = baseTime + (index * 24 * 60 * 60 * 1000L)
+            // 각 도시마다 다른 시작 시간 (하루 간격) - 현재 시간보다 과거로만 생성
+            val startTime = baseTime - (index * 24 * 60 * 60 * 1000L)
 
             // 45분 ~ 90분 산책
             val durationMinutes = Random.nextInt(45, 91)
@@ -749,7 +756,7 @@ object WalkingTestData {
 
         val (cityName, baseLat, baseLon) = cities.random()
         val today = LocalDate.now()
-        val date = today.minusDays(Random.nextInt(0, 7).toLong()) // 최근 7일 중 랜덤
+        val date = today.minusDays(Random.nextInt(1, 8).toLong()) // 최근 7일 중 랜덤 (오늘 제외)
         val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val durationMinutes = Random.nextInt(30, 121) // 30분 ~ 120분
 
@@ -782,7 +789,7 @@ object WalkingTestData {
 
         val (cityName, baseLat, baseLon) = cities.random()
         val today = LocalDate.now()
-        val date = today.minusDays(Random.nextInt(0, 7).toLong()) // 최근 7일 중 랜덤
+        val date = today.minusDays(Random.nextInt(1, 8).toLong()) // 최근 7일 중 랜덤 (오늘 제외)
         val startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val durationMinutes = Random.nextInt(30, 121) // 30분 ~ 120분
         val endTime = startTime + (durationMinutes * 60 * 1000L)

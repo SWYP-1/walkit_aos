@@ -137,16 +137,28 @@ constructor(
             _searchUiState.value = SearchUiState.Loading
             try {
                 val result = userRemoteDataSource.searchUserByNickname(trimmedNickname)
-                // FriendSearchViewModel에서 저장된 팔로우 상태 확인
-                val localFollowStatus = getLocalFollowStatus(trimmedNickname)
-                val updatedResult = if (localFollowStatus != FollowStatus.EMPTY) {
-                    // 로컬 상태가 있으면 우선 사용
-                    Timber.d("FriendView: 로컬 팔로우 상태 적용 - $trimmedNickname: $localFollowStatus")
-                    result.copy(followStatus = localFollowStatus)
-                } else {
-                    result
+                // API 응답을 우선 사용하되, 로컬 상태와 동기화
+                // API에서 EMPTY가 왔을 때는 로컬 상태를 무시 (실제 상태가 변경되었을 수 있음)
+                val finalResult = when (result.followStatus) {
+                    FollowStatus.EMPTY -> {
+                        // API에서 EMPTY가 왔으므로 로컬 상태 초기화 및 API 상태 사용
+                        clearLocalFollowStatus(trimmedNickname)
+                        Timber.d("FriendView: API에서 EMPTY 수신 - 로컬 상태 초기화 및 API 상태 사용: $trimmedNickname")
+                        result
+                    }
+                    FollowStatus.PENDING, FollowStatus.ACCEPTED -> {
+                        // API에서 실제 팔로우 상태가 왔으므로 로컬과 동기화
+                        saveFollowStatusToLocal(trimmedNickname, result.followStatus)
+                        Timber.d("FriendView: API 팔로우 상태 적용 및 로컬 동기화 - $trimmedNickname: ${result.followStatus}")
+                        result
+                    }
+                    else -> {
+                        // 다른 상태는 API 응답 사용
+                        Timber.d("FriendView: API 상태 사용 - $trimmedNickname: ${result.followStatus}")
+                        result
+                    }
                 }
-                _searchUiState.value = SearchUiState.Success(updatedResult)
+                _searchUiState.value = SearchUiState.Success(finalResult)
             } catch (e: UserNotFoundException) {
                 Timber.Forest.e(e, "사용자를 찾을 수 없음: $trimmedNickname")
                 _searchUiState.value = SearchUiState.Error("존재하지 않는 유저입니다")
@@ -309,6 +321,20 @@ constructor(
             Timber.d("FriendView: 팔로우 상태 로컬 저장 - $nickname: $status, key=follow_status_$nickname")
         } catch (e: Exception) {
             Timber.e(e, "팔로우 상태 로컬 저장 실패: $nickname")
+        }
+    }
+
+    /**
+     * 로컬 팔로우 상태 초기화 (잘못된 상태 동기화를 방지)
+     */
+    private fun clearLocalFollowStatus(nickname: String) {
+        try {
+            followPrefs.edit()
+                .remove("follow_status_$nickname")
+                .apply()
+            Timber.d("FriendView: 로컬 팔로우 상태 초기화 - $nickname")
+        } catch (e: Exception) {
+            Timber.e(e, "로컬 팔로우 상태 초기화 실패: $nickname")
         }
     }
 }

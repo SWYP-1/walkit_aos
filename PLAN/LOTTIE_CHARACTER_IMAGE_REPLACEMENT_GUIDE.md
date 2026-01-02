@@ -325,7 +325,7 @@ suspend fun processImageForLottie(imageUrl: String): String {
 **Asset ID 결정 로직**:
 ```kotlin
 enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String) {
-    HEAD("head", "headtop", "headdocor"),
+    HEAD("head", "headtop", "headdecor"),
     BODY("body", "body"),
     FEET("feet", "foot");
 
@@ -335,7 +335,7 @@ enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String)
         return when (this) {
             HEAD -> when {
                 tags.contains("TOP", ignoreCase = true) -> "headtop"
-                tags.contains("DECOR", ignoreCase = true) -> "headdocor"
+                tags.contains("DECOR", ignoreCase = true) -> "headdecor"
                 else -> lottieAssetIds.first()
             }
             BODY -> lottieAssetIds.first()

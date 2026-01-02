@@ -99,12 +99,14 @@ class LocationAgreementViewModel @Inject constructor(
 
     /**
      * 권한 거부 (다이얼로그에서 "나중에" 버튼 클릭 시)
+     * "나중에 할게요"를 선택한 경우 다시 시도할 수 있도록 다이얼로그 표시 플래그를 저장하지 않음
      */
     fun denyPermission() {
         viewModelScope.launch {
-            // 다이얼로그를 표시했다고 기록
-            locationAgreementDataStore.setHasShownLocationAgreementDialog(true)
+            // "나중에 할게요" 선택 시 다이얼로그 표시 플래그를 저장하지 않음 (다시 시도 가능)
+            // locationAgreementDataStore.setHasShownLocationAgreementDialog(true) // 제거됨
             _uiState.value = LocationAgreementUiState.Denied
+            Timber.d("위치 권한 요청을 나중에로 미룸 - 다음에 다시 시도 가능")
         }
     }
 

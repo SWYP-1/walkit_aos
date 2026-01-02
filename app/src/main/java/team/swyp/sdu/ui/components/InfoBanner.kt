@@ -83,7 +83,7 @@ fun InfoBanner(
 
         // 오른쪽: 텍스트 영역
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // 제목

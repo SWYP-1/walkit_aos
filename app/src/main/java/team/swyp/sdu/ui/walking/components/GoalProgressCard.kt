@@ -72,19 +72,19 @@ fun GoalProgressCard(
     
     // 동기화된 세션 중 목표 달성한 세션 수 (과거 SYNC 기록)
     val achievedSyncedCount = syncedSessionsThisWeek.count { session ->
-        session.stepCount >= goal.targetStepCount
+        session.stepCount >= goal.targetStepCount  // ✅ goal의 targetStepCount로 비교
     }
     
     // 일주일 전체 (7일)
-    val totalDays = 7
+    val targetWalkCount = goal.targetWalkCount
     
     // 과거 SYNC 기록의 진행률 (하얀색 점의 위치)
-    val syncedProgressPercent = (achievedSyncedCount.toFloat() / totalDays * 100).coerceIn(0f, 100f)
+    val syncedProgressPercent = (achievedSyncedCount.toFloat() / targetWalkCount * 100).coerceIn(0f, 100f)
     
     // 전체 진행률 (과거 SYNC 기록 + 현재 산책)
     val totalProgressPercent = if (currentSessionAchieved) {
         val totalAchievedCount = achievedSyncedCount + 1
-        (totalAchievedCount.toFloat() / totalDays * 100).coerceIn(0f, 100f)
+        (totalAchievedCount.toFloat() / targetWalkCount * 100).coerceIn(0f, 100f)
     } else {
         syncedProgressPercent
     }
@@ -385,7 +385,7 @@ fun GoalProgressCard100PercentPreview() {
     WalkItTheme {
         val goal = Goal(
             targetStepCount = 10000,
-            targetWalkCount = 5,
+            targetWalkCount = 6,
         )
         
         val currentSession = WalkingSession(
@@ -416,7 +416,54 @@ fun GoalProgressCard100PercentPreview() {
                 createdDate = ZonedDateTime.now().minusDays(dayOffset.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE),
             )
         }
-        
+
+        GoalProgressCard(
+            goal = goal,
+            currentSession = currentSession,
+            syncedSessionsThisWeek = syncedSessionsThisWeek,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "이번 산책으로 100% 달성")
+@Composable
+fun GoalProgressCardCompletedByCurrentPreview() {
+    WalkItTheme {
+        val goal = Goal(
+            targetStepCount = 10000,
+            targetWalkCount = 5,
+        )
+
+        val currentSession = WalkingSession(
+            id = "preview-session",
+            startTime = System.currentTimeMillis() - 3600000,
+            endTime = System.currentTimeMillis(),
+            stepCount = 12000, // 목표 달성 (마지막 하나)
+            locations = emptyList(),
+            totalDistance = 5000f,
+            preWalkEmotion = EmotionType.JOYFUL,
+            postWalkEmotion = EmotionType.JOYFUL,
+            note = null,
+            createdDate = ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+        )
+
+        // 일주일 내 동기화된 세션 목록 (목표 달성한 세션 6개 - 6일)
+        val syncedSessionsThisWeek = (1..6).map { dayOffset ->
+            WalkingSession(
+                id = "session-$dayOffset",
+                startTime = System.currentTimeMillis() - 86400000L * dayOffset,
+                endTime = System.currentTimeMillis() - 86400000L * dayOffset + 3600000,
+                stepCount = 11000, // 목표 달성
+                locations = emptyList(),
+                totalDistance = 4500f,
+                preWalkEmotion = EmotionType.JOYFUL,
+                postWalkEmotion = EmotionType.JOYFUL,
+                note = null,
+                createdDate = ZonedDateTime.now().minusDays(dayOffset.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE),
+            )
+        }
+
         GoalProgressCard(
             goal = goal,
             currentSession = currentSession,

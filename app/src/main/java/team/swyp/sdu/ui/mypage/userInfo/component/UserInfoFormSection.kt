@@ -60,6 +60,7 @@ fun UserInfoFormSection(
     onBirthDayChange: (String) -> Unit,
     isNicknameDuplicate: Boolean?,
     nicknameValidationError: String?,
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val redPrimary = SemanticColor.stateRedPrimary
@@ -161,6 +162,7 @@ fun UserInfoFormSection(
                     nicknameValidationError != null -> nicknameValidationError
                     else -> null
                 },
+                isLoading = isLoading,
                 focusRequester = remember { FocusRequester() },
                 keyboardController = keyboardController
             )
@@ -180,6 +182,7 @@ fun NicknameInputField(
     onValueChange: (String) -> Unit,
     isError: Boolean,
     errorMessage: String?,
+    isLoading: Boolean = false,
     focusRequester: FocusRequester,
     keyboardController: SoftwareKeyboardController,
     modifier: Modifier = Modifier,
@@ -209,7 +212,8 @@ fun NicknameInputField(
         ) {
 
             // ===== Placeholder =====
-            if (value.isEmpty()) {
+            // 로딩 중에는 placeholder 표시하지 않음 (깜빡임 방지)
+            if (value.isEmpty() && !isLoading) {
                 Text(
                     text = "닉네임을 입력해주세요",
                     color = Color.Gray,

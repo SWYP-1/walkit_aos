@@ -11,6 +11,23 @@ import team.swyp.sdu.data.local.entity.SyncState
 import kotlinx.coroutines.flow.Flow
 
 /**
+ * 최근 세션 감정 조회용 데이터 클래스
+ * 메모리 효율을 위해 필요한 필드만 포함
+ */
+data class RecentSessionEmotion(
+    val startTime: Long,
+    val postWalkEmotion: String
+)
+
+/**
+ * 감정별 카운트 통계용 데이터 클래스
+ */
+data class EmotionCount(
+    val emotion: String,
+    val count: Int
+)
+
+/**
  * Data Access Object for WalkingSession
  *
  * WalkingSession 데이터베이스 작업을 위한 DAO입니다.
@@ -28,6 +45,35 @@ interface WalkingSessionDao {
      */
     @Query("SELECT * FROM walking_sessions ORDER BY startTime DESC")
     fun getAllSessions(): Flow<List<WalkingSessionEntity>>
+
+    /**
+     * 이번 주 세션 조회 (DB 레벨 필터링으로 최적화)
+     * @param weekStart 이번 주 시작 시간 (월요일 00:00:00)
+     * @param weekEnd 이번 주 끝 시간 (일요일 23:59:59)
+     */
+    @Query("SELECT * FROM walking_sessions WHERE startTime BETWEEN :weekStart AND :weekEnd ORDER BY startTime DESC")
+    fun getSessionsThisWeek(weekStart: Long, weekEnd: Long): Flow<List<WalkingSessionEntity>>
+
+    /**
+     * 최근 7개 세션 조회 (최적화된 쿼리)
+     * recentEmotions 계산용으로 startTime과 postWalkEmotion만 필요
+     */
+    @Query("SELECT startTime, postWalkEmotion FROM walking_sessions WHERE userId = :userId ORDER BY startTime DESC LIMIT 7")
+    fun getRecentSessionsForEmotions(userId: Long): Flow<List<RecentSessionEmotion>>
+
+    /**
+     * 기간 내 감정별 카운트 통계 조회 (DB 레벨 최적화)
+     * dominantEmotion 계산용
+     */
+    @Query("""
+        SELECT postWalkEmotion as emotion, COUNT(*) as count
+        FROM walking_sessions
+        WHERE userId = :userId AND startTime BETWEEN :startTime AND :endTime
+        GROUP BY postWalkEmotion
+        ORDER BY count DESC
+        LIMIT 1
+    """)
+    fun getDominantEmotionInPeriod(userId: Long, startTime: Long, endTime: Long): EmotionCount?
 
     /**
      * 기간 내 세션 조회 (startTime 기준) - 현재 사용자만

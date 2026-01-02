@@ -155,30 +155,30 @@ class UserInfoManagementViewModel @Inject constructor(
      * 프로필 이미지 삭제
      * 성공 여부는 로그만 남김
      */
-    private suspend fun deleteProfileImage() {
-        try {
-            // 현재 사용자 정보에서 imageName을 imageId로 사용 (Long 변환 시도)
-            val currentUser = when (val uiState = _uiState.value) {
-                is UserInfoUiState.Success -> uiState.user
-                else -> null
-            }
-
+    private suspend fun deleteProfileImage(): Result<Unit> {
+        return try {
+            Timber.d("프로필 이미지 삭제 시작")
             val result = userRepository.deleteImage()
+
             when (result) {
                 is Result.Success -> {
                     if (result.data.isSuccessful) {
-                        Timber.d("프로필 이미지 삭제 성공: ")
+                        Timber.d("프로필 이미지 삭제 성공")
+                        Result.Success(Unit)
                     } else {
                         Timber.e("프로필 이미지 삭제 실패: HTTP ${result.data.code()}")
+                        Result.Error(Exception("이미지 삭제 실패"), "이미지 삭제에 실패했습니다")
                     }
                 }
                 is Result.Error -> {
                     Timber.e(result.exception, "프로필 이미지 삭제 실패: ${result.message}")
+                    Result.Error(result.exception, result.message ?: "이미지 삭제에 실패했습니다")
                 }
-                Result.Loading -> {}
+                Result.Loading -> Result.Loading
             }
         } catch (e: Exception) {
             Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
+            Result.Error(e, "이미지 삭제 중 오류가 발생했습니다")
         }
     }
 
@@ -194,6 +194,7 @@ class UserInfoManagementViewModel @Inject constructor(
         birthDay: String,
         nickname: String,
     ) {
+        Timber.d("🔥 saveUserProfile 호출됨 - nickname: $nickname, birth: $birthYear-$birthMonth-$birthDay")
         viewModelScope.launch {
             _uiState.value = UserInfoUiState.Updating
 
@@ -224,27 +225,44 @@ class UserInfoManagementViewModel @Inject constructor(
                 val currentImageUri = _uploadedImageUri.value
                 val shouldDeleteImage = _imageDeleted.value
 
+                // 현재 사용자 정보에서 기존 이미지 확인 (uiState가 Updating으로 바뀌기 전)
+                val originalUiState = _uiState.value
+                val currentUser = when (originalUiState) {
+                    is UserInfoUiState.Success -> originalUiState.user
+                    else -> null
+                }
+                val hasExistingImage = !currentUser?.imageName.isNullOrBlank()
+
+                Timber.d("📊 저장 조건 - shouldDeleteImage: $shouldDeleteImage, hasExistingImage: $hasExistingImage, currentImageUri: $currentImageUri, currentUser: ${currentUser?.imageName}")
+
+                // 디버깅: userInput에서도 확인해보기
+                val userInputImageExists = !userInput.value.imageName.isNullOrBlank()
+                Timber.d("🔍 추가 확인 - userInput.imageName: ${userInput.value.imageName}, exists: $userInputImageExists")
+
                 // 2️⃣ 닉네임 등록 성공 시에만 다른 필드들 업데이트
                 val imageDeferred = async {
                     when {
-                        shouldDeleteImage -> {
-                            Timber.d("프로필 이미지 삭제 시도")
+                        shouldDeleteImage && (hasExistingImage || userInputImageExists) -> {
+                            Timber.d("🗑️ 프로필 이미지 삭제 시도 (기존 이미지 존재: uiState=$hasExistingImage, userInput=$userInputImageExists)")
                             deleteProfileImage()
-                            Result.Success(Unit)
+                        }
+                        shouldDeleteImage && !hasExistingImage && !userInputImageExists -> {
+                            Timber.d("⏭️ 프로필 이미지 삭제 스킵 (기존 이미지 없음)")
+                            Result.Success(Unit) // 삭제할 이미지가 없으므로 성공으로 처리
                         }
                         currentImageUri != Uri.EMPTY -> {
-                            Timber.d("새 프로필 이미지 업로드 시도")
+                            Timber.d("📤 새 프로필 이미지 업로드 시도")
                             userRepository.updateUserProfileImage(currentImageUri)
                         }
                         else -> {
-                            Timber.d("프로필 이미지 변경 없음")
+                            Timber.d("🤷 프로필 이미지 변경 없음")
                             Result.Success(Unit)
                         }
                     }
                 }
 
                 val profileDeferred = async {
-                    Timber.d("프로필 정보 업데이트 시도: birthDate=$birthDate")
+                    Timber.d("👤 프로필 정보 업데이트 시도: nickname=$nickname, birthDate=$birthDate")
                     userRepository.updateUserProfile(
                         nickname = nickname, // 이미 등록된 닉네임
                         birthDate = birthDate
@@ -274,7 +292,7 @@ class UserInfoManagementViewModel @Inject constructor(
                                     nicknameValidationError = "닉네임 형식이 올바르지 않습니다."
                                 )
                             }
-                            "DUPLICATE_NICKNAME" -> {
+                            "NICKNAME_DUPLICATE_ERROR" -> {
                                 // 닉네임 중복
                                 _userInput.value = _userInput.value.copy(
                                     isNicknameDuplicate = true,

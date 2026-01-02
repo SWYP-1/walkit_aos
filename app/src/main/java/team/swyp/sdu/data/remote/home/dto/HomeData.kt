@@ -4,6 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import team.swyp.sdu.data.remote.mission.dto.mission.WeeklyMissionDto
 import team.swyp.sdu.data.remote.walking.dto.CharacterDto
+import team.swyp.sdu.data.remote.home.dto.WalkResponseDto
+import team.swyp.sdu.ui.home.utils.WeatherType
 
 /**
  * 홈 화면 메인 응답 DTO
@@ -19,8 +21,11 @@ data class HomeData(
     @SerialName("todaySteps")
     val todaySteps: Int,
 
-    @SerialName("weatherDto")
-    val weatherDto: WeatherDto,
+    @SerialName("temperature")
+    val temperature: Double? = null,
+
+    @SerialName("weather")
+    val weather: WeatherType? = null,
 
     @SerialName("weeklyMissionDto")
     val weeklyMissionDto: WeeklyMissionDto? = null,

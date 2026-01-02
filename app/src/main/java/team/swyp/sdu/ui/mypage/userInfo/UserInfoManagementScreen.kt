@@ -97,12 +97,13 @@ fun UserInfoManagementRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val userInput by viewModel.userInput.collectAsStateWithLifecycle()
     val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
+    val provider by viewModel.provider.collectAsStateWithLifecycle()
 
     UserInfoManagementScreen(
         modifier = modifier,
         uiState = uiState,
         userInput = userInput,
-        provider = "provider",
+        provider = provider ?: "알수없음",
         goal = goal,
         onNavigateBack = onNavigateBack,
         onSaveUserProfile = viewModel::saveUserProfile,
@@ -179,14 +180,13 @@ fun UserInfoManagementScreen(
         name = userInput.name
 
         // 이미지 삭제 상태에 따라 다르게 처리
-        profileImageState = if (imageDeleted) {
-            // 삭제된 상태: imageName은 유지하되 selectedImageUri는 null
-            ProfileImageState.fromUserInput(userInput.imageName, null)
-        } else {
-            ProfileImageState.fromUserInput(
+        // 단, 수동으로 빈 상태를 설정한 경우에는 그대로 유지
+        if (!imageDeleted) {
+            profileImageState = ProfileImageState.fromUserInput(
                 userInput.imageName,
                 userInput.selectedImageUri)
         }
+        // imageDeleted가 true일 때는 수동으로 설정한 빈 상태 유지
 
         parseBirthDate(userInput.birthDate)?.let { (year, month, day) ->
             birthYear = year
@@ -336,29 +336,32 @@ fun UserInfoManagementScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     val displayUrl = profileImageState.currentDisplayUrl
-                    Timber.d("UI 표시용 이미지 URL: $displayUrl")
-                    if (!displayUrl.isNullOrBlank()) {
-                        Image(
-                            painter = rememberAsyncImagePainter(displayUrl),
-                            contentDescription = "프로필 이미지",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Grey2, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = Grey7,
-                                modifier = Modifier.size(32.dp),
+                    Timber.d("🎨 UI 표시용 이미지 URL: $displayUrl (original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri})")
+                    // 이미지 표시 로직 - profileImageState 변경 시 강제 리컴포지션
+                    androidx.compose.runtime.key(profileImageState) { // profileImageState 변경 시 컴포넌트 재생성
+                        if (!displayUrl.isNullOrBlank()) {
+                            Image(
+                                painter = rememberAsyncImagePainter(displayUrl),
+                                contentDescription = "프로필 이미지",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
                             )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Grey2, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = Grey7,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -425,8 +428,23 @@ fun UserInfoManagementScreen(
                         },
                         showDeleteOption = true,
                         onDeleteClick = {
+                            Timber.d("🔥 이미지 삭제 클릭 시작!")
+                            Timber.d("📸 삭제 전 상태: original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri}, display=${profileImageState.currentDisplayUrl}")
+
                             // 이미지 삭제: uri를 null로 설정
                             viewModel.updateProfileImageUri(null)
+
+                            // 화면 상태도 업데이트하여 이미지 즉시 사라지게 함
+                            val newState = ProfileImageState(
+                                originalImageName = null, // 기존 이미지 정보도 제거하여 완전 빈 상태
+                                selectedImageUri = null, // 선택된 이미지는 제거
+                                displayUrl = null // 삭제 시 무조건 빈 상태로 만듦
+                            )
+
+                            profileImageState = newState
+
+                            Timber.d("📸 삭제 후 상태: original=${newState.originalImageName}, selected=${newState.selectedImageUri}, display=${newState.currentDisplayUrl}")
+                            Timber.d("🔥 이미지 삭제 클릭 완료 - UI 리컴포지션 대기")
                         }
                     )
 
@@ -446,6 +464,7 @@ fun UserInfoManagementScreen(
             // 사용자 정보 입력 폼
             UserInfoFormSection(
                 nickname = nickname,
+                isLoading = uiState is UserInfoUiState.Loading,
                 onNicknameChange = {
                     val newNickname = it
                     nickname = newNickname

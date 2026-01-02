@@ -78,6 +78,13 @@ fun LoginRoute(
     }
     val scope = rememberCoroutineScope()
 
+    // 네비게이션 콜백 설정
+    LaunchedEffect(Unit) {
+        viewModel.setNavigationCallbacks(
+            onNavigateToMain = onNavigateToMain,
+            onNavigateToTermsAgreement = onNavigateToTermsAgreement
+        )
+    }
 
     /**
      * ✅ 단 하나의 Navigation 진입점

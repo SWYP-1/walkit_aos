@@ -2,7 +2,6 @@ package team.swyp.sdu.ui.record.dailyrecord
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,16 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,30 +39,18 @@ import team.swyp.sdu.utils.DateUtils
 import java.io.File
 
 /**
- * 세션 썸네일 목록 컴포넌트 (LazyRow)
+ * 세션 썸네일 컴포넌트 (선택된 세션 하나만 표시)
  *
- * 한 번에 하나의 썸네일만 보이도록 구현 (스와이프 전까지 다음 항목이 보이지 않음)
- *
- * @param sessions 세션 목록
- * @param selectedIndex 현재 선택된 세션 인덱스
- * @param onClickExternal 세션 선택 콜백
+ * @param session 선택된 세션 (nullable)
+ * @param onExternalClick 세션 선택 콜백
  * @param modifier Modifier
  */
 @Composable
 fun SessionThumbnailList(
-    sessions: List<WalkingSession>,
-    selectedIndex: Int,
-    onClickExternal: () -> Unit,
+    session: WalkingSession?,
+    onExternalClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val listState = rememberLazyListState()
-
-    // 선택된 인덱스가 변경되면 스크롤
-    LaunchedEffect(selectedIndex) {
-        if (selectedIndex in sessions.indices) {
-            listState.animateScrollToItem(selectedIndex)
-        }
-    }
     Column(
         modifier
             .fillMaxWidth()
@@ -81,25 +64,18 @@ fun SessionThumbnailList(
             color = SemanticColor.textBorderPrimary
         )
         Spacer(Modifier.height(12.dp))
-        LazyRow(
-            state = listState,
-            modifier = modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            itemsIndexed(sessions) { index, session ->
-                SessionThumbnailItem(
-                    session = session,
-                    isSelected = index == selectedIndex,
-                    onClick = { onClickExternal() },
-                    modifier = Modifier.fillParentMaxWidth(), // 한 번에 하나만 보이도록
-                )
-            }
+
+        if (session != null) {
+            SessionThumbnailItem(
+                session = session,
+                isSelected = true,
+                onClick = { onExternalClick() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+            )
         }
     }
-
-
 }
 
 /**
@@ -256,9 +232,8 @@ fun SessionThumbnailListPreview() {
                 .padding(16.dp)
         ) {
             SessionThumbnailList(
-                sessions = mockSessions,
-                selectedIndex = 1, // 두 번째 세션 선택
-                onClickExternal = { /* Preview에서는 아무 동작 안 함 */ },
+                session = mockSessions[1], // 두 번째 세션 선택
+                onExternalClick = { /* Preview에서는 아무 동작 안 함 */ },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

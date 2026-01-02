@@ -199,7 +199,7 @@ fun GoalSettingCardCustomColorPreview() {
                 modifier = Modifier.padding(16.dp),
                 currentNumber = 10000, // 10,000으로 표시됨
                 onNumberChange = {},
-                range = GoalRange(1000, 100000),
+                range = GoalRange(1000, 30000),
                 unit = "보",
                 onClickMinus = {},
                 onClickPlus = {},
@@ -219,7 +219,7 @@ fun GoalSettingCardLargeNumberPreview() {
                 modifier = Modifier.padding(16.dp),
                 currentNumber = 100000, // 100,000으로 표시됨
                 onNumberChange = {},
-                range = GoalRange(1000, 100000),
+                range = GoalRange(1000, 30000),
                 unit = "보",
                 onClickMinus = {},
                 onClickPlus = {},

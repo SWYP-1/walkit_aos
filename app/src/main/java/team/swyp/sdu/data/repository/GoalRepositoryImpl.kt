@@ -2,8 +2,10 @@ package team.swyp.sdu.data.repository
 
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,6 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
+import team.swyp.sdu.data.remote.dto.ApiErrorResponse
 import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.local.dao.GoalDao
 import team.swyp.sdu.data.local.mapper.GoalMapper
@@ -99,15 +104,40 @@ class GoalRepositoryImpl @Inject constructor(
             try {
                 // 서버에 수정 (PUT)
                 val updatedGoal = remoteDataSource.updateGoal(goal)
-                
-                // 로컬에 저장
-                goalDao.upsert(GoalMapper.toEntity(updatedGoal))
-                goalState.value = updatedGoal
-                
+
+                // 로컬에 저장 (취소되지 않도록 NonCancellable 사용)
+                withContext(NonCancellable) {
+                    goalDao.upsert(GoalMapper.toEntity(updatedGoal))
+                    goalState.value = updatedGoal
+                }
+
                 Result.Success(updatedGoal)
+            } catch (e: CancellationException) {
+                // Coroutine 취소는 정상적인 상황이므로 에러로 처리하지 않음
+                Timber.w("목표 수정이 취소되었습니다 (사용자 액션으로 인한 화면 종료)")
+                // 취소된 경우에도 성공으로 처리 (이미 서버 요청은 성공했으므로)
+                Result.Success(goal) // 현재 goal을 그대로 반환
+            } catch (e: HttpException) {
+                // HTTP 에러인 경우 API 에러 응답 파싱
+                val errorBody = e.response()?.errorBody()?.string()
+                val apiError = errorBody?.let { Json.decodeFromString<ApiErrorResponse>(it) }
+
+                Timber.e(e, "목표 수정 HTTP 실패: ${e.code()}, ${apiError?.message}")
+
+                // 특정 에러 코드에 따른 처리
+                when (apiError?.code) {
+                    7001 -> Result.Error(
+                        Exception("GOAL_UPDATE_NOT_ALLOWED"),
+                        apiError.message ?: "목표 수정은 한 달에 한 번만 가능합니다."
+                    )
+                    else -> Result.Error(
+                        Exception("HTTP_ERROR"),
+                        apiError?.message ?: "목표 수정에 실패했습니다."
+                    )
+                }
             } catch (e: Exception) {
                 Timber.e(e, "목표 수정 실패")
-                Result.Error(e, e.message)
+                Result.Error(e, e.message ?: "알 수 없는 오류가 발생했습니다.")
             }
         }
 

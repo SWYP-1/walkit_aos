@@ -166,44 +166,39 @@ fun WeeklyRecordCard(
                     // 시간 분 (WalkingStatsCard와 동일한 형식)
                     Row(
                         Modifier.weight(1f),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val durationMillis = session.duration
                         val totalHours = (durationMillis / (1000 * 60 * 60)).toInt()
                         val totalMinutes = ((durationMillis / (1000 * 60)) % 60).toInt()
 
-                        // 시간 표시 (있는 경우에만)
-                        if (totalHours > 0) {
-                            Text(
-                                text = totalHours.toString(),
-                                style = MaterialTheme.walkItTypography.bodyL.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = SemanticColor.textBorderPrimary
-                            )
-                            Text(
-                                text = "시간",
-                                style = MaterialTheme.walkItTypography.bodyXL.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = SemanticColor.textBorderPrimary
-                            )
-                        }
-
-                        // 분 표시
+                        // 시간 표시
                         Text(
-                            text = totalMinutes.toString(),
-                            style = MaterialTheme.walkItTypography.bodyL.copy(
+                            text = totalHours.toString(),
+                            style = MaterialTheme.walkItTypography.bodyXL.copy(
                                 fontWeight = FontWeight.Medium
                             ),
                             color = SemanticColor.textBorderPrimary
                         )
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text = "분",
+                            text = "시간",
+                            style = MaterialTheme.walkItTypography.bodyS,
+                            color = SemanticColor.textBorderPrimary
+                        )
+
+                        // 분 표시
+                        Text(
+                            text = totalMinutes.toString(),
                             style = MaterialTheme.walkItTypography.bodyXL.copy(
                                 fontWeight = FontWeight.Medium
                             ),
+                            color = SemanticColor.textBorderPrimary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "분",
+                            style = MaterialTheme.walkItTypography.bodyS,
                             color = SemanticColor.textBorderPrimary
                         )
                     }

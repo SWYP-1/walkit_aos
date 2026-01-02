@@ -2,6 +2,7 @@ package team.swyp.sdu.data.remote.walking.mapper
 
 import team.swyp.sdu.data.remote.walking.dto.CharacterDto
 import team.swyp.sdu.data.remote.walking.dto.Grade
+import team.swyp.sdu.data.remote.walking.dto.ItemImageDto
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Grade as DomainGrade
 
@@ -15,13 +16,13 @@ object CharacterMapper {
      */
     fun toDomain(dto: CharacterDto): Character {
         return Character(
-            headImageName = dto.headImageName,
-            bodyImageName = dto.bodyImageName,
-            feetImageName = dto.feetImageName,
+            headImageName = dto.headImage?.imageName,
+            bodyImageName = dto.bodyImage?.imageName,
+            feetImageName = dto.feetImage?.imageName,
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
-            grade = DomainGrade.fromApiGrade(dto.grade), // API Grade → Domain Grade 변환
+            grade = DomainGrade.fromApiString(dto.grade), // API String → Domain Grade 변환
             nickName = dto.nickName ?: "게스트"
         )
     }
@@ -31,14 +32,15 @@ object CharacterMapper {
      */
     fun toDto(domain: Character): CharacterDto {
         return CharacterDto(
-            headImageName = domain.headImageName,
-            bodyImageName = domain.bodyImageName,
-            feetImageName = domain.feetImageName,
+            headImage = domain.headImageName?.let { ItemImageDto(imageName = it, itemPosition = "HEAD", itemTag = null) },
+            bodyImage = domain.bodyImageName?.let { ItemImageDto(imageName = it, itemPosition = "BODY", itemTag = null) },
+            feetImage = domain.feetImageName?.let { ItemImageDto(imageName = it, itemPosition = "FEET", itemTag = null) },
             characterImageName = domain.characterImageName,
             backgroundImageName = domain.backgroundImageName,
             level = domain.level,
-            grade = DomainGrade.toApiGrade(domain.grade), // Domain Grade → API Grade 변환
-            nickName = domain.nickName
+            grade = domain.grade.name, // Domain Grade → API String 변환
+            nickName = domain.nickName,
+            currentGoalSequence = null
         )
     }
 }

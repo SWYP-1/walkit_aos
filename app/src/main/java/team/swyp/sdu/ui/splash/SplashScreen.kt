@@ -1,5 +1,7 @@
 package team.swyp.sdu.ui.splash
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -12,13 +14,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import team.swyp.sdu.R
 import team.swyp.sdu.navigation.Screen
 import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 import team.swyp.sdu.ui.components.LottieAnimationView
+import team.swyp.sdu.ui.theme.Red1
+import team.swyp.sdu.ui.theme.SemanticColor
 import timber.log.Timber
 
 /**
@@ -72,13 +78,18 @@ fun SplashScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhitePrimary),
         contentAlignment = Alignment.Center,
     ) {
 //        LottieAnimationView(
 //            modifier = Modifier.size(260.dp),
 //        )
-        Text(text = "스플래쉬 화면")
+        Image(
+            painter = painterResource(R.drawable.logo_splash),
+            contentDescription = "splash",
+        )
     }
 }
 

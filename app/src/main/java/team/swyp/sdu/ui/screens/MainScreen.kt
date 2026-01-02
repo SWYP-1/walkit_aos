@@ -79,7 +79,7 @@ fun MainScreen(
         locationViewModel.handlePermissionResult(isGranted)
         if (isGranted) {
             // 권한 승인 시 Walking 화면으로 이동
-            navController.navigate(Screen.Walking.route)
+            navController.navigate(Screen.WalkingGraph.route)
         } else {
             // 권한 거부 시 사용자에게 안내 및 재요청 옵션 제공
             scope.launch {
@@ -176,7 +176,7 @@ fun MainScreen(
                             }
                             context.startService(intent)
                             // 버그로 인해 서비스가 이미 실행중이더라도 강제로 WalkingScreen으로 이동
-                            navController.navigate(Screen.Walking.route) {
+                            navController.navigate(Screen.WalkingGraph.route) {
                                 popUpTo(Screen.Main.route) { saveState = true }
                                 launchSingleTop = true
                             }
@@ -212,7 +212,7 @@ fun MainScreen(
         ) {
             when (currentTabIndex) {
                 0 -> HomeRoute(
-                    onClickWalk = { navController.navigate(Screen.Walking.route) }, // FloatingActionButton에서 처리하므로 빈 함수
+                    onClickWalk = { navController.navigate(Screen.WalkingGraph.route) },
                     onClickAlarm = { navController.navigate(Screen.Alarm.route) },
                     onClickMissionMore = {
                         navController.navigate(Screen.Mission.route)

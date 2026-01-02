@@ -1,3 +1,6 @@
+import com.android.build.gradle.internal.tasks.AarMetadataReader.Companion.load
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,6 +25,20 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // local.properties에서 민감한 정보 읽기
+        val localProperties = Properties().apply {
+            val localPropsFile = rootProject.file("local.properties")
+            if (localPropsFile.exists()) {
+                load(localPropsFile.inputStream())
+            }
+        }
+
+        // BuildConfig에 API 키 추가
+        buildConfigField("String", "KAKAO_APP_KEY", "\"${localProperties.getProperty("KAKAO_APP_KEY", "")}\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.getProperty("NAVER_CLIENT_ID", "")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.getProperty("NAVER_CLIENT_SECRET", "")}\"")
+        buildConfigField("String", "OTHER_API_KEY", "\"${localProperties.getProperty("OTHER_API_KEY", "")}\"")
     }
 
     buildTypes {

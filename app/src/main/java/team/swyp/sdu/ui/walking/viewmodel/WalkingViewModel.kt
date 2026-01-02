@@ -248,12 +248,12 @@ class WalkingViewModel @Inject constructor(
     }
 
     init {
-        Timber.d("WalkingViewModel init 시작 - hashCode: ${this.hashCode()}")
+        Timber.d("🚶 WalkingViewModel init 시작 - hashCode: ${this.hashCode()}, Thread: ${Thread.currentThread().name}")
         observeRawEvents()
         observeTrackingStatus()
         updateSensorAvailability()
         restoreWalkingStateFromDataStore() // DataStore에서 산책 상태 복원
-        loadWalkingCharacterIfNeeded() // 산책용 캐릭터 정보 로드 (API 호출 최소화)
+        // 캐릭터 정보 로드는 WalkingScreen에서 명시적으로 호출하도록 변경
 
         // 세션 저장 상태 초기화
         _isSessionSaved.value = false
@@ -296,8 +296,12 @@ class WalkingViewModel @Inject constructor(
      * 화면에서 필요할 때 호출하기 위해 public으로 변경
      */
     fun loadWalkingCharacterIfNeeded() {
+        Timber.d("🔍 loadWalkingCharacterIfNeeded 호출됨 - character: ${_walkingCharacter.value?.nickName ?: "null"}, hash: ${this.hashCode()}")
         if (_walkingCharacter.value == null) {
+            Timber.d("🔄 캐릭터 정보가 없어서 loadWalkingCharacter 호출")
             loadWalkingCharacter()
+        } else {
+            Timber.d("✅ 캐릭터 정보가 이미 있어서 스킵")
         }
     }
 
@@ -647,6 +651,7 @@ class WalkingViewModel @Inject constructor(
 
         // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
         val targetStepCount = currentGoal?.targetStepCount ?: 0
+        //TODO : 삭제 테스트용
         val completedSession = createCompletedSession(targetStepCount = targetStepCount)
 
         // 세션 저장 중 상태로 변경
@@ -822,7 +827,7 @@ class WalkingViewModel @Inject constructor(
         return WalkingSession(
             startTime = startTimeMillis,
             endTime = endTime,
-            stepCount = lastStepCount,
+            stepCount = 2001,
             locations = collectedLocations,
             totalDistance = totalDistance,
             preWalkEmotion = preEmotion,

@@ -4,18 +4,33 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 아이템 이미지 정보 DTO
+ */
+@Serializable
+data class ItemImageDto(
+    @SerialName("imageName")
+    val imageName: String? = null,
+
+    @SerialName("itemPosition")
+    val itemPosition: String? = null,
+
+    @SerialName("itemTag")
+    val itemTag: String? = null,
+)
+
+/**
  * 캐릭터 정보 DTO
  */
 @Serializable
 data class CharacterDto(
-    @SerialName("headImageName")
-    val headImageName: String? = null,
+    @SerialName("headImage")
+    val headImage: ItemImageDto? = null,
 
-    @SerialName("bodyImageName")
-    val bodyImageName: String? = null,
+    @SerialName("bodyImage")
+    val bodyImage: ItemImageDto? = null,
 
-    @SerialName("feetImageName")
-    val feetImageName: String? = null,
+    @SerialName("feetImage")
+    val feetImage: ItemImageDto? = null,
 
     @SerialName("characterImageName")
     val characterImageName: String? = null,
@@ -27,10 +42,13 @@ data class CharacterDto(
     val level: Int = 1,
 
     @SerialName("grade")
-    val grade: Grade = Grade.SEED,
+    val grade: String = "SEED",
 
     @SerialName("nickName")
     val nickName: String? = null,
+
+    @SerialName("currentGoalSequence")
+    val currentGoalSequence: Int? = null,
 )
 
 

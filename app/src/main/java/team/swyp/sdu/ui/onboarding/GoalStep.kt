@@ -134,7 +134,7 @@ fun GoalStep(
                         }
                     },
                     range = stepRange,
-                    unit = "보",
+                    unit = "걸음",
                     onClickMinus = {
                         // 범위를 벗어나면 아예 호출하지 않음
                         val newValue = safeSteps - 1000

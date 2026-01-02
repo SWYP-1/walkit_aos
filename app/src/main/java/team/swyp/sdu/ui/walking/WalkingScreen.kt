@@ -62,15 +62,29 @@ fun WalkingScreenRoute(
     onNavigateToPostWalkingEmotion: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
+    // WalkingScreen 생성 카운트 디버깅 (한 번만 생성되도록 remember 사용)
+    val instanceId = remember(viewModel) {
+        val id = java.util.UUID.randomUUID().toString().take(8)
+        Timber.d("🏗️ WalkingScreenRoute 생성됨 - instanceId: $id, viewModel hash: ${viewModel.hashCode()}")
+        id
+    }
     val screenState by viewModel.walkingScreenState.collectAsStateWithLifecycle()
     val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     // 화면 진입 시 캐릭터 정보 로드 (최초 1회)
-    LaunchedEffect(Unit) {
+    val walkingCharacter by viewModel.walkingCharacter.collectAsStateWithLifecycle()
+
+    // 캐릭터 정보가 없을 때만 로드 (중복 호출 방지)
+    // viewModel을 key로 사용하여 ViewModel이 변경될 때만 재실행
+    LaunchedEffect(viewModel) {
         Timber.d("🚶 WalkingScreen LaunchedEffect triggered - viewModel hash: ${viewModel.hashCode()}")
-        Timber.d("🚶 WalkingScreen: 캐릭터 정보 로드 시도")
-        viewModel.loadWalkingCharacterIfNeeded()
+        if (walkingCharacter == null) {
+            Timber.d("🚶 WalkingScreen: 캐릭터 정보 로드 시도")
+            viewModel.loadWalkingCharacterIfNeeded()
+        } else {
+            Timber.d("🚶 WalkingScreen: 캐릭터 정보 이미 로드됨, 스킵 - ${walkingCharacter?.nickName}")
+        }
     }
 
     val permissionsState =

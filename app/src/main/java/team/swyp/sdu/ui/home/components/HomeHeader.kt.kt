@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,7 +33,7 @@ import team.swyp.sdu.ui.theme.White
 @Composable
 fun HomeHeader(
     profileImageUrl: String?,
-    onClickAlarm : () -> Unit,
+    onClickAlarm: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -73,7 +75,9 @@ fun HomeHeader(
                         .error(R.drawable.ic_default_user) // 프로필 이미지 로드 실패 시 기본 아이콘
                         .build(),
                     contentDescription = "프로필 이미지",
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -86,6 +90,8 @@ fun HomeHeader(
 @Preview
 fun AppHeaderPreview() {
     WalkItTheme {
-        HomeHeader("https://images.pexels.com/photos/3861976/pexels-photo-3861976.jpeg?_gl=1*8iaqp3*_ga*ODU3MTU1NTU2LjE3NjYwMzk4MDQ.*_ga_8JE65Q40S6*czE3NjYwMzk4MDQkbzEkZzEkdDE3NjYwMzk4MzEkajMzJGwwJGgw",{})
+        HomeHeader(
+            "https://images.pexels.com/photos/3861976/pexels-photo-3861976.jpeg?_gl=1*8iaqp3*_ga*ODU3MTU1NTU2LjE3NjYwMzk4MDQ.*_ga_8JE65Q40S6*czE3NjYwMzk4MDQkbzEkZzEkdDE3NjYwMzk4MzEkajMzJGwwJGgw",
+            {})
     }
 }

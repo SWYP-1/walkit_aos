@@ -74,11 +74,13 @@ fun MyPageStatsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // 왼쪽 섹션: 누적 걸음수 (50%)
-            TimeSummarySection(
-                label = "누적 걸음수",
-                value = formatStepCount(totalStepCount),
-                unit = "걸음",
-            )
+            Row(modifier  = Modifier.weight(1f),) {
+                TimeSummarySection(
+                    label = "걸음수",
+                    value = formatStepCount(totalStepCount),
+                    unit = "걸음",
+                )
+            }
 
             // 세로 구분선
             Box(
@@ -97,7 +99,7 @@ fun MyPageStatsSection(
             ) {
                 // 라벨: 누적 산책 시간
                 Text(
-                    text = "누적 산책 시간",
+                    text = "함께 걸은 시간",
                     style = MaterialTheme.walkItTypography.captionM,
                     color = SemanticColor.textBorderPrimary, // color/text-border/primary
                 )

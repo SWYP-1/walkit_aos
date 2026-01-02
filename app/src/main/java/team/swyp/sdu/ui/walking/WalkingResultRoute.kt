@@ -48,6 +48,12 @@ fun WalkingResultRoute(
     val snapshotState by viewModel.snapshotState.collectAsStateWithLifecycle()
     val goalState by goalViewModel.goalState.collectAsStateWithLifecycle()
 
+    // 목표 데이터 명시적 로드
+    LaunchedEffect(Unit) {
+        Timber.d("🎯 WalkingResultRoute: 목표 데이터 로드 시작")
+        goalViewModel.refreshGoal()
+    }
+
     // ✅ Flow로 세션 관찰 (자동 갱신)
     val session by viewModel.currentSession.collectAsStateWithLifecycle()
 
@@ -119,18 +125,23 @@ fun WalkingResultRoute(
             else -> null
         }
 
+        // Goal 상태 로깅 (디버깅용)
+        LaunchedEffect(goalState, goal) {
+            Timber.d("🎯 WalkingResultRoute Goal 상태:")
+            Timber.d("  📊 goalState: $goalState")
+            Timber.d("  🎯 goal: $goal")
+            Timber.d("  📈 targetStepCount: ${goal?.targetStepCount}")
+        }
+
         // WalkingViewModel에 현재 goal 설정 (targetStepCount 저장용)
         LaunchedEffect(goal) {
+            Timber.d("🎯 WalkingResultRoute: setCurrentGoal 호출 - goal=$goal")
             viewModel.setCurrentGoal(goal)
         }
 
-        // 이번주 동기화된 세션 목록 추출
+        // 이번주 동기화된 세션 목록 추출 (이미 ViewModel에서 SYNCED 필터링됨)
         val syncedSessionsThisWeek = (resultUiState as? WalkingResultUiState.Success)
-            ?.sessionsThisWeek
-            ?.filter { session ->
-                // TODO: SYNCED 상태인 세션만 필터링 (현재는 모든 세션 사용)
-                true // 임시로 모든 세션 사용
-            }
+            ?.syncedSessionsThisWeek
             .orEmpty()
 
         WalkingResultScreen(

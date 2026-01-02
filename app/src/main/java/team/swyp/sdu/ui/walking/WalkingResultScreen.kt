@@ -81,6 +81,7 @@ import team.swyp.sdu.ui.components.CtaButtonVariant
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.components.WalkingDiaryCard
+import team.swyp.sdu.ui.record.components.WalkingStatsCard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.walking.components.CoilBitmapImage
 import team.swyp.sdu.ui.walking.components.ShareWalkingResultDialog
@@ -436,7 +437,9 @@ private fun WalkingResultScreenContent(
                                             .build()
                                     ),
                                     contentDescription = "사진",
-                                    modifier = modifier.fillMaxWidth().aspectRatio(1f),
+                                    modifier = modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -476,15 +479,6 @@ private fun WalkingResultScreenContent(
                                 .align(Alignment.TopEnd),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "코스 / 지도",
-
-                                // body S/semibold
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = SemanticColor.textBorderPrimaryInverse
-                                )
-                            )
 
                             Spacer(modifier = Modifier.weight(1f))
 
@@ -552,12 +546,17 @@ private fun WalkingResultScreenContent(
             }
 
             item {
-                WalkingSummaryCard(
-                    leftValue = currentSession.stepCount.toString(),
-                    leftLabel = "걸음 수",
-                    leftUnit = SummaryUnit.Step("걸음"),
-                    rightLabel = "산책 시간",
-                    rightUnit = SummaryUnit.Time(currentSession.duration),
+//                WalkingSummaryCard(
+//                    leftValue = currentSession.stepCount.toString(),
+//                    leftLabel = "걸음 수",
+//                    leftUnit = SummaryUnit.Step("걸음"),
+//                    rightLabel = "산책 시간",
+//                    rightUnit = SummaryUnit.Time(currentSession.duration),
+//                )
+                WalkingStatsCard(
+                    sessions = listOf(currentSession),
+                    stepsLabel = "걸음 수",
+                    durationLabel = "산책 시간"
                 )
             }
 
@@ -657,10 +656,8 @@ private fun WalkingResultScreenContent(
                             text = "저장하기"
                         )
                     }
+                    Spacer(modifier = Modifier.height(36.dp))
                 }
-            }
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
         // 저장 중 오버레이

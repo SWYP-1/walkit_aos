@@ -5,17 +5,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.focus.FocusRequester
@@ -34,11 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -61,7 +53,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,16 +62,11 @@ import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.home.components.DominantEmotionCard
-import team.swyp.sdu.ui.home.components.EmotionIcon
 import team.swyp.sdu.ui.theme.Green1
 import team.swyp.sdu.ui.theme.Grey10
-import team.swyp.sdu.ui.theme.Red1
-import team.swyp.sdu.ui.theme.Red5
 import team.swyp.sdu.ui.theme.SemanticColor
-import team.swyp.sdu.ui.theme.SemanticColor.backgroundWhitePrimary
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
-import team.swyp.sdu.utils.FormatUtils
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -1048,11 +1034,18 @@ private fun DiaryMoreMenu(
 /**
  * 산책 통계 카드 컴포넌트 (평균 걸음, 산책 시간)
  * 월간, 주간, 일간 모두에서 사용 가능
+ *
+ * @param sessions 통계를 계산할 세션 목록
+ * @param modifier Modifier
+ * @param stepsLabel 평균 걸음 수 라벨 (기본값: "평균 걸음")
+ * @param durationLabel 총 산책 시간 라벨 (기본값: "누적 산책 시간")
  */
 @Composable
 fun WalkingStatsCard(
     sessions: List<WalkingSession>,
     modifier: Modifier = Modifier,
+    stepsLabel: String = "평균 걸음",
+    durationLabel: String = "누적 산책 시간",
 ) {
     // 평균 걸음 계산
     val averageSteps = remember(sessions) {
@@ -1092,10 +1085,11 @@ fun WalkingStatsCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = "평균 걸음",
+                    text = stepsLabel,
                     style = MaterialTheme.walkItTypography.captionM,
                     color = Grey10,
                 )
+
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -1105,6 +1099,7 @@ fun WalkingStatsCard(
                         style = MaterialTheme.walkItTypography.headingS,
                         color = Grey10,
                     )
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         text = "걸음",
                         style = MaterialTheme.walkItTypography.bodyM,
@@ -1126,7 +1121,7 @@ fun WalkingStatsCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = "누적 산책 시간",
+                    text = durationLabel,
                     style = MaterialTheme.walkItTypography.captionM,
                     color = Grey10,
                 )

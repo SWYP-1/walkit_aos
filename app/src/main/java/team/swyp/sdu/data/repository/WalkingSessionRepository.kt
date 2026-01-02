@@ -6,6 +6,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import team.swyp.sdu.data.local.dao.WalkingSessionDao
+import team.swyp.sdu.data.local.dao.RecentSessionEmotion
+import team.swyp.sdu.data.local.dao.EmotionCount
 import team.swyp.sdu.data.local.mapper.WalkingSessionMapper
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.model.EmotionType
@@ -14,6 +16,7 @@ import team.swyp.sdu.domain.repository.UserRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import team.swyp.sdu.data.local.entity.SyncState
 import team.swyp.sdu.core.Result
@@ -143,19 +146,52 @@ constructor(
             }
 
     /**
+     * 최근 7개 세션의 감정 정보만 조회 (최적화)
+     * 메모리 사용량과 DB 쿼리 효율을 위해 필요한 필드만 반환
+     */
+    fun getRecentSessionsForEmotions(): Flow<List<RecentSessionEmotion>> =
+        userDao.observeCurrentUser()
+            .map { entity -> entity?.userId ?: 0L }
+            .flatMapLatest { userId ->
+                if (userId == 0L) {
+                    // 로그인하지 않은 경우 빈 리스트 반환
+                    flowOf(emptyList())
+                } else {
+                    walkingSessionDao.getRecentSessionsForEmotions(userId)
+                }
+            }
+
+    /**
+     * 기간 내 우세 감정 조회 (DB 레벨 최적화)
+     * @param startTime 기간 시작 (밀리초)
+     * @param endTime 기간 종료 (밀리초)
+     * @return 가장 많이 나온 감정과 그 카운트 (없으면 null)
+     */
+    suspend fun getDominantEmotionInPeriod(startTime: Long, endTime: Long): EmotionCount? =
+        withContext(Dispatchers.IO) {
+            val userId = getCurrentUserId()
+            walkingSessionDao.getDominantEmotionInPeriod(userId, startTime, endTime)
+        }
+
+    /**
      * 기간 내 세션 조회
      */
     fun getSessionsBetween(
         startMillis: Long,
         endMillis: Long,
     ): Flow<List<WalkingSession>> {
-        // 현재 사용자 ID로 필터링
+        // 현재 사용자 ID로 필터링 (로그인하지 않은 경우 빈 리스트 반환)
         return userDao.observeCurrentUser()
             .map { entity -> entity?.userId ?: 0L }
             .flatMapLatest { userId ->
-                walkingSessionDao
-                    .getSessionsBetweenForUser(userId, startMillis, endMillis)
-                    .map { entities -> entities.map { WalkingSessionMapper.toDomain(it) } }
+                if (userId == 0L) {
+                    // 로그인하지 않은 경우 빈 리스트 반환
+                    flowOf(emptyList())
+                } else {
+                    walkingSessionDao
+                        .getSessionsBetweenForUser(userId, startMillis, endMillis)
+                        .map { entities -> entities.map { WalkingSessionMapper.toDomain(it) } }
+                }
             }
     }
 

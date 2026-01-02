@@ -88,6 +88,9 @@ class DressingRoomViewModel @Inject constructor(
     private val _showCartDialog = MutableStateFlow(false)
     val showCartDialog: StateFlow<Boolean> = _showCartDialog.asStateFlow()
 
+    // 이전 착용 상태 (diff 계산용)
+    private var previousWornItems = mapOf<EquipSlot, Int>()
+
     // 캐릭터 파트별 Lottie 상태 (캐릭터 기본 파트 표시용)
     private val _characterLottieState = MutableStateFlow<LottieCharacterState?>(null)
     val characterLottieState: StateFlow<LottieCharacterState?> = _characterLottieState.asStateFlow()
@@ -270,6 +273,9 @@ class DressingRoomViewModel @Inject constructor(
                 _wornItemsByPosition.value = restoredWornItems
                 _serverWornItems.value = restoredWornItems // 일단 로컬 상태로 초기화
 
+                // 초기 previousWornItems 설정
+                previousWornItems = restoredWornItems.toMap()
+
                 Timber.d("착용 상태 초기화 완료 - 복원된 상태: $restoredWornItems")
 
                 // 캐릭터 파트별 Lottie 상태 초기화
@@ -289,6 +295,29 @@ class DressingRoomViewModel @Inject constructor(
      * 드레싱룸 선택 UI (ID Set) 업데이트 + 장바구니 자동 담기
      * 선택하는 즉시 장바구니에 담김 (이미 소유한 아이템 제외)
      */
+    /**
+     * 변경된 슬롯 계산 (diff)
+     */
+    private fun calculateChangedSlots(
+        previous: Map<EquipSlot, Int>,
+        current: Map<EquipSlot, Int>
+    ): Set<EquipSlot> {
+        val changedSlots = mutableSetOf<EquipSlot>()
+
+        // 모든 슬롯에 대해 비교
+        EquipSlot.entries.forEach { slot ->
+            val previousItemId = previous[slot]
+            val currentItemId = current[slot]
+
+            if (previousItemId != currentItemId) {
+                changedSlots.add(slot)
+                Timber.d("🔄 슬롯 변경 감지: $slot (이전: $previousItemId → 현재: $currentItemId)")
+            }
+        }
+
+        return changedSlots
+    }
+
     /**
      * 미리보기 착용 상태 토글
      */
@@ -337,8 +366,20 @@ class DressingRoomViewModel @Inject constructor(
             return
         }
 
+        val currentWornItems = _wornItemsByPosition.value
         Timber.d("✅ UI 상태 확인됨 - 캐릭터: ${currentState.character.nickName}")
-        Timber.d("🧷 현재 착용 상태: ${_wornItemsByPosition.value}")
+        Timber.d("🧷 현재 착용 상태: $currentWornItems")
+        Timber.d("🧷 이전 착용 상태: $previousWornItems")
+
+        // 변경된 슬롯만 계산 (diff)
+        val changedSlots = calculateChangedSlots(previousWornItems, currentWornItems)
+        Timber.d("🔄 변경된 슬롯들: $changedSlots")
+
+        // 변경사항이 없으면 업데이트 스킵
+        if (changedSlots.isEmpty()) {
+            Timber.d("⚡ 변경사항 없음 - Lottie 업데이트 스킵")
+            return
+        }
 
         viewModelScope.launch {
             try {
@@ -348,12 +389,13 @@ class DressingRoomViewModel @Inject constructor(
                 Timber.d("📂 Base Lottie JSON 준비 완료 (길이: ${baseJson.toString().length})")
 
                 Timber.d("🔄 Lottie asset 교체 시작")
-                // 미리보기 착용 상태로 Lottie asset 교체
-                val processedJson = lottieImageProcessor.updateAssetsForWornItems(
+                // 변경된 슬롯만 선택적으로 교체
+                val processedJson = lottieImageProcessor.updateAssetsForChangedSlots(
                     baseLottieJson = baseJson,
-                    wornItemsByPosition = _wornItemsByPosition.value,
+                    wornItemsByPosition = currentWornItems,
                     cosmeticItems = currentState.items,
-                    character = currentState.character
+                    character = currentState.character,
+                    changedSlots = changedSlots
                 )
                 Timber.d("🔄 Lottie asset 교체 완료 (길이: ${processedJson.toString().length})")
 
@@ -365,6 +407,9 @@ class DressingRoomViewModel @Inject constructor(
 
                 // UI State 업데이트 (Lottie JSON만)
                 _uiState.value = newState
+
+                // 이전 상태 업데이트
+                previousWornItems = currentWornItems.toMap()
 
                 Timber.d("✅ Lottie 미리보기 업데이트 완료 - UI 리컴포지션 대기")
             } catch (e: Exception) {
@@ -490,41 +535,44 @@ class DressingRoomViewModel @Inject constructor(
                         Timber.d("📋 Asset[$i]: id=$id, size=${w}x${h}")
                     }
 
-                    // ⭐ 모든 슬롯을 투명 PNG로 미리 교체하여 baseJson 생성
-                    Timber.d("🔄 모든 슬롯을 투명 PNG로 교체 시작")
+                    // ⭐ CharacterPart 레벨에서 모든 Lottie asset들을 투명 PNG로 교체
+                    Timber.d("🔄 CharacterPart 레벨 투명 PNG 교체 시작")
                     Timber.d("👤 캐릭터 레벨: ${character.level}")
-                    val grade = character.grade
-                    val slots = EquipSlot.entries
 
                     var replacedCount = 0
                     var skippedCount = 0
 
-                    for (slot in slots) {
-                        val assetId = getAssetIdForSlot(slot)
-                        Timber.d("🔍 슬롯 투명 교체 시도: $slot -> $assetId")
+                    // CharacterPart의 모든 asset ID들을 투명화
+                    for (part in CharacterPart.entries) {
+                        Timber.d("🔍 파트 투명 교체 시도: $part")
 
-                        try {
-                            // 투명 PNG 생성 및 교체
-                            val transparentPng = createTransparentPng(256, 256)
-                            val dataUrl = transparentPng.toBase64DataUrl()
-                            jsonObject.replaceAssetP(assetId, dataUrl)
-                            Timber.d("✅ 투명 PNG 교체 성공: $assetId")
-                            replacedCount++
-                        } catch (e: IllegalArgumentException) {
-                            Timber.w("⚠️ Asset을 찾을 수 없음, 투명 교체 건너뜀: $assetId")
-                            skippedCount++
-                        } catch (e: Exception) {
-                            Timber.e(e, "❌ 투명 교체 중 예외 발생: $assetId")
-                            skippedCount++
+                        // 각 파트의 모든 lottieAssetIds를 투명화
+                        for (assetId in part.lottieAssetIds) {
+                            Timber.d("🎯 Asset 투명 교체 시도: $assetId")
+
+                            try {
+                                // 투명 PNG 생성 및 교체
+                                val transparentPng = createTransparentPng(256, 256)
+                                val dataUrl = transparentPng.toBase64DataUrl()
+                                jsonObject.replaceAssetP(assetId, dataUrl)
+                                Timber.d("✅ 투명 PNG 교체 성공: $assetId")
+                                replacedCount++
+                            } catch (e: IllegalArgumentException) {
+                                Timber.w("⚠️ Asset을 찾을 수 없음, 투명 교체 건너뜀: $assetId")
+                                skippedCount++
+                            } catch (e: Exception) {
+                                Timber.e(e, "❌ 투명 교체 중 예외 발생: $assetId")
+                                skippedCount++
+                            }
                         }
                     }
 
-                    Timber.d("🎉 투명 교체 완료 - 성공: $replacedCount, 건너뜀: $skippedCount")
+                    Timber.d("🎉 CharacterPart 투명 PNG 교체 완료: 성공=$replacedCount, 건너뜀=$skippedCount")
 
                     if (replacedCount == 0) {
                         Timber.e("❌ 모든 슬롯 투명 교체 실패! baseJson이 깨끗하지 않음")
-                    } else if (replacedCount < slots.size) {
-                        Timber.w("⚠️ 일부 슬롯만 투명 교체 성공 (${replacedCount}/${slots.size})")
+                    } else if (replacedCount < CharacterPart.entries.size) {
+                        Timber.w("⚠️ 일부 슬롯만 투명 교체 성공 (${replacedCount}/${CharacterPart.entries.size})")
                     } else {
                         Timber.d("✅ 모든 슬롯 투명 교체 성공 - 깨끗한 baseJson 생성됨")
                     }

@@ -27,7 +27,6 @@ import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.model.Weather
 import team.swyp.sdu.ui.home.ProfileUiState
-import team.swyp.sdu.ui.home.utils.resolveWeatherIcon
 import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.home.utils.resolveWeatherIconRes
 import team.swyp.sdu.ui.mypage.goal.model.GoalState
@@ -37,9 +36,11 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.utils.shimmer
 import androidx.compose.ui.tooling.preview.Preview
+import team.swyp.sdu.data.remote.home.dto.WeatherDto
 import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.components.TestCharacterWithAnchor
 import team.swyp.sdu.ui.components.createCharacterParts
+import team.swyp.sdu.ui.home.utils.WeatherType
 import team.swyp.sdu.utils.NumberUtils.formatNumber
 import kotlin.toString
 
@@ -109,10 +110,10 @@ private fun ProfileContent(
         // 우측 상단 날씨 텍스트
         uiState.weather?.let { weather ->
             val weatherRes =
-                resolveWeatherIconRes(precipType = weather.precipType, sky = weather.sky)
+                resolveWeatherIconRes(weather)
             InfoBadge(
                 iconPainter = painterResource(weatherRes),
-                text = "${weather.tempC}",
+                text = "${uiState.temperature?.toInt() ?: 0}",
                 modifier = modifier
                     .padding(vertical = 20.5.dp, horizontal = 16.dp)
                     .align(Alignment.TopEnd)
@@ -374,9 +375,8 @@ private fun ProfileSectionSuccessPreview() {
                     backgroundImageName = "https://example.com/background.png"
                 ), walkProgressPercentage = "75", goal = Goal(
                     targetStepCount = 10000, targetWalkCount = 30
-                ), weather = Weather(
-                    tempC = 25.0,
-                ), todaySteps = 8500
+                ), weather = WeatherType.SNOW,
+                temperature = 12.4, todaySteps = 8500
             ), goalState = DataState.Success(
                 Goal(
                     targetStepCount = 10000, targetWalkCount = 30

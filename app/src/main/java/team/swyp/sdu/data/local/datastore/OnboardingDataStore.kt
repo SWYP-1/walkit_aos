@@ -139,9 +139,8 @@ class OnboardingDataStore @Inject constructor(
     /**
      * 온보딩 진행 데이터 초기화
      *
-     * 주의: completedKey는 삭제하지 않습니다.
-     * completedKey는 온보딩 완료 여부를 나타내는 중요한 플래그이므로
-     * 로그아웃 시에도 유지되어야 합니다.
+     * 로그인 전환 시 모든 온보딩 데이터를 초기화합니다.
+     * 다른 소셜 계정으로 로그인할 때 재온보딩이 필요합니다.
      */
     suspend fun clearAllOnboardingData() {
         dataStore.edit { prefs ->
@@ -160,7 +159,8 @@ class OnboardingDataStore @Inject constructor(
             prefs.remove(birthDayKey)
             prefs.remove(marketingConsentKey)
             prefs.remove(nicknameRegisteredKey)
-            // completedKey는 삭제하지 않음 (온보딩 완료 여부 유지)
+            // 🔥 로그인 전환 시 온보딩 완료 상태도 초기화 (다른 계정으로 재온보딩 필요)
+            prefs.remove(completedKey)
         }
     }
 
