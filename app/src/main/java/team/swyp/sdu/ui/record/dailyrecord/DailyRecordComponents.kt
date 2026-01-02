@@ -153,8 +153,9 @@ fun SessionThumbnailItem(
                 .clickable(onClick = onClick)
         ) {
             IconButton(
+                onClick = onClick,
                 modifier = Modifier
-                    .padding(top = 4.dp, end = 4.dp) // 👈 부모로부터 여백
+                    .padding(12.dp) // 👈 부모 기준 여백
                     .size(24.dp)
                     .background(
                         color = Grey4.copy(alpha = 0.40f),
@@ -168,6 +169,7 @@ fun SessionThumbnailItem(
                     tint = SemanticColor.iconWhite
                 )
             }
+
         }
 
         val startTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.startTime)
