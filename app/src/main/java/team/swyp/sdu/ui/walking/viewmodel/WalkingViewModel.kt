@@ -365,8 +365,8 @@ class WalkingViewModel @Inject constructor(
                 // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
                 val baseJson = loadBaseLottieJson(character)
 
-                // 캐릭터 기본 이미지 적용
-                val characterJson = lottieImageProcessor.applyCharacterDefaultsToBaseJson(baseJson, character)
+                // DressingRoom과 동일한 방식으로 캐릭터 파트별 Lottie JSON 수정
+                val characterJson = lottieImageProcessor.updateCharacterPartsInLottie(baseJson, character)
 
                 // 생성된 JSON을 문자열로 변환해서 저장
                 val lottieJsonString = characterJson.toString()
@@ -622,7 +622,7 @@ class WalkingViewModel @Inject constructor(
         _currentSessionLocalId.value = null
 
         startTimeMillis = System.currentTimeMillis()
-        elapsedBeforePause = 0L
+        // elapsedBeforePause는 유지 (강제 종료 후 재시작 시 이전 시간 보존)
         lastStepCount = 0
         lastRawStepCount = 0
 
