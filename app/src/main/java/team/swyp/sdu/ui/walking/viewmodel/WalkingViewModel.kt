@@ -29,6 +29,7 @@ import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.repository.WalkingSessionRepository
 import team.swyp.sdu.domain.model.Character
+import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.CharacterRepository
 import team.swyp.sdu.domain.service.ActivityType
@@ -42,8 +43,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
 import timber.log.Timber
@@ -359,8 +362,8 @@ class WalkingViewModel @Inject constructor(
             try {
                 Timber.d("산책용 캐릭터 Lottie JSON 생성 시작")
 
-                // 기본 Lottie JSON 로드 (assets에서 로드)
-                val baseJson = loadBaseLottieJson()
+                // 기본 Lottie JSON 로드 (grade에 따라 다름)
+                val baseJson = loadBaseLottieJson(character)
 
                 // 캐릭터 기본 이미지 적용
                 val characterJson = lottieImageProcessor.applyCharacterDefaultsToBaseJson(baseJson, character)
@@ -380,10 +383,19 @@ class WalkingViewModel @Inject constructor(
     /**
      * 기본 Lottie JSON 로드
      */
-    private suspend fun loadBaseLottieJson(): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun loadBaseLottieJson(character: Character): JSONObject = withContext(Dispatchers.IO) {
         try {
+            // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
+            val resourceId = when (character.grade) {
+                Grade.SEED -> R.raw.seed
+                Grade.SPROUT -> R.raw.sprout
+                Grade.TREE -> R.raw.tree
+            }
+
+            Timber.d("🎭 Walking loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
+
             // res/raw에서 기본 캐릭터 Lottie JSON 로드
-            val inputStream = context.resources.openRawResource(R.raw.seed)
+            val inputStream = context.resources.openRawResource(resourceId)
             val jsonString = inputStream.bufferedReader().use { it.readText() }
             JSONObject(jsonString)
         } catch (e: Exception) {
