@@ -100,17 +100,6 @@ fun ServiceInfoFooter(
                 color = SemanticColor.textBorderSecondary,
                 modifier = Modifier.clickable(onClick = onContactClick)
             )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "CS 채널 안내",
-
-                // caption M/medium
-                style = MaterialTheme.walkItTypography.captionM.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderTertiary,
-                modifier = Modifier.clickable(onClick = onCsChannelClick)
-            )
         }
     }
 }

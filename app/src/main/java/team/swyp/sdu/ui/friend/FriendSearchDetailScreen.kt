@@ -244,7 +244,7 @@ fun FriendSearchDetailScreenContent(
                         LottieAnimation(
                             composition = composition,
                             iterations = LottieConstants.IterateForever,
-                            modifier = Modifier.size(120.dp)
+                            modifier = Modifier.size(300.dp)
                         )
                     } ?: run {
                         // Lottie가 없을 경우 기존 AsyncImage 사용 (fallback)

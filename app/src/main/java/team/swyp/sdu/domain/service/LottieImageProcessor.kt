@@ -10,6 +10,7 @@ import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.CharacterPart
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.model.EquipSlot
+import team.swyp.sdu.domain.model.WearState
 import team.swyp.sdu.utils.LottieAssetSize
 import team.swyp.sdu.utils.findAssetSize
 import team.swyp.sdu.utils.replaceAssetP
@@ -98,7 +99,7 @@ class LottieImageProcessor @Inject constructor(
      */
     suspend fun updateAssetsForChangedSlots(
         baseLottieJson: JSONObject,
-        wornItemsByPosition: Map<EquipSlot, Int>,
+        wornItemsByPosition: Map<EquipSlot, WearState>,
         cosmeticItems: List<CosmeticItem>,
         character: Character,
         changedSlots: Set<EquipSlot>
@@ -114,10 +115,8 @@ class LottieImageProcessor @Inject constructor(
                 changedSlots.forEach { slot ->
                     Timber.d("🎯 슬롯 처리 시작: $slot")
 
-                    val wornItemId = wornItemsByPosition[slot]
-                    val cosmeticItem = cosmeticItems.find { it.itemId == wornItemId }
-
-                    Timber.d("🎯 슬롯 $slot - wornItemId: $wornItemId, cosmeticItem: ${cosmeticItem?.name}")
+                    val wearState = wornItemsByPosition[slot]
+                    Timber.d("🎯 슬롯 $slot - wearState: $wearState")
 
                     // CharacterPart로 변환
                     val characterPart = when (slot) {
@@ -130,19 +129,36 @@ class LottieImageProcessor @Inject constructor(
 
                     // 해당 파트의 모든 asset ID들을 처리
                     characterPart.lottieAssetIds.forEach { assetId ->
-                        val imageUrl = if (cosmeticItem != null) {
-                            // 코스메틱 아이템이 있으면 tags에 따라 적용
-                            val targetAssetId = characterPart.getLottieAssetId(cosmeticItem.tags)
-                            if (assetId == targetAssetId) cosmeticItem.imageName else null
-                        } else {
-                            // 코스메틱 아이템이 없으면 캐릭터 기본값
-                            when (slot) {
-                                EquipSlot.HEAD -> {
-                                    val targetAssetId = CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
-                                    if (assetId == targetAssetId) character.headImageName else null
+                        val imageUrl = when (wearState) {
+                            is WearState.Worn -> {
+                                // 착용중인 코스메틱 아이템
+                                val cosmeticItem = cosmeticItems.find { it.itemId == wearState.itemId }
+                                if (cosmeticItem != null) {
+                                    val targetAssetId = characterPart.getLottieAssetId(cosmeticItem.tags)
+                                    if (assetId == targetAssetId) cosmeticItem.imageName else null
+                                } else {
+                                    Timber.w("❌ 착용중인 아이템을 찾을 수 없음: ${wearState.itemId}")
+                                    null
                                 }
-                                EquipSlot.BODY -> character.bodyImageName
-                                EquipSlot.FEET -> character.feetImageName
+                            }
+                            WearState.Unworn -> {
+                                // 미착용 상태 - 투명 PNG
+                                null
+                            }
+                            WearState.Default -> {
+                                // 캐릭터 기본값
+                                when (slot) {
+                                    EquipSlot.HEAD -> {
+                                        val targetAssetId = CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
+                                        if (assetId == targetAssetId) character.headImageName else null
+                                    }
+                                    EquipSlot.BODY -> character.bodyImageName
+                                    EquipSlot.FEET -> character.feetImageName
+                                }
+                            }
+                            null -> {
+                                // 슬롯에 상태가 없음 - 투명 PNG
+                                null
                             }
                         }
 
