@@ -34,11 +34,13 @@ android {
             }
         }
 
-        // BuildConfig에 API 키 추가
+        // BuildConfig에 API 키 추가 (카카오만 Manifest에서 사용)
         buildConfigField("String", "KAKAO_APP_KEY", "\"${localProperties.getProperty("KAKAO_APP_KEY", "")}\"")
-        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.getProperty("NAVER_CLIENT_ID", "")}\"")
-        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.getProperty("NAVER_CLIENT_SECRET", "")}\"")
-        buildConfigField("String", "OTHER_API_KEY", "\"${localProperties.getProperty("OTHER_API_KEY", "")}\"")
+
+        // AndroidManifest.xml 플레이스홀더 치환
+        manifestPlaceholders["KAKAO_APP_KEY"] = localProperties.getProperty("KAKAO_APP_KEY", "")
+
+        // 네이버 API 키는 런타임에만 사용 (BuildConfig에 노출하지 않음)
     }
 
     buildTypes {
@@ -112,6 +114,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.foundation)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
@@ -190,6 +193,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     // JUnit 4 (기존 호환성)
     testImplementation(libs.junit)

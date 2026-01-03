@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import com.google.firebase.FirebaseApp
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.messaging.FirebaseMessaging
 import com.kakao.sdk.common.KakaoSdk
 import com.kakao.vectormap.KakaoMapSdk
@@ -24,6 +25,8 @@ import team.swyp.sdu.data.remote.billing.BillingManager
 import team.swyp.sdu.domain.service.FcmTokenManager
 import team.swyp.sdu.worker.SessionSyncWorker
 import timber.log.Timber
+import java.io.File
+import java.util.Properties
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -49,9 +52,19 @@ class WalkingBuddyApplication : Application() {
         // KakaoMap SDK 초기화
         KakaoMapSdk.init(this, kakaoAppKey)
 
-        // Naver OAuth SDK 초기화
-        val naverClientId = BuildConfig.NAVER_CLIENT_ID
-        val naverClientSecret = BuildConfig.NAVER_CLIENT_SECRET
+        // Naver OAuth SDK 초기화 - local.properties에서 직접 읽기
+        val localProperties = Properties().apply {
+            try {
+                val propertiesFile = File(filesDir.parent, "local.properties")
+                if (propertiesFile.exists()) {
+                    load(propertiesFile.inputStream())
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "local.properties 파일 읽기 실패")
+            }
+        }
+        val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID", "")
+        val naverClientSecret = localProperties.getProperty("NAVER_CLIENT_SECRET", "")
         val naverClientName = "walkit"
 
         if (naverClientId.isBlank() || naverClientSecret.isBlank()) {
@@ -83,7 +96,10 @@ class WalkingBuddyApplication : Application() {
 
         // Firebase 초기화
         FirebaseApp.initializeApp(this)
-        Timber.d("Firebase 초기화 완료")
+
+        // Firebase Crashlytics 초기화 - 릴리즈 모드에서만 활성화
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+        Timber.d("Firebase 초기화 완료 - Crashlytics: ${!BuildConfig.DEBUG}")
 
         // NotificationChannel 생성
         createNotificationChannel()
