@@ -153,7 +153,18 @@ fun MissionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .customShadow(),
+            .customShadow()
+            .then(
+                if (isActive) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = Color.Black,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = cardState.backgroundColor()

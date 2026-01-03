@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
+import team.swyp.sdu.ui.components.ErrorDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -212,27 +212,10 @@ fun LoginScreen(
 
         // 에러 다이얼로그
         if (uiState is LoginUiState.Error) {
-            AlertDialog(
-                onDismissRequest = onDismissError,
-                title = {
-                    Text(
-                        text = "로그인 실패",
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                text = {
-                    Text(
-                        text = (uiState as LoginUiState.Error).message,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = onDismissError,
-                    ) {
-                        Text("확인")
-                    }
-                },
+            ErrorDialog(
+                title = "로그인 실패",
+                message = (uiState as LoginUiState.Error).message,
+                onDismiss = onDismissError,
             )
         }
     }
@@ -305,6 +288,10 @@ private fun LoginScreenWithTermsDialogPreview() {
                     onAllAgreedChange = {},
                     onSubmit = {},
                     onDismiss = {},
+                    onTermsClick = {},
+                    onPrivacyClick = {},
+                    onLocationClick = {},
+                    onMarketingClick = {},
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
             }

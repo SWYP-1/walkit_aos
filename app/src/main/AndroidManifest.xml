@@ -1,36 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Step Counter 권한 -->
+    <!-- Step Counter (사용 시 유지) -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
-    <!-- 고속 센서 샘플링 권한 (가속도계 실시간 업데이트용) -->
-    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
-
-    <!-- 위치 추적 권한 -->
+    <!-- Location (Walking route tracking) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- 알림 권한 (Android 13+) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Foreground Service 권한 -->
+    <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- Notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Camera -->
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!-- Gallery / Profile Image -->
+    <!-- Android 14+ : Photo Picker -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+
+    <!-- Android 13 -->
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_IMAGES"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <!-- Android 12 이하 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
-        android:allowBackup="true"
         android:name=".WalkingBuddyApplication"
+        android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -38,16 +46,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Swypwalkingbuddy">
+
         <meta-data
             android:name="com.kakao.sdk.AppKey"
-            android:value="dd4a75c8aa122d46a52c64492a973b63" />
+            android:value="${KAKAO_APP_KEY}" />
+
+        <!-- Location Tracking Foreground Service -->
         <service
             android:name=".domain.service.LocationTrackingService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="location|location" />
-        
-        <!-- Firebase Cloud Messaging Service -->
+            android:foregroundServiceType="location" />
+
+        <!-- Firebase Cloud Messaging -->
         <service
             android:name=".domain.service.WalkItFirebaseMessagingService"
             android:exported="false">
@@ -55,8 +66,8 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        
-        <!-- FileProvider: 파일 공유를 위한 Content Provider -->
+
+        <!-- FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -66,19 +77,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:launchMode="singleTop"
+            android:label="@string/app_name"
             android:theme="@style/Theme.Swypwalkingbuddy">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
 
+    </application>
 </manifest>

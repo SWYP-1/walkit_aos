@@ -41,6 +41,10 @@ class MissionViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MissionUiState())
     val uiState: StateFlow<MissionUiState> = _uiState.asStateFlow()
 
+    // 현재 도전 중인 미션 ID
+    private val _challengingMissionId = MutableStateFlow<Long?>(null)
+    val challengingMissionId: StateFlow<Long?> = _challengingMissionId.asStateFlow()
+
     init {
         loadWeeklyMissions()
     }
@@ -89,5 +93,15 @@ class MissionViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * 미션 도전 시작
+     * 도전 중인 미션 ID를 저장하고 산책 화면으로 이동
+     */
+    fun startMissionChallenge(missionId: Long, onNavigateToWalk: () -> Unit) {
+        Timber.d("🎯 미션 도전 시작: missionId=$missionId")
+        _challengingMissionId.value = missionId
+        onNavigateToWalk()
     }
 }

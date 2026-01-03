@@ -48,6 +48,7 @@ data class WalkingSession(
     val serverImageUrl: String? = null, // 서버 URL
     val createdDate: String,
     val targetStepCount: Int = 0, // 산책 당시 설정된 목표 걸음 수
+    val currentGoalChallenge: Int = 0, // 이번 주 목표 도전 횟수 (몇 번째 목표 도전인지)
 ) : Parcelable {
     /**
      * 산책 시간 (초)

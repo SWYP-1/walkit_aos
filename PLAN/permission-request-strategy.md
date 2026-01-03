@@ -7,7 +7,7 @@
 | 권한 | 용도 | 필수 여부 | 요청 시점 |
 |------|------|----------|----------|
 | `ACTIVITY_RECOGNITION` | 걸음 수 측정 | 필수 | 산책 시작 전 |
-| `HIGH_SAMPLING_RATE_SENSORS` | 가속도계 실시간 업데이트 | 필수 | 산책 시작 전 |
+| `HIGH_SAMPLING_RATE_SENSORS` | 가속도계 실시간 업데이트 | 불필요 (제거됨) | - |
 | `ACCESS_FINE_LOCATION` | 위치 추적 (산책 중) | 필수 | 산책 시작 전 |
 | `ACCESS_COARSE_LOCATION` | 위치 추적 (대체) | 선택 | 산책 시작 전 |
 | `POST_NOTIFICATIONS` | 알림 (Android 13+) | 선택 | 홈 화면 진입 시 |
@@ -52,7 +52,7 @@ fun submitOnboarding() {
 온보딩 완료 → 권한 요청 화면
 ├─ ACTIVITY_RECOGNITION (걸음 수 측정)
 ├─ ACCESS_FINE_LOCATION (위치 추적)
-└─ HIGH_SAMPLING_RATE_SENSORS (가속도계)
+└─ HIGH_SAMPLING_RATE_SENSORS 제거됨 (SENSOR_DELAY_GAME 사용)
 ```
 
 **이유**: 산책 기능의 핵심 권한이므로 앱 사용 전에 필수
@@ -90,7 +90,7 @@ fun PermissionRequestScreen(
         listOf(
             Manifest.permission.ACTIVITY_RECOGNITION,
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.HIGH_SAMPLING_RATE_SENSORS,
+            // Manifest.permission.HIGH_SAMPLING_RATE_SENSORS, // 제거됨
         )
     }
     

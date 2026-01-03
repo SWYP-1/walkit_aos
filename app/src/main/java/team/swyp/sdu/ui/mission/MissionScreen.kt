@@ -57,10 +57,11 @@ fun MissionRoute(
     MissionScreen(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
-        onMissionClick = { missionId ->
-
+        onRewardClick = { missionId ->
         },
-        onNavigateToWalk = onNavigateToWalk,
+        onNavigateToWalk = {
+            onNavigateToWalk()
+        },
         modifier = modifier,
     )
 }
@@ -70,7 +71,7 @@ fun MissionScreen(
     uiState: MissionUiState,
     onNavigateBack: () -> Unit,
     onNavigateToWalk: () -> Unit,
-    onMissionClick: (Long) -> Unit,
+    onRewardClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedCategory by remember { mutableStateOf<MissionCategory?>(null) }
@@ -153,8 +154,8 @@ fun MissionScreen(
                 MissionCard(
                     cardState = missionCard.cardState,
                     mission = missionCard.mission,
-                    onChallengeClick = onNavigateToWalk,
-                    onRewardClick = { missionId -> onMissionClick(missionId) },
+                    onChallengeClick = { onNavigateToWalk() },
+                    onRewardClick = { missionId -> onRewardClick(missionId) },
                     isActive = index == 0 // 첫 번째 카드(index 0)에만 특별 처리
                 )
             }
@@ -171,8 +172,8 @@ fun MissionPreview() {
         MissionScreen(
             uiState = MissionUiState(),
             onNavigateBack = {},
-            onMissionClick = {},
-            onNavigateToWalk = {}
+            onNavigateToWalk = {},
+            onRewardClick = {}
         )
     }
 }

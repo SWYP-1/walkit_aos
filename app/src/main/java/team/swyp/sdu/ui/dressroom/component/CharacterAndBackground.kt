@@ -81,7 +81,8 @@ private fun createSlotImageConfigs(
     cosmeticItems: List<CosmeticItem>
 ): List<SlotImageConfig> {
     return EquipSlot.entries.map { slot ->
-        val assetId = SLOT_ASSET_MAPPING[slot] ?: return@map SlotImageConfig(slot.name.lowercase(), null)
+        val assetId =
+            SLOT_ASSET_MAPPING[slot] ?: return@map SlotImageConfig(slot.name.lowercase(), null)
 
         // 우선순위에 따른 이미지 URL 결정
         val imageUrl = when (slot) {
@@ -91,11 +92,13 @@ private fun createSlotImageConfigs(
                     getImageUrlForCosmeticItem(itemId, cosmeticItems)
                 } ?: character.headImageName
             }
+
             EquipSlot.BODY -> {
                 wornItemsByPosition[slot]?.let { itemId ->
                     getImageUrlForCosmeticItem(itemId, cosmeticItems)
                 } ?: character.bodyImageName
             }
+
             EquipSlot.FEET -> {
                 wornItemsByPosition[slot]?.let { itemId ->
                     getImageUrlForCosmeticItem(itemId, cosmeticItems)
@@ -118,7 +121,7 @@ private fun getImageUrlForCosmeticItem(itemId: Int, cosmeticItems: List<Cosmetic
 @Composable
 fun CharacterAndBackground(
     modifier: Modifier = Modifier,
-    currentSeason : Season = Season.SPRING,
+    currentSeason: Season = Season.SPRING,
     character: Character,
     points: Int,
     wornItemsByPosition: Map<EquipSlot, Int> = emptyMap(),
@@ -192,14 +195,15 @@ fun CharacterAndBackground(
         // 중앙에 캐릭터 Lottie 애니메이션 표시
         Box(
             modifier = Modifier
-                .align(Alignment.Center).offset(y = 40.dp),
+                .align(Alignment.Center)
+                .offset(y = 72.dp),
             contentAlignment = Alignment.Center
         ) {
             if (processedComposition != null) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(200.dp),
+                        .size(290.dp).offset(y = -40.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     processedComposition?.let {

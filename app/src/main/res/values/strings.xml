@@ -1,3 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">swyp-walking-buddy</string>
+    <string name="app_name">WalkIt</string>
+
+    <!-- 퍼미션 설명 (플레이 스토어 제출용) -->
+    <string name="permission_location_title">위치 정보 액세스</string>
+    <string name="permission_location_description">산책 경로를 기록하고 지도에 표시하기 위해 사용됩니다.</string>
+    <string name="permission_camera_title">카메라 액세스</string>
+    <string name="permission_camera_description">프로필 사진 촬영을 위해 사용됩니다.</string>
+    <string name="permission_storage_title">저장소 액세스</string>
+    <string name="permission_storage_description">프로필 이미지 업로드를 위해 사용됩니다.</string>
+    <string name="permission_activity_title">신체 활동 인식</string>
+    <string name="permission_activity_description">걸음 수 측정을 위해 사용됩니다.</string>
+    <string name="permission_notification_title">알림 권한</string>
+    <string name="permission_notification_description">산책 알림 및 중요 업데이트를 받기 위해 사용됩니다.</string>
 </resources>

@@ -2,8 +2,10 @@ package team.swyp.sdu.ui.record.dailyrecord
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,14 +58,34 @@ fun SessionThumbnailList(
         modifier
             .fillMaxWidth()
     ) {
-        Text(
-            text = "2025년 12월 15일 ",
-            // body L/medium
-            style = MaterialTheme.walkItTypography.bodyL.copy(
-                fontWeight = FontWeight.Medium
-            ),
-            color = SemanticColor.textBorderPrimary
-        )
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "2025년 12월 15일 ",
+                // body L/medium
+                style = MaterialTheme.walkItTypography.bodyL.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = SemanticColor.textBorderPrimary
+            )
+
+            IconButton(
+                onClick = onExternalClick,
+                modifier = Modifier
+                    .size(24.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_external),
+                    contentDescription = "external",
+                    tint = SemanticColor.iconGrey
+                )
+            }
+        }
+
+
         Spacer(Modifier.height(12.dp))
 
         if (session != null) {
@@ -144,32 +166,6 @@ fun SessionThumbnailItem(
                     height = 200.dp,
                 )
             }
-        }
-
-        Box(
-            modifier = Modifier
-                .padding(12.dp)
-                .align(Alignment.TopEnd)
-                .clickable(onClick = onClick)
-        ) {
-            IconButton(
-                onClick = onClick,
-                modifier = Modifier
-                    .padding(12.dp) // 👈 부모 기준 여백
-                    .size(24.dp)
-                    .background(
-                        color = Grey4.copy(alpha = 0.40f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .align(Alignment.TopEnd)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_action_external),
-                    contentDescription = "external",
-                    tint = SemanticColor.iconWhite
-                )
-            }
-
         }
 
         val startTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.startTime)

@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,6 +54,10 @@ import team.swyp.sdu.ui.theme.GradientUtils
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.home.components.WalkProgressBar
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import team.swyp.sdu.ui.record.friendrecord.component.FriendRecordMoreMenu
 import team.swyp.sdu.ui.record.friendrecord.component.LikeButton
 import team.swyp.sdu.ui.theme.Grey7
@@ -128,6 +133,7 @@ fun FriendRecordScreenContent(
             FriendRecordContent(
                 data = state.data,
                 likeState = state.like,
+                processedLottieJson = state.processedLottieJson, // Lottie JSON 전달
                 onLikeClick = onLikeClick,
                 onBlockUser = onBlockUser,
                 onClickMore = onClickMore,
@@ -187,6 +193,7 @@ fun FriendRecordScreenContent(
 private fun FriendRecordContent(
     data: FollowerWalkRecord,
     likeState: LikeUiState,
+    processedLottieJson: String? = null, // Lottie JSON 추가
     onLikeClick: () -> Unit,
     onBlockUser: (String) -> Unit,
     onClickMore: () -> Unit,
@@ -201,6 +208,7 @@ private fun FriendRecordContent(
         CharacterInfoSection(
             character = data.character,
             walkProgressPercentage = data.walkProgressPercentage ?: "0",
+            processedLottieJson = processedLottieJson, // Lottie JSON 전달
             onClickMore = onClickMore,
             onBlockUser = onBlockUser,
             showMenu = showMenu,
@@ -241,6 +249,7 @@ private fun FriendRecordContent(
 private fun CharacterInfoSection(
     character: Character,
     walkProgressPercentage: String = "",
+    processedLottieJson: String? = null, // Lottie JSON 추가
     onClickMore: () -> Unit = {},
     onBlockUser: (String) -> Unit = {},
     showMenu: Boolean = false,
@@ -264,7 +273,23 @@ private fun CharacterInfoSection(
             contentScale = ContentScale.Crop
         )
 
-        // 2️⃣ 콘텐츠: padding + border 적용
+        // 2️⃣ Lottie 캐릭터: 배경 위에 중앙에 배치
+        processedLottieJson?.let { lottieJson ->
+            val composition by rememberLottieComposition(
+                LottieCompositionSpec.JsonString(lottieJson)
+            )
+
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever, // 무한 반복
+                modifier = Modifier
+                    .fillMaxSize(0.85f) // 캐릭터 크기 조정
+                    .align(Alignment.Center)
+                    .offset(y = 25.dp)
+            )
+        }
+
+        // 3️⃣ 콘텐츠: padding + border 적용
         Column(
             modifier = Modifier
                 .fillMaxSize()

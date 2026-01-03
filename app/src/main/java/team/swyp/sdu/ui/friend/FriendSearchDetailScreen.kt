@@ -38,6 +38,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import team.swyp.sdu.domain.model.FollowStatus
 import timber.log.Timber
 import team.swyp.sdu.domain.model.FollowerWalkRecord
@@ -150,6 +154,7 @@ fun FriendSearchDetailScreen(
                 data = uiState.data,
                 followStatus = followStatus,
                 isFollowing = isFollowing,
+                processedLottieJson = uiState.processedLottieJson, // Lottie JSON 전달
                 onRequestFollow = onRequestFollow,
                 onNavigateBack = onNavigateBack,
             )
@@ -174,6 +179,7 @@ fun FriendSearchDetailScreenContent(
     data: UserSummary,
     followStatus: FollowStatus,
     isFollowing: Boolean,
+    processedLottieJson: String? = null, // Lottie JSON 추가
     onRequestFollow: () -> Unit,
     onNavigateBack: () -> Unit = {},
 ) {
@@ -229,13 +235,27 @@ fun FriendSearchDetailScreenContent(
 
                 // 사용자 정보 섹션
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(data.character.characterImageName).build(),
-                        contentDescription = "캐릭터",
-                        modifier = Modifier.size(120.dp),
-                        contentScale = ContentScale.Crop,
-                    )
+                    // Lottie 캐릭터 표시
+                    processedLottieJson?.let { lottieJson ->
+                        val composition by rememberLottieComposition(
+                            LottieCompositionSpec.JsonString(lottieJson)
+                        )
+
+                        LottieAnimation(
+                            composition = composition,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier.size(120.dp)
+                        )
+                    } ?: run {
+                        // Lottie가 없을 경우 기존 AsyncImage 사용 (fallback)
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(data.character.characterImageName).build(),
+                            contentDescription = "캐릭터",
+                            modifier = Modifier.size(120.dp),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                     Spacer(modifier = Modifier.height(50.dp))
                     Row(
                         modifier = Modifier
@@ -365,6 +385,7 @@ private fun FriendSearchDetailScreenContentSeedGradePreview() {
             ),
             followStatus = FollowStatus.EMPTY,
             isFollowing = false,
+            processedLottieJson = null, // Preview에서는 null
             onNavigateBack = {},
             onRequestFollow = {}
         )
@@ -392,6 +413,7 @@ private fun FriendSearchDetailScreenContentSproutGradePreview() {
             ),
             followStatus = FollowStatus.EMPTY,
             isFollowing = false,
+            processedLottieJson = null, // Preview에서는 null
             onNavigateBack = {},
             onRequestFollow = {})
     }
@@ -418,6 +440,7 @@ private fun FriendSearchDetailScreenContentTreeGradePreview() {
             ),
             followStatus = FollowStatus.EMPTY,
             isFollowing = false,
+            processedLottieJson = null, // Preview에서는 null
             onNavigateBack = {},
             onRequestFollow = {})
     }

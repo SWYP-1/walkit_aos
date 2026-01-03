@@ -22,10 +22,13 @@ import team.swyp.sdu.domain.model.FollowStatus
 import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.domain.repository.WalkRepository
 import team.swyp.sdu.domain.service.LocationManager
+import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.utils.LocationConstants
 import timber.log.Timber
 import android.content.SharedPreferences
 import javax.inject.Inject
+import team.swyp.sdu.domain.model.Grade
+import org.json.JSONObject
 
 /**
  * 친구 검색 상세 화면 ViewModel
@@ -39,6 +42,7 @@ constructor(
     private val userRepository: UserRepository,
     private val followRemoteDataSource: FollowRemoteDataSource,
     private val locationManager: LocationManager,
+    val lottieImageProcessor: LottieImageProcessor, // Lottie 캐릭터 처리를 위해 추가
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FriendSearchUiState>(FriendSearchUiState.Loading)
     val uiState: StateFlow<FriendSearchUiState> = _uiState.asStateFlow()
@@ -87,9 +91,16 @@ constructor(
                 _uiState.value = when (result) {
                     is Result.Success -> {
                         val data = result.data
+
+                        // Lottie 캐릭터 JSON 생성
+                        val lottieJson = generateFriendSearchCharacterLottie(data.character)
+
                         // 팔로우 상태는 네비게이션 파라미터에서 이미 설정됨
                         Timber.d("FriendSearchViewModel.loadFollowerWalkRecord: $nickname 팔로우 상태 이미 설정됨 - ${_followStatus.value}")
-                        FriendSearchUiState.Success(data = data)
+                        FriendSearchUiState.Success(
+                            data = data,
+                            processedLottieJson = lottieJson
+                        )
                     }
 
                     is Result.Error -> FriendSearchUiState.Error(result.message)
@@ -222,6 +233,61 @@ constructor(
             FollowStatus.EMPTY
         }
     }
+
+    /**
+     * 친구 검색 캐릭터 Lottie JSON 생성
+     */
+    private suspend fun generateFriendSearchCharacterLottie(character: team.swyp.sdu.domain.model.Character): String? {
+        return try {
+            withContext(Dispatchers.IO) {
+                // 캐릭터 등급에 따른 base Lottie JSON 로드
+                val baseJson = loadBaseLottieJson(character)
+
+                // 캐릭터 파트들을 적용하여 최종 JSON 생성
+                val modifiedJson = lottieImageProcessor.updateCharacterPartsInLottie(
+                    baseLottieJson = baseJson,
+                    character = character
+                )
+
+                modifiedJson.toString()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "친구 검색 캐릭터 Lottie JSON 생성 실패")
+            null
+        }
+    }
+
+    /**
+     * 캐릭터 등급에 따른 base Lottie JSON 로드
+     */
+    private suspend fun loadBaseLottieJson(character: team.swyp.sdu.domain.model.Character): JSONObject =
+        withContext(Dispatchers.IO) {
+            val resourceId = when (character.grade) {
+                Grade.SEED -> team.swyp.sdu.R.raw.seed
+                Grade.SPROUT -> team.swyp.sdu.R.raw.sprout
+                Grade.TREE -> team.swyp.sdu.R.raw.tree
+            }
+
+            Timber.d("🎭 FriendSearch loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
+
+            try {
+                val inputStream = application.resources.openRawResource(resourceId)
+                val jsonString = inputStream.bufferedReader().use { it.readText() }
+
+                if (jsonString.isEmpty()) {
+                    Timber.e("❌ JSON 문자열이 비어있음!")
+                    return@withContext JSONObject() // 빈 JSON 반환
+                }
+
+                val jsonObject = JSONObject(jsonString)
+                Timber.d("✅ FriendSearch JSONObject 생성 성공")
+
+                jsonObject
+            } catch (e: Exception) {
+                Timber.e(e, "❌ FriendSearch base Lottie JSON 로드 실패")
+                JSONObject() // 실패 시 빈 JSON 반환
+            }
+        }
 }
 
 

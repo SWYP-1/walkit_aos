@@ -72,7 +72,6 @@ fun DressingRoomRoute(
         onBackClick = onNavigateBack,
         onRefreshClick = {
             scope.launch {
-                viewModel.loadDressingRoom()
                 viewModel.refreshCharacterInfo()
             }
         },
@@ -277,26 +276,12 @@ private fun SuccessContent(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(16.dp), // 내부 여백
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CtaButton(
-                    text = "구매하기",
-                    variant = CtaButtonVariant.SECONDARY,
-                    enabled = cartItems.isNotEmpty(),
-                    onClick = onShowCartDialog,
-                    modifier = Modifier.weight(1f)
-                )
-
-                CtaButton(
-                    text = "저장하기",
-                    onClick = onSaveItem,
-                    modifier = Modifier.weight(1f),
-                    iconResId = R.drawable.ic_arrow_forward
-                )
-            }
+            CtaButton(
+                text = "저장하기",
+                onClick = onSaveItem,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                iconResId = R.drawable.ic_arrow_forward
+            )
         }
 
         // 캐릭터 등급 정보 다이얼로그

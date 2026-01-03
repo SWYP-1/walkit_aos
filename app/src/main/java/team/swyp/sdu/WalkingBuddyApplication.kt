@@ -7,6 +7,8 @@ import android.os.Build
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.messaging.FirebaseMessaging
+import timber.log.Timber.Tree
+import com.google.firebase.crashlytics.FirebaseCrashlytics as Crashlytics
 import com.kakao.sdk.common.KakaoSdk
 import com.kakao.vectormap.KakaoMapSdk
 import com.navercorp.nid.NidOAuth
@@ -29,21 +31,43 @@ import java.io.File
 import java.util.Properties
 import javax.inject.Inject
 
+/**
+ * 릴리즈 빌드용 Timber Tree - Crashlytics로 로그 전송
+ */
+class CrashlyticsTree : Tree() {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        // Error와 Warning 레벨 이상만 Crashlytics로 전송
+        if (priority >= android.util.Log.WARN) {
+            Crashlytics.getInstance().log("$tag: $message")
+            t?.let { Crashlytics.getInstance().recordException(it) }
+        }
+    }
+}
+
 @HiltAndroidApp
 class WalkingBuddyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Timber 초기화
-        // 개발 중이므로 항상 DebugTree 사용
-        // 릴리즈 빌드에서는 Crashlytics 등으로 로그 전송 가능
-        Timber.plant(Timber.DebugTree())
+        // Timber 초기화 - 빌드 타입에 따라 다른 트리 사용
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        } else {
+            // 릴리즈에서는 Crashlytics로 로그 전송
+            Timber.plant(CrashlyticsTree())
+        }
 
         // ✅ 안전하게 BuildConfig에서 API 키 가져오기
         val kakaoAppKey = BuildConfig.KAKAO_APP_KEY
         if (kakaoAppKey.isBlank()) {
             Timber.e("Kakao App Key가 설정되지 않았습니다. local.properties에 KAKAO_APP_KEY를 추가하세요.")
-            return
+            // TODO: 사용자에게 알림 표시 또는 기능 제한
+            // return // 위험: 앱 초기화 완전 중단은 피하자
+        } else {
+            // Kakao SDK 초기화
+            KakaoSdk.init(this, kakaoAppKey)
+            // KakaoMap SDK 초기화
+            KakaoMapSdk.init(this, kakaoAppKey)
         }
 
         // Kakao SDK 초기화
@@ -69,23 +93,25 @@ class WalkingBuddyApplication : Application() {
 
         if (naverClientId.isBlank() || naverClientSecret.isBlank()) {
             Timber.e("Naver Client 정보가 설정되지 않았습니다. local.properties에 NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET을 추가하세요.")
-            return
-        }
-        NidOAuth.initialize(
-            this,
-            naverClientId,
-            naverClientSecret,
-            naverClientName,
-            object : NidOAuthInitializingCallback {
-                override fun onSuccess() {
-                    Timber.d("Naver OAuth SDK 초기화 성공")
-                }
+            // TODO: 네이버 로그인을 사용할 수 없음을 사용자에게 알림
+        } else {
+            NidOAuth.initialize(
+                this,
+                naverClientId,
+                naverClientSecret,
+                naverClientName,
+                object : NidOAuthInitializingCallback {
+                    override fun onSuccess() {
+                        Timber.d("Naver OAuth SDK 초기화 성공")
+                    }
 
-                override fun onFailure(e: Exception) {
-                    Timber.e(e, "Naver OAuth SDK 초기화 실패")
-                }
-            },
-        )
+                    override fun onFailure(e: Exception) {
+                        Timber.e(e, "Naver OAuth SDK 초기화 실패")
+                        // TODO: 사용자에게 네이버 로그인 오류 알림
+                    }
+                },
+            )
+        }
 
         // Google Play Billing 초기화
         // Hilt가 완전히 초기화된 후에 주입받아야 하므로 EntryPoint 사용

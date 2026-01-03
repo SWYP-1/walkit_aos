@@ -137,18 +137,16 @@ fun NavGraph(
 
             composable(Screen.Walking.route) { entry ->
                 val viewModel = entry.sharedViewModel<WalkingViewModel>(navController)
-                Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                    WalkingScreenRoute(
-                        modifier = Modifier.padding(paddingValues),
-                        viewModel = viewModel,
-                        onNavigateToPostWalkingEmotion = {
-                            navController.navigate(Screen.PostEmotionSelectionStep.route)
-                        },
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        },
-                    )
-                }
+                WalkingScreenRoute(
+                    modifier = Modifier,
+                    viewModel = viewModel,
+                    onNavigateToPostWalkingEmotion = {
+                        navController.navigate(Screen.PostEmotionSelectionStep.route)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                )
             }
 
             composable(Screen.PostEmotionSelectionStep.route) { entry ->
@@ -361,6 +359,9 @@ fun NavGraph(
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 MissionRoute(
                     modifier = Modifier.padding(paddingValues),
+                    onNavigateToWalk = {
+                        navController.navigate(Screen.WalkingGraph.route)
+                    },
                     onNavigateBack = { navController.popBackStack() },
                 )
             }

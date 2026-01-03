@@ -12,11 +12,13 @@ object ConfigExample {
     val kakaoAppKey: String
         get() = BuildConfig.KAKAO_APP_KEY
 
+    // 네이버 API 키는 BuildConfig에 노출하지 않음 (보안 정책)
+    // 실제 사용 시 local.properties에서 직접 읽어서 사용
     val naverClientId: String
-        get() = BuildConfig.NAVER_CLIENT_ID
+        get() = "local.properties에서 읽어오세요"
 
     val naverClientSecret: String
-        get() = BuildConfig.NAVER_CLIENT_SECRET
+        get() = "local.properties에서 읽어오세요"
 
     // ❌ 위험한 방법: 코드에 직접 하드코딩 (절대 사용하지 마세요)
 //    const val KAKAO_APP_KEY_DANGEROUS = "your_actual_app_key_here" // 위험!

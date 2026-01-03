@@ -117,9 +117,12 @@ private fun ProfileContent(
         uiState.weather?.let { weather ->
             val weatherRes =
                 resolveWeatherIconRes(weather)
+            val temperatureText = uiState.temperature?.toInt()?.toString()
+                ?: "-"
+
             InfoBadge(
                 iconPainter = painterResource(weatherRes),
-                text = "${uiState.temperature?.toInt() ?: 0}",
+                text = temperatureText,
                 modifier = modifier
                     .padding(vertical = 20.5.dp, horizontal = 16.dp)
                     .align(Alignment.TopEnd)
@@ -136,8 +139,8 @@ private fun ProfileContent(
             // Lottie 캐릭터 표시
             LottieCharacterDisplay(
                 characterLottieState = characterLottieState,
-                size = 130, // 기존 캐릭터 이미지 크기와 동일
-                modifier = Modifier.size(130.dp)
+                size = 280, // 기존 캐릭터 이미지 크기와 동일,
+                modifier = Modifier.offset(y = 70.dp)
             )
 
             // 사용자 정보 및 목표

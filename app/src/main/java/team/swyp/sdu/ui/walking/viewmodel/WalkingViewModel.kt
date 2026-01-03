@@ -32,6 +32,7 @@ import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.domain.repository.CharacterRepository
+import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.domain.service.ActivityType
 import team.swyp.sdu.domain.service.LocationManager
 import team.swyp.sdu.domain.service.LottieImageProcessor
@@ -47,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
+import team.swyp.sdu.core.Result
 import team.swyp.sdu.core.onError
 import team.swyp.sdu.core.onSuccess
 import timber.log.Timber
@@ -71,6 +73,7 @@ class WalkingViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
     private val locationManager: LocationManager,
     private val characterRepository: CharacterRepository,
+    private val goalRepository: GoalRepository,
     private val lottieImageProcessor: LottieImageProcessor,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -124,17 +127,22 @@ class WalkingViewModel @Inject constructor(
     private val _walkingCharacterLottieJson = MutableStateFlow<String?>(null)
     val walkingCharacterLottieJson: StateFlow<String?> = _walkingCharacterLottieJson.asStateFlow()
 
+    // 이번 주 목표 초과 세션 개수
+    private val _currentWeekGoalChallengeCount = MutableStateFlow(0)
+    val currentWeekGoalChallengeCount: StateFlow<Int> = _currentWeekGoalChallengeCount.asStateFlow()
+
     // WalkingScreen 통합 상태 (UI에서 하나의 StateFlow로 사용)
     val walkingScreenState: StateFlow<WalkingScreenState> = combine(
         _uiState,
         _walkingCharacter,
-        _walkingCharacterLottieJson
-    ) { uiState, character, lottieJson ->
-        WalkingScreenState(uiState, character, lottieJson)
+        _walkingCharacterLottieJson,
+        _currentWeekGoalChallengeCount
+    ) { uiState, character, lottieJson, goalChallengeCount ->
+        WalkingScreenState(uiState, character, lottieJson, goalChallengeCount)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = WalkingScreenState(WalkingUiState.Loading, null, null)
+        initialValue = WalkingScreenState(WalkingUiState.Loading, null, null, 0)
     )
 
     // 현재 목표 정보를 저장 (targetStepCount 추출용)
@@ -340,6 +348,9 @@ class WalkingViewModel @Inject constructor(
 
                             // 캐릭터 정보가 있으면 Lottie JSON 생성
                             generateWalkingCharacterLottie(character)
+
+                            // 이번 주 목표 초과 세션 개수 계산
+                            calculateCurrentWeekGoalChallengeCount()
                         }
                         .onError { exception, message ->
                             Timber.e(exception, "산책용 캐릭터 정보 로드 실패: $message")
@@ -397,6 +408,50 @@ class WalkingViewModel @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "❌ cleanBaseJson 생성 실패")
             JSONObject("{}") // 빈 JSON 반환
+        }
+    }
+
+    /**
+     * 이번 주 목표 초과 세션 개수 계산
+     * 이번 주(월요일부터)에 시작한 세션 중 목표 걸음 수를 초과한 세션의 개수
+     */
+    private fun calculateCurrentWeekGoalChallengeCount() {
+        viewModelScope.launch {
+            try {
+                // 이번 주 범위 계산 (월요일부터)
+                val weekRange = DateUtils.getCurrentWeekRange()
+                Timber.d("이번 주 범위: ${weekRange.first} ~ ${weekRange.second}")
+
+                // 이번 주 세션들 가져오기
+                val thisWeekSessions = walkingSessionRepository.getSessionsBetween(weekRange.first, weekRange.second)
+                    .firstOrNull() ?: emptyList()
+
+                Timber.d("이번 주 세션 수: ${thisWeekSessions.size}")
+
+                // 현재 목표 가져오기
+                val goalResult = goalRepository.getGoal()
+                val currentGoal = when (goalResult) {
+                    is Result.Success -> goalResult.data
+                    else -> null
+                }
+                if (currentGoal == null) {
+                    Timber.d("목표가 설정되지 않음")
+                    _currentWeekGoalChallengeCount.value = 0
+                    return@launch
+                }
+
+                // 목표 걸음 수 초과한 세션 개수 계산
+                val goalExceededCount = thisWeekSessions.count { session ->
+                    session.stepCount > currentGoal.targetStepCount
+                }
+
+                Timber.d("목표 걸음 수(${currentGoal.targetStepCount}) 초과 세션 수: $goalExceededCount")
+                _currentWeekGoalChallengeCount.value = goalExceededCount
+
+            } catch (e: Exception) {
+                Timber.e(e, "이번 주 목표 초과 세션 개수 계산 실패")
+                _currentWeekGoalChallengeCount.value = 0
+            }
         }
     }
 
@@ -862,7 +917,6 @@ class WalkingViewModel @Inject constructor(
     private fun handleAccelerometerUpdate(acceleration: Float, movementState: MovementState) {
         _currentAcceleration.value = acceleration
         _currentMovementState.value = movementState
-        Timber.d("가속도계 업데이트: ${movementState.name}, 가속도: ${acceleration}m/s²")
     }
 
     /* ---------------- Duration ---------------- */
@@ -1236,7 +1290,8 @@ sealed class SnapshotState {
 data class WalkingScreenState(
     val uiState: WalkingUiState,
     val character: Character?,
-    val characterLottieJson: String? = null
+    val characterLottieJson: String? = null,
+    val currentWeekGoalChallengeCount: Int = 0
 )
 
 sealed interface WalkingUiState {

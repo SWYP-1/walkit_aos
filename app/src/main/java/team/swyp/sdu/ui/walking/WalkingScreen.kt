@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +26,9 @@ import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.painterResource
@@ -34,6 +40,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
@@ -53,6 +62,8 @@ import team.swyp.sdu.utils.DateUtils
 import team.swyp.sdu.utils.FormatUtils.formatStepCount
 import team.swyp.sdu.utils.Season
 import timber.log.Timber
+import kotlin.io.path.Path
+import kotlin.io.path.moveTo
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -62,12 +73,7 @@ fun WalkingScreenRoute(
     onNavigateToPostWalkingEmotion: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
-    // WalkingScreen 생성 카운트 디버깅 (한 번만 생성되도록 remember 사용)
-    val instanceId = remember(viewModel) {
-        val id = java.util.UUID.randomUUID().toString().take(8)
-        Timber.d("🏗️ WalkingScreenRoute 생성됨 - instanceId: $id, viewModel hash: ${viewModel.hashCode()}")
-        id
-    }
+
     val screenState by viewModel.walkingScreenState.collectAsStateWithLifecycle()
     val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -259,19 +265,17 @@ private fun WalkingScreenContent(
         Season.AUTUMN -> R.drawable.bg_autumn_full
         Season.WINTER -> R.drawable.bg_winter_full
     }
-    Box(modifier = Modifier.fillMaxSize()){
-        if (characterState == null) {
-            Image(
-                painter = painterResource(defaultBackground),
-                contentDescription = "walking background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        if (characterState != null) {
             AsyncImage(
                 model = characterState.backgroundImageName,
                 error = painterResource(defaultBackground),
-                contentDescription = "walking background"
+                contentDescription = "walking background",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.FillBounds
             )
         }
 
@@ -281,7 +285,10 @@ private fun WalkingScreenContent(
 
             /* ---------- Character ---------- */
             val character = subcompose("character") {
-                WalkitCharacter(character = characterState)
+                WalkitCharacter(
+                    character = characterState,
+                    lottieJson = screenState.characterLottieJson
+                )
             }[0].measure(Constraints())
 
             /* ---------- StepCounter (SessionSaved 상태가 아닐 때) ---------- */
@@ -304,12 +311,20 @@ private fun WalkingScreenContent(
                     }[0].measure(Constraints())
                 } else null
 
+            /* ---------- Goal (SessionSaved 상태가 아닐 때) ---------- */
+            val currentGoal = if (screenState.uiState !is WalkingUiState.SessionSaved) {
+                subcompose("currentGoal") {
+                    CurrentChanllgeGoal(challengeCount = screenState.currentWeekGoalChallengeCount)
+                }[0].measure(Constraints())
+            } else null
+
 
             val finishText = if (screenState.uiState is WalkingUiState.SessionSaved) {
                 subcompose("finishText") {
                     FinishWalkingText()
                 }[0].measure(Constraints())
             } else null
+
 
             /* ---------- Action Buttons (SessionSaved 상태가 아닐 때) ---------- */
             val actionRow =
@@ -340,6 +355,8 @@ private fun WalkingScreenContent(
                 )
             } else null
 
+
+
             /* ---------- Layout ---------- */
             layout(
                 width = constraints.maxWidth,
@@ -354,7 +371,7 @@ private fun WalkingScreenContent(
 //                )
                 character.place(
                     x = (constraints.maxWidth - character.width) / 2,
-                    y = centerY - character.height / 2
+                    y = centerY - character.height / 2 + 20.dp.roundToPx()
                 )
 
 
@@ -367,22 +384,43 @@ private fun WalkingScreenContent(
                 // timer (top and bottom)
                 timer?.place(
                     x = (constraints.maxWidth - timer.width) / 2,
-                    y = 18.dp.roundToPx()
+                    y = 42.dp.roundToPx()
                 )
 
                 // Finish Text (top = 137.dp)
                 finishText?.place(
                     x = (constraints.maxWidth - finishText.width) / 2,
-                    y = 137.dp.roundToPx()
+                    y = 161.dp.roundToPx()
                 )
+                // Action buttons (bottom anchor)
+                val actionRowTopY = actionRow?.let {
+                    constraints.maxHeight -
+                            it.height -
+                            100.dp.roundToPx()
+                }
 
-                // Action buttons (bottom = 100dp)
                 actionRow?.place(
                     x = (constraints.maxWidth - actionRow.width) / 2,
-                    y = constraints.maxHeight -
-                            actionRow.height -
-                            100.dp.roundToPx()
+                    y = actionRowTopY ?: 0
                 )
+
+                // 🔥 Goal 말풍선 (ActionRow 기준 위 40dp)
+                currentGoal?.let { goal ->
+                    val spacing = 34.dp.roundToPx()
+                    val minGoalY = 120.dp.roundToPx() // 너무 위로 못 가게 가드
+
+                    val goalY = maxOf(
+                        minGoalY,
+                        (actionRowTopY ?: constraints.maxHeight) -
+                                goal.height -
+                                spacing
+                    )
+
+                    goal.place(
+                        x = (constraints.maxWidth - goal.width) / 2,
+                        y = goalY
+                    )
+                }
 
                 // CTA button (bottom = 40dp)
                 onNextButton?.place(
@@ -396,23 +434,29 @@ private fun WalkingScreenContent(
     }
 
 
-
-
 }
 
 @Composable
-fun WalkitCharacter(modifier: Modifier = Modifier, character: Character?) {
-    if (character != null) {
-        AsyncImage(
-            model = character.characterImageName,
-            contentDescription = null,
-            modifier = modifier
+fun WalkitCharacter(
+    modifier: Modifier = Modifier,
+    character: Character?,
+    lottieJson: String? = null
+) {
+    // Lottie JSON이 있으면 Lottie 애니메이션 사용, 없으면 기존 AsyncImage 사용
+    if (lottieJson != null && character != null) {
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.JsonString(lottieJson)
         )
+
+        LottieAnimation(
+            composition = composition,
+            modifier = modifier.size(280.dp), // Lottie 크기 증가로 이미지와 크기 맞춤
+            iterations = Int.MAX_VALUE // 무한 반복
+        )
+    } else if (character != null) {
+        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
     } else {
-        Image(
-            painter = painterResource(R.drawable.walk_it_character),
-            contentDescription = null,
-        )
+        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
     }
 }
 
@@ -542,44 +586,54 @@ fun WalkingScreenPreviewInProgress() {
     }
 }
 
-@Preview(
-    name = "Walking - Paused",
-    showBackground = true
-)
 @Composable
-fun WalkingScreenPreviewPaused() {
-    WalkItTheme {
-        // Preview에서는 mock 데이터를 사용
-        WalkingScreenContent(
-            screenState = WalkingScreenState(
-                uiState = WalkingUiState.Walking(
-                    stepCount = 1250,
-                    duration = 1800000L, // 30분
-                    isPaused = true
-                ),
-                character = null // 캐릭터 정보 없음
+fun CurrentChanllgeGoal(modifier: Modifier = Modifier, challengeCount: Int = 0) {
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // ▲ 위쪽 삼각형
+        Canvas(
+            modifier = Modifier
+                .size(width = 16.dp, height = 16.dp)
+        ) {
+            val path = Path().apply {
+                moveTo(size.width / 2, 0f)          // 꼭대기
+                lineTo(0f, size.height)             // 왼쪽
+                lineTo(size.width, size.height)     // 오른쪽
+                close()
+            }
+            drawPath(
+                path = path,
+                color = SemanticColor.stateYellowTertiary
             )
-        )
+        }
+
+        // 말풍선 본체
+        Box(
+            modifier = Modifier
+                .background(
+                    color = SemanticColor.stateYellowTertiary,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "${challengeCount + 1}번째 목표 진행중",
+                style = MaterialTheme.walkItTypography.bodyS.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = SemanticColor.stateYellowPrimary
+            )
+        }
     }
 }
 
-@Preview(
-    name = "Walking - Finished",
-    showBackground = true
-)
+@Preview(showBackground = true, name = "Current Challenge Goal")
 @Composable
-fun WalkingScreenPreviewFinished() {
+fun CurrentChallengeGoalPreview() {
     WalkItTheme {
-        WalkingScreenContent(
-            screenState = WalkingScreenState(
-                uiState = WalkingUiState.Walking(
-                    stepCount = 1250,
-                    duration = 1800000L, // 30분
-                    isPaused = true
-                ),
-                character = null // 캐릭터 정보 없음
-            ),
-            onNextClick = {}
-        )
+        CurrentChanllgeGoal(challengeCount = 2) // 3번째 목표 진행중으로 표시
     }
 }
+

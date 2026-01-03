@@ -98,7 +98,10 @@ class DressingRoomViewModel @Inject constructor(
 
     // 착용 상태 로컬 저장용 SharedPreferences
     private val prefs: SharedPreferences by lazy {
-        application.getSharedPreferences("dressing_room_prefs", android.content.Context.MODE_PRIVATE)
+        application.getSharedPreferences(
+            "dressing_room_prefs",
+            android.content.Context.MODE_PRIVATE
+        )
     }
 
 
@@ -538,7 +541,8 @@ class DressingRoomViewModel @Inject constructor(
                     Timber.d("👤 캐릭터 레벨: ${character.level}")
 
                     // 캐릭터의 기본 이미지로 asset들을 교체
-                    val characterBaseJson = lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
+                    val characterBaseJson =
+                        lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
 
                     Timber.d("✅ 캐릭터 기본 이미지 설정 완료")
 
@@ -954,41 +958,53 @@ class DressingRoomViewModel @Inject constructor(
     private suspend fun saveWornItemsToServer() {
         try {
             _isWearLoading.value = true
-            Timber.d("착용 아이템 서버 저장 시작")
+            Timber.d("🎯 착용 아이템 서버 저장 시작 - 로딩 상태: ${_isWearLoading.value}")
 
             val previewItems = _wornItemsByPosition.value
+            val currentServerWornItems = _serverWornItems.value
 
-            // 각 슬롯별 착용 아이템 저장
+            // 변경된 아이템들만 저장 (착용/해제 모두 처리)
             val saveTasks = mutableListOf<suspend () -> Unit>()
 
-            previewItems[EquipSlot.HEAD]?.let { itemId ->
-                saveTasks.add {
-                    Timber.d("HEAD 슬롯 아이템 저장: $itemId")
-                    wearItemInternal(itemId, true)
+            // 각 슬롯별로 변경된 아이템 저장
+            EquipSlot.entries.forEach { slot ->
+                val currentItemId = previewItems[slot]
+                val previousItemId = currentServerWornItems[slot]
+
+                // 아이템이 변경되었거나 해제된 경우
+                if (currentItemId != previousItemId) {
+                    if (currentItemId != null) {
+                        // 새로 착용된 아이템
+                        saveTasks.add {
+                            Timber.d("$slot 슬롯 아이템 착용: $currentItemId")
+                            wearItemInternal(currentItemId, true)
+                        }
+                    }
+
+                    if (previousItemId != null) {
+                        // 착용 해제된 아이템
+                        saveTasks.add {
+                            Timber.d("$slot 슬롯 아이템 해제: $previousItemId")
+                            wearItemInternal(previousItemId, false)
+                        }
+                    }
                 }
             }
 
-            previewItems[EquipSlot.BODY]?.let { itemId ->
-                saveTasks.add {
-                    Timber.d("BODY 슬롯 아이템 저장: $itemId")
-                    wearItemInternal(itemId, true)
-                }
-            }
-
-            previewItems[EquipSlot.FEET]?.let { itemId ->
-                saveTasks.add {
-                    Timber.d("FEET 슬롯 아이템 저장: $itemId")
-                    wearItemInternal(itemId, true)
-                }
-            }
+            Timber.d("총 ${saveTasks.size}개 아이템 상태 변경 작업")
 
             // 모든 저장 작업 실행
             saveTasks.forEach { task ->
                 task()
             }
 
-            // 서버 저장 성공 시 서버 상태 업데이트
+            // 서버 저장 성공 시 서버 착용 상태 업데이트 (UI 반영)
+            Timber.d("서버 저장 성공 - 서버 착용 상태 업데이트")
             _serverWornItems.value = previewItems.toMap()
+
+            // 캐릭터 정보 새로고침으로 전체 상태 동기화
+            Timber.d("서버 저장 성공 - 캐릭터 정보 새로고침으로 상태 동기화")
+            refreshCharacterInfo()
 
             // ✅ 로컬 상태도 서버 상태와 동기화 (동기화 강화)
             saveWornItemsToLocal(previewItems)
@@ -998,6 +1014,7 @@ class DressingRoomViewModel @Inject constructor(
             Timber.e(e, "착용 아이템 서버 저장 실패")
             // TODO: 사용자에게 에러 표시
         } finally {
+            Timber.d("🎯 착용 아이템 서버 저장 종료 - 로딩 상태 해제")
             _isWearLoading.value = false
         }
     }
@@ -1032,17 +1049,42 @@ class DressingRoomViewModel @Inject constructor(
             when (val result = characterRepository.getCharacterFromApi()) {
                 is Result.Success -> {
                     val updatedCharacter = result.data
-                    Timber.d("캐릭터 정보 refresh 성공: ${updatedCharacter.nickName}")
+                    Timber.d(
+                        "캐릭터 정보 refresh 성공: ${updatedCharacter.nickName} : body ${updatedCharacter.bodyImageName},head ${updatedCharacter.headImageName}"
+                    )
 
-                    // UI 상태 업데이트 (캐릭터 정보만 교체)
+                    // ✅ 새로운 캐릭터로 Lottie JSON 재생성
+                    val updatedLottieJson = loadBaseLottieJson(updatedCharacter)
+                    Timber.d("캐릭터 Lottie JSON 재생성 완료: ${updatedLottieJson?.toString()?.length ?: 0} chars")
+
+                    // UI 상태 업데이트 (캐릭터 정보와 Lottie JSON 모두 교체)
                     if (_uiState.value is DressingRoomUiState.Success) {
                         val currentState = _uiState.value as DressingRoomUiState.Success
-                        _uiState.value = currentState.copy(character = updatedCharacter)
-                        Timber.d("캐릭터 정보 UI 업데이트 완료")
+                        _uiState.value = currentState.copy(
+                            character = updatedCharacter,
+                            processedLottieJson = updatedLottieJson?.toString()
+                        )
+                        Timber.d("캐릭터 정보 및 Lottie JSON UI 업데이트 완료")
                     }
 
                     // DB에도 최신 정보 저장 (향후 빠른 로드를 위해)
-                    characterRepository.saveCharacter(updatedCharacter.nickName, updatedCharacter)
+                    // userId를 얻어서 저장
+                    val userResult = userRepository.getUser()
+                    when (userResult) {
+                        is Result.Success -> {
+                            val userId = userResult.data.userId.toString()
+                            characterRepository.saveCharacter(userId, updatedCharacter)
+                                .onSuccess {
+                                    Timber.d("캐릭터 정보 DB 저장 성공: userId=$userId")
+                                }
+                                .onError { exception, message ->
+                                    Timber.e(exception, "캐릭터 정보 DB 저장 실패: userId=$userId, $message")
+                                }
+                        }
+                        else -> {
+                            Timber.e("사용자 정보 조회 실패 - 캐릭터 정보 DB 저장 건너뜀")
+                        }
+                    }
                 }
 
                 is Result.Error -> {

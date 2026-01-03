@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,7 @@ import team.swyp.sdu.ui.mypage.component.MyPageCharacterEditButton
 import team.swyp.sdu.ui.mypage.component.MyPageUserInfo
 import team.swyp.sdu.ui.mypage.component.MyPageSettingsSection
 import team.swyp.sdu.ui.mypage.component.MyPageStatsSection
+import team.swyp.sdu.ui.mypage.component.ServiceInfoFooter
 import team.swyp.sdu.ui.mypage.model.StatsData
 import team.swyp.sdu.ui.mypage.model.UserInfoData
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoManagementViewModel
@@ -106,6 +109,34 @@ fun MyPageRoute(
         onNavigateBack = onNavigateBack,
         onNavigateMission = onNavigateMission,
         onNavigateCustomTest = onNavigateCustomTest,
+        onServiceTermsClick = {
+            // 서비스 이용 약관 링크 (onboarding과 동일)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622"))
+            context.startActivity(intent)
+        },
+        onPrivacyPolicyClick = {
+            // 개인정보처리방침 링크 (onboarding과 동일)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5"))
+            context.startActivity(intent)
+        },
+        onMarketingConsentClick = {
+            // 마케팅 수신 동의 링크 (onboarding과 동일)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9802cb0e2c7f58ec65ec1"))
+            context.startActivity(intent)
+        },
+        onContactClick = {
+            // 문의하기 - 이메일 인텐트
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:support@walkit.app")
+                putExtra(Intent.EXTRA_SUBJECT, "Walk It 문의사항")
+            }
+            context.startActivity(intent)
+        },
+        onCsChannelClick = {
+            // CS 채널 안내 링크
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/cs"))
+            context.startActivity(intent)
+        },
         onLogout = {
             loginViewModel.logout()
             // 로그아웃 처리 후 약간의 딜레이를 두고 로그인 화면으로 이동
@@ -165,6 +196,11 @@ fun MyPageScreen(
     onNavigateBack: () -> Unit,
     onNavigateMission: () -> Unit,
     onNavigateCustomTest: () -> Unit,
+    onServiceTermsClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {},
+    onMarketingConsentClick: () -> Unit = {},
+    onContactClick: () -> Unit = {},
+    onCsChannelClick: () -> Unit = {},
     onLogout: () -> Unit = {},
     onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -271,6 +307,15 @@ fun MyPageScreen(
                     onLogout = onLogout,
                     onWithdraw = onWithdraw,
                 )
+
+                Spacer(Modifier.weight(1f))
+                ServiceInfoFooter(
+                    onTermsClick = onServiceTermsClick,
+                    onPrivacyClick = onPrivacyPolicyClick,
+                    onMarketingClick = onMarketingConsentClick,
+                    onContactClick = onContactClick,
+                    onCsChannelClick = onCsChannelClick,
+                )
             }
         }
     }
@@ -302,9 +347,14 @@ private fun MyPageScreenPreview() {
             onNavigateGoalManagement = {},
             onNavigateNotificationSetting = {},
             onNavigateBack = {},
-            onLogout = {},
             onNavigateMission = {},
             onNavigateCustomTest = {},
+            onServiceTermsClick = {},
+            onPrivacyPolicyClick = {},
+            onMarketingConsentClick = {},
+            onContactClick = {},
+            onCsChannelClick = {},
+            onLogout = {},
             onWithdraw = {},
         )
     }
@@ -325,9 +375,14 @@ private fun MyPageScreenErrorPreview() {
             onNavigateGoalManagement = {},
             onNavigateNotificationSetting = {},
             onNavigateBack = {},
-            onLogout = {},
             onNavigateMission = {},
             onNavigateCustomTest = {},
+            onServiceTermsClick = {},
+            onPrivacyPolicyClick = {},
+            onMarketingConsentClick = {},
+            onContactClick = {},
+            onCsChannelClick = {},
+            onLogout = {},
             onWithdraw = {},
         )
     }

@@ -1,5 +1,7 @@
 package team.swyp.sdu.ui.login.terms
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +29,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +38,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,6 +64,7 @@ fun TermsAgreementDialogRoute(
     viewModel: TermsAgreementViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     TermsAgreementDialog(
         uiState = uiState,
@@ -69,6 +74,26 @@ fun TermsAgreementDialogRoute(
         onMarketingConsentChange = viewModel::updateMarketingConsent,
         onAllAgreedChange = { agreed ->
             viewModel.toggleAllAgreements(agreed)
+        },
+        onTermsClick = {
+            // 서비스 이용 약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622"))
+            context.startActivity(intent)
+        },
+        onPrivacyClick = {
+            // 개인정보처리방침 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5"))
+            context.startActivity(intent)
+        },
+        onLocationClick = {
+            // 위치 정보 제공 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b980a09bafdba8e79fb042"))
+            context.startActivity(intent)
+        },
+        onMarketingClick = {
+            // 마케팅 수신 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/marketing-consent"))
+            context.startActivity(intent)
         },
         onSubmit = {
             viewModel.submitTermsAgreement(
@@ -94,6 +119,10 @@ internal fun TermsAgreementDialogContent(
     onLocationAgreedChange: (Boolean) -> Unit,
     onMarketingConsentChange: (Boolean) -> Unit,
     onAllAgreedChange: (Boolean) -> Unit,
+    onTermsClick: () -> Unit,
+    onPrivacyClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onMarketingClick: () -> Unit,
     onSubmit: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -178,7 +207,7 @@ internal fun TermsAgreementDialogContent(
                         onCheckedChange = onTermsAgreedChange,
                         label = "서비스 이용 약관",
                         isRequired = true,
-                        onArrowClick = { /* 약관 상세 보기 */ },
+                        onArrowClick = onTermsClick,
                     )
 
                     // 개인정보처리방침
@@ -187,7 +216,7 @@ internal fun TermsAgreementDialogContent(
                         onCheckedChange = onPrivacyAgreedChange,
                         label = "개인정보처리방침",
                         isRequired = true,
-                        onArrowClick = { /* 약관 상세 보기 */ },
+                        onArrowClick = onPrivacyClick,
                     )
 
                     // 위치 정보 제공 동의
@@ -196,7 +225,7 @@ internal fun TermsAgreementDialogContent(
                         onCheckedChange = onLocationAgreedChange,
                         label = "위치 정보 제공 동의",
                         isRequired = true,
-                        onArrowClick = { /* 약관 상세 보기 */ },
+                        onArrowClick = onLocationClick,
                     )
 
                     // 마케팅 수신 동의 (선택)
@@ -205,7 +234,7 @@ internal fun TermsAgreementDialogContent(
                         onCheckedChange = onMarketingConsentChange,
                         label = "마케팅 수신 동의 (선택)",
                         isRequired = false,
-                        onArrowClick = { /* 약관 상세 보기 */ },
+                        onArrowClick = onMarketingClick,
                     )
                 }
             }
@@ -256,6 +285,10 @@ fun TermsAgreementDialog(
     onLocationAgreedChange: (Boolean) -> Unit,
     onMarketingConsentChange: (Boolean) -> Unit,
     onAllAgreedChange: (Boolean) -> Unit,
+    onTermsClick: () -> Unit,
+    onPrivacyClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onMarketingClick: () -> Unit,
     onSubmit: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -280,6 +313,10 @@ fun TermsAgreementDialog(
                 onLocationAgreedChange = onLocationAgreedChange,
                 onMarketingConsentChange = onMarketingConsentChange,
                 onAllAgreedChange = onAllAgreedChange,
+                onTermsClick = onTermsClick,
+                onPrivacyClick = onPrivacyClick,
+                onLocationClick = onLocationClick,
+                onMarketingClick = onMarketingClick,
                 onSubmit = onSubmit,
                 onDismiss = onDismiss,
                 modifier = modifier.padding(bottom = 16.dp),
@@ -368,7 +405,7 @@ private fun TermsItem(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "약관 동의 다이얼로그 - 기본 상태")
 @Composable
 private fun TermsAgreementDialogPreview() {
     WalkItTheme {
@@ -384,31 +421,154 @@ private fun TermsAgreementDialogPreview() {
             onLocationAgreedChange = {},
             onMarketingConsentChange = {},
             onAllAgreedChange = {},
+            onTermsClick = {},
+            onPrivacyClick = {},
+            onLocationClick = {},
+            onMarketingClick = {},
             onSubmit = {},
             onDismiss = {},
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "약관 동의 콘텐츠 - 모두 동의", heightDp = 600)
 @Composable
 private fun TermsAgreementContentPreview_AllChecked() {
     WalkItTheme {
-        TermsAgreementDialogContent(
-            uiState = TermsAgreementUiState(
-                termsAgreed = true,
-                privacyAgreed = true,
-                locationAgreed = true,
-                marketingConsent = true,
-            ),
-            onTermsAgreedChange = {},
-            onPrivacyAgreedChange = {},
-            onLocationAgreedChange = {},
-            onMarketingConsentChange = {},
-            onAllAgreedChange = {},
-            onSubmit = {},
-            onDismiss = {},
-        )
+        Surface(color = androidx.compose.ui.graphics.Color.White) {
+            TermsAgreementDialogContent(
+                uiState = TermsAgreementUiState(
+                    termsAgreed = true,
+                    privacyAgreed = true,
+                    locationAgreed = true,
+                    marketingConsent = true,
+                ),
+                onTermsAgreedChange = {},
+                onPrivacyAgreedChange = {},
+                onLocationAgreedChange = {},
+                onMarketingConsentChange = {},
+                onAllAgreedChange = {},
+                onTermsClick = {},
+                onPrivacyClick = {},
+                onLocationClick = {},
+                onMarketingClick = {},
+                onSubmit = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "약관 동의 콘텐츠 - 모두 미동의", heightDp = 600)
+@Composable
+private fun TermsAgreementContentPreview_NoneChecked() {
+    WalkItTheme {
+        Surface(color = androidx.compose.ui.graphics.Color.White) {
+            TermsAgreementDialogContent(
+                uiState = TermsAgreementUiState(
+                    termsAgreed = false,
+                    privacyAgreed = false,
+                    locationAgreed = false,
+                    marketingConsent = false,
+                ),
+                onTermsAgreedChange = {},
+                onPrivacyAgreedChange = {},
+                onLocationAgreedChange = {},
+                onMarketingConsentChange = {},
+                onAllAgreedChange = {},
+                onTermsClick = {},
+                onPrivacyClick = {},
+                onLocationClick = {},
+                onMarketingClick = {},
+                onSubmit = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "약관 동의 콘텐츠 - 필수만 동의", heightDp = 600)
+@Composable
+private fun TermsAgreementContentPreview_RequiredOnly() {
+    WalkItTheme {
+        Surface(color = androidx.compose.ui.graphics.Color.White) {
+            TermsAgreementDialogContent(
+                uiState = TermsAgreementUiState(
+                    termsAgreed = true,
+                    privacyAgreed = true,
+                    locationAgreed = true,
+                    marketingConsent = false,
+                ),
+                onTermsAgreedChange = {},
+                onPrivacyAgreedChange = {},
+                onLocationAgreedChange = {},
+                onMarketingConsentChange = {},
+                onAllAgreedChange = {},
+                onTermsClick = {},
+                onPrivacyClick = {},
+                onLocationClick = {},
+                onMarketingClick = {},
+                onSubmit = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "약관 동의 콘텐츠 - 부분 동의", heightDp = 600)
+@Composable
+private fun TermsAgreementContentPreview_PartialChecked() {
+    WalkItTheme {
+        Surface(color = androidx.compose.ui.graphics.Color.White) {
+            TermsAgreementDialogContent(
+                uiState = TermsAgreementUiState(
+                    termsAgreed = true,
+                    privacyAgreed = false,
+                    locationAgreed = true,
+                    marketingConsent = false,
+                ),
+                onTermsAgreedChange = {},
+                onPrivacyAgreedChange = {},
+                onLocationAgreedChange = {},
+                onMarketingConsentChange = {},
+                onAllAgreedChange = {},
+                onTermsClick = {},
+                onPrivacyClick = {},
+                onLocationClick = {},
+                onMarketingClick = {},
+                onSubmit = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "약관 동의 콘텐츠 - 로딩 상태", heightDp = 600)
+@Composable
+private fun TermsAgreementContentPreview_Loading() {
+    WalkItTheme {
+        Surface(color = androidx.compose.ui.graphics.Color.White) {
+            TermsAgreementDialogContent(
+                uiState = TermsAgreementUiState(
+                    termsAgreed = true,
+                    privacyAgreed = true,
+                    locationAgreed = true,
+                    marketingConsent = true,
+                    isLoading = true,
+                ),
+                onTermsAgreedChange = {},
+                onPrivacyAgreedChange = {},
+                onLocationAgreedChange = {},
+                onMarketingConsentChange = {},
+                onAllAgreedChange = {},
+                onTermsClick = {},
+                onPrivacyClick = {},
+                onLocationClick = {},
+                onMarketingClick = {},
+                onSubmit = {},
+                onDismiss = {},
+            )
+        }
     }
 }
 

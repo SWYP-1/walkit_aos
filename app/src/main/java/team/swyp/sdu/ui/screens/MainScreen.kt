@@ -213,7 +213,9 @@ fun MainScreen(
             when (currentTabIndex) {
                 0 -> HomeRoute(
                     onClickWalk = { navController.navigate(Screen.WalkingGraph.route) },
-                    onClickAlarm = { navController.navigate(Screen.Alarm.route) },
+                    onClickAlarm = {
+                        navController.navigate(Screen.Alarm.route)
+                    },
                     onClickMissionMore = {
                         navController.navigate(Screen.Mission.route)
                     },

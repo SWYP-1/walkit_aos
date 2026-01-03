@@ -249,12 +249,12 @@ class AccelerometerManager
                         }
                     }
 
-                // 가속도계 센서 등록 (가장 빠른 업데이트)
+                // 가속도계 센서 등록 (게임용 속도 - 50Hz)
                 val success =
                     sensorManager.registerListener(
                         listener,
                         accelerometerSensor,
-                        SensorManager.SENSOR_DELAY_FASTEST, // 실시간 업데이트
+                        SensorManager.SENSOR_DELAY_GAME, // 게임용 속도 (50Hz)
                     )
 
                 if (success) {

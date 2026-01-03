@@ -173,6 +173,33 @@ object DateUtils {
             .format(DateTimeFormatter.ofPattern("HH:mm:ss"))
     }
 
+    /**
+     * 이번 주 범위 반환 (월요일 00:00:00 ~ 오늘 23:59:59)
+     *
+     * @return Pair<startMillis, endMillis> 이번 주 월요일부터 오늘까지의 타임스탬프
+     */
+    fun getCurrentWeekRange(): Pair<Long, Long> {
+        val now = LocalDate.now()
+        val weekFields = WeekFields.of(Locale.getDefault())
+
+        // 이번 주 월요일 찾기
+        val monday = now.with(weekFields.dayOfWeek(), 1L) // 1 = 월요일
+
+        // 월요일 00:00:00
+        val startOfWeek = monday.atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        // 오늘 23:59:59
+        val endOfToday = now
+            .atTime(23, 59, 59)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        return Pair(startOfWeek, endOfToday)
+    }
+
 
 }
 

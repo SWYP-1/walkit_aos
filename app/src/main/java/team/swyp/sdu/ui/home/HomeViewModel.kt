@@ -281,6 +281,25 @@ class HomeViewModel @Inject constructor(
     init {
         loadHomeData()
 
+        // Goal 데이터를 자동으로 동기화
+        viewModelScope.launch {
+            goalRepository.goalFlow.collect { goal ->
+                Timber.d("🏠 Goal 데이터 업데이트: $goal")
+                _goalState.value = goal
+            }
+        }
+
+        // 초기 Goal 데이터 로드
+        viewModelScope.launch {
+            goalRepository.getGoal()
+                .onSuccess { goal ->
+                    Timber.d("🏠 초기 Goal 데이터 로드 성공: $goal")
+                }
+                .onError { exception, message ->
+                    Timber.w(exception, "🏠 초기 Goal 데이터 로드 실패: $message")
+                }
+        }
+
         // 사용자 로그인 상태에 따라 세션 데이터 로드
         viewModelScope.launch {
             userRepository.userFlow.collect { user ->

@@ -17,6 +17,7 @@ sealed interface FriendSearchUiState {
      */
     data class Success(
         val data: UserSummary,
+        val processedLottieJson: String? = null, // Lottie 캐릭터 JSON 추가
     ) : FriendSearchUiState
 
     /**
