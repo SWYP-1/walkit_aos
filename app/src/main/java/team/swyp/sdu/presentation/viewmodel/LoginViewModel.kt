@@ -284,18 +284,23 @@ class LoginViewModel @Inject constructor(
             // 현재 로그인한 제공자 확인
             val currentProvider = authDataStore.getProvider()
 
-            // 카카오 로그아웃 시도 (실패해도 계속 진행)
-            UserApiClient.instance.logout { error ->
-                if (error != null) {
-                    // TokenNotFound 에러는 이미 로그아웃된 상태이므로 무시
-                    if (error is ClientError && error.reason == ClientErrorCause.TokenNotFound) {
-                        Timber.w("카카오 로그아웃: 이미 로그아웃된 상태 (토큰 없음)")
+            // 카카오 로그아웃 시도 (카카오 SDK가 초기화된 경우에만)
+            try {
+                UserApiClient.instance.logout { error ->
+                    if (error != null) {
+                        // TokenNotFound 에러는 이미 로그아웃된 상태이므로 무시
+                        if (error is ClientError && error.reason == ClientErrorCause.TokenNotFound) {
+                            Timber.w("카카오 로그아웃: 이미 로그아웃된 상태 (토큰 없음)")
+                        } else {
+                            Timber.e(error, "카카오 로그아웃 실패 (로컬 데이터는 삭제됨)")
+                        }
                     } else {
-                        Timber.e(error, "카카오 로그아웃 실패 (로컬 데이터는 삭제됨)")
+                        Timber.i("카카오 로그아웃 성공")
                     }
-                } else {
-                    Timber.i("카카오 로그아웃 성공")
                 }
+            } catch (e: Exception) {
+                // 카카오 SDK가 초기화되지 않았거나 이미 로그아웃된 경우
+                Timber.w("카카오 로그아웃 건너뜀 (초기화되지 않음): ${e.message}")
             }
 
             // 네이버 로그아웃 시도 (Naver OAuth가 초기화된 경우에만)
