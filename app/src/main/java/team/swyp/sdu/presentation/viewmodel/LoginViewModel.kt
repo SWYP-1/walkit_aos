@@ -298,18 +298,23 @@ class LoginViewModel @Inject constructor(
                 }
             }
 
-            // 네이버 로그아웃 시도 (실패해도 계속 진행)
-            val naverCallback = object : NidOAuthCallback {
-                override fun onSuccess() {
-                    Timber.i("네이버 로그아웃 성공")
-                }
+            // 네이버 로그아웃 시도 (Naver OAuth가 초기화된 경우에만)
+            try {
+                val naverCallback = object : NidOAuthCallback {
+                    override fun onSuccess() {
+                        Timber.i("네이버 로그아웃 성공")
+                    }
 
-                override fun onFailure(errorCode: String, errorDesc: String) {
-                    // 네이버도 이미 로그아웃된 상태일 수 있으므로 경고만 로깅
-                    Timber.w("네이버 로그아웃 실패 (로컬 데이터는 삭제됨): $errorCode - $errorDesc")
+                    override fun onFailure(errorCode: String, errorDesc: String) {
+                        // 네이버도 이미 로그아웃된 상태일 수 있으므로 경고만 로깅
+                        Timber.w("네이버 로그아웃 실패 (로컬 데이터는 삭제됨): $errorCode - $errorDesc")
+                    }
                 }
+                NidOAuth.logout(naverCallback)
+            } catch (e: Exception) {
+                // Naver OAuth가 초기화되지 않았거나 이미 로그아웃된 경우
+                Timber.w("네이버 로그아웃 건너뜀 (초기화되지 않음): ${e.message}")
             }
-            NidOAuth.logout(naverCallback)
 
             // 로컬 토큰 및 데이터 삭제 (소셜 로그아웃 실패 여부와 관계없이 항상 실행)
             try {
