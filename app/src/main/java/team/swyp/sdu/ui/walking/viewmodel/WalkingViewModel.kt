@@ -785,6 +785,19 @@ class WalkingViewModel @Inject constructor(
      *
      * 세션 저장이 완료될 때까지 기다린 후 Completed 상태로 변경합니다.
      */
+    /**
+     * 산책이 진행 중인 경우에만 중단 (안전한 중단)
+     */
+    suspend fun stopWalkingIfNeeded() {
+        val currentState = _uiState.value
+        if (currentState is WalkingUiState.Walking) {
+            Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - 산책 진행 중이므로 중단")
+            stopWalking()
+        } else {
+            Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - 산책 진행 중이 아님, 중단 불필요")
+        }
+    }
+
     suspend fun stopWalking() {
         tracking.stopTracking()
         durationJob?.cancel()

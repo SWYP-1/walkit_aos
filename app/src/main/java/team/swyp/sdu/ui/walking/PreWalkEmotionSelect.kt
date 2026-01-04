@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.walking
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -30,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.AppHeader
@@ -60,6 +63,7 @@ fun PreWalkingEmotionSelectRoute(
     onNext: () -> Unit,
     permissionsGranted: Boolean,
 ) {
+    val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedEmotion = when (uiState) {
         is WalkingUiState.PreWalkingEmotionSelection -> (uiState as WalkingUiState.PreWalkingEmotionSelection).preWalkingEmotion
@@ -85,10 +89,25 @@ fun PreWalkingEmotionSelectRoute(
         selectedEmotion = selectedEmotion,
         permissionsGranted = permissionsGranted,
         onEmotionSelected = viewModel::selectPreWalkingEmotion,
-        onPrev = onPrev,
+        onPrev = {
+            // 산책 준비 단계에서 뒤로가기 시 서비스 중단 확인
+            scope.launch {
+                try {
+                    // 만약 서비스가 시작되었다면 중단 (완료될 때까지 대기)
+                    viewModel.stopWalkingIfNeeded()
+                    Timber.d("🚶 PreWalkingEmotionSelect - 서비스 중단 확인 완료")
+                } catch (e: Throwable) {
+                    Timber.e(e, "🚶 PreWalkingEmotionSelect - 서비스 중단 실패")
+                } finally {
+                    // 서비스 중단 완료 후 네비게이션 실행
+                    onPrev()
+                }
+            }
+        },
         onNext = onNext,
     )
 }
+
 /**
  * 산책 전 감정 선택 화면
  *
@@ -109,6 +128,11 @@ fun PreWalkingEmotionSelectScreen(
     // 선택된 감정의 인덱스 찾기
     val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
 
+    // 시스템 백 버튼 처리 (서비스 중단 후 뒤로가기)
+    BackHandler {
+        onPrev()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -121,7 +145,9 @@ fun PreWalkingEmotionSelectScreen(
         Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
             SectionCard {
                 Column(
-                    Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(

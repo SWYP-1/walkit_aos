@@ -295,47 +295,20 @@ fun DailyRecordScreen(
             )
 
             when {
-                isLoading -> {
-                    LoadingSessionContent()
-                }
-
-                selectedSession == null -> {
-                    EmptySessionContent()
-                }
-
-                else -> {
-                    DailyRecordContent(
-                        sessionsForDate = sessionsForDate,
-                        selectedSessionIndex = selectedSessionIndex,
-                        selectedSession = selectedSession,
-                        editedNote = editedNote,
-                        onNoteChange = { editedNote = it },
-                        onSessionSelected = { selectedSessionIndex = it },
-                        onDeleteClick = onDeleteClick,
-                        isEditing = isEditing,
-                        setEditing = { isEditing = it },
-                        onExternalClick = { showShareDialog = true },
-//                        saveStatus = saveStatus,
-//                        onSaveImage = {
-//                            scope.launch {
-//                                try {
-//                                    saveStatus = SaveStatus.LOADING
-//                                    downloadImage(
-//                                        context = androidx.compose.ui.platform.LocalContext.current,
-//                                        path = selectedSession?.getImageUri() ?: "",
-//                                        fileName = "walking_result_${selectedSession?.id ?: "unknown"}.png"
-//                                    )
-//                                    saveStatus = SaveStatus.SUCCESS
-//                                    Timber.d("이미지 저장 성공")
-//                                } catch (t: Throwable) {
-//                                    saveStatus = SaveStatus.FAILURE
-//                                    Timber.e(t, "이미지 저장 실패")
-//                                }
-//                            }
-//                        },
-                        focusRequester = focusRequester
-                    )
-                }
+                selectedSession != null ->  DailyRecordContent(
+                    sessionsForDate = sessionsForDate,
+                    selectedSessionIndex = selectedSessionIndex,
+                    selectedSession = selectedSession,
+                    editedNote = editedNote,
+                    onNoteChange = { editedNote = it },
+                    onSessionSelected = { selectedSessionIndex = it },
+                    onDeleteClick = onDeleteClick,
+                    isEditing = isEditing,
+                    setEditing = { isEditing = it },
+                    onExternalClick = { showShareDialog = true },
+                    focusRequester = focusRequester
+                ) // 선택된 세션 있으면 항상 보여줌
+                else -> LoadingSessionContent()
             }
         }
 
@@ -369,19 +342,19 @@ fun DailyRecordScreen(
                 onPrev = { showShareDialog = false },
                 onSave = {
                     scope.launch {
-//                        try {
-//                            saveStatus = SaveStatus.LOADING
-//                            downloadImage(
-//                                context = androidx.compose.ui.platform.LocalContext.current,
-//                                path = selectedSession.getImageUri() ?: "",
-//                                fileName = "walking_result_${selectedSession.id}.png"
-//                            )
-//                            saveStatus = SaveStatus.SUCCESS
-//                            Timber.d("이미지 저장 성공")
-//                        } catch (t: Throwable) {
-//                            saveStatus = SaveStatus.FAILURE
-//                            Timber.e(t, "이미지 저장 실패")
-//                        }
+                        try {
+                            saveStatus = SaveStatus.LOADING
+                            downloadImage(
+                                context = context,
+                                path = selectedSession.getImageUri() ?: "",
+                                fileName = "walking_result_${selectedDate}.png"
+                            )
+                            saveStatus = SaveStatus.SUCCESS
+                            Timber.d("이미지 저장 성공")
+                        } catch (t: Throwable) {
+                            saveStatus = SaveStatus.FAILURE
+                            Timber.e(t, "이미지 저장 실패")
+                        }
                     }
                 }
             )

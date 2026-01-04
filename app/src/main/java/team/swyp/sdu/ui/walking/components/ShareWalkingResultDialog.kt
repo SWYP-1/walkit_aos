@@ -155,9 +155,9 @@ fun ShareWalkingResultDialog(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(bottom = 16.dp, end = 16.dp)
+                        .padding(bottom = 16.dp, end = 16.dp),
+                    horizontalAlignment = Alignment.End
                 ) {
-                    // TODO : 시간이랑 분 값 피그마에 없음
                     Text(
                         text = "$stepCount 걸음",
                         style = MaterialTheme.walkItTypography.bodyL.copy(
@@ -187,8 +187,41 @@ fun ShareWalkingResultDialog(
             Spacer(Modifier.height(20.dp))
 
             // 저장 상태 표시
+            if(saveStatus == SaveStatus.SUCCESS){
+                InfoBanner(
+                    title = "이미지 저장이 완료되었습니다",
+                    backgroundColor = SemanticColor.backgroundDarkSecondary,
+                    borderColor = SemanticColor.backgroundDarkSecondary,
+                    textColor = SemanticColor.textBorderPrimaryInverse,
+                    iconTint = SemanticColor.textBorderPrimaryInverse,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_info_check),
+                            contentDescription = "info warning",
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            }else if(saveStatus == SaveStatus.FAILURE){
+                InfoBanner(
+                    title = "이미지 저장이 완료되었습니다",
+                    backgroundColor = SemanticColor.stateRedTertiary,
+                    textColor = SemanticColor.stateRedPrimary,
+                    borderColor = SemanticColor.stateRedSecondary,
+                    iconTint = SemanticColor.stateRedPrimary,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_clear),
+                            contentDescription = "info warning",
+                            tint = SemanticColor.stateRedPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                )
+            }
 
-
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
