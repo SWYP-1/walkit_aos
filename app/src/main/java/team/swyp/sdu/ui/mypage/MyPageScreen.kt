@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -25,15 +24,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.DataState
-import team.swyp.sdu.core.onError
-import team.swyp.sdu.core.onSuccess
 import team.swyp.sdu.domain.model.Grade
-import team.swyp.sdu.presentation.viewmodel.LoginViewModel
+import team.swyp.sdu.ui.login.LoginViewModel
 import timber.log.Timber
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.ConfirmDialog

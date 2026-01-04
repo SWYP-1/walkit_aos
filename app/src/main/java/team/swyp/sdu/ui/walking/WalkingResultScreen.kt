@@ -294,6 +294,9 @@ private fun WalkingResultScreenContent(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    // 이미지 저장 상태
+    var saveStatus by remember { mutableStateOf(SaveStatus.IDLE) }
+    val scope = rememberCoroutineScope()
 
     // 사진 + 경로 Box의 위치 정보 (스냅샷 생성용)
     var photoWithPathBoxCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -672,23 +675,23 @@ private fun WalkingResultScreenContent(
                 onPrev = { showShareDialog = false },
                 preWalkEmotion = currentSession.preWalkEmotion,
                 postWalkEmotion = currentSession.postWalkEmotion,
-                saveStatus = SaveStatus.IDLE,
+                saveStatus = saveStatus,
                 onSave = {
-//                    scope.launch {
-//                        try {
-//                            saveStatus = SaveStatus.LOADING
-//                            downloadImage(
-//                                context = LocalContext.current,
-//                                path = capturedSnapshotPath ?: "",
-//                                fileName = "walking_result_${currentSession.id}.png"
-//                            )
-//                            saveStatus = SaveStatus.SUCCESS
-//                            Timber.d("이미지 저장 성공")
-//                        } catch (t: Throwable) {
-//                            saveStatus = SaveStatus.FAILURE
-//                            Timber.e(t, "이미지 저장 실패")
-//                        }
-//                    }
+                    scope.launch {
+                        try {
+                            saveStatus = SaveStatus.LOADING
+                            downloadImage(
+                                context = context,
+                                path = capturedSnapshotPath ?: "",
+                                fileName = "walking_result_${currentSession.id}.png"
+                            )
+                            saveStatus = SaveStatus.SUCCESS
+                            Timber.d("이미지 저장 성공")
+                        } catch (t: Throwable) {
+                            saveStatus = SaveStatus.FAILURE
+                            Timber.e(t, "이미지 저장 실패")
+                        }
+                    }
                 },
                 sessionThumbNailUri = capturedSnapshotPath ?: ""
             )

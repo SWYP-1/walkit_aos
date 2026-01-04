@@ -1,4 +1,4 @@
-package team.swyp.sdu.presentation.viewmodel
+package team.swyp.sdu.ui.login
 
 import android.app.Activity
 import android.content.Context
@@ -29,7 +29,6 @@ import team.swyp.sdu.domain.repository.UserRepository
 import team.swyp.sdu.data.remote.auth.TokenProvider
 import team.swyp.sdu.domain.service.FcmTokenManager
 import timber.log.Timber
-import java.util.Date
 import javax.inject.Inject
 
 /**

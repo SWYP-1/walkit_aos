@@ -793,6 +793,9 @@ class WalkingViewModel @Inject constructor(
         if (currentState is WalkingUiState.Walking) {
             Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - 산책 진행 중이므로 중단")
             stopWalking()
+        } else if(currentState is WalkingUiState.PreWalkingEmotionSelection){
+            stopWalking()
+            Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - pre감정 선택 진행 중이므로 중단")
         } else {
             Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - 산책 진행 중이 아님, 중단 불필요")
         }

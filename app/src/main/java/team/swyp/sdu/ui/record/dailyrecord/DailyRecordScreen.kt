@@ -347,7 +347,7 @@ fun DailyRecordScreen(
                             downloadImage(
                                 context = context,
                                 path = selectedSession.getImageUri() ?: "",
-                                fileName = "walking_result_${selectedDate}.png"
+                                fileName = "walking_result_${selectedSession.id}.png"
                             )
                             saveStatus = SaveStatus.SUCCESS
                             Timber.d("이미지 저장 성공")

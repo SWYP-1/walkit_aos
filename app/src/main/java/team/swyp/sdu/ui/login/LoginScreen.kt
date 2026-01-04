@@ -20,6 +20,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +37,6 @@ import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import team.swyp.sdu.R
-import team.swyp.sdu.presentation.viewmodel.LoginUiState
-import team.swyp.sdu.presentation.viewmodel.LoginViewModel
 import team.swyp.sdu.ui.onboarding.OnboardingViewModel
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.LoadingOverlay
@@ -45,7 +46,7 @@ import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.kakaoYellow
 import team.swyp.sdu.ui.theme.naverGreen
 import team.swyp.sdu.ui.login.terms.TermsAgreementDialogContent
-import team.swyp.sdu.ui.login.terms.TermsAgreementDialogRoute
+import team.swyp.sdu.ui.login.terms.TermsAgreementOverlayRoute
 import team.swyp.sdu.ui.login.terms.TermsAgreementUiState
 import team.swyp.sdu.ui.theme.Blue3
 import team.swyp.sdu.ui.theme.Red5
@@ -71,6 +72,11 @@ fun LoginRoute(
     val onboardingCompleted by onboardingViewModel.isCompleted.collectAsStateWithLifecycle(false)
     val termsAgreed by onboardingViewModel.isTermsAgreed.collectAsStateWithLifecycle(false)
 
+    // 다이얼로그 표시 상태 관리
+    var showTermsDialog by remember { mutableStateOf(false) }
+    // 네비게이션 딜레이 상태
+    var isNavigating by remember { mutableStateOf(false) }
+
     val naverLoginLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -86,20 +92,30 @@ fun LoginRoute(
         )
     }
 
+    // 다이얼로그 표시 여부 결정
+    LaunchedEffect(isLoggedIn, termsAgreed, isNavigating) {
+        showTermsDialog = !termsAgreed && !isNavigating
+    }
+
     /**
      * ✅ 단 하나의 Navigation 진입점
+     * - isNavigating 상태를 체크하여 중복 네비게이션 방지
      */
-    LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted) {
-        if (!isLoggedIn) return@LaunchedEffect
+    LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted, isNavigating) {
+        if (!isLoggedIn || isNavigating) return@LaunchedEffect
 
         when {
             onboardingCompleted -> {
-                awaitFrame()
+                isNavigating = true
+                // 충분한 딜레이로 다이얼로그 완전히 사라진 후 네비게이션
+                delay(400)
                 onNavigateToMain()
             }
 
             termsAgreed -> {
-                awaitFrame()
+                isNavigating = true
+                // 충분한 딜레이로 다이얼로그 완전히 사라진 후 네비게이션
+                delay(400)
                 onNavigateToTermsAgreement()
             }
         }
@@ -119,29 +135,32 @@ fun LoginRoute(
     )
 
     /**
-     * ✅ 약관 동의 다이얼로그
-     * - 조건 단순화: onboardingCompleted 체크 제거
-     * - termsAgreed 상태 변경 시 LaunchedEffect가 자동으로 navigation 처리
+     * ✅ 약관 동의 전체 화면 오버레이
+     * - showTermsDialog로 제어하여 깜박임 방지
      */
-    if (isLoggedIn && !termsAgreed) {
-        TermsAgreementDialogRoute(
-            onDismiss = {
-                // 약관 거부 → 로그아웃
+    TermsAgreementOverlayRoute(
+        isVisible = showTermsDialog,
+        onDismiss = {
+            // 약관 거부 → 로그아웃
+            isNavigating = true
+            showTermsDialog = false
+            scope.launch {
+                delay(300)
                 viewModel.logout()
-            },
-            onTermsAgreedUpdated = {
-                // 상태만 업데이트 (navigation은 LaunchedEffect에서 처리)
+                isNavigating = false
+            }
+        },
+        onTermsAgreedUpdated = {
+            // 즉시 오버레이 숨기고 네비게이션 시작
+            showTermsDialog = false
+
+            scope.launch {
+                // 상태 업데이트 (LaunchedEffect가 네비게이션 처리)
                 onboardingViewModel.updateServiceTermsChecked(true)
                 onboardingViewModel.updatePrivacyPolicyChecked(true)
-
-                // 깜빡임 방지
-                scope.launch {
-                    delay(200L)
-                }
-
-            },
-        )
-    }
+            }
+        },
+    )
 }
 
 

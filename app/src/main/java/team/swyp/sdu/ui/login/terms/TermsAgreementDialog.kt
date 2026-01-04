@@ -2,6 +2,7 @@ package team.swyp.sdu.ui.login.terms
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +21,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -33,10 +36,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -77,22 +82,32 @@ fun TermsAgreementDialogRoute(
         },
         onTermsClick = {
             // 서비스 이용 약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+            )
             context.startActivity(intent)
         },
         onPrivacyClick = {
             // 개인정보처리방침 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5")
+            )
             context.startActivity(intent)
         },
         onLocationClick = {
             // 위치 정보 제공 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b980a09bafdba8e79fb042"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b980a09bafdba8e79fb042")
+            )
             context.startActivity(intent)
         },
         onMarketingClick = {
             // 마케팅 수신 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/marketing-consent"))
+            val intent =
+                Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/marketing-consent"))
             context.startActivity(intent)
         },
         onSubmit = {
@@ -129,7 +144,8 @@ internal fun TermsAgreementDialogContent(
 ) {
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
+            .background(Color.Transparent)
             .padding(horizontal = 20.dp)
     ) {
         Column(
@@ -139,8 +155,8 @@ internal fun TermsAgreementDialogContent(
                     color = SemanticColor.backgroundWhiteSecondary,
                     shape = RoundedCornerShape(20.dp),
                 )
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(20.dp).align(Alignment.BottomCenter),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
                 modifier = Modifier
@@ -252,17 +268,28 @@ internal fun TermsAgreementDialogContent(
                     enabled = uiState.canProceed && !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 )
-
-                Text(
-                    text = "닫기",
-                    style = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Normal,
-                    ),
-                    color = SemanticColor.textBorderSecondary,
+                Box(
                     modifier = Modifier
-                        .clickable(onClick = onDismiss)
-                        .padding(vertical = 8.dp),
-                )
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = LocalIndication.current, // 최신 권장
+                            onClick = onDismiss
+                        )
+                        .padding(vertical = 8.dp, horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "닫기",
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = SemanticColor.textBorderSecondary
+                    )
+                }
+
+
+
             }
         }
 
@@ -297,7 +324,7 @@ fun TermsAgreementDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false,
         ),
     ) {
@@ -570,6 +597,109 @@ private fun TermsAgreementContentPreview_Loading() {
             )
         }
     }
+}
+
+/**
+ * 약관 동의 전체 화면 오버레이
+ *
+ * 기존 Dialog 대신 Box를 사용한 전체 화면 오버레이 방식
+ */
+@Composable
+fun TermsAgreementOverlay(
+    isVisible: Boolean,
+    uiState: TermsAgreementUiState,
+    onTermsAgreedChange: (Boolean) -> Unit,
+    onPrivacyAgreedChange: (Boolean) -> Unit,
+    onLocationAgreedChange: (Boolean) -> Unit,
+    onMarketingConsentChange: (Boolean) -> Unit,
+    onAllAgreedChange: (Boolean) -> Unit,
+    onTermsClick: () -> Unit,
+    onPrivacyClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (isVisible) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f)) // 반투명 배경
+        ) {
+            TermsAgreementDialogContent(
+                uiState = uiState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp),
+                onTermsAgreedChange = onTermsAgreedChange,
+                onPrivacyAgreedChange = onPrivacyAgreedChange,
+                onLocationAgreedChange = onLocationAgreedChange,
+                onMarketingConsentChange = onMarketingConsentChange,
+                onAllAgreedChange = onAllAgreedChange,
+                onTermsClick = onTermsClick,
+                onPrivacyClick = onPrivacyClick,
+                onLocationClick = onLocationClick,
+                onConfirm = onConfirm,
+                onDismiss = onDismiss,
+            )
+        }
+    }
+}
+
+/**
+ * 약관 동의 오버레이 Route
+ *
+ * ViewModel 주입 및 상태 수집을 담당합니다.
+ */
+@Composable
+fun TermsAgreementOverlayRoute(
+    isVisible: Boolean,
+    onDismiss: () -> Unit,
+    onTermsAgreedUpdated: () -> Unit,
+    viewModel: TermsAgreementViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    TermsAgreementOverlay(
+        isVisible = isVisible,
+        uiState = uiState,
+        onTermsAgreedChange = viewModel::updateTermsAgreed,
+        onPrivacyAgreedChange = viewModel::updatePrivacyAgreed,
+        onLocationAgreedChange = viewModel::updateLocationAgreed,
+        onMarketingConsentChange = viewModel::updateMarketingConsent,
+        onAllAgreedChange = { agreed ->
+            viewModel.toggleAllAgreements(agreed)
+        },
+        onTermsClick = {
+            // 서비스 이용 약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+            )
+            context.startActivity(intent)
+        },
+        onPrivacyClick = {
+            // 개인정보처리방침 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+            )
+            context.startActivity(intent)
+        },
+        onLocationClick = {
+            // 위치정보 이용약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+            )
+            context.startActivity(intent)
+        },
+        onConfirm = {
+            onTermsAgreedUpdated()
+        },
+        onDismiss = onDismiss,
+    )
 }
 
 
