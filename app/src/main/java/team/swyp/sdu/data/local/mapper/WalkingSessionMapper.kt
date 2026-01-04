@@ -5,12 +5,10 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import team.swyp.sdu.data.local.entity.SyncState
 import team.swyp.sdu.data.local.entity.WalkingSessionEntity
-import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.remote.walking.dto.WalkingSessionRequest
 import team.swyp.sdu.data.remote.walking.mapper.toWalkPoints
-import team.swyp.sdu.data.utils.EnumConverter
 
 object WalkingSessionMapper {
 
@@ -35,8 +33,8 @@ object WalkingSessionMapper {
             smoothedLocationsJson = session.smoothedLocations?.let { json.encodeToString(it) },
             totalDistance = session.totalDistance,
             syncState = syncState,
-            preWalkEmotion = session.preWalkEmotion.name,
-            postWalkEmotion = session.postWalkEmotion.name,
+            preWalkEmotion = session.preWalkEmotion,
+            postWalkEmotion = session.postWalkEmotion,
             note = session.note,
             localImagePath = session.localImagePath,
             serverImageUrl = session.serverImageUrl,
@@ -46,40 +44,77 @@ object WalkingSessionMapper {
 
     /** Entity → Domain */
     fun toDomain(entity: WalkingSessionEntity): WalkingSession {
-        val locations = runCatching {
-            json.decodeFromString<List<LocationPoint>>(entity.locationsJson)
-        }.getOrDefault(emptyList())
+        // 전체 함수를 try-catch로 감싸서 모든 Throwable 처리
+        // ExceptionInInitializerError 등 Error 타입도 처리
+        // EnumConverter.toEmotionType도 내부에서 Throwable을 처리하지만,
+        // 추가 방어를 위해 전체를 감싸서 매핑 실패 시 기본값 반환
+        return try {
+            val locations = try {
+                json.decodeFromString<List<LocationPoint>>(entity.locationsJson)
+            } catch (e: Throwable) {
+                // ExceptionInInitializerError 등 Error 타입도 처리
+                emptyList()
+            }
 
-        val filteredLocations = entity.filteredLocationsJson?.let { jsonString ->
-            runCatching {
-                json.decodeFromString<List<LocationPoint>>(jsonString)
-            }.getOrNull()
+            val filteredLocations = entity.filteredLocationsJson?.let { jsonString ->
+                try {
+                    json.decodeFromString<List<LocationPoint>>(jsonString)
+                } catch (e: Throwable) {
+                    // ExceptionInInitializerError 등 Error 타입도 처리
+                    null
+                }
+            }
+
+            val smoothedLocations = entity.smoothedLocationsJson?.let { jsonString ->
+                try {
+                    json.decodeFromString<List<LocationPoint>>(jsonString)
+                } catch (e: Throwable) {
+                    // ExceptionInInitializerError 등 Error 타입도 처리
+                    null
+                }
+            }
+
+            WalkingSession(
+                id = entity.id,  // ✅ DB의 실제 ID를 사용해야 함!
+                userId = entity.userId,
+                startTime = entity.startTime,
+                endTime = entity.endTime,
+                stepCount = entity.stepCount,
+                locations = locations,
+                filteredLocations = filteredLocations,
+                smoothedLocations = smoothedLocations,
+                totalDistance = entity.totalDistance,
+                preWalkEmotion = entity.preWalkEmotion,
+                postWalkEmotion = entity.postWalkEmotion,
+                note = entity.note,
+                localImagePath = entity.localImagePath,
+                serverImageUrl = entity.serverImageUrl,
+                createdDate = entity.createdDate,
+                targetStepCount = entity.targetStepCount
+            )
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리
+            // 매핑 실패 시 기본값으로 WalkingSession 생성
+            // 최소한의 정보라도 보존하기 위해
+            WalkingSession(
+                id = entity.id,
+                userId = entity.userId,
+                startTime = entity.startTime,
+                endTime = entity.endTime,
+                stepCount = entity.stepCount,
+                locations = emptyList(),
+                filteredLocations = null,
+                smoothedLocations = null,
+                totalDistance = entity.totalDistance,
+                preWalkEmotion = entity.preWalkEmotion.ifEmpty { "CONTENT" }, // 기본값
+                postWalkEmotion = entity.postWalkEmotion.ifEmpty { "CONTENT" }, // 기본값
+                note = entity.note,
+                localImagePath = entity.localImagePath,
+                serverImageUrl = entity.serverImageUrl,
+                createdDate = entity.createdDate,
+                targetStepCount = entity.targetStepCount
+            )
         }
-
-        val smoothedLocations = entity.smoothedLocationsJson?.let { jsonString ->
-            runCatching {
-                json.decodeFromString<List<LocationPoint>>(jsonString)
-            }.getOrNull()
-        }
-
-        return WalkingSession(
-            id = entity.id,  // ✅ DB의 실제 ID를 사용해야 함!
-            userId = entity.userId,
-            startTime = entity.startTime,
-            endTime = entity.endTime,
-            stepCount = entity.stepCount,
-            locations = locations,
-            filteredLocations = filteredLocations,
-            smoothedLocations = smoothedLocations,
-            totalDistance = entity.totalDistance,
-            preWalkEmotion = EnumConverter.toEmotionType(entity.preWalkEmotion),
-            postWalkEmotion = EnumConverter.toEmotionType(entity.postWalkEmotion),
-            note = entity.note,
-            localImagePath = entity.localImagePath,
-            serverImageUrl = entity.serverImageUrl,
-            createdDate = entity.createdDate,
-            targetStepCount = entity.targetStepCount
-        )
     }
 
     /** Domain → API Request 
@@ -87,8 +122,8 @@ object WalkingSessionMapper {
      */
     fun WalkingSession.toRequest(): WalkingSessionRequest =
         WalkingSessionRequest(
-            preWalkEmotion = preWalkEmotion.name,
-            postWalkEmotion = postWalkEmotion.name,
+            preWalkEmotion = preWalkEmotion,
+            postWalkEmotion = postWalkEmotion,
             note = note,
             points = locations.toWalkPoints(),
             endTime = endTime ?: System.currentTimeMillis(), // endTime이 null이면 현재 시간 사용

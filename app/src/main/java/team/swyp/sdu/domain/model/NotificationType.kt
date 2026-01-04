@@ -14,7 +14,7 @@ enum class NotificationType(
 
     companion object {
         fun fromValue(value: String): NotificationType? {
-            return entries.find { it.value == value }
+            return values().find { it.value == value }
         }
     }
 }

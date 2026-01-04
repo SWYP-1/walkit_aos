@@ -36,9 +36,9 @@ class FollowRemoteDataSource @Inject constructor(
                     avatarUrl = dto.userImageUrl
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "친구 목록 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "친구 목록 조회 실패")
+            throw t
         }
     }
 
@@ -58,9 +58,9 @@ class FollowRemoteDataSource @Inject constructor(
                 Timber.e("팔로우 요청 수락 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("팔로우 요청 수락 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 요청 수락 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 요청 수락 실패: $nickname")
+            throw t
         }
     }
 
@@ -80,9 +80,9 @@ class FollowRemoteDataSource @Inject constructor(
                 Timber.e("팔로우 요청 거절 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("팔로우 요청 거절 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 요청 거절 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 요청 거절 실패: $nickname")
+            throw t
         }
     }
 
@@ -144,9 +144,9 @@ class FollowRemoteDataSource @Inject constructor(
             // HttpException이지만 위에서 처리되지 않은 경우
             Timber.e(e, "팔로우 HTTP 오류: $nickname (${e.code()})")
             throw e
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 실패: $nickname")
+            throw t
         }
     }
 
@@ -183,7 +183,7 @@ private fun extractErrorCode(errorBody: String): Int? {
         // JSON 형식에서 code 필드 추출 시도
         val codePattern = "\"code\"\\s*:\\s*(\\d+)".toRegex()
         codePattern.find(errorBody)?.groupValues?.get(1)?.toInt()
-    } catch (e: Exception) {
+    } catch (t: Throwable) {
         null
     }
 }

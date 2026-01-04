@@ -169,8 +169,8 @@ class AuthInterceptor @Inject constructor(
                 refreshResponse.close()
                 return false
             }
-        } catch (e: Exception) {
-            Timber.e(e, "AuthInterceptor - 토큰 갱신 중 예외 발생")
+        } catch (t: Throwable) {
+            Timber.e(t, "AuthInterceptor - 토큰 갱신 중 예외 발생")
             tokenProvider.clearTokens()
             return false
         }

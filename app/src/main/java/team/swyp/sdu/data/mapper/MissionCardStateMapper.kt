@@ -124,7 +124,7 @@ class MissionCardStateMapper @Inject constructor(
             try {
                 val instant = java.time.Instant.ofEpochMilli(session.startTime)
                 instant.atZone(ZoneId.systemDefault()).toLocalDate()
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 null
             }
         }.distinct().sorted()
@@ -224,7 +224,7 @@ private fun String.toMillis(): Long {
     return try {
         val localDate = LocalDate.parse(this)
         localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    } catch (e: Exception) {
+    } catch (t: Throwable) {
         0L
     }
 }

@@ -184,8 +184,8 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
             Timber.d("알림 표시 완료: id=$notificationId, title=$title, foreground=$isAppInForeground")
         } catch (e: SecurityException) {
             Timber.e(e, "알림 표시 중 SecurityException 발생")
-        } catch (e: Exception) {
-            Timber.e(e, "알림 표시 중 예외 발생")
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 표시 중 예외 발생")
         }
     }
 

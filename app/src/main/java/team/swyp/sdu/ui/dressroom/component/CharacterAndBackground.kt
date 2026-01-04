@@ -80,7 +80,7 @@ private fun createSlotImageConfigs(
     wornItemsByPosition: Map<EquipSlot, Int>,
     cosmeticItems: List<CosmeticItem>
 ): List<SlotImageConfig> {
-    return EquipSlot.entries.map { slot ->
+    return EquipSlot.values().map { slot ->
         val assetId =
             SLOT_ASSET_MAPPING[slot] ?: return@map SlotImageConfig(slot.name.lowercase(), null)
 
@@ -164,8 +164,6 @@ fun CharacterAndBackground(
             LottieCompositionSpec.RawRes(R.raw.seed)
         }
     )
-
-    Timber.d("🎨 processedComposition 로드됨: ${processedComposition != null}")
 
     Box(modifier = modifier.fillMaxWidth()) {
         // 1️⃣ 배경

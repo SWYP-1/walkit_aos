@@ -127,7 +127,7 @@ fun MyPageRoute(
         onContactClick = {
             // 문의하기 - 이메일 인텐트
             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:support@walkit.app")
+                data = Uri.parse("mailto:walk0it2025@gmail.com")
                 putExtra(Intent.EXTRA_SUBJECT, "Walk It 문의사항")
             }
             context.startActivity(intent)

@@ -38,9 +38,9 @@ class WalkRepositoryImpl @Inject constructor(
                     is Result.Error -> response
                     Result.Loading -> Result.Loading
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "산책 저장 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 저장 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -90,9 +90,9 @@ class WalkRepositoryImpl @Inject constructor(
 
                     Result.Loading -> Result.Loading
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "팔로워 산책 기록 조회 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로워 산책 기록 조회 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -100,9 +100,9 @@ class WalkRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.likeWalk(walkId)
-            } catch (e: Exception) {
-                Timber.e(e, "산책 좋아요 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 좋아요 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -110,9 +110,9 @@ class WalkRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.unlikeWalk(walkId)
-            } catch (e: Exception) {
-                Timber.e(e, "산책 좋아요 취소 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 좋아요 취소 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -120,9 +120,9 @@ class WalkRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.updateWalkNote(walkId, note)
-            } catch (e: Exception) {
-                Timber.e(e, "산책 노트 업데이트 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 노트 업데이트 실패")
+                Result.Error(t, t.message)
             }
         }
 }

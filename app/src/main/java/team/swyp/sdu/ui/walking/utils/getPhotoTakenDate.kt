@@ -27,8 +27,8 @@ fun getPhotoTakenDate(context: Context, photoUri: Uri): Date? {
                 return sdf.parse(dateStr)
             }
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
+    } catch (t: Throwable) {
+        t.printStackTrace()
     }
 
     // 2. MediaStore DATE_TAKEN fallback

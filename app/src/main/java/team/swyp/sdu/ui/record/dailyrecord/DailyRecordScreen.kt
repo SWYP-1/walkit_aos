@@ -28,8 +28,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,6 +56,7 @@ import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.ui.walking.components.ShareWalkingResultDialog
+import team.swyp.sdu.ui.walking.components.SaveStatus
 import team.swyp.sdu.utils.downloadImage
 import timber.log.Timber
 import java.time.LocalDate
@@ -78,30 +83,123 @@ fun DailyRecordRoute(
 ) {
     // 날짜 문자열을 LocalDate로 파싱
     val selectedDate = remember(dateString) {
-        try {
-            LocalDate.parse(dateString)
-        } catch (e: Exception) {
-            Timber.i("파싱 실패!!오늘날짯용 $dateString")
-            LocalDate.now() // 파싱 실패 시 오늘 날짜 사용
+        Timber.d("📅 DailyRecordRoute - 받은 dateString: '$dateString'")
+        if (dateString.isBlank()) {
+            Timber.w("📅 dateString이 비어있음, 오늘 날짜 사용")
+            LocalDate.now()
+        } else {
+            try {
+                // ISO 형식 (yyyy-MM-dd) 또는 다른 형식 시도
+                val parsedDate = try {
+                    LocalDate.parse(dateString) // ISO 형식 시도
+                } catch (e: Exception) {
+                    // 다른 형식 시도: yyyy-MM-dd 명시적 포맷터 사용
+                    try {
+                        LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    } catch (e2: Exception) {
+                        // 마지막 시도: yyyyMMdd 형식
+                        try {
+                            LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyyMMdd"))
+                        } catch (e3: Exception) {
+                            throw e // 원본 예외 throw
+                        }
+                    }
+                }
+                Timber.d("📅 날짜 파싱 성공: '$dateString' -> $parsedDate")
+                parsedDate
+            } catch (e: Throwable) {
+                // ExceptionInInitializerError 등 Error 타입도 처리하기 위해 Throwable 사용
+                Timber.e(
+                    e,
+                    "📅 날짜 파싱 실패: dateString='$dateString', 예외 타입=${e.javaClass.simpleName}, 메시지=${e.message}"
+                )
+                LocalDate.now() // 파싱 실패 시 오늘 날짜 사용
+            }
         }
     }
 
     // 해당 날짜의 세션 목록 로드
-    val daySessions by viewModel.daySessions.collectAsStateWithLifecycle()
+    // collectAsStateWithLifecycle() 내부에서 예외가 발생할 수 있으므로
+    // 안전하게 Flow를 collect하여 State로 변환
+    val daySessionsState = remember {
+        mutableStateOf<List<team.swyp.sdu.data.model.WalkingSession>>(emptyList())
+    }
+    val scope = rememberCoroutineScope()
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try {
+                viewModel.daySessions.collect { sessions ->
+                    daySessionsState.value = sessions
+                }
+            } catch (e: Throwable) {
+                // ExceptionInInitializerError 등 Error 타입도 처리
+                Timber.e(
+                    e,
+                    "daySessions collect 실패: ${e.javaClass.simpleName}, message=${e.message}"
+                )
+                daySessionsState.value = emptyList()
+            }
+        }
+    }
+
+    val daySessions = daySessionsState.value
     val isLoadingDaySessions by viewModel.isLoadingDaySessions.collectAsStateWithLifecycle()
 
     // 선택된 날짜로 업데이트
     LaunchedEffect(selectedDate) {
+        Timber.d("📅 DailyRecordRoute - setDate 호출: $selectedDate")
         viewModel.setDate(selectedDate)
     }
 
+    // daySessions 디버깅 로그 추가
+    LaunchedEffect(daySessions) {
+        Timber.d("📅 DailyRecordRoute - daySessions 업데이트: size=${daySessions.size}")
+        if (daySessions.isNotEmpty()) {
+            daySessions.forEachIndexed { index, session ->
+                val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                Timber.d("📅 daySessions[$index]: id=${session.id}, startTime=${session.startTime}, sessionDate=$sessionDate, selectedDate=$selectedDate")
+            }
+        } else {
+            Timber.w("📅 daySessions가 비어있습니다. selectedDate=$selectedDate")
+        }
+    }
+
     // 해당 날짜의 세션 필터링
+    // daySessions는 이미 Flow에서 예외 처리가 되어 있지만,
+    // 필터링 과정에서 발생할 수 있는 예외도 처리
     val sessionsForDate = remember(daySessions, selectedDate) {
-        daySessions.filter { session ->
-            val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-            sessionDate == selectedDate
+        try {
+            Timber.d("📅 세션 필터링 시작: daySessions.size=${daySessions.size}, selectedDate=$selectedDate")
+            val filtered = daySessions.filter { session ->
+                try {
+                    val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    val matches = sessionDate == selectedDate
+                    if (!matches) {
+                        Timber.d("📅 세션 날짜 불일치: sessionDate=$sessionDate, selectedDate=$selectedDate, sessionId=${session.id}")
+                    }
+                    matches
+                } catch (e: Throwable) {
+                    // ExceptionInInitializerError 등 Error 타입도 처리
+                    Timber.e(
+                        e,
+                        "세션 날짜 파싱 실패: sessionId=${session.id}, startTime=${session.startTime}"
+                    )
+                    false // 파싱 실패 시 필터에서 제외
+                }
+            }
+            Timber.d("📅 필터링 결과: ${filtered.size}개 세션")
+            filtered
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리
+            // 특히 ClassCastException이 발생할 수 있는 경우 처리
+            Timber.e(e, "세션 필터링 실패: ${e.javaClass.simpleName}, message=${e.message}")
+            emptyList() // 전체 필터링 실패 시 빈 리스트 반환
         }
     }
     DailyRecordScreen(
@@ -145,8 +243,12 @@ fun DailyRecordScreen(
     }
     // 고유 팝업 표시 여부
     var showShareDialog by remember { mutableStateOf(false) }
+    // 이미지 저장 상태
+    var saveStatus by remember { mutableStateOf(SaveStatus.IDLE) }
 
     val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
 
 
     // 상위에서 편집 상태와 note 관리
@@ -180,9 +282,6 @@ fun DailyRecordScreen(
             .background(SemanticColor.backgroundWhiteSecondary)
     ) {
         Column(modifier = modifier) {
-            val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일"))
-
-            // 헤더
             AppHeader(
                 title = "일일 산책 기록",
                 onNavigateBack = {
@@ -216,6 +315,24 @@ fun DailyRecordScreen(
                         isEditing = isEditing,
                         setEditing = { isEditing = it },
                         onExternalClick = { showShareDialog = true },
+//                        saveStatus = saveStatus,
+//                        onSaveImage = {
+//                            scope.launch {
+//                                try {
+//                                    saveStatus = SaveStatus.LOADING
+//                                    downloadImage(
+//                                        context = androidx.compose.ui.platform.LocalContext.current,
+//                                        path = selectedSession?.getImageUri() ?: "",
+//                                        fileName = "walking_result_${selectedSession?.id ?: "unknown"}.png"
+//                                    )
+//                                    saveStatus = SaveStatus.SUCCESS
+//                                    Timber.d("이미지 저장 성공")
+//                                } catch (t: Throwable) {
+//                                    saveStatus = SaveStatus.FAILURE
+//                                    Timber.e(t, "이미지 저장 실패")
+//                                }
+//                            }
+//                        },
                         focusRequester = focusRequester
                     )
                 }
@@ -247,11 +364,24 @@ fun DailyRecordScreen(
                 sessionThumbNailUri = selectedSession.getImageUri() ?: "",
                 preWalkEmotion = selectedSession.preWalkEmotion,
                 postWalkEmotion = selectedSession.postWalkEmotion,
+                saveStatus = saveStatus,
                 onDismiss = { showShareDialog = false },
                 onPrev = { showShareDialog = false },
                 onSave = {
                     scope.launch {
-//                        downloadImage()
+//                        try {
+//                            saveStatus = SaveStatus.LOADING
+//                            downloadImage(
+//                                context = androidx.compose.ui.platform.LocalContext.current,
+//                                path = selectedSession.getImageUri() ?: "",
+//                                fileName = "walking_result_${selectedSession.id}.png"
+//                            )
+//                            saveStatus = SaveStatus.SUCCESS
+//                            Timber.d("이미지 저장 성공")
+//                        } catch (t: Throwable) {
+//                            saveStatus = SaveStatus.FAILURE
+//                            Timber.e(t, "이미지 저장 실패")
+//                        }
                     }
                 }
             )
@@ -295,7 +425,8 @@ fun DailyRecordContent(
                         bottomStart = 12.dp,
                         bottomEnd = 12.dp
                     )
-                ).padding(16.dp)
+                )
+                .padding(16.dp)
         ) {
 
             SessionThumbnailList(
@@ -337,9 +468,10 @@ fun SessionDailyTab(
     fun getKoreanNumber(num: Int): String {
         val koreanNumbers =
             listOf("", "첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열")
-        return if (num in 1..10) koreanNumbers[num] else "$num"
+        return if (num in 1..4) koreanNumbers[num] else "$num"
     }
 
+    var maxSessionCount = minOf(sessionCount, 4)
     val overlap = 80.dp   // 탭 실제 너비 중 겹칠 값
     val tabHeight = 32.dp
 
@@ -348,7 +480,7 @@ fun SessionDailyTab(
             .height(tabHeight)
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
-        repeat(sessionCount) { index ->
+        repeat(maxSessionCount) { index ->
             val isSelected = index == selectedSessionIndex
 
             Box(
@@ -446,8 +578,8 @@ fun DailyRecordScreenWithSessionsPreview() {
                 stepCount = 5000,
                 locations = testLocations,
                 totalDistance = 3500f,
-                preWalkEmotion = EmotionType.TIRED,
-                postWalkEmotion = EmotionType.HAPPY,
+                preWalkEmotion = "TIRED",
+                postWalkEmotion = "HAPPY",
                 note = "오늘은 날씨가 좋아서 산책하기 좋았어요.",
                 createdDate = "2024-12-05",
             ),
@@ -458,8 +590,8 @@ fun DailyRecordScreenWithSessionsPreview() {
                 stepCount = 3000,
                 locations = testLocations.take(10),
                 totalDistance = 2000f,
-                preWalkEmotion = EmotionType.IRRITATED,
-                postWalkEmotion = EmotionType.CONTENT,
+                preWalkEmotion = "IRRITATED",
+                postWalkEmotion = "CONTENT",
                 note = "스트레스 해소를 위해 짧게 산책했어요.",
                 createdDate = "2024-12-05",
             ),
@@ -470,8 +602,8 @@ fun DailyRecordScreenWithSessionsPreview() {
                 stepCount = 3000,
                 locations = testLocations.take(10),
                 totalDistance = 2000f,
-                preWalkEmotion = EmotionType.IRRITATED,
-                postWalkEmotion = EmotionType.CONTENT,
+                preWalkEmotion = "IRRITATED",
+                postWalkEmotion = "CONTENT",
                 note = "스트레스 해소를 위해 짧게 산책했어요.!",
                 createdDate = "2024-12-05",
             ),

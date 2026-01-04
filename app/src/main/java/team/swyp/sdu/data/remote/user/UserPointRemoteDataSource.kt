@@ -23,9 +23,9 @@ class UserPointRemoteDataSource @Inject constructor(
             val data = userApi.getUserPoint()
             Timber.d("유저 포인트 조회 성공: ${data.point}")
             data
-        } catch (e: Exception) {
-            Timber.e(e, "유저 포인트 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "유저 포인트 조회 실패")
+            throw t
         }
     }
 }

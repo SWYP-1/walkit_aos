@@ -92,8 +92,8 @@ constructor(
                         } else {
                             Timber.d("DB에 캐릭터 정보 없음: ${user.userId}")
                         }
-                    } catch (e: Exception) {
-                        Timber.w(e, "캐릭터 등급 로드 중 예외 발생")
+                    } catch (t: Throwable) {
+                        Timber.w(t, "캐릭터 등급 로드 중 예외 발생")
                     }
 
                     // UI 상태 업데이트
@@ -196,8 +196,8 @@ constructor(
                     it.copy(consecutiveDays = DataState.Success(consecutiveDays))
                 }
 
-            } catch (e: Exception) {
-                Timber.e(e, "연속 출석일 계산 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "연속 출석일 계산 실패")
                 _uiState.update {
                     it.copy(consecutiveDays = DataState.Error("연속 출석일 정보를 불러올 수 없습니다"))
                 }
@@ -215,9 +215,9 @@ constructor(
 
             val result = try {
                 userRepository.deleteUser()
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 탈퇴 중 예외 발생")
-                Result.Error(e, e.message ?: "사용자 탈퇴에 실패했습니다")
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 탈퇴 중 예외 발생")
+                Result.Error(t, t.message ?: "사용자 탈퇴에 실패했습니다")
             }
 
             when (result) {

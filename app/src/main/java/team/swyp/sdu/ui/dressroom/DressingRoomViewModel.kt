@@ -13,6 +13,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.graphics.Bitmap
 import android.graphics.Color
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import org.json.JSONObject
 import team.swyp.sdu.R
 import team.swyp.sdu.core.Result
@@ -35,7 +38,6 @@ import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.utils.replaceAssetP
 import team.swyp.sdu.utils.toBase64DataUrl
 import timber.log.Timber
-import android.content.SharedPreferences
 import java.io.BufferedReader
 import javax.inject.Inject
 
@@ -62,26 +64,31 @@ class DressingRoomViewModel @Inject constructor(
     // 전체 아이템 리스트 (필터링용)
     private var allItems: List<CosmeticItem> = emptyList()
 
-    // 장바구니 상태 (실제 아이템 객체)
-    private val _cartItems = MutableStateFlow<LinkedHashSet<CosmeticItem>>(LinkedHashSet())
-    val cartItems: StateFlow<LinkedHashSet<CosmeticItem>> = _cartItems.asStateFlow()
-
-    // 선택된 아이템 ID들 (UI 상태와 분리)
+    // 선택된 아이템 ID들 (UI 선택 상태)
     private val _selectedItemIds = MutableStateFlow<LinkedHashSet<Int>>(LinkedHashSet())
     val selectedItemIds: StateFlow<LinkedHashSet<Int>> = _selectedItemIds.asStateFlow()
 
-
-    // 서버에 반영된 실제 착용 상태
-    private val _serverWornItems = MutableStateFlow<Map<EquipSlot, Int>>(emptyMap())
-    val serverWornItems: StateFlow<Map<EquipSlot, Int>> = _serverWornItems.asStateFlow()
+    // 장바구니 아이템들 (직접 관리)
+    private val _cartItems = MutableStateFlow<LinkedHashSet<CosmeticItem>>(LinkedHashSet())
+    val cartItems: StateFlow<LinkedHashSet<CosmeticItem>> = _cartItems.asStateFlow()
 
     // UI 미리보기 착용 상태 (실제 API 반영 전) - 핵심 관리 변수
     private val _wornItemsByPosition = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
     val wornItemsByPosition: StateFlow<Map<EquipSlot, WearState>> = _wornItemsByPosition.asStateFlow()
 
+
+
+    // 서버에 반영된 실제 착용 상태
+    private val _serverWornItems = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
+    val serverWornItems: StateFlow<Map<EquipSlot, WearState>> = _serverWornItems.asStateFlow()
+
     // 착용 요청 중 상태 (연속 클릭 방지)
     private val _isWearLoading = MutableStateFlow(false)
     val isWearLoading: StateFlow<Boolean> = _isWearLoading.asStateFlow()
+
+    // 새로고침 중 상태
+    private val _isRefreshLoading = MutableStateFlow(false)
+    val isRefreshLoading: StateFlow<Boolean> = _isRefreshLoading.asStateFlow()
 
     // 장바구니 다이얼로그 표시 상태
     private val _showCartDialog = MutableStateFlow(false)
@@ -97,16 +104,9 @@ class DressingRoomViewModel @Inject constructor(
     // 투명 PNG가 적용된 깨끗한 baseJson (재사용을 위해 저장)
     private var cleanBaseJson: JSONObject? = null
 
-    // 착용 상태 로컬 저장용 SharedPreferences
-    private val prefs: SharedPreferences by lazy {
-        application.getSharedPreferences(
-            "dressing_room_prefs",
-            android.content.Context.MODE_PRIVATE
-        )
-    }
-
-
     init {
+        // selectedItemIds 초기화 보장
+        _selectedItemIds.value = LinkedHashSet()
         loadDressingRoom()
     }
 
@@ -117,6 +117,13 @@ class DressingRoomViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 Timber.d("드레스룸 로딩 시작 - position: $position")
+
+                // refresh 시 선택 상태 및 장바구니 초기화
+                _selectedItemIds.value = LinkedHashSet()
+                _cartItems.value = LinkedHashSet()
+                _showCartDialog.value = false
+                Timber.d("✅ 선택 상태 및 장바구니 초기화 완료")
+
                 _uiState.value = DressingRoomUiState.Loading
 
                 // 사용자 정보 확보
@@ -161,7 +168,7 @@ class DressingRoomViewModel @Inject constructor(
                         character = it
                         Timber.d("캐릭터 로드 성공: ${it.nickName}")
 
-                        // 캐릭터 로드 시 착용 상태를 Default로 초기화
+                        // 캐릭터 로드 시 착용 상태를 Default로 초기화 (아이템 로드 후 CosmeticItem worn 정보로 업데이트됨)
                         val defaultWearStates = mapOf(
                             EquipSlot.HEAD to WearState.Default,
                             EquipSlot.BODY to WearState.Default,
@@ -169,7 +176,7 @@ class DressingRoomViewModel @Inject constructor(
                         )
                         _wornItemsByPosition.value = defaultWearStates
                         previousWornItems = defaultWearStates
-                        Timber.d("✅ 캐릭터 로드 시 착용 상태 Default로 초기화")
+                        Timber.d("✅ 캐릭터 로드 시 착용 상태 임시 Default로 초기화 (아이템 로드 후 업데이트 예정)")
                     }
                     .onError { exception, message ->
                         Timber.e(exception, "캐릭터 로드 실패: $message")
@@ -255,8 +262,8 @@ class DressingRoomViewModel @Inject constructor(
                             Timber.e("❌ cleanBaseJson이 null이거나 비어있음")
                             null
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "초기 Lottie JSON 설정 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "초기 Lottie JSON 설정 실패")
                         null
                     }
                 } else {
@@ -280,15 +287,31 @@ class DressingRoomViewModel @Inject constructor(
                 Timber.d("Success 상태 설정: character=${character?.nickName}, items=${items.size}개, points=$userPoint")
                 _uiState.value = newSuccessState
 
-                // ✅ 착용 상태 초기화: 로컬 저장된 상태 복원 (동기화 강화)
-                val restoredWornItems = loadWornItemsFromLocal()
-                _wornItemsByPosition.value = restoredWornItems
-                _serverWornItems.value = restoredWornItems // 일단 로컬 상태로 초기화
+                // ✅ 착용 상태 초기화: CosmeticItem의 worn 정보를 기반으로 설정
+                val wornItemsByPosition = mutableMapOf<EquipSlot, WearState>()
+                val serverWornItems = mutableMapOf<EquipSlot, WearState>()
+
+                // 아이템에서 worn=true인 것들을 찾아서 착용 상태로 설정
+                items.filter { it.worn }.forEach { item ->
+                    wornItemsByPosition[item.position] = WearState.Worn(item.itemId)
+                    serverWornItems[item.position] = WearState.Worn(item.itemId)
+                }
+
+                // 설정되지 않은 슬롯들은 Default로 설정
+                EquipSlot.values().forEach { slot ->
+                    if (!wornItemsByPosition.containsKey(slot)) {
+                        wornItemsByPosition[slot] = WearState.Default
+                        serverWornItems[slot] = WearState.Default
+                    }
+                }
+
+                _wornItemsByPosition.value = wornItemsByPosition
+                _serverWornItems.value = serverWornItems
 
                 // 초기 previousWornItems 설정
-                previousWornItems = restoredWornItems.toMap()
+                previousWornItems = wornItemsByPosition.toMap()
 
-                Timber.d("착용 상태 초기화 완료 - 복원된 상태: $restoredWornItems")
+                Timber.d("✅ CosmeticItem worn 정보로 착용 상태 초기화: $wornItemsByPosition")
 
                 // 캐릭터 파트별 Lottie 상태 초기화
                 if (character != null) {
@@ -296,9 +319,9 @@ class DressingRoomViewModel @Inject constructor(
                 }
 
                 Timber.d("드레스룸 로딩 완료")
-            } catch (e: Exception) {
-                Timber.e(e, "드레스룸 로딩 중 예외 발생")
-                _uiState.value = DressingRoomUiState.Error("드레스룸 로딩 실패: ${e.message}")
+            } catch (t: Throwable) {
+                Timber.e(t, "드레스룸 로딩 중 예외 발생")
+                _uiState.value = DressingRoomUiState.Error("드레스룸 로딩 실패: ${t.message}")
             }
         }
     }
@@ -317,7 +340,7 @@ class DressingRoomViewModel @Inject constructor(
         val changedSlots = mutableSetOf<EquipSlot>()
 
         // 모든 슬롯에 대해 비교
-        EquipSlot.entries.forEach { slot ->
+        EquipSlot.values().forEach { slot ->
             val previousWearState = previous[slot]
             val currentWearState = current[slot]
 
@@ -350,6 +373,7 @@ class DressingRoomViewModel @Inject constructor(
             currentPreview[position] = WearState.Unworn
         } else {
             Timber.d("👗 착용: $position 부위에 $itemId 설정")
+
             // 다른 아이템 착용: Worn 상태로 설정
             currentPreview[position] = WearState.Worn(itemId)
         }
@@ -359,9 +383,7 @@ class DressingRoomViewModel @Inject constructor(
         val afterState = _wornItemsByPosition.value
         Timber.d("📊 변경 후 착용 상태: $afterState")
 
-        // Lottie 미리보기 업데이트
-        Timber.d("🎨 Lottie 미리보기 업데이트 호출")
-        updateLottiePreview()
+        // Lottie 업데이트는 selectItem에서 호출하도록 함 (중복 방지)
     }
 
     /**
@@ -412,10 +434,12 @@ class DressingRoomViewModel @Inject constructor(
                 Timber.d("🔄 Lottie asset 교체 완료 (길이: ${processedJson.toString().length})")
 
                 Timber.d("💾 UI State processedLottieJson 업데이트")
+                val processedJsonString = processedJson.toString()
                 val newState = currentState.copy(
-                    processedLottieJson = processedJson.toString()
+                    processedLottieJson = processedJsonString
                 )
                 Timber.d("📊 새 UI State processedLottieJson 길이: ${newState.processedLottieJson?.length}")
+                Timber.d("✅ Lottie JSON 업데이트 완료 - UI State에 반영됨")
 
                 // UI State 업데이트 (Lottie JSON만)
                 _uiState.value = newState
@@ -424,8 +448,8 @@ class DressingRoomViewModel @Inject constructor(
                 previousWornItems = currentWornItems.toMap()
 
                 Timber.d("✅ Lottie 미리보기 업데이트 완료 - UI 리컴포지션 대기")
-            } catch (e: Exception) {
-                Timber.e(e, "❌ Lottie 미리보기 업데이트 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ Lottie 미리보기 업데이트 실패")
                 // 실패 시에도 계속 진행 (기본 Lottie 사용)
             }
         }
@@ -468,14 +492,14 @@ class DressingRoomViewModel @Inject constructor(
                 )
 
                 Timber.d("✅ 캐릭터 Lottie 상태 초기화 완료")
-            } catch (e: Exception) {
-                Timber.e(e, "❌ 캐릭터 Lottie 상태 초기화 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ 캐릭터 Lottie 상태 초기화 실패")
                 _characterLottieState.value = LottieCharacterState(
                     baseJson = "",
                     modifiedJson = null,
                     assets = emptyMap(),
                     isLoading = false,
-                    error = e.message ?: "캐릭터 Lottie 초기화 실패"
+                    error = t.message ?: "캐릭터 Lottie 초기화 실패"
                 )
             }
         }
@@ -487,7 +511,7 @@ class DressingRoomViewModel @Inject constructor(
     private suspend fun createCharacterAssetMap(character: Character): Map<String, LottieAsset> {
         val assetMap = mutableMapOf<String, LottieAsset>()
 
-        CharacterPart.entries.forEach { part ->
+        CharacterPart.values().forEach { part ->
             val imageName = when (part) {
                 CharacterPart.HEAD -> character.headImageName
                 CharacterPart.BODY -> character.bodyImageName
@@ -539,13 +563,13 @@ class DressingRoomViewModel @Inject constructor(
                 val assets = jsonObject.optJSONArray("assets")
                 if (assets != null) {
                     Timber.d("📋 로드된 Lottie 파일 assets 개수: ${assets.length()}")
-                    for (i in 0 until minOf(assets.length(), 10)) {
-                        val asset = assets.optJSONObject(i)
-                        val id = asset?.optString("id", "unknown")
-                        val w = asset?.optInt("w", 0)
-                        val h = asset?.optInt("h", 0)
-                        Timber.d("📋 Asset[$i]: id=$id, size=${w}x${h}")
-                    }
+//                    for (i in 0 until minOf(assets.length(), 10)) {
+//                        val asset = assets.optJSONObject(i)
+//                        val id = asset?.optString("id", "unknown")
+//                        val w = asset?.optInt("w", 0)
+//                        val h = asset?.optInt("h", 0)
+//                        Timber.d("📋 Asset[$i]: id=$id, size=${w}x${h}")
+//                    }
 
                     // ⭐ 캐릭터의 기본 이미지를 설정하여 깨끗한 baseJson 생성
                     Timber.d("🔄 캐릭터 기본 이미지 설정 시작")
@@ -570,12 +594,12 @@ class DressingRoomViewModel @Inject constructor(
                 }
 
                 jsonObject
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 Timber.e(
-                    e,
+                    t,
                     "❌ Base Lottie JSON 로드 실패: grade=${character.grade}, resourceId=$resourceId"
                 )
-                Timber.e(e, "스택트레이스: ${e.stackTraceToString()}")
+                Timber.e(t, "스택트레이스: ${t.stackTraceToString()}")
                 JSONObject() // 빈 JSON 반환
             }
         }
@@ -591,22 +615,6 @@ class DressingRoomViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 투명 PNG 생성 함수
-     */
-    private fun createTransparentPng(width: Int, height: Int): ByteArray {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-
-        // 모든 픽셀을 완전 투명으로 설정
-        bitmap.eraseColor(Color.TRANSPARENT)
-
-        val output = java.io.ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-        bitmap.recycle()
-
-        return output.toByteArray()
-    }
-
     fun selectItem(itemId: Int) {
         Timber.d("🎯 selectItem 호출: itemId=$itemId")
 
@@ -620,118 +628,82 @@ class DressingRoomViewModel @Inject constructor(
 
             Timber.d("📦 아이템 정보: id=$itemId, name=${item.name}, owned=${item.owned}, position=${item.position}")
 
-            // 착용중인 아이템인지 확인
-            val wearState = _wornItemsByPosition.value[item.position]
-            val isCurrentlyWorn = wearState is WearState.Worn && wearState.itemId == itemId
+            // 선택 상태 토글 (착용 상태와 관계없이 항상 수행)
+            val currentSelected = _selectedItemIds.value
+            val newSelected = LinkedHashSet(currentSelected)
+            val wasSelected = newSelected.contains(itemId)
+
+            if (wasSelected) {
+                newSelected.remove(itemId)
+                Timber.d("❌ 선택 해제: $itemId")
+            } else {
+                newSelected.add(itemId)
+                Timber.d("✅ 선택 추가: $itemId")
+            }
+            _selectedItemIds.value = newSelected
+
+            // 선택 상태 맵 로깅
+            Timber.d("🗺️ selectedItemIds 상태: [${newSelected.joinToString(", ")}] (${newSelected.size}개)")
+
+            // 장바구니 업데이트 (selectedItemIds 기반으로 자동 동기화)
+            val updatedCart = LinkedHashSet<CosmeticItem>()
+            newSelected.forEach { selectedId ->
+                val selectedItem = currentState.items.find { it.itemId == selectedId && !it.owned }
+                if (selectedItem != null) {
+                    updatedCart.add(selectedItem)
+                }
+            }
+            _cartItems.value = updatedCart
+
+            // 착용 상태 토글 (항상 수행)
+            val currentWearState = _wornItemsByPosition.value[item.position]
+            val isCurrentlyWorn = currentWearState is WearState.Worn && currentWearState.itemId == itemId
 
             if (isCurrentlyWorn) {
-                // 착용중인 아이템 클릭 → 미리보기 착용 해제
-                Timber.d("👕 착용중인 아이템 클릭 - 미리보기 착용 해제: $itemId")
-                togglePreviewWearState(itemId, item.position)
-
-                // 착용 해제된 아이템은 선택 상태에서도 제거
-                val currentSelectedSet = _selectedItemIds.value
-                val newSelectedSet = LinkedHashSet(currentSelectedSet)
-                newSelectedSet.remove(itemId)
-                _selectedItemIds.value = newSelectedSet
-
-                Timber.d("✅ 착용 해제 완료 - 선택 상태에서도 제거됨: $itemId")
-                return
-            }
-
-            // 일반적인 선택 토글 로직
-            val currentSelectedSet = _selectedItemIds.value
-            val newSelectedSet = LinkedHashSet(currentSelectedSet)
-
-            if (newSelectedSet.contains(itemId)) {
-                // 선택 해제
-                Timber.d("🔄 아이템 선택 해제: $itemId")
-                newSelectedSet.remove(itemId)
-
-                // 미소유 아이템이면 장바구니에서도 제거
-                if (!item.owned) {
-                    removeFromCart(itemId)
-                    Timber.i("\"${item.name}\"이(가) 장바구니에서 제거되었습니다")
-                }
+                // 착용 해제
+                Timber.d("👕 착용 해제: $itemId")
+                val updatedWornItems = _wornItemsByPosition.value.toMutableMap()
+                updatedWornItems[item.position] = WearState.Unworn
+                _wornItemsByPosition.value = updatedWornItems
             } else {
-                // 선택 추가
-                Timber.d("🔄 아이템 선택 추가: $itemId")
-                newSelectedSet.add(itemId)
-
-                // 미소유 아이템이면 장바구니에 추가
-                if (!item.owned) {
-                    addToCartIfNotOwned(itemId, currentState.items)
-                    Timber.i("\"${item.name}\"이(가) 장바구니에 추가되었습니다")
-                }
-            }
-
-            // 소유한 아이템만 미리보기 착용 토글
-            if (item.owned) {
+                // 착용 수행
+                Timber.d("👕 착용 수행: $itemId")
                 togglePreviewWearState(itemId, item.position)
             }
 
-            _selectedItemIds.value = newSelectedSet
-            Timber.d("✅ 선택 상태 업데이트 완료 - 최종 selectedItemIds: ${_selectedItemIds.value}")
+            // Lottie 업데이트
+            updateLottiePreview()
         } else {
             Timber.w("❌ UI 상태가 Success가 아님: ${currentState::class.simpleName}")
         }
     }
 
-    /**
-     * 장바구니에 추가 (미소유 아이템만)
-     */
-    private fun addToCartIfNotOwned(itemId: Int, items: List<CosmeticItem>) {
-        val item = items.find { it.itemId == itemId }
-        if (item != null && !item.owned) {
-            // 미소유 아이템만 장바구니에 담기
-            val currentCart = _cartItems.value
-            if (!currentCart.contains(item)) {
-                currentCart.add(item)
-                _cartItems.value = currentCart
-                Timber.d("장바구니 추가: ${item.name} (ID: $itemId)")
-            }
-        } else if (item?.owned == true) {
-            Timber.d("이미 소유한 아이템은 장바구니에 담지 않음: ${item.name} (ID: $itemId)")
-        }
-    }
+
 
     /**
-     * 장바구니에서 제거
-     */
-    private fun removeFromCart(itemId: Int) {
-        val currentCart = _cartItems.value
-        val itemToRemove = currentCart.find { it.itemId == itemId }
-        if (itemToRemove != null) {
-            currentCart.remove(itemToRemove)
-            _cartItems.value = currentCart
-            Timber.d("장바구니 제거: ${itemToRemove.name} (ID: $itemId)")
-        }
-    }
-
-    fun clearSelection() {
-        Timber.d("🧹 clearSelection 호출됨")
-        Timber.d("🧹 clearSelection - 이전 selectedItemIds: ${_selectedItemIds.value}")
-        _selectedItemIds.value = LinkedHashSet()
-        Timber.d("🧹 clearSelection - 모든 아이템 선택 해제 완료")
-    }
-
-    /**
-     * 장바구니 추가/제거 (객체 Set)
+     * 장바구니 추가/제거 (cartItems 직접 조작)
      */
     fun toggleCartItem(item: CosmeticItem) {
         val currentCart = _cartItems.value
-        if (!currentCart.add(item)) {
-            currentCart.remove(item)
+        val newCart = LinkedHashSet(currentCart)
+        if (!newCart.add(item)) {
+            newCart.remove(item)
         }
-        _cartItems.value = currentCart
-        Timber.d("장바구니 상태: $currentCart")
+        _cartItems.value = newCart
+
+        // selectedItemIds도 동기화
+        val newSelected = LinkedHashSet(newCart.map { it.itemId })
+        _selectedItemIds.value = newSelected
+
+        Timber.d("장바구니 토글 - itemId: ${item.itemId}, 장바구니: ${newCart.size}개")
     }
 
     /**
-     * 장바구니 비우기
+     * 장바구니 비우기 (cartItems 직접 조작)
      */
     fun clearCart() {
         _cartItems.value = LinkedHashSet()
+        _selectedItemIds.value = LinkedHashSet()
         Timber.d("장바구니 비움")
     }
 
@@ -809,11 +781,19 @@ class DressingRoomViewModel @Inject constructor(
 
                     // 구매 성공 시 장바구니에서 아이템 제거 및 UI 업데이트
                     val currentCart = _cartItems.value
-                    val updatedCart = currentCart.filterNot { cartItem ->
+                    val updatedCart = LinkedHashSet(currentCart.filterNot { cartItem ->
                         items.any { purchasedItem -> purchasedItem.itemId == cartItem.itemId }
-                    }.toCollection(LinkedHashSet())
+                    })
 
                     _cartItems.value = updatedCart
+
+                    // 구매 성공 시 selectedItemIds에서도 제거 (UI 선택 상태 정리)
+                    val currentSelected = _selectedItemIds.value
+                    val updatedSelected = currentSelected.filterNot { selectedId ->
+                        items.any { purchased -> purchased.itemId == selectedId }
+                    }.toCollection(LinkedHashSet())
+
+                    _selectedItemIds.value = updatedSelected
 
                     // UI 상태 업데이트 (아이템 소유 상태 변경)
                     if (_uiState.value is DressingRoomUiState.Success) {
@@ -901,12 +881,12 @@ class DressingRoomViewModel @Inject constructor(
 
                 if (isWorn) {
                     // 착용: 같은 부위 다른 아이템들 해제
-                    val currentlyWornItemId = _wornItemsByPosition.value[item.position]
+                    val currentWearState = _wornItemsByPosition.value[item.position]
 
-                    if (currentlyWornItemId != null && currentlyWornItemId != itemId) {
+                    if (currentWearState is WearState.Worn && currentWearState.itemId != itemId) {
                         // 같은 부위에 다른 아이템이 착용되어 있으면 해제
-                        Timber.d("같은 부위 아이템 자동 해제: $currentlyWornItemId")
-                        cosmeticItemRepository.wearItem(currentlyWornItemId, false)
+                        Timber.d("같은 부위 아이템 자동 해제: ${currentWearState.itemId}")
+                        cosmeticItemRepository.wearItem(currentWearState.itemId, false)
                     }
                 }
 
@@ -985,25 +965,39 @@ class DressingRoomViewModel @Inject constructor(
             val saveTasks = mutableListOf<suspend () -> Unit>()
 
             // 각 슬롯별로 변경된 아이템 저장
-            EquipSlot.entries.forEach { slot ->
-                val currentItemId = previewItems[slot]
-                val previousItemId = currentServerWornItems[slot]
+            EquipSlot.values().forEach { slot ->
+                val currentWearState = previewItems[slot]
+                val previousWearState = currentServerWornItems[slot]
 
-                // 아이템이 변경되었거나 해제된 경우
-                if (currentItemId != previousItemId) {
-                    if (currentItemId != null) {
-                        // 새로 착용된 아이템
-                        saveTasks.add {
-                            Timber.d("$slot 슬롯 아이템 착용: $currentItemId")
-                            wearItemInternal(currentItemId, true)
+                // 착용 상태가 변경된 경우
+                if (currentWearState != previousWearState) {
+                    when (currentWearState) {
+                        is WearState.Worn -> {
+                            // 새로 착용된 아이템
+                            saveTasks.add {
+                                Timber.d("$slot 슬롯 아이템 착용: ${currentWearState.itemId}")
+                                wearItemInternal(currentWearState.itemId, true)
+                            }
+                        }
+                        WearState.Unworn -> {
+                            // 명시적으로 미착용 상태로 설정
+                            Timber.d("$slot 슬롯 명시적 미착용")
+                        }
+                        WearState.Default -> {
+                            // 기본 상태로 복원
+                            Timber.d("$slot 슬롯 기본 상태로 복원")
+                        }
+                        null -> {
+                            // 상태 없음
+                            Timber.d("$slot 슬롯 상태 없음")
                         }
                     }
 
-                    if (previousItemId != null) {
-                        // 착용 해제된 아이템
+                    // 이전 상태가 착용중이었다면 해제
+                    if (previousWearState is WearState.Worn) {
                         saveTasks.add {
-                            Timber.d("$slot 슬롯 아이템 해제: $previousItemId")
-                            wearItemInternal(previousItemId, false)
+                            Timber.d("$slot 슬롯 아이템 해제: ${previousWearState.itemId}")
+                            wearItemInternal(previousWearState.itemId, false)
                         }
                     }
                 }
@@ -1024,12 +1018,11 @@ class DressingRoomViewModel @Inject constructor(
             Timber.d("서버 저장 성공 - 캐릭터 정보 새로고침으로 상태 동기화")
             refreshCharacterInfo()
 
-            // ✅ 로컬 상태도 서버 상태와 동기화 (동기화 강화)
-            saveWornItemsToLocal(previewItems)
+            // 서버 상태와 UI 상태 동기화 완료
 
             Timber.d("착용 아이템 서버 저장 완료: ${saveTasks.size}개 슬롯")
-        } catch (e: Exception) {
-            Timber.e(e, "착용 아이템 서버 저장 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "착용 아이템 서버 저장 실패")
             // TODO: 사용자에게 에러 표시
         } finally {
             Timber.d("🎯 착용 아이템 서버 저장 종료 - 로딩 상태 해제")
@@ -1062,6 +1055,7 @@ class DressingRoomViewModel @Inject constructor(
     suspend fun refreshCharacterInfo() {
         try {
             Timber.d("캐릭터 정보 refresh 시작")
+            _isRefreshLoading.value = true
 
             // 최신 캐릭터 정보 로드 (항상 API 호출)
             when (val result = characterRepository.getCharacterFromApi()) {
@@ -1114,8 +1108,13 @@ class DressingRoomViewModel @Inject constructor(
                     // 로딩 상태 무시
                 }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "캐릭터 정보 refresh 중 예외 발생")
+
+        } catch (t: Throwable) {
+            Timber.e(t, "캐릭터 정보 refresh 중 예외 발생")
+        } finally {
+            // 로딩 상태 해제
+            _isRefreshLoading.value = false
+            Timber.d("캐릭터 정보 refresh 완료")
         }
     }
 
@@ -1142,71 +1141,20 @@ class DressingRoomViewModel @Inject constructor(
             val updatedWornItems = _wornItemsByPosition.value.toMutableMap()
 
             if (isWorn) {
-                // 착용: 해당 부위에 아이템 ID 설정
-                updatedWornItems[position] = itemId
+                // 착용: 해당 부위에 Worn 상태 설정
+                updatedWornItems[position] = WearState.Worn(itemId)
             } else {
-                // 해제: 해당 부위에서 제거 (해당 아이템이 맞는 경우만)
-                if (updatedWornItems[position] == itemId) {
-                    updatedWornItems.remove(position)
+                // 해제: 해당 부위에서 Unworn 상태로 설정 (해당 아이템이 맞는 경우만)
+                val currentWearState = updatedWornItems[position]
+                if (currentWearState is WearState.Worn && currentWearState.itemId == itemId) {
+                    updatedWornItems[position] = WearState.Unworn
                 }
             }
 
             _wornItemsByPosition.value = updatedWornItems
 
-            // ✅ 로컬에 착용 상태 저장 (동기화 강화)
-            saveWornItemsToLocal(updatedWornItems)
-
             Timber.d("착용 상태 업데이트 완료: 부위별 착용 아이템 = $updatedWornItems")
         }
     }
 
-    /**
-     * 착용 상태를 로컬 SharedPreferences에 저장
-     */
-    private fun saveWornItemsToLocal(wornItems: Map<EquipSlot, WearState>) {
-        try {
-            val editor = prefs.edit()
-            // 각 슬롯별로 저장
-            EquipSlot.entries.forEach { slot ->
-                val wearState = wornItems[slot]
-                val key = "worn_item_${slot.name.lowercase()}"
-                if (wearState is WearState.Worn) {
-                    editor.putInt(key, wearState.itemId)
-                } else {
-                    editor.remove(key) // 착용중이 아니면 키 제거
-                }
-            }
-            editor.apply()
-            Timber.d("착용 상태 로컬 저장 완료: $wornItems")
-        } catch (e: Exception) {
-            Timber.e(e, "착용 상태 로컬 저장 실패")
-        }
-    }
-
-    /**
-     * 로컬 SharedPreferences에서 착용 상태 복원
-     */
-    private fun loadWornItemsFromLocal(): Map<EquipSlot, WearState> {
-        val wornItems = mutableMapOf<EquipSlot, WearState>()
-        try {
-            EquipSlot.entries.forEach { slot ->
-                val key = "worn_item_${slot.name.lowercase()}"
-                val itemId = prefs.getInt(key, -1)
-                if (itemId != -1) {
-                    wornItems[slot] = WearState.Worn(itemId)
-                } else {
-                    // 저장된 아이템이 없으면 Default 상태로 설정
-                    wornItems[slot] = WearState.Default
-                }
-            }
-            Timber.d("착용 상태 로컬 복원 완료: $wornItems")
-        } catch (e: Exception) {
-            Timber.e(e, "착용 상태 로컬 복원 실패")
-            // 오류 시 모든 슬롯을 Default로 설정
-            EquipSlot.entries.forEach { slot ->
-                wornItems[slot] = WearState.Default
-            }
-        }
-        return wornItems
-    }
 }

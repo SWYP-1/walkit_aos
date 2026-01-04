@@ -22,6 +22,7 @@ import retrofit2.Retrofit
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import team.swyp.sdu.BuildConfig
 import team.swyp.sdu.data.api.walking.WalkApi
 import team.swyp.sdu.data.api.home.HomeApi
 import java.util.concurrent.TimeUnit
@@ -52,7 +53,12 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // 릴리즈 빌드에서는 로깅 비활성화 (보안)
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
 
     @Provides

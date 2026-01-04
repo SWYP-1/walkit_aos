@@ -33,9 +33,9 @@ class OkHttpImageDownloader @Inject constructor(
                     response.body?.bytes()
                         ?: throw IllegalStateException("응답 본문이 비어있습니다")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "이미지 다운로드 실패: $imageUrl")
-                throw e
+            } catch (t: Throwable) {
+                Timber.e(t, "이미지 다운로드 실패: $imageUrl")
+                throw t
             }
         }
 

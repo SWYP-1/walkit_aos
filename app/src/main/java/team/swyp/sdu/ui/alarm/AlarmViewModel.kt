@@ -70,8 +70,8 @@ constructor(
                         // 로딩 중
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "알람 목록 로드 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "알람 목록 로드 실패")
                 _alarms.value = emptyList()
             } finally {
                 _isLoading.value = false
@@ -85,8 +85,8 @@ constructor(
     private fun parseAlarmType(type: String): AlarmType {
         return try {
             AlarmType.valueOf(type.uppercase())
-        } catch (e: Exception) {
-            Timber.w(e, "알 수 없는 알람 타입: $type")
+        } catch (t: Throwable) {
+            Timber.w(t, "알 수 없는 알람 타입: $type")
             AlarmType.FOLLOW // 기본값
         }
     }
@@ -113,7 +113,7 @@ constructor(
                     val inputFormat = SimpleDateFormat(format, Locale.getDefault())
                     date = inputFormat.parse(dateString)
                     if (date != null) break
-                } catch (e: Exception) {
+                } catch (t: Throwable) {
                     // 다음 형식 시도
                 }
             }
@@ -121,8 +121,8 @@ constructor(
             // 한국어 형식으로 포맷팅
             val outputFormat = SimpleDateFormat("yyyy년 MM월 dd일", Locale.getDefault())
             date?.let { outputFormat.format(it) } ?: dateString
-        } catch (e: Exception) {
-            Timber.w(e, "날짜 파싱 실패: $dateString")
+        } catch (t: Throwable) {
+            Timber.w(t, "날짜 파싱 실패: $dateString")
             dateString // 파싱 실패 시 원본 반환
         }
     }
@@ -149,8 +149,8 @@ constructor(
 
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }
-            } catch (e: Exception) {
-                Timber.e(e, "팔로우 확인 실패: $alarmId")
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로우 확인 실패: $alarmId")
                 // 에러 발생 시에도 UI는 업데이트하지 않음 (사용자가 재시도할 수 있도록)
             }
         }
@@ -178,8 +178,8 @@ constructor(
 
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }
-            } catch (e: Exception) {
-                Timber.e(e, "알람 삭제 실패: $alarmId")
+            } catch (t: Throwable) {
+                Timber.e(t, "알람 삭제 실패: $alarmId")
                 // 에러 발생 시에도 UI는 업데이트하지 않음 (사용자가 재시도할 수 있도록)
             }
         }

@@ -303,8 +303,8 @@ private fun updateMapFromState(
                 if (uiState.shouldDrawPath) {
                     drawPath(kakaoMap, uiState.locations, viewModel, context, mapView, strokePx)
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "지도 업데이트 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "지도 업데이트 실패")
             }
         }
 
@@ -412,8 +412,8 @@ fun captureViewSnapshot(
                 onComplete(null)
             }
         }
-    } catch (e: Exception) {
-        Timber.e(e, "View 스냅샷 생성 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "View 스냅샷 생성 실패: ${t.message}")
         onComplete(null)
     }
 }
@@ -438,8 +438,8 @@ private fun captureUsingPixelCopy(
         waitForFramesToRender(glSurfaceView, "PixelCopy") {
             performPixelCopy(glSurfaceView, context, onComplete)
         }
-    } catch (e: Exception) {
-        Timber.e(e, "PixelCopy 준비 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "PixelCopy 준비 실패: ${t.message}")
         onComplete(null)
     }
 }
@@ -480,8 +480,8 @@ private fun performPixelCopy(
             },
             Handler(Looper.getMainLooper())
         )
-    } catch (e: Exception) {
-        Timber.e(e, "PixelCopy 실행 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "PixelCopy 실행 실패: ${t.message}")
         onComplete(null)
     }
 }
@@ -527,8 +527,8 @@ private fun saveSnapshotToFile(
         val absolutePath = file.absolutePath
         Timber.d("스냅샷 파일 저장 완료: $absolutePath")
         absolutePath
-    } catch (e: Exception) {
-        Timber.e(e, "스냅샷 파일 저장 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "스냅샷 파일 저장 실패: ${t.message}")
         null
     }
 }
@@ -578,9 +578,9 @@ private fun drawPath(
         }
         Timber.d("RouteLine 추가 요청 완료 (콜백 등록됨)")
 
-    } catch (e: Exception) {
-        Timber.e(e, "RouteLine 그리기 실패: ${e.message}")
-        e.printStackTrace()
+    } catch (t: Throwable) {
+        Timber.e(t, "RouteLine 그리기 실패: ${t.message}")
+        t.printStackTrace()
         viewModel.onPathDrawComplete()
     }
 }
@@ -681,7 +681,7 @@ private fun moveCameraToPath(
                         "minLon=${cameraSettings.minLon}, maxLon=${cameraSettings.maxLon}"
             )
         }
-    } catch (e: Exception) {
-        Timber.e(e, "카메라 이동 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "카메라 이동 실패: ${t.message}")
     }
 }

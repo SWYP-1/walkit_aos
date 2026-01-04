@@ -77,7 +77,7 @@ data class WeeklyMissionDto(
             val missionType = getMissionType()
             val configJson = assignedConfigJson ?: return null // null이면 바로 null
             missionType?.let { MissionConfigParser.parseMissionConfig(it, configJson) }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             null // 파싱 실패 시 null 반환
         }
     }

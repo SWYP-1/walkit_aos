@@ -1,9 +1,6 @@
 package team.swyp.sdu.data.local.database
 
 import androidx.room.TypeConverter
-import team.swyp.sdu.data.model.ActivityStats
-import team.swyp.sdu.data.model.Emotion
-import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.utils.EnumConverter
 import team.swyp.sdu.domain.service.ActivityType
@@ -32,7 +29,8 @@ class Converters {
     fun toLocationPointList(value: String): List<LocationPoint> =
         try {
             json.decodeFromString<List<LocationPoint>>(value)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리하기 위해 Throwable 사용
             emptyList()
         }
 
@@ -41,12 +39,6 @@ class Converters {
 
     @TypeConverter
     fun toSyncState(value: String?): SyncState = EnumConverter.toSyncState(value)
-
-    @TypeConverter
-    fun fromEmotionType(value: EmotionType?): String = EnumConverter.fromEmotionType(value)
-
-    @TypeConverter
-    fun toEmotionType(value: String?): EmotionType = EnumConverter.toEmotionType(value)
 
     @TypeConverter
     fun fromGrade(value: Grade?): String = EnumConverter.fromGrade(value)

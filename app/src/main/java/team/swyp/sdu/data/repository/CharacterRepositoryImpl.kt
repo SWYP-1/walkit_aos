@@ -35,8 +35,8 @@ class CharacterRepositoryImpl @Inject constructor(
             try {
                 val entity = characterDao.getCharacter(userId)
                 entity?.let(CharacterMapper::toDomain)
-            } catch (e: Exception) {
-                Timber.e(e, "DB에서 캐릭터 정보 조회 실패: $userId")
+            } catch (t: Throwable) {
+                Timber.e(t, "DB에서 캐릭터 정보 조회 실패: $userId")
                 null
             }
         }
@@ -63,9 +63,9 @@ class CharacterRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "캐릭터 정보 조회 실패: $userId")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "캐릭터 정보 조회 실패: $userId")
+                Result.Error(t, t.message)
             }
         }
 
@@ -76,9 +76,9 @@ class CharacterRepositoryImpl @Inject constructor(
                 val character = RemoteCharacterMapper.toDomain(dto)
                 Timber.d("API에서 캐릭터 정보 조회 성공: lat=$lat, lon=$lon")
                 Result.Success(character)
-            } catch (e: Exception) {
-                Timber.e(e, "API에서 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
-                Result.Error(e, e.message ?: "캐릭터 정보 조회 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "API에서 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
+                Result.Error(t, t.message ?: "캐릭터 정보 조회 실패")
             }
         }
 
@@ -92,9 +92,9 @@ class CharacterRepositoryImpl @Inject constructor(
                 characterDao.upsert(entity)
                 Timber.d("캐릭터 정보 저장 성공: userId=$userId, grade=${character.grade}")
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "캐릭터 정보 저장 실패: userId=$userId")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "캐릭터 정보 저장 실패: userId=$userId")
+                Result.Error(t, t.message)
             }
         }
 
@@ -104,9 +104,9 @@ class CharacterRepositoryImpl @Inject constructor(
                 characterDao.deleteByUserId(userId)
                 Timber.d("캐릭터 정보 삭제 성공: userId=$userId")
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "캐릭터 정보 삭제 실패: userId=$userId")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "캐릭터 정보 삭제 실패: userId=$userId")
+                Result.Error(t, t.message)
             }
         }
 
@@ -116,9 +116,9 @@ class CharacterRepositoryImpl @Inject constructor(
             val character = RemoteCharacterMapper.toDomain(dto)
             Timber.d("위치 기반 캐릭터 정보 조회 성공: lat=$lat, lon=$lon, nickname=${character.nickName}")
             Result.Success(character)
-        } catch (e: Exception) {
-            Timber.e(e, "위치 기반 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
-            Result.Error(e, e.message)
+        } catch (t: Throwable) {
+            Timber.e(t, "위치 기반 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
+            Result.Error(t, t.message)
         }
     }
 }

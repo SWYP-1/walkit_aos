@@ -34,8 +34,8 @@ data class ProfileImageState(
             val selectedImageUri = selectedImageUriString?.let { uriString ->
                 try {
                     Uri.parse(uriString)
-                } catch (e: Exception) {
-                    Timber.e(e, "Invalid URI string: $uriString")
+                } catch (t: Throwable) {
+                    Timber.e(t, "Invalid URI string: $uriString")
                     null
                 }
             }
@@ -66,8 +66,8 @@ fun createCameraImageUri(context: Context): Uri? {
             }
         }
         context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-    } catch (e: Exception) {
-        Timber.e(e, "카메라 이미지 URI 생성 실패")
+    } catch (t: Throwable) {
+        Timber.e(t, "카메라 이미지 URI 생성 실패")
         null
     }
 }
@@ -82,8 +82,8 @@ fun formatBirthDate(year: String, month: String, day: String): String {
         val dayInt = day.toIntOrNull() ?: return ""
 
         String.format("%04d-%02d-%02d", yearInt, monthInt, dayInt)
-    } catch (e: Exception) {
-        Timber.e(e, "생년월일 포맷팅 실패")
+    } catch (t: Throwable) {
+        Timber.e(t, "생년월일 포맷팅 실패")
         ""
     }
 }
@@ -100,8 +100,8 @@ fun parseBirthDate(birthDate: String): Triple<String, String, String>? {
         } else {
             null
         }
-    } catch (e: Exception) {
-        Timber.e(e, "생년월일 파싱 실패")
+    } catch (t: Throwable) {
+        Timber.e(t, "생년월일 파싱 실패")
         null
     }
 }

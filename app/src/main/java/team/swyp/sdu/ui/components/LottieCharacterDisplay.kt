@@ -15,6 +15,8 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.LottieCharacterState
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.theme.WalkItTheme
 import timber.log.Timber
 
@@ -22,9 +24,9 @@ import timber.log.Timber
  * WalkIt 앱의 Lottie 애니메이션 리소스 상수
  */
 // Lottie 리소스 상수들
-const val LOTTIE_DEFAULT_CHARACTER = R.raw.seed
-const val LOTTIE_LOADING = R.raw.loading_gray
-const val LOTTIE_ERROR = R.raw.seed
+val LOTTIE_DEFAULT_CHARACTER = R.raw.seed
+val LOTTIE_LOADING = R.raw.loading_gray
+val LOTTIE_ERROR = R.raw.seed
 
 /**
  * 범용 캐릭터 표시용 Lottie 컴포넌트
@@ -50,37 +52,54 @@ fun LottieCharacterDisplay(
         modifier = modifier.size(size.dp),
         contentAlignment = Alignment.Center
     ) {
-        val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
-
-        // ✅ Keyed Composition: 같은 JSON이면 기존 composition 재사용하여 깜빡임 방지
-        val compositionKey = when (compositionSpec) {
-            is LottieCompositionSpec.JsonString -> compositionSpec.jsonString.hashCode().toString()
-            is LottieCompositionSpec.RawRes -> compositionSpec.resId.toString()
-            else -> "default"
-        }
-
-        val composition by rememberLottieComposition(
-            cacheKey = compositionKey, // 🔑 같은 key면 composition 재사용
-            spec = compositionSpec
-        )
-
-        // ✅ Composition이 준비될 때까지 기본 애니메이션 표시 (깜빡임 방지)
-        if (composition != null) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.fillMaxSize()
+        // 초기 로딩 상태 확인 (데이터가 전혀 없을 때만)
+        val isInitialLoading = characterLottieState == null || 
+            (characterLottieState.baseJson == null && characterLottieState.modifiedJson == null)
+        
+        // 아이템 교체 중인지 확인 (기존 캐릭터가 있고 로딩 중)
+        val isItemReplacing = characterLottieState?.isLoading == true && 
+            (characterLottieState.modifiedJson != null || characterLottieState.baseJson != null)
+        
+        if (isInitialLoading) {
+            // 초기 로딩 (데이터가 전혀 없을 때) → CustomProgressIndicator 표시
+            CustomProgressIndicator(
+                size = ProgressIndicatorSize.Medium
             )
         } else {
-            // Composition 로드 중일 때 기본 애니메이션 표시
-            val fallbackComposition by rememberLottieComposition(
-                LottieCompositionSpec.RawRes(defaultAnimationResId)
+            // 아이템 교체 중이거나 로딩 완료 상태 → Lottie 애니메이션 표시
+            // 아이템 교체 중일 때는 기존 캐릭터를 유지하여 깜빡임 방지
+            val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
+
+            // ✅ Keyed Composition: 같은 JSON이면 기존 composition 재사용하여 깜빡임 방지
+            val compositionKey = when (compositionSpec) {
+                is LottieCompositionSpec.JsonString -> compositionSpec.jsonString.hashCode().toString()
+                is LottieCompositionSpec.RawRes -> compositionSpec.resId.toString()
+                else -> "default"
+            }
+
+            val composition by rememberLottieComposition(
+                cacheKey = compositionKey, // 🔑 같은 key면 composition 재사용
+                spec = compositionSpec
             )
-            LottieAnimation(
-                composition = fallbackComposition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.fillMaxSize()
-            )
+
+            // ✅ Composition이 준비될 때까지 기본 애니메이션 표시 (깜빡임 방지)
+            if (composition != null) {
+                LottieAnimation(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Composition 로드 중일 때 기본 애니메이션 표시
+                val fallbackComposition by rememberLottieComposition(
+                    LottieCompositionSpec.RawRes(defaultAnimationResId)
+                )
+                LottieAnimation(
+                    composition = fallbackComposition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }
@@ -100,7 +119,7 @@ private fun getLottieCompositionSpec(
             Timber.d("⏳ Lottie 로딩 중 - 기존 composition 유지")
             // 로딩 중에는 마지막으로 유효했던 composition 사용
             characterLottieState.modifiedJson?.let { LottieCompositionSpec.JsonString(it) }
-                ?: characterLottieState.baseJson?.let { LottieCompositionSpec.JsonString(it) }
+                ?: (characterLottieState.baseJson?.let { LottieCompositionSpec.JsonString(it) })
                 ?: LottieCompositionSpec.RawRes(defaultAnimationResId)
         }
 

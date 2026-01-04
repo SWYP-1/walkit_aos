@@ -37,7 +37,7 @@ fun RouteThumbnail(
 ) {
     val thumbnailBitmap =
         remember(locations) {
-            generateRouteThumbnail(locations)
+            generateCenterhumbnail(locations)
         }
 
     Card(
@@ -132,7 +132,7 @@ private fun generateRouteThumbnail(locations: List<LocationPoint>): Bitmap? {
     val startPoint = latLonToXY(locations.first().latitude, locations.first().longitude)
     val startMarkerPaint =
         Paint().apply {
-            color = Color.parseColor("#4CAF50")
+            color = Color.parseColor("#FFFFFF")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
@@ -147,7 +147,7 @@ private fun generateRouteThumbnail(locations: List<LocationPoint>): Bitmap? {
             val endPoint = latLonToXY(lastLocation.latitude, lastLocation.longitude)
             val endMarkerPaint =
                 Paint().apply {
-                    color = Color.parseColor("#F44336")
+                    color = Color.parseColor("#FFFFFF")
                     style = Paint.Style.FILL
                     isAntiAlias = true
                 }
@@ -157,3 +157,94 @@ private fun generateRouteThumbnail(locations: List<LocationPoint>): Bitmap? {
 
     return bitmap
 }
+private fun generateCenterhumbnail(locations: List<LocationPoint>): Bitmap? {
+    if (locations.size < 2) return null
+
+    val width = 800
+    val height = 400
+    val padding = 40f
+
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    canvas.drawColor(Color.parseColor("#F5F5F5"))
+
+    // 경계 계산
+    var minLat = locations[0].latitude
+    var maxLat = locations[0].latitude
+    var minLon = locations[0].longitude
+    var maxLon = locations[0].longitude
+
+    locations.forEach { location ->
+        minLat = min(minLat, location.latitude)
+        maxLat = max(maxLat, location.latitude)
+        minLon = min(minLon, location.longitude)
+        maxLon = max(maxLon, location.longitude)
+    }
+
+    val latRange = maxLat - minLat
+    val lonRange = maxLon - minLon
+    if (latRange == 0.0 || lonRange == 0.0) return null
+
+    // 스케일 계산
+    val pathWidth = width - padding * 2
+    val pathHeight = height - padding * 2
+
+    val lonScale = pathWidth / lonRange
+    val latScale = pathHeight / latRange
+
+    // 중앙 오프셋
+    val xOffset = (width - (lonRange * lonScale)) / 2
+    val yOffset = (height - (latRange * latScale)) / 2
+
+    // 좌표 변환 함수 (중앙 정렬)
+    fun latLonToXY(lat: Double, lon: Double): Pair<Float, Float> {
+        val x = xOffset + ((lon - minLon) * lonScale)
+        val y = height - yOffset - ((lat - minLat) * latScale)
+        return Pair(x.toFloat(), y.toFloat())
+    }
+
+    // 경로 그리기
+    val path = Path()
+    val firstPoint = latLonToXY(locations[0].latitude, locations[0].longitude)
+    path.moveTo(firstPoint.first, firstPoint.second)
+
+    locations.drop(1).forEach { location ->
+        val point = latLonToXY(location.latitude, location.longitude)
+        path.lineTo(point.first, point.second)
+    }
+
+    val pathPaint = Paint().apply {
+        color = Color.parseColor("#FFFFFF")
+        style = Paint.Style.STROKE
+        strokeWidth = 8f
+        isAntiAlias = true
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    canvas.drawPath(path, pathPaint)
+
+    // 시작점 마커
+    val startPoint = latLonToXY(locations.first().latitude, locations.first().longitude)
+    canvas.drawCircle(startPoint.first, startPoint.second, 12f, Paint().apply {
+        color = Color.parseColor("#FFFFFF")
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    })
+
+    // 끝점 마커
+    val lastLocation = locations.last()
+    if (lastLocation.latitude != locations.first().latitude ||
+        lastLocation.longitude != locations.first().longitude
+    ) {
+        val endPoint = latLonToXY(lastLocation.latitude, lastLocation.longitude)
+        canvas.drawCircle(endPoint.first, endPoint.second, 12f, Paint().apply {
+            color = Color.parseColor("#F44336")
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        })
+    }
+
+    return bitmap
+}
+

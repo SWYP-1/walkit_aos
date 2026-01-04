@@ -41,9 +41,9 @@ class CharacterRemoteDataSource @Inject constructor(
                 Timber.e("위치 기반 캐릭터 정보 조회 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("캐릭터 정보 조회 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "위치 기반 캐릭터 정보 조회 중 예외 발생")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "위치 기반 캐릭터 정보 조회 중 예외 발생")
+            throw t
         }
     }
 }

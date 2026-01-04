@@ -2,28 +2,23 @@ package team.swyp.sdu.data.repository
 
 import android.content.Context
 import android.net.Uri
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import team.swyp.sdu.data.local.dao.WalkingSessionDao
-import team.swyp.sdu.data.local.dao.RecentSessionEmotion
-import team.swyp.sdu.data.local.dao.EmotionCount
-import team.swyp.sdu.data.local.mapper.WalkingSessionMapper
-import team.swyp.sdu.data.model.WalkingSession
-import team.swyp.sdu.data.model.EmotionType
-import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
-import team.swyp.sdu.domain.repository.UserRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import team.swyp.sdu.data.local.entity.SyncState
+import kotlinx.coroutines.withContext
 import team.swyp.sdu.core.Result
-import team.swyp.sdu.core.getOrNull
-import team.swyp.sdu.core.onError
-import team.swyp.sdu.core.onSuccess
+import team.swyp.sdu.data.local.dao.EmotionCount
+import team.swyp.sdu.data.local.dao.RecentSessionEmotion
 import team.swyp.sdu.data.local.dao.UserDao
+import team.swyp.sdu.data.local.dao.WalkingSessionDao
+import team.swyp.sdu.data.local.entity.SyncState
+import team.swyp.sdu.data.local.mapper.WalkingSessionMapper
+import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.data.remote.walking.WalkRemoteDataSource
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
@@ -56,58 +51,6 @@ constructor(
     }
 
     /**
-     * 세션 저장 (로컬 저장 + 서버 동기화 시도)
-     *
-     * @param session 저장할 산책 세션
-     * @param imageUri 산책 이미지 URI (선택사항)
-     * @return 저장된 세션의 로컬 ID
-     */
-    suspend fun saveSession(
-        session: WalkingSession,
-        imageUri: Uri? = null,
-    ): String {
-        val userId = getCurrentUserId()
-
-        // userId 검증 - 로그인하지 않은 사용자는 세션 저장 불가
-        if (userId == 0L) {
-            Timber.e("사용자 정보가 없어 세션 저장 불가: userId=$userId")
-            throw IllegalStateException("로그인이 필요합니다. 세션을 저장할 수 없습니다.")
-        }
-
-        Timber.d("세션 저장 시작: userId=$userId, sessionId=${session.id}")
-
-        // 1. 로컬 저장 (PENDING) - userId 설정
-        val entity = WalkingSessionMapper.toEntity(
-            session.copy(userId = userId),
-            syncState = SyncState.PENDING
-        )
-        val sessionUUID = session.id
-
-        // 2. 서버 동기화 시도
-        try {
-            walkingSessionDao.updateSyncState(
-                sessionUUID,
-                SyncState.SYNCING
-            )
-
-            syncToServer(session, userId,imageUri)
-
-            walkingSessionDao.updateSyncState(
-                sessionUUID,
-                SyncState.SYNCED
-            )
-        } catch (e: Exception) {
-            walkingSessionDao.updateSyncState(
-                sessionUUID,
-                SyncState.FAILED
-            )
-            Timber.w(e, "서버 동기화 실패")
-        }
-
-        return sessionUUID
-    }
-
-    /**
      * 세션 로컬 전용 저장 (데이터베이스에만 저장, 서버 동기화 없음)
      *
      * 더미 데이터나 테스트용 데이터 저장에 사용
@@ -134,16 +77,6 @@ constructor(
         return session.id
     }
 
-
-    /**
-     * 모든 세션 조회 (Flow로 실시간 업데이트)
-     */
-    fun getAllSessions(): Flow<List<WalkingSession>> =
-        walkingSessionDao
-            .getAllSessions()
-            .map { entities ->
-                entities.map { WalkingSessionMapper.toDomain(it) }
-            }
 
     /**
      * 최근 7개 세션의 감정 정보만 조회 (최적화)
@@ -181,16 +114,25 @@ constructor(
         endMillis: Long,
     ): Flow<List<WalkingSession>> {
         // 현재 사용자 ID로 필터링 (로그인하지 않은 경우 빈 리스트 반환)
+        // mapper 계층에서 이미 모든 Throwable을 처리하므로 여기서는 추가 예외 처리 불필요
         return userDao.observeCurrentUser()
             .map { entity -> entity?.userId ?: 0L }
             .flatMapLatest { userId ->
+                Timber.d("📅 Repository - getSessionsBetween: userId=$userId, startMillis=$startMillis, endMillis=$endMillis")
                 if (userId == 0L) {
                     // 로그인하지 않은 경우 빈 리스트 반환
+                    Timber.w("📅 Repository - userId가 0입니다. 빈 리스트 반환")
                     flowOf(emptyList())
                 } else {
                     walkingSessionDao
                         .getSessionsBetweenForUser(userId, startMillis, endMillis)
-                        .map { entities -> entities.map { WalkingSessionMapper.toDomain(it) } }
+                        .map { entities ->
+                            Timber.d("📅 Repository - getSessionsBetweenForUser 결과: ${entities.size}개 엔티티")
+                            // mapper에서 이미 모든 예외를 처리하므로 안전하게 매핑 가능
+                            val sessions = entities.map { entity -> WalkingSessionMapper.toDomain(entity) }
+                            Timber.d("📅 Repository - 매핑 완료: ${sessions.size}개 세션")
+                            sessions
+                        }
                 }
             }
     }
@@ -223,9 +165,9 @@ constructor(
         try {
             walkingSessionDao.deleteById(id)
             Timber.d("세션 삭제 완료: ID=$id")
-        } catch (e: Exception) {
-            Timber.e(e, "세션 삭제 실패: ID=$id")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "세션 삭제 실패: ID=$id")
+            throw t
         }
     }
 
@@ -319,10 +261,10 @@ constructor(
                 walkingSessionDao.updateSyncState(session.id, SyncState.SYNCED)
                 Timber.d("세션 동기화 성공: ID=${session.id}")
 
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // 실패 시 FAILED로 변경
                 walkingSessionDao.updateSyncState(session.id, SyncState.FAILED)
-                Timber.w(e, "세션 동기화 실패: ID=${session.id}")
+                Timber.w(t, "세션 동기화 실패: ID=${session.id}")
             }
         }
 
@@ -383,7 +325,7 @@ constructor(
      */
     suspend fun updatePostWalkEmotion(
         localId: String,
-        postWalkEmotion: EmotionType
+        postWalkEmotion: String
     ) {
         val userId = getCurrentUserId()
         Timber.d("산책 후 감정 업데이트 시도: localId=$localId, userId=$userId, postEmotion=$postWalkEmotion")
@@ -410,7 +352,7 @@ constructor(
         }
 
         val updatedEntity = entity.copy(
-            postWalkEmotion = postWalkEmotion.name
+            postWalkEmotion = postWalkEmotion
         )
 
         walkingSessionDao.update(updatedEntity)
@@ -475,8 +417,8 @@ constructor(
             val absolutePath = file.absolutePath
             Timber.d("이미지 파일 복사 완료: $absolutePath (원본 URI: $uri)")
             absolutePath
-        } catch (e: Exception) {
-            Timber.e(e, "이미지 파일 복사 실패: $uri")
+        } catch (t: Throwable) {
+            Timber.e(t, "이미지 파일 복사 실패: $uri")
             null
         }
     }
@@ -551,8 +493,8 @@ constructor(
                     Timber.w("이미지 파일이 존재하지 않음: $imagePath")
                     null
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "이미지 URI 변환 실패: $imagePath")
+            } catch (t: Throwable) {
+                Timber.e(t, "이미지 URI 변환 실패: $imagePath")
                 null
             }
         }
@@ -597,10 +539,10 @@ constructor(
                     Timber.w("서버 동기화가 로딩 상태입니다")
                 }
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // CancellationException인 경우 (ViewModel이 destroy되거나 화면을 벗어난 경우)
             // 취소된 경우에는 PENDING 상태로 되돌려서 나중에 재시도 가능하도록 함
-            if (e is CancellationException) {
+            if (t is CancellationException) {
                 walkingSessionDao.updateSyncState(localId, SyncState.PENDING)
                 Timber.w("서버 동기화 취소됨 (재시도 가능): localId=$localId")
                 // 취소 예외는 다시 throw하지 않음 (정상적인 취소이므로)
@@ -609,8 +551,8 @@ constructor(
 
             // 실제 서버 에러인 경우에만 FAILED 상태로 변경
             walkingSessionDao.updateSyncState(localId, SyncState.FAILED)
-            Timber.e(e, "서버 동기화 실패: localId=$localId")
-            throw e
+            Timber.e(t, "서버 동기화 실패: localId=$localId")
+            throw t
         }
     }
 

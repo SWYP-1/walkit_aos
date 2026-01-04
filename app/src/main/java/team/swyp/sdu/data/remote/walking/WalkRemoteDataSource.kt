@@ -73,8 +73,8 @@ class WalkRemoteDataSource @Inject constructor(
                     } else {
                         null
                     }
-                } catch (e: Exception) {
-                    Timber.w(e, "이미지 파일 처리 실패: $uriString")
+                } catch (t: Throwable) {
+                    Timber.w(t, "이미지 파일 처리 실패: $uriString")
                     null
                 }
             }
@@ -92,10 +92,10 @@ class WalkRemoteDataSource @Inject constructor(
             // 취소 예외는 그대로 전파하여 상위에서 처리하도록 함
             Timber.d("산책 저장 취소됨 (Coroutine 취소)")
             throw e
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // 실제 네트워크 에러나 기타 예외인 경우
-            Timber.e(e, "산책 저장 실패: ${e.message}")
-            Result.Error(e, e.message)
+            Timber.e(t, "산책 저장 실패: ${t.message}")
+            Result.Error(t, t.message)
         }
     }
 
@@ -109,8 +109,8 @@ class WalkRemoteDataSource @Inject constructor(
 
         // WalkSaveRequest 생성 (서버 요구사항: preWalkEmotion, postWalkEmotion, note, points, endTime, startTime, totalDistance, stepCount)
         val request = WalkingSessionRequest(
-            preWalkEmotion = session.preWalkEmotion.name,
-            postWalkEmotion = session.postWalkEmotion.name,
+            preWalkEmotion = session.preWalkEmotion,
+            postWalkEmotion = session.postWalkEmotion,
             note = session.note,
             points = walkPoints,
             endTime = session.endTime ?: System.currentTimeMillis(), // endTime이 null이면 현재 시간 사용
@@ -216,8 +216,8 @@ class WalkRemoteDataSource @Inject constructor(
         } catch (e: OutOfMemoryError) {
             Timber.e(e, "메모리 부족으로 이미지 처리 실패")
             null
-        } catch (e: Exception) {
-            Timber.e(e, "이미지 압축/리사이즈 실패: $uri")
+        } catch (t: Throwable) {
+            Timber.e(t, "이미지 압축/리사이즈 실패: $uri")
             null
         }
     }
@@ -277,8 +277,8 @@ class WalkRemoteDataSource @Inject constructor(
                 val apiError = errorBody?.let {
                     try {
                         Json.decodeFromString<ApiErrorResponse>(it)
-                    } catch (e: Exception) {
-                        Timber.e(e, "ApiErrorResponse 파싱 실패: $errorBody")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "ApiErrorResponse 파싱 실패: $errorBody")
                         null
                     }
                 }
@@ -301,9 +301,9 @@ class WalkRemoteDataSource @Inject constructor(
         } catch (e: CancellationException) {
             Timber.d("팔로워 산책 기록 조회 취소됨 (Coroutine 취소)")
             throw e
-        } catch (e: Exception) {
-            Timber.e(e, "팔로워 산책 기록 조회 실패: $nickname")
-            Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로워 산책 기록 조회 실패: $nickname")
+            Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
         }
     }
 
@@ -351,9 +351,9 @@ class WalkRemoteDataSource @Inject constructor(
         } catch (e: CancellationException) {
             Timber.d("산책 좋아요 취소됨 (Coroutine 취소)")
             throw e
-        } catch (e: Exception) {
-            Timber.e(e, "산책 좋아요 실패: walkId=$walkId")
-            Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 좋아요 실패: walkId=$walkId")
+            Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
         }
     }
 
@@ -401,9 +401,9 @@ class WalkRemoteDataSource @Inject constructor(
         } catch (e: CancellationException) {
             Timber.d("산책 좋아요 취소 취소됨 (Coroutine 취소)")
             throw e
-        } catch (e: Exception) {
-            Timber.e(e, "산책 좋아요 취소 실패: walkId=$walkId")
-            Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 좋아요 취소 실패: walkId=$walkId")
+            Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
         }
     }
 
@@ -430,9 +430,9 @@ class WalkRemoteDataSource @Inject constructor(
                     "노트 업데이트에 실패했습니다"
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "산책 노트 업데이트 실패: walkId=$walkId")
-            Result.Error(e, e.message ?: "네트워크 오류가 발생했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 노트 업데이트 실패: walkId=$walkId")
+            Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
         }
     }
 
@@ -450,8 +450,8 @@ class WalkRemoteDataSource @Inject constructor(
                 val errorResponse = json.decodeFromString<ApiErrorResponse>(errorString)
                 errorResponse.code
             }
-        } catch (e: Exception) {
-            Timber.w(e, "에러 코드 파싱 실패")
+        } catch (t: Throwable) {
+            Timber.w(t, "에러 코드 파싱 실패")
             null
         }
     }

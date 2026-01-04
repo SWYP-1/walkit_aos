@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +36,7 @@ import team.swyp.sdu.ui.home.components.WeeklyRecordSection
 import team.swyp.sdu.ui.home.components.EmotionRecordSection
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.walkItTypography
+import team.swyp.sdu.ui.walking.utils.stringToEmotionTypeOrNull
 
 /**
  * 홈 화면 Route (ViewModel 주입 및 네비게이션 처리)
@@ -116,6 +118,7 @@ private fun HomeScreenContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(SemanticColor.backgroundWhitePrimary)
             .verticalScroll(rememberScrollState()),
     ) {
         HomeHeader(profileImageUrl = profileImageUrl, onClickAlarm = onClickAlarm)
@@ -236,11 +239,13 @@ private fun HomeBottomSection(
 
                 Spacer(Modifier.height(32.dp))
 
-                // 감정 기록 섹션
+                // 감정 기록 섹션 (String을 EmotionType으로 변환)
                 EmotionRecordSection(
-                    dominantEmotion = data.dominantEmotion,
+                    dominantEmotion = stringToEmotionTypeOrNull(data.dominantEmotion),
                     dominantEmotionCount = data.dominantEmotionCount,
-                    recentEmotions = data.recentEmotions,
+                    recentEmotions = data.recentEmotions.mapNotNull { emotionString ->
+                        stringToEmotionTypeOrNull(emotionString)
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

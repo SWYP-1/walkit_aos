@@ -171,82 +171,16 @@ fun SessionThumbnailItem(
         val startTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.startTime)
         val enTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.endTime)
 
-        Text(
-            text = "$startTimeWithSeconds ~ $enTimeWithSeconds",
-            // body S/semibold
-            style = MaterialTheme.walkItTypography.bodyS.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = SemanticColor.textBorderPrimaryInverse,
-            modifier = Modifier
-                .align(alignment = Alignment.BottomEnd)
-                .padding(16.dp)
-        )
-    }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun SessionThumbnailListPreview() {
-    val context = LocalContext.current
-    val now = System.currentTimeMillis()
-    val testLocations = listOf(
-        LocationPoint(37.5665, 126.9780), // 서울 시청
-        LocationPoint(37.5651, 126.9895), // 광화문
-        LocationPoint(37.5796, 126.9770), // 경복궁
-    )
-
-    val mockSessions = listOf(
-        WalkingSession(
-            id = "session-1",
-            startTime = now - 7200000, // 2시간 전
-            endTime = now - 5400000,   // 1.5시간 전
-            stepCount = 5000,
-            locations = testLocations,
-            totalDistance = 3500f,
-            preWalkEmotion = team.swyp.sdu.data.model.EmotionType.HAPPY,
-            postWalkEmotion = team.swyp.sdu.data.model.EmotionType.CONTENT,
-            note = "오늘은 날씨가 좋아서 산책하기 좋았어요.",
-            createdDate = "2024-12-05",
-        ),
-        WalkingSession(
-            id = "session-2",
-            startTime = now - 3600000, // 1시간 전
-            endTime = now - 1800000,   // 30분 전
-            stepCount = 3000,
-            locations = testLocations.take(2),
-            totalDistance = 2000f,
-            preWalkEmotion = team.swyp.sdu.data.model.EmotionType.TIRED,
-            postWalkEmotion = team.swyp.sdu.data.model.EmotionType.DEPRESSED,
-            note = "스트레스 해소를 위해 짧게 산책했어요.",
-            createdDate = "2024-12-05",
-        ),
-        WalkingSession(
-            id = "session-3",
-            startTime = now - 1800000, // 30분 전
-            endTime = now - 600000,    // 10분 전
-            stepCount = 1500,
-            locations = testLocations.take(1),
-            totalDistance = 1000f,
-            preWalkEmotion = team.swyp.sdu.data.model.EmotionType.CONTENT,
-            postWalkEmotion = team.swyp.sdu.data.model.EmotionType.HAPPY,
-            note = "퇴근 후 가벼운 산책.",
-            createdDate = "2024-12-05",
-        ),
-    )
-
-    team.swyp.sdu.ui.theme.WalkItTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SemanticColor.backgroundWhitePrimary)
-                .padding(16.dp)
-        ) {
-            SessionThumbnailList(
-                session = mockSessions[1], // 두 번째 세션 선택
-                onExternalClick = { /* Preview에서는 아무 동작 안 함 */ },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+//        Text(
+//            text = "$startTimeWithSeconds ~ $enTimeWithSeconds",
+//            // body S/semibold
+//            style = MaterialTheme.walkItTypography.bodyS.copy(
+//                fontWeight = FontWeight.SemiBold
+//            ),
+//            color = SemanticColor.textBorderPrimaryInverse,
+//            modifier = Modifier
+//                .align(alignment = Alignment.BottomEnd)
+//                .padding(16.dp)
+//        )
     }
 }

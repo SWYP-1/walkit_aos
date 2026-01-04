@@ -170,8 +170,8 @@ class NotificationPermissionViewModel @Inject constructor(
                     // 처리 불필요
                 }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "알림 동의 여부 서버 전송 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 동의 여부 서버 전송 실패")
         }
     }
 }

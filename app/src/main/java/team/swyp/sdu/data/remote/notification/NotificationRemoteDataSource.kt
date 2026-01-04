@@ -43,9 +43,9 @@ class NotificationRemoteDataSource @Inject constructor(
         } catch (e: HttpException) {
             Timber.e(e, "FCM 토큰 등록 HTTP 오류: ${e.code()}")
             Result.Error(e)
-        } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 등록 실패")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "FCM 토큰 등록 실패")
+            Result.Error(t)
         }
     }
 
@@ -60,9 +60,9 @@ class NotificationRemoteDataSource @Inject constructor(
         } catch (e: HttpException) {
             Timber.e(e, "알림 설정 조회 HTTP 오류: ${e.code()}")
             Result.Error(e)
-        } catch (e: Exception) {
-            Timber.e(e, "알림 설정 조회 실패")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 설정 조회 실패")
+            Result.Error(t)
         }
     }
 
@@ -85,9 +85,9 @@ class NotificationRemoteDataSource @Inject constructor(
         } catch (e: HttpException) {
             Timber.e(e, "알림 설정 업데이트 HTTP 오류: ${e.code()}")
             Result.Error(e)
-        } catch (e: Exception) {
-            Timber.e(e, "알림 설정 업데이트 실패")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 설정 업데이트 실패")
+            Result.Error(t)
         }
     }
 
@@ -105,9 +105,9 @@ class NotificationRemoteDataSource @Inject constructor(
         } catch (e: HttpException) {
             Timber.e(e, "알림 목록 조회 HTTP 오류: ${e.code()}")
             Result.Error(e)
-        } catch (e: Exception) {
-            Timber.e(e, "알림 목록 조회 실패")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 목록 조회 실패")
+            Result.Error(t)
         }
     }
 }

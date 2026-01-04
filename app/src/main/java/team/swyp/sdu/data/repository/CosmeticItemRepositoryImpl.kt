@@ -43,11 +43,11 @@ class CosmeticItemRepositoryImpl @Inject constructor(
             val domainItems = CosmeticItemMapper.toDomainList(dtos)
             Timber.d("코스메틱 아이템 조회 완료: ${domainItems.size}개${position?.let { " (position: $it)" } ?: ""}")
             Result.Success(data = domainItems)
-        } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 조회 실패: ${e.message}")
-            Timber.e(e, "스택 트레이스:")
-            e.printStackTrace()
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "코스메틱 아이템 조회 실패: ${t.message}")
+            Timber.e(t, "스택 트레이스:")
+            t.printStackTrace()
+            Result.Error(t)
         }
     }
 
@@ -62,9 +62,9 @@ class CosmeticItemRepositoryImpl @Inject constructor(
             )
 
             cosmeticItemRemoteDataSource.purchaseItems(request)
-        } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 구매 중 예외 발생")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "코스메틱 아이템 구매 중 예외 발생")
+            Result.Error(t)
         }
     }
 
@@ -72,9 +72,9 @@ class CosmeticItemRepositoryImpl @Inject constructor(
     override suspend fun wearItem(itemId: Int, isWorn: Boolean): Result<Unit> {
         return try {
             cosmeticItemRemoteDataSource.wearItem(itemId, isWorn)
-        } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 착용/해제 실패")
-            Result.Error(e, e.message)
+        } catch (t: Throwable) {
+            Timber.e(t, "코스메틱 아이템 착용/해제 실패")
+            Result.Error(t, t.message)
         }
     }
 }

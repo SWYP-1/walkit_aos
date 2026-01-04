@@ -187,9 +187,9 @@ fun GoalManagementScreen(
                     scope.launch {
                         try {
                             onUpdateGoal(selectedSteps, selectedFrequency)
-                        } catch (e: Exception) {
+                        } catch (t: Throwable) {
                             // ViewModel에서 에러 처리를 하므로 여기서는 별도 처리하지 않음
-                            Timber.e(e, "목표 저장 중 예외 발생")
+                            Timber.e(t, "목표 저장 중 예외 발생")
                         }
                     }
                 },

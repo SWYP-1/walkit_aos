@@ -212,9 +212,9 @@ class NotificationRepository @Inject constructor(
                 updatedAt = System.currentTimeMillis(),
             )
             Timber.d("알림 설정 서버 동기화 성공")
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // CancellationException인 경우 PENDING 상태로 되돌림 (재시도 가능)
-            if (e is CancellationException) {
+            if (t is CancellationException) {
                 notificationSettingsDao.updateSyncState(
                     syncState = SyncState.PENDING,
                     updatedAt = System.currentTimeMillis(),
@@ -228,8 +228,8 @@ class NotificationRepository @Inject constructor(
                 syncState = SyncState.FAILED,
                 updatedAt = System.currentTimeMillis(),
             )
-            Timber.e(e, "알림 설정 서버 동기화 실패")
-            throw e
+            Timber.e(t, "알림 설정 서버 동기화 실패")
+            throw t
         }
     }
 
@@ -287,8 +287,8 @@ class NotificationRepository @Inject constructor(
                 updatedAt = System.currentTimeMillis(),
             )
             Timber.d("알림 설정 재동기화 성공")
-        } catch (e: Exception) {
-            if (e is CancellationException) {
+        } catch (t: Throwable) {
+            if (t is CancellationException) {
                 notificationSettingsDao.updateSyncState(
                     syncState = SyncState.PENDING,
                     updatedAt = System.currentTimeMillis(),
@@ -300,8 +300,8 @@ class NotificationRepository @Inject constructor(
                 syncState = SyncState.FAILED,
                 updatedAt = System.currentTimeMillis(),
             )
-            Timber.e(e, "알림 설정 재동기화 실패")
-            throw e
+            Timber.e(t, "알림 설정 재동기화 실패")
+            throw t
         }
     }
 }

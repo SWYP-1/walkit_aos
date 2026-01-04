@@ -43,8 +43,20 @@ object EnumConverter {
             } else {
                 EmotionType.valueOf(value.uppercase())
             }
-        } catch (e: IllegalArgumentException) {
-            Timber.w(e, "유효하지 않은 EmotionType 값: '$value', 기본값(CONTENT) 사용")
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리하기 위해 Throwable 사용
+            // 에러 타입별로 상세 로그 기록
+            when (e) {
+                is IllegalArgumentException -> {
+                    Timber.w(e, "EmotionType 변환 실패 (IllegalArgumentException): '$value', 기본값(CONTENT) 사용")
+                }
+                is ExceptionInInitializerError -> {
+                    Timber.e(e, "EmotionType 변환 실패 (ExceptionInInitializerError): '$value', 기본값(CONTENT) 사용")
+                }
+                else -> {
+                    Timber.e(e, "EmotionType 변환 실패 (기타 Throwable): '$value', 타입=${e.javaClass.simpleName}, 기본값(CONTENT) 사용")
+                }
+            }
             EmotionType.CONTENT
         }
 
@@ -69,8 +81,9 @@ object EnumConverter {
         try {
             if (value == null) SyncState.PENDING
             else SyncState.valueOf(value)
-        } catch (e: IllegalArgumentException) {
-            Timber.w(e, "유효하지 않은 SyncState 값: '$value', 기본값(PENDING) 사용")
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리하기 위해 Throwable 사용
+            Timber.w(e, "SyncState 변환 실패: '$value', 기본값(PENDING) 사용")
             SyncState.PENDING
         }
 
@@ -95,8 +108,9 @@ object EnumConverter {
         try {
             if (value == null) Grade.SEED
             else Grade.valueOf(value)
-        } catch (e: IllegalArgumentException) {
-            Timber.w(e, "유효하지 않은 Grade 값: '$value', 기본값(SEED) 사용")
+        } catch (e: Throwable) {
+            // ExceptionInInitializerError 등 Error 타입도 처리하기 위해 Throwable 사용
+            Timber.w(e, "Grade 변환 실패: '$value', 기본값(SEED) 사용")
             Grade.SEED
         }
 }

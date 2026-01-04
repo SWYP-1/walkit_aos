@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,6 +68,7 @@ fun FriendAvatarItem(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
                     placeholder = painterResource(R.drawable.ic_default_user),
                     error = painterResource(R.drawable.ic_default_user),
                 )

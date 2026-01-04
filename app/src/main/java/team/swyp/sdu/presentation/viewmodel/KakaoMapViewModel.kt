@@ -69,8 +69,8 @@ constructor() : ViewModel() {
                             )
                             Timber.d("화면 크기 변경으로 인한 카메라 설정 재계산 완료")
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "화면 크기 변경 시 카메라 설정 재계산 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "화면 크기 변경 시 카메라 설정 재계산 실패")
                     }
                 }
             }
@@ -116,9 +116,9 @@ constructor() : ViewModel() {
                 )
 
                 Timber.d("경로 설정 완료: ${locationsToUse.size}개 포인트")
-            } catch (e: Exception) {
-                Timber.e(e, "경로 설정 실패")
-                _uiState.value = KakaoMapUiState.Error(e.message ?: "알 수 없는 오류가 발생했습니다")
+            } catch (t: Throwable) {
+                Timber.e(t, "경로 설정 실패")
+                _uiState.value = KakaoMapUiState.Error(t.message ?: "알 수 없는 오류가 발생했습니다")
             }
         }
     }

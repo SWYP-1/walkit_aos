@@ -2,7 +2,6 @@ package team.swyp.sdu.data.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import team.swyp.sdu.domain.service.ActivityType
 import timber.log.Timber
@@ -41,14 +40,13 @@ data class WalkingSession(
     val filteredLocations: List<LocationPoint>? = null, // 실시간 필터링된 데이터 (nullable)
     val smoothedLocations: List<LocationPoint>? = null, // 최종 스무딩된 데이터 (nullable)
     val totalDistance: Float = 0f,
-    val preWalkEmotion: EmotionType,
-    val postWalkEmotion: EmotionType,
+    val preWalkEmotion: String,
+    val postWalkEmotion: String,
     val note: String? = null,
     val localImagePath: String? = null, // 로컬 파일 경로
     val serverImageUrl: String? = null, // 서버 URL
     val createdDate: String,
     val targetStepCount: Int = 0, // 산책 당시 설정된 목표 걸음 수
-    val currentGoalChallenge: Int = 0, // 이번 주 목표 도전 횟수 (몇 번째 목표 도전인지)
 ) : Parcelable {
     /**
      * 산책 시간 (초)

@@ -114,7 +114,7 @@ object DateUtils {
             val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
             val koreanFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
             dateTime.format(koreanFormatter)
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // 파싱 실패 시 원본 문자열 반환
             isoDateTime
         }
@@ -132,7 +132,7 @@ object DateUtils {
             val dateTime = LocalDateTime.parse(isoDateTime, formatter)
             val koreanFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
             dateTime.format(koreanFormatter)
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             isoDateTime
         }
     }

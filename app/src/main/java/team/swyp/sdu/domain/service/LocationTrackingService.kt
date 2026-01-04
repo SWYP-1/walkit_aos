@@ -475,8 +475,8 @@ class LocationTrackingService : Service() {
             lastSentIndex = locationPoints.size
 
             Timber.d("새 위치 데이터 Broadcast 전송: ${newLocations.size}개 포인트 (총 ${locationPoints.size}개)")
-        } catch (e: Exception) {
-            Timber.e(e, "위치 데이터 Broadcast 전송 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "위치 데이터 Broadcast 전송 실패")
         }
     }
 
@@ -493,8 +493,8 @@ class LocationTrackingService : Service() {
                 }
             sendBroadcast(intent)
             Timber.d("전체 위치 데이터 Broadcast 전송: ${locationPoints.size}개 포인트")
-        } catch (e: Exception) {
-            Timber.e(e, "위치 데이터 Broadcast 전송 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "위치 데이터 Broadcast 전송 실패")
         }
     }
 
@@ -584,8 +584,8 @@ class LocationTrackingService : Service() {
         activityReceiver?.let {
             try {
                 unregisterReceiver(it)
-            } catch (e: Exception) {
-                Timber.e(e, "Activity Receiver 해제 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "Activity Receiver 해제 실패")
             }
         }
         activityReceiver = null
@@ -760,8 +760,8 @@ class LocationTrackingService : Service() {
                                 updateLocationRequest()
                             }
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "배터리 모니터링 오류")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "배터리 모니터링 오류")
                     }
 
                     delay(BATTERY_CHECK_INTERVAL_MS)

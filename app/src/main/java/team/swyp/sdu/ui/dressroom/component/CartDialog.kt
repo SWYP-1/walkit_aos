@@ -269,6 +269,7 @@ fun CartDialogPreview_SomeUnchecked() {
             name = "아이템${index + 1}",
             point = (index + 1) * 100,
             owned = false,
+            worn = false,
             imageName = "df",
             position = when (index % 3) {
                 0 -> EquipSlot.HEAD
@@ -297,6 +298,7 @@ fun CartDialogPreview_SufficientPoints() {
             name = "헤어1",
             point = 100,
             owned = false,
+            worn = false,
             imageName = "df",
             position = EquipSlot.HEAD
         ),
@@ -305,6 +307,7 @@ fun CartDialogPreview_SufficientPoints() {
             name = "헤어2",
             point = 200,
             owned = false,
+            worn = false,
             imageName = "df",
             position = EquipSlot.BODY
         ),

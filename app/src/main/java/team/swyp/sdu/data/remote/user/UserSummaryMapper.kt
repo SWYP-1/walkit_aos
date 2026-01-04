@@ -19,9 +19,10 @@ object UserSummaryMapper {
     fun toDomain(dto: UserSummaryDto): UserSummary {
         return UserSummary(
             character = Character(
-                headImageName = dto.responseCharacterDto.headImageName,
-                bodyImageName = dto.responseCharacterDto.bodyImageName,
-                feetImageName = dto.responseCharacterDto.feetImageName,
+                headImageName = dto.responseCharacterDto.headImage?.imageName,
+                headImageTag = dto.responseCharacterDto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
+                bodyImageName = dto.responseCharacterDto.bodyImage?.imageName,
+                feetImageName = dto.responseCharacterDto.feetImage?.imageName,
                 characterImageName = dto.responseCharacterDto.characterImageName,
                 backgroundImageName = dto.responseCharacterDto.backgroundImageName,
                 level = dto.responseCharacterDto.level,
@@ -40,9 +41,10 @@ object UserSummaryMapper {
      */
     fun toCharacter(dto: ResponseCharacterDto): Character {
         return Character(
-            headImageName = dto.headImageName,
-            bodyImageName = dto.bodyImageName,
-            feetImageName = dto.feetImageName,
+            headImageName = dto.headImage?.imageName,
+            headImageTag = dto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
+            bodyImageName = dto.bodyImage?.imageName,
+            feetImageName = dto.feetImage?.imageName,
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,

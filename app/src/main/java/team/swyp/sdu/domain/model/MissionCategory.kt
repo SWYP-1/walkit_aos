@@ -15,21 +15,21 @@ enum class MissionCategory(
 
     companion object {
         fun fromApiValue(apiValue: String): MissionCategory? {
-            return entries.find { it.apiValue == apiValue }
+            return values().find { it.apiValue == apiValue }
         }
 
         fun fromTypeAndCategory(category: String, type: String): MissionCategory? {
-            return entries.find { it.apiValue == category && it.supportedTypes.contains(type) }
-                ?: entries.find { it.apiValue == category } // fallback to basic category
+            return values().find { it.apiValue == category && it.supportedTypes.contains(type) }
+                ?: values().find { it.apiValue == category } // fallback to basic category
         }
 
         fun getAllCategories(): List<MissionCategory> {
-            return entries.toList()
+            return values().toList()
         }
 
         // UI 필터링용 카테고리들 (중복 제거)
         fun getFilterCategories(): List<MissionCategory> {
-            return entries.distinctBy { it.displayName }
+            return values().distinctBy { it.displayName }
         }
     }
 }

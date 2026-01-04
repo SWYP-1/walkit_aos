@@ -69,8 +69,8 @@ class CharacterImageLoader @Inject constructor(
                 Timber.d("✅ 파트 ${part.name}: 이미지 로드 및 캐시 저장 완료")
                 imageData
 
-            } catch (e: Exception) {
-                Timber.e(e, "❌ 파트 ${part.name} 이미지 로드 실패: $imageName")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ 파트 ${part.name} 이미지 로드 실패: $imageName")
                 // 실패시 투명 PNG로 폴백
                 createTransparentPng(256, 256)
             }

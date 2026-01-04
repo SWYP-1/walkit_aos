@@ -80,13 +80,13 @@ class FriendRepositoryImpl @Inject constructor(
                 _friendsState.value = Result.Success(friends)
 
                 Result.Success(friends)
-            } catch (e: Exception) {
-                Timber.e(e, "친구 목록 조회 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "친구 목록 조회 실패")
 
                 // 에러 시에도 StateFlow 업데이트 (UI에 에러 상태 표시)
-                _friendsState.value = Result.Error(e, e.message)
+                _friendsState.value = Result.Error(t, t.message)
 
-                Result.Error(e, e.message)
+                Result.Error(t, t.message)
             }
         }
 
@@ -99,9 +99,9 @@ class FriendRepositoryImpl @Inject constructor(
             try {
                 val result = followRemoteDataSource.blockUser(nickname)
                 Result.Success(result)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 차단 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 차단 실패")
+                Result.Error(t, t.message)
             }
         }
 

@@ -269,8 +269,8 @@ class AccelerometerManager
                     try {
                         sensorManager.unregisterListener(listener)
                         Timber.d("가속도계 센서 리스너 해제")
-                    } catch (e: Exception) {
-                        Timber.e(e, "가속도계 센서 리스너 해제 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "가속도계 센서 리스너 해제 실패")
                     }
                 }
             }

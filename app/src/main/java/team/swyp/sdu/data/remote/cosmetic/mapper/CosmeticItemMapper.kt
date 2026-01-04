@@ -39,6 +39,7 @@ object CosmeticItemMapper {
             position = equipSlotFromString(dto.position),
             name = dto.name,
             owned = dto.owned,
+            worn = dto.worn ?: false,  // 서버에서 받은 worn 정보 (기본값: false)
             point = dto.point,
             tags = dto.tag,  // 서버에서 받은 tags 정보
         )
@@ -52,9 +53,9 @@ object CosmeticItemMapper {
         val result = dtos.map { dto ->
             try {
                 toDomain(dto)
-            } catch (e: Exception) {
-                Timber.e(e, "아이템 변환 실패: $dto")
-                throw e
+            } catch (t: Throwable) {
+                Timber.e(t, "아이템 변환 실패: $dto")
+                throw t
             }
         }
         Timber.d("CosmeticItemMapper.toDomainList 완료: ${result.size}개 아이템 변환됨")

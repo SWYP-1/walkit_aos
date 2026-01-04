@@ -32,6 +32,7 @@ object FollowerWalkRecordMapper {
     private fun toDomain(dto: team.swyp.sdu.data.remote.walking.dto.CharacterDto): Character {
         return Character(
             headImageName = dto.headImage?.imageName,
+            headImageTag = dto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
             bodyImageName = dto.bodyImage?.imageName,
             feetImageName = dto.feetImage?.imageName,
             characterImageName = dto.characterImageName,

@@ -28,8 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
-import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.CtaButton
+import team.swyp.sdu.ui.walking.utils.stringToEmotionType
 import team.swyp.sdu.ui.record.components.EmotionCircleIcon
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -37,9 +37,22 @@ import team.swyp.sdu.ui.theme.walkItTypography
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.InfoBanner
+import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.utils.FormatUtils
 import team.swyp.sdu.utils.FormatUtils.formatDuration
 import timber.log.Timber
+
+/**
+ * 이미지 저장 상태
+ */
+enum class SaveStatus {
+    IDLE,
+    LOADING,
+    SUCCESS,
+    FAILURE
+}
 
 @Composable
 fun ShareWalkingResultDialog(
@@ -47,8 +60,9 @@ fun ShareWalkingResultDialog(
     stepCount: String,
     duration: Long,
     sessionThumbNailUri: String,
-    preWalkEmotion: EmotionType,
-    postWalkEmotion: EmotionType,
+    preWalkEmotion: String,
+    postWalkEmotion: String,
+    saveStatus: SaveStatus = SaveStatus.IDLE,
     onDismiss: () -> Unit,
     onPrev: () -> Unit,
     onSave: () -> Unit
@@ -96,8 +110,8 @@ fun ShareWalkingResultDialog(
                     val bitmap = remember(sessionThumbNailUri) {
                         try {
                             android.graphics.BitmapFactory.decodeFile(sessionThumbNailUri)
-                        } catch (e: Exception) {
-                            Timber.e(e, "스냅샷 이미지 로드 실패: $sessionThumbNailUri")
+                        } catch (t: Throwable) {
+                            Timber.e(t, "스냅샷 이미지 로드 실패: $sessionThumbNailUri")
                             null
                         }
                     }
@@ -132,10 +146,10 @@ fun ShareWalkingResultDialog(
                         .align(Alignment.BottomStart)
                         .padding(bottom = 16.dp, start = 16.dp)
                 ) {
-                    // 산책 전 감정
-                    EmotionCircleIcon(preWalkEmotion,32.dp)
-                    // 산책 후 감정
-                    EmotionCircleIcon(postWalkEmotion,32.dp)
+                    // 산책 전 감정 (String을 EmotionType으로 변환)
+                    EmotionCircleIcon(stringToEmotionType(preWalkEmotion), 32.dp)
+                    // 산책 후 감정 (String을 EmotionType으로 변환)
+                    EmotionCircleIcon(stringToEmotionType(postWalkEmotion), 32.dp)
                 }
 
                 Column(
@@ -163,10 +177,18 @@ fun ShareWalkingResultDialog(
                         ), textAlign = TextAlign.Right
                     )
                 }
-
+                if (saveStatus == SaveStatus.LOADING) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                    }
+                }
             }
 
             Spacer(Modifier.height(20.dp))
+
+            // 저장 상태 표시
+
+
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -183,7 +205,7 @@ fun ShareWalkingResultDialog(
                     text = "저장하기",
                     onClick = onSave,
                     modifier = Modifier.weight(1f),
-                    iconResId = R.drawable.ic_arrow_forward
+                    enabled = saveStatus != SaveStatus.LOADING,
                 )
             }
         }
@@ -198,8 +220,62 @@ private fun ShareWalkingResultDialogPreview() {
             stepCount = "5,234",
             duration = 1800000L, // 30분
             sessionThumbNailUri = "https://example.com/thumbnail.jpg",
-            preWalkEmotion = EmotionType.TIRED,
-            postWalkEmotion = EmotionType.HAPPY,
+            preWalkEmotion = "TIRED",
+            postWalkEmotion = "HAPPY",
+            onDismiss = {},
+            onPrev = {},
+            onSave = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ShareWalkingResultDialogLoadingPreview() {
+    WalkItTheme {
+        ShareWalkingResultDialog(
+            stepCount = "5,234",
+            duration = 1800000L, // 30분
+            sessionThumbNailUri = "https://example.com/thumbnail.jpg",
+            preWalkEmotion = "TIRED",
+            postWalkEmotion = "HAPPY",
+            saveStatus = SaveStatus.LOADING,
+            onDismiss = {},
+            onPrev = {},
+            onSave = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ShareWalkingResultDialogSuccessPreview() {
+    WalkItTheme {
+        ShareWalkingResultDialog(
+            stepCount = "5,234",
+            duration = 1800000L, // 30분
+            sessionThumbNailUri = "https://example.com/thumbnail.jpg",
+            preWalkEmotion = "TIRED",
+            postWalkEmotion = "HAPPY",
+            saveStatus = SaveStatus.SUCCESS,
+            onDismiss = {},
+            onPrev = {},
+            onSave = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ShareWalkingResultDialogFailurePreview() {
+    WalkItTheme {
+        ShareWalkingResultDialog(
+            stepCount = "5,234",
+            duration = 1800000L, // 30분
+            sessionThumbNailUri = "https://example.com/thumbnail.jpg",
+            preWalkEmotion = "TIRED",
+            postWalkEmotion = "HAPPY",
+            saveStatus = SaveStatus.FAILURE,
             onDismiss = {},
             onPrev = {},
             onSave = {}

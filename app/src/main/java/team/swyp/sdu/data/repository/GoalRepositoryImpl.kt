@@ -50,8 +50,8 @@ class GoalRepositoryImpl @Inject constructor(
                     goalState.value = null
                     try {
                         goalDao.clear()
-                    } catch (e: Exception) {
-                        Timber.e(e, "Goal 삭제 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "Goal 삭제 실패")
                     }
                 }
             }
@@ -77,9 +77,9 @@ class GoalRepositoryImpl @Inject constructor(
                     // 로컬에 없으면 서버에서 가져오기
                     refreshGoal()
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "목표 조회 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "목표 조회 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -93,9 +93,9 @@ class GoalRepositoryImpl @Inject constructor(
                 goalState.value = createdGoal
                 
                 Result.Success(createdGoal)
-            } catch (e: Exception) {
-                Timber.e(e, "목표 생성 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "목표 생성 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -135,9 +135,9 @@ class GoalRepositoryImpl @Inject constructor(
                         apiError?.message ?: "목표 수정에 실패했습니다."
                     )
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "목표 수정 실패")
-                Result.Error(e, e.message ?: "알 수 없는 오류가 발생했습니다.")
+            } catch (t: Throwable) {
+                Timber.e(t, "목표 수정 실패")
+                Result.Error(t, t.message ?: "알 수 없는 오류가 발생했습니다.")
             }
         }
 
@@ -152,9 +152,9 @@ class GoalRepositoryImpl @Inject constructor(
                 goalState.value = goal
                 
                 Result.Success(goal)
-            } catch (e: Exception) {
-                Timber.e(e, "목표 갱신 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "목표 갱신 실패")
+                Result.Error(t, t.message)
             }
         }
 

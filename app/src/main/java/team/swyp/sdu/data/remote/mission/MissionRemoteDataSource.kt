@@ -25,9 +25,9 @@ class MissionRemoteDataSource @Inject constructor(
             val missions = missionApi.getActiveWeeklyMission()
             Timber.d("주간 미션 조회 성공: ${missions.size}개")
             missions
-        } catch (e: Exception) {
-            Timber.e(e, "주간 미션 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "주간 미션 조회 실패")
+            throw t
         }
     }
 
@@ -41,9 +41,9 @@ class MissionRemoteDataSource @Inject constructor(
             val missions = missionApi.getAllWeeklyMissions()
             Timber.d("주간 미션 목록 조회 성공: ${missions.others.size + 1}개")
             missions
-        } catch (e: Exception) {
-            Timber.e(e, "주간 미션 목록 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "주간 미션 목록 조회 실패")
+            throw t
         }
     }
 
@@ -72,9 +72,9 @@ class MissionRemoteDataSource @Inject constructor(
                 Timber.e("월간 미션 완료 목록 조회 실패: $errorMessage (코드: ${response.code()})")
                 Result.Error(Exception("월간 미션 완료 목록 조회 실패: ${response.code()}"))
             }
-        } catch (e: Exception) {
-            Timber.e(e, "월간 미션 완료 목록 조회 중 예외 발생")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "월간 미션 완료 목록 조회 중 예외 발생")
+            Result.Error(t)
         }
     }
 
@@ -89,9 +89,9 @@ class MissionRemoteDataSource @Inject constructor(
             val verifiedMission = missionApi.verifyWeeklyMissionReward(userWeeklyMissionId)
             Timber.d("주간 미션 보상 검증 성공: $userWeeklyMissionId")
             verifiedMission
-        } catch (e: Exception) {
-            Timber.e(e, "주간 미션 보상 검증 실패: $userWeeklyMissionId")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "주간 미션 보상 검증 실패: $userWeeklyMissionId")
+            throw t
         }
     }
 }

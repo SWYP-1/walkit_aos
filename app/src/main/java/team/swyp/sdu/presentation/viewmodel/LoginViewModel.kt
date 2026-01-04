@@ -97,8 +97,8 @@ class LoginViewModel @Inject constructor(
                 Timber.d("서버 토큰 확인 시작")
                 val accessToken = try {
                     authDataStore.accessToken.first()
-                } catch (e: Exception) {
-                    Timber.e(e, "토큰 조회 중 예외 발생")
+                } catch (t: Throwable) {
+                    Timber.e(t, "토큰 조회 중 예외 발생")
                     null
                 }
                 Timber.i("서버 토큰 확인 결과: ${if (accessToken.isNullOrBlank()) "토큰 없음" else "토큰 있음 (길이: ${accessToken?.length})"}")
@@ -130,8 +130,8 @@ class LoginViewModel @Inject constructor(
                     Timber.i("서버 토큰 없음 - 로그인 필요")
                     _isLoggedIn.value = false
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "로그인 상태 확인 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "로그인 상태 확인 실패")
                 _isLoggedIn.value = false
             } finally {
                 Timber.i("checkLoginStatus() 완료 - isLoginChecked = true 설정")
@@ -298,27 +298,38 @@ class LoginViewModel @Inject constructor(
                         Timber.i("카카오 로그아웃 성공")
                     }
                 }
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // 카카오 SDK가 초기화되지 않았거나 이미 로그아웃된 경우
-                Timber.w("카카오 로그아웃 건너뜀 (초기화되지 않음): ${e.message}")
+                Timber.w("카카오 로그아웃 건너뜀 (초기화되지 않음): ${t.message}")
             }
 
             // 네이버 로그아웃 시도 (Naver OAuth가 초기화된 경우에만)
             try {
-                val naverCallback = object : NidOAuthCallback {
-                    override fun onSuccess() {
-                        Timber.i("네이버 로그아웃 성공")
-                    }
-
-                    override fun onFailure(errorCode: String, errorDesc: String) {
-                        // 네이버도 이미 로그아웃된 상태일 수 있으므로 경고만 로깅
-                        Timber.w("네이버 로그아웃 실패 (로컬 데이터는 삭제됨): $errorCode - $errorDesc")
-                    }
+                // NidOAuth가 초기화되었는지 확인
+                val isInitialized = try {
+                    NidOAuth.getApplicationContext() != null
+                } catch (t: Throwable) {
+                    false
                 }
-                NidOAuth.logout(naverCallback)
-            } catch (e: Exception) {
+
+                if (!isInitialized) {
+                    Timber.w("네이버 OAuth가 초기화되지 않았으므로 로그아웃 건너뜀")
+                } else {
+                    val naverCallback = object : NidOAuthCallback {
+                        override fun onSuccess() {
+                            Timber.i("네이버 로그아웃 성공")
+                        }
+
+                        override fun onFailure(errorCode: String, errorDesc: String) {
+                            // 네이버도 이미 로그아웃된 상태일 수 있으므로 경고만 로깅
+                            Timber.w("네이버 로그아웃 실패 (로컬 데이터는 삭제됨): $errorCode - $errorDesc")
+                        }
+                    }
+                    NidOAuth.logout(naverCallback)
+                }
+            } catch (t: Throwable) {
                 // Naver OAuth가 초기화되지 않았거나 이미 로그아웃된 경우
-                Timber.w("네이버 로그아웃 건너뜀 (초기화되지 않음): ${e.message}")
+                Timber.w("네이버 로그아웃 건너뜀 (초기화되지 않음): ${t.message}")
             }
 
             // 로컬 토큰 및 데이터 삭제 (소셜 로그아웃 실패 여부와 관계없이 항상 실행)
@@ -330,8 +341,8 @@ class LoginViewModel @Inject constructor(
                 // 🔥 온보딩 데이터도 초기화 (로그인 전환 시 이전 온보딩 상태 제거)
                 onboardingDataStore.clearAllOnboardingData()
                 Timber.i("로컬 토큰 및 데이터 삭제 완료")
-            } catch (e: Exception) {
-                Timber.e(e, "로컬 데이터 삭제 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "로컬 데이터 삭제 실패")
             }
 
             // 로그인 상태 초기화
@@ -412,9 +423,9 @@ class LoginViewModel @Inject constructor(
                         // 이미 Loading 상태
                     }
                 }
-            } catch (e: Exception) {
-                _uiState.value = LoginUiState.Error("로그인 처리 중 오류 발생: ${e.message}")
-                Timber.e(e, "로그인 처리 실패")
+            } catch (t: Throwable) {
+                _uiState.value = LoginUiState.Error("로그인 처리 중 오류 발생: ${t.message}")
+                Timber.e(t, "로그인 처리 실패")
             }
         }
     }
@@ -454,8 +465,8 @@ class LoginViewModel @Inject constructor(
                     _uiState.value = LoginUiState.Error("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.")
                     Timber.i("토큰 삭제 완료 - 재로그인 필요")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "로그인 직후 사용자 상태 확인 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "로그인 직후 사용자 상태 확인 실패")
                 _isLoggedIn.value = false
                 _uiState.value = LoginUiState.Error("사용자 상태 확인 중 오류 발생")
             }

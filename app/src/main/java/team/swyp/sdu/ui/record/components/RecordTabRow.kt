@@ -39,7 +39,7 @@ fun RecordTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = RecordTabType.entries
+    val tabs = RecordTabType.values()
     val containerShape = RoundedCornerShape(12.dp)
     val tabShape = RoundedCornerShape(8.dp)
 

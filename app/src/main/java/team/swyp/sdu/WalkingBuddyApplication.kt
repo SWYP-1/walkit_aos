@@ -27,8 +27,6 @@ import team.swyp.sdu.data.remote.billing.BillingManager
 import team.swyp.sdu.domain.service.FcmTokenManager
 import team.swyp.sdu.worker.SessionSyncWorker
 import timber.log.Timber
-import java.io.File
-import java.util.Properties
 import javax.inject.Inject
 
 /**
@@ -70,47 +68,37 @@ class WalkingBuddyApplication : Application() {
             KakaoMapSdk.init(this, kakaoAppKey)
         }
 
-        // Kakao SDK 초기화
-        KakaoSdk.init(this, kakaoAppKey)
-
-        // KakaoMap SDK 초기화
-        KakaoMapSdk.init(this, kakaoAppKey)
-
-        // Naver OAuth SDK 초기화 - local.properties에서 직접 읽기
-        val localProperties = Properties().apply {
-            try {
-                val propertiesFile = File(filesDir.parent, "local.properties")
-                if (propertiesFile.exists()) {
-                    load(propertiesFile.inputStream())
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "local.properties 파일 읽기 실패")
-            }
-        }
-        val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID", "")
-        val naverClientSecret = localProperties.getProperty("NAVER_CLIENT_SECRET", "")
+        // Naver OAuth SDK 초기화 - BuildConfig에서 가져오기
+        val naverClientId = BuildConfig.NAVER_CLIENT_ID
+        val naverClientSecret = BuildConfig.NAVER_CLIENT_SECRET
         val naverClientName = "walkit"
 
         if (naverClientId.isBlank() || naverClientSecret.isBlank()) {
-            Timber.e("Naver Client 정보가 설정되지 않았습니다. local.properties에 NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET을 추가하세요.")
+            Timber.e("❌ Naver Client 정보가 설정되지 않았습니다. NAVER_CLIENT_ID: '$naverClientId', NAVER_CLIENT_SECRET: '${naverClientSecret.take(5)}***'")
             // TODO: 네이버 로그인을 사용할 수 없음을 사용자에게 알림
         } else {
-            NidOAuth.initialize(
-                this,
-                naverClientId,
-                naverClientSecret,
-                naverClientName,
-                object : NidOAuthInitializingCallback {
-                    override fun onSuccess() {
-                        Timber.d("Naver OAuth SDK 초기화 성공")
-                    }
+            Timber.d("🔄 Naver OAuth 초기화 시도 - ClientId: ${naverClientId.take(5)}***")
+            try {
+                NidOAuth.initialize(
+                    this,
+                    naverClientId,
+                    naverClientSecret,
+                    naverClientName,
+                    object : NidOAuthInitializingCallback {
+                        override fun onSuccess() {
+                            Timber.d("✅ Naver OAuth SDK 초기화 성공")
+                        }
 
-                    override fun onFailure(e: Exception) {
-                        Timber.e(e, "Naver OAuth SDK 초기화 실패")
-                        // TODO: 사용자에게 네이버 로그인 오류 알림
-                    }
-                },
-            )
+                        override fun onFailure(e: Exception) {
+                            Timber.e(e, "❌ Naver OAuth SDK 초기화 실패: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    },
+                )
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ Naver OAuth 초기화 중 예외 발생: ${t.message}")
+                t.printStackTrace()
+            }
         }
 
         // Google Play Billing 초기화

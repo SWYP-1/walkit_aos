@@ -53,7 +53,7 @@ fun FriendSearchScreen(
     val searchUiState by viewModel.searchUiState.collectAsStateWithLifecycle()
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
-    Column(modifier = modifier.background(SemanticColor.backgroundWhitePrimary)) {
+    Column(modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary)) {
         AppHeader(title = "친구 찾기", onNavigateBack = {
             viewModel.clearQuery()
             onNavigateBack()

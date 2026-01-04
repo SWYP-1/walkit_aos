@@ -12,6 +12,7 @@ data class CosmeticItem(
     val itemId: Int,
     val name: String,
     val owned: Boolean,
+    val worn: Boolean = false,  // 착용 여부
     val position: EquipSlot,
     val point: Int,
     val tags: String? = null  // 아이템 태그 (Lottie asset 선택용)

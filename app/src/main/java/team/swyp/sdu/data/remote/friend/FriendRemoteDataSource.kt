@@ -28,9 +28,9 @@ class FriendRemoteDataSource @Inject constructor(
                     avatarUrl = dto.userImageUrl
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "친구 목록 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "친구 목록 조회 실패")
+            throw t
         }
     }
 }

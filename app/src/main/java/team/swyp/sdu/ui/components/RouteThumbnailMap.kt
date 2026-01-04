@@ -190,8 +190,8 @@ fun RouteThumbnailMap(
                 } ?: run {
                     Timber.tag(TAG_THUMBNAIL).w("위치를 가져올 수 없습니다")
                 }
-            } catch (e: Exception) {
-                Timber.tag(TAG_THUMBNAIL).e(e, "현재 위치 가져오기 중 오류 발생")
+            } catch (t: Throwable) {
+                Timber.tag(TAG_THUMBNAIL).e(t, "현재 위치 가져오기 중 오류 발생")
             }
         }
     }
@@ -207,8 +207,8 @@ fun RouteThumbnailMap(
                         mapView.pause()
                         Timber.tag(TAG_THUMBNAIL).d("DisposableEffect에서 MapView 정리")
                     }
-                } catch (e: Exception) {
-                    Timber.tag(TAG_THUMBNAIL).e(e, "MapView lifecycle 관리 실패")
+                } catch (t: Throwable) {
+                    Timber.tag(TAG_THUMBNAIL).e(t, "MapView lifecycle 관리 실패")
                 }
             }
             mapViewRef.value = null
@@ -301,8 +301,8 @@ fun RouteThumbnailMap(
                                 try {
                                     mapView.pause()
                                     mapViewRef.value = null
-                                } catch (e: Exception) {
-                                    Timber.tag(TAG_THUMBNAIL).e(e, "MapView 정리 실패")
+                                } catch (t: Throwable) {
+                                    Timber.tag(TAG_THUMBNAIL).e(t, "MapView 정리 실패")
                                 }
                                 return@AndroidView
                             }
@@ -412,8 +412,8 @@ fun RouteThumbnailMap(
                                             ).d(
                                                 "타임아웃 후 스냅샷 생성 성공: ${bitmap.width}x${bitmap.height}, snapshotBitmapState.value=${if (snapshotBitmapState.value != null) "설정됨(${snapshotBitmapState.value!!.width}x${snapshotBitmapState.value!!.height})" else "null"}",
                                             )
-                                    } catch (e: Exception) {
-                                        Timber.tag(TAG_THUMBNAIL).e(e, "타임아웃 후 스냅샷 생성 실패")
+                                    } catch (t: Throwable) {
+                                        Timber.tag(TAG_THUMBNAIL).e(t, "타임아웃 후 스냅샷 생성 실패")
                                     }
                                 }
                             }
@@ -564,11 +564,11 @@ fun RouteThumbnailMap(
                                                                         .tag(
                                                                             TAG_THUMBNAIL,
                                                                         ).d("스냅샷 생성 후 MapView 정리 완료")
-                                                                } catch (e: Exception) {
+                                                                } catch (t: Throwable) {
                                                                     Timber
                                                                         .tag(
                                                                             TAG_THUMBNAIL,
-                                                                        ).e(e, "스냅샷 생성 후 MapView 정리 실패")
+                                                                        ).e(t, "스냅샷 생성 후 MapView 정리 실패")
                                                                 }
                                                             } else {
                                                                 Timber
@@ -580,8 +580,8 @@ fun RouteThumbnailMap(
                                                                 // 스냅샷 생성 실패 시 재시도 또는 기본 이미지 표시
                                                                 // 일단 MapView는 정리하지 않고 유지 (재시도 가능하도록)
                                                             }
-                                                        } catch (e: Exception) {
-                                                            Timber.tag(TAG_THUMBNAIL).e(e, "스냅샷 생성 실패: ${e.message}")
+                                                        } catch (t: Throwable) {
+                                                            Timber.tag(TAG_THUMBNAIL).e(t, "스냅샷 생성 실패: ${t.message}")
                                                         }
                                                     } else {
                                                         Timber
@@ -639,8 +639,8 @@ private fun drawPathForThumbnail(
         shapeLayer.addPolyline(polylineOptions)
 
         Timber.tag(TAG_THUMBNAIL).d("썸네일 경로 그리기 완료: ${locations.size}개 포인트")
-    } catch (e: Exception) {
-        Timber.tag(TAG_THUMBNAIL).e(e, "썸네일 경로 그리기 실패")
+    } catch (t: Throwable) {
+        Timber.tag(TAG_THUMBNAIL).e(t, "썸네일 경로 그리기 실패")
     }
 }
 
@@ -707,8 +707,8 @@ private fun moveCameraForThumbnail(
                 .tag(
                     TAG_THUMBNAIL,
                 ).d("썸네일 카메라 이동 요청: 중심 ($centerLat, $centerLon), 줌 레벨: $zoomLevel, locations.size=${locations.size}")
-        } catch (e: Exception) {
-            Timber.tag(TAG_THUMBNAIL).e(e, "썸네일 카메라 이동 실패: ${e.message}")
+        } catch (t: Throwable) {
+            Timber.tag(TAG_THUMBNAIL).e(t, "썸네일 카메라 이동 실패: ${t.message}")
             // 실패해도 onComplete 호출하여 스냅샷 생성 시도
             onComplete()
             return
@@ -726,8 +726,8 @@ private fun moveCameraForThumbnail(
             Timber.tag(TAG_THUMBNAIL).d("카메라 이동 완료 콜백 실행 - locations.size=${locations.size}")
             onComplete()
         }, delayTime)
-    } catch (e: Exception) {
-        Timber.tag(TAG_THUMBNAIL).e(e, "썸네일 카메라 이동 실패")
+    } catch (t: Throwable) {
+        Timber.tag(TAG_THUMBNAIL).e(t, "썸네일 카메라 이동 실패")
         onComplete()
     }
 }

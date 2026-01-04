@@ -63,15 +63,22 @@ data class UserSummaryDto(
 
 /**
  * 캐릭터 응답 DTO
+ * 
+ * API 응답 구조:
+ * {
+ *   "headImage": { "imageName": "...", "itemPosition": "HEAD", "itemTag": "TOP" },
+ *   "bodyImage": { "imageName": "...", "itemPosition": "BODY", "itemTag": null },
+ *   "feetImage": { "imageName": "...", "itemPosition": "FEET", "itemTag": null }
+ * }
  */
 @Serializable
 data class ResponseCharacterDto(
-    @SerialName("headImageName")
-    val headImageName: String?,  // ✅ null 허용
-    @SerialName("bodyImageName")
-    val bodyImageName: String?,  // ✅ null 허용
-    @SerialName("feetImageName")
-    val feetImageName: String?,  // ✅ null 허용
+    @SerialName("headImage")
+    val headImage: team.swyp.sdu.data.remote.walking.dto.ItemImageDto? = null,
+    @SerialName("bodyImage")
+    val bodyImage: team.swyp.sdu.data.remote.walking.dto.ItemImageDto? = null,
+    @SerialName("feetImage")
+    val feetImage: team.swyp.sdu.data.remote.walking.dto.ItemImageDto? = null,
     @SerialName("characterImageName")
     val characterImageName: String,
     @SerialName("backgroundImageName")
@@ -82,6 +89,8 @@ data class ResponseCharacterDto(
     val grade: Grade,
     @SerialName("nickName")
     val nickName: String,
+    @SerialName("currentGoalSequence")
+    val currentGoalSequence: Int? = null,
 )
 
 /**

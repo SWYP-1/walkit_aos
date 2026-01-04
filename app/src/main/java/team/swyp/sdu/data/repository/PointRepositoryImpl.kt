@@ -22,9 +22,9 @@ class PointRepositoryImpl @Inject constructor(
             val pointDto = userRemoteDataSource.getUserPoint()
             Timber.d("포인트 조회 성공: ${pointDto.point}")
             Result.Success(pointDto.point)
-        } catch (e: Exception) {
-            Timber.e(e, "포인트 조회 실패")
-            Result.Error(e, e.message ?: "포인트 정보를 불러오지 못했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "포인트 조회 실패")
+            Result.Error(t, t.message ?: "포인트 정보를 불러오지 못했습니다")
         }
     }
 }

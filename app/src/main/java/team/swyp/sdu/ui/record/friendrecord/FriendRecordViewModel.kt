@@ -68,6 +68,8 @@ class FriendRecordViewModel @Inject constructor(
                 val lottieJson = cachedState.processedLottieJson
                     ?: generateFriendCharacterLottie(cachedState.record.character)
 
+                Timber.d("🎭 FriendRecord 캐시 사용: nickname=$nickname, lottieJson=${lottieJson?.length} characters")
+
                 _uiState.value = FriendRecordUiState.Success(
                     data = cachedState.record,
                     like = LikeUiState(
@@ -85,8 +87,8 @@ class FriendRecordViewModel @Inject constructor(
             // 3️⃣ 현재 위치 가져오기
             val currentLocation = try {
                 locationManager.getCurrentLocationOrLast()
-            } catch (e: Exception) {
-                Timber.w(e, "현재 위치를 가져올 수 없음 - 서울 시청 좌표 사용")
+            } catch (t: Throwable) {
+                Timber.w(t, "현재 위치를 가져올 수 없음 - 서울 시청 좌표 사용")
                 null
             }
 
@@ -104,7 +106,9 @@ class FriendRecordViewModel @Inject constructor(
                     val record = result.data
 
                     // 4️⃣ Lottie 캐릭터 JSON 생성
+                    Timber.d("🎭 FriendRecord Character 데이터: head=${record.character.headImageName}, body=${record.character.bodyImageName}, feet=${record.character.feetImageName}, tag=${record.character.headImageTag}")
                     val lottieJson = generateFriendCharacterLottie(record.character)
+                    Timber.d("🎭 FriendRecord Lottie JSON 생성 완료: ${lottieJson?.length} characters")
 
                     // 5️⃣ 캐시에 저장 (성공 시, Lottie JSON 포함)
                     friendStateCache[nickname] = FriendRecordState(
@@ -199,8 +203,8 @@ class FriendRecordViewModel @Inject constructor(
 
                 modifiedJson.toString()
             }
-        } catch (e: Exception) {
-            Timber.e(e, "친구 캐릭터 Lottie JSON 생성 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "친구 캐릭터 Lottie JSON 생성 실패")
             null
         }
     }
@@ -231,8 +235,8 @@ class FriendRecordViewModel @Inject constructor(
                 Timber.d("✅ FriendRecord JSONObject 생성 성공")
 
                 jsonObject
-            } catch (e: Exception) {
-                Timber.e(e, "❌ FriendRecord base Lottie JSON 로드 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ FriendRecord base Lottie JSON 로드 실패")
                 JSONObject() // 실패 시 빈 JSON 반환
             }
         }

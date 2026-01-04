@@ -41,7 +41,7 @@ fun OnboardingScreen(
                         onNext = {
                             try {
                                 viewModel.registerNickname()
-                            } catch (e: Exception) {
+                            } catch (t: Throwable) {
                             }
                         },
                         onCheckDuplicate = viewModel::checkNicknameDuplicate

@@ -130,7 +130,7 @@ private fun RecordScreenContent(
     onBlockUser: (String) -> Unit
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
-    val tabs = RecordTabType.entries
+    val tabs = RecordTabType.values()
 
     // 친구 선택 시 FriendRecordScreen에서 자동으로 로드됨
 

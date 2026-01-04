@@ -47,9 +47,9 @@ import java.time.format.DateTimeFormatter
 
 /**
  * 목표 진행률 카드 컴포넌트
- * 
+ *
  * 일주일 내 목표 달성 세션의 비율을 표시합니다.
- * 
+ *
  * @param goal 목표 정보 (목표 걸음 수)
  * @param currentSession 현재 산책 세션
  * @param syncedSessionsThisWeek 일주일 내 동기화된 세션 목록 (SYNCED 상태만)
@@ -66,21 +66,22 @@ fun GoalProgressCard(
     val today = LocalDate.now()
     val startOfWeek = today.with(DayOfWeek.MONDAY)
     val endOfWeek = startOfWeek.plusDays(6)
-    
+
     // 이번 산책이 목표 달성했는지 확인
     val currentSessionAchieved = currentSession.stepCount >= goal.targetStepCount
-    
+
     // 동기화된 세션 중 목표 달성한 세션 수 (과거 SYNC 기록)
     val achievedSyncedCount = syncedSessionsThisWeek.count { session ->
         session.stepCount >= goal.targetStepCount  // ✅ goal의 targetStepCount로 비교
     }
-    
+
     // 일주일 전체 (7일)
     val targetWalkCount = goal.targetWalkCount
-    
+
     // 과거 SYNC 기록의 진행률 (하얀색 점의 위치)
-    val syncedProgressPercent = (achievedSyncedCount.toFloat() / targetWalkCount * 100).coerceIn(0f, 100f)
-    
+    val syncedProgressPercent =
+        (achievedSyncedCount.toFloat() / targetWalkCount * 100).coerceIn(0f, 100f)
+
     // 전체 진행률 (과거 SYNC 기록 + 현재 산책)
     val totalProgressPercent = if (currentSessionAchieved) {
         val totalAchievedCount = achievedSyncedCount + 1
@@ -88,14 +89,14 @@ fun GoalProgressCard(
     } else {
         syncedProgressPercent
     }
-    
+
     // 이번 산책으로 증가한 퍼센트
     val increasePercent = if (currentSessionAchieved) {
         totalProgressPercent - syncedProgressPercent
     } else {
         0f
     }
-    
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -126,7 +127,7 @@ fun GoalProgressCard(
                     fontWeight = FontWeight.SemiBold,
                     color = SemanticColor.textBorderPrimary,
                 )
-                
+
                 if (increasePercent > 0f) {
                     Text(
                         text = "오늘 산책으로 목표에 ${increasePercent.toInt()}% 가까워졌어요!",
@@ -136,21 +137,21 @@ fun GoalProgressCard(
                     )
                 }
             }
-            
+
             // 진행 바
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 val progressBarWidth = maxWidth
-                
+
                 // 과거 SYNC 기록의 진행률 (하얀색 점 위치)
                 val syncedProgressRatio = (syncedProgressPercent / 100f).coerceIn(0f, 1f)
                 val syncedProgressWidthPx = syncedProgressRatio * progressBarWidth.value
-                
+
                 // 전체 진행률 (과거 SYNC + 현재 산책)
                 val totalProgressRatio = (totalProgressPercent / 100f).coerceIn(0f, 1f)
                 val totalProgressWidthPx = totalProgressRatio * progressBarWidth.value
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -173,7 +174,7 @@ fun GoalProgressCard(
                                 ),
                             ),
                     )
-                    
+
                     // 하얀색 원 표시기 (과거 SYNC 기록의 끝 위치)
                     if (syncedProgressPercent > 0f) {
                         Box(
@@ -187,7 +188,7 @@ fun GoalProgressCard(
                     }
                 }
             }
-            
+
             // 툴팁 (14% 증가) - Column의 다음 행으로 배치
             if (increasePercent > 0f) {
                 BoxWithConstraints(
@@ -196,37 +197,41 @@ fun GoalProgressCard(
                         .offset(y = (-20).dp), // Column의 spacedBy(20.dp)를 상쇄하여 프로그래스 바와 툴팁 박스 사이를 정확히 20dp로
                 ) {
                     val progressBarWidth = maxWidth
-                    
+
                     // 전체 진행률 (현재 산책으로 추가된 초록색의 끝)
                     val totalProgressRatio = (totalProgressPercent / 100f).coerceIn(0f, 1f)
                     val totalProgressWidthPx = totalProgressRatio * progressBarWidth.value
-                    
+
                     // 화살표가 가리켜야 할 위치: 전체 진행률의 끝 (오로지 진행률 퍼센트에만 의존)
-                    val arrowTargetX = totalProgressWidthPx.coerceIn(7.5f, progressBarWidth.value - 7.5f)
-                    
+                    val arrowTargetX =
+                        totalProgressWidthPx.coerceIn(7.5f, progressBarWidth.value - 7.5f)
+
                     // 툴팁 박스 너비 추정 (한 줄로 고정, 여유 공간 포함)
                     val estimatedTooltipWidth = 80.dp.value
                     val minTooltipWidth = 60.dp.value
                     val padding = 0.dp.value // 좌우 여유 공간
-                    
+
                     // 툴팁 박스 위치 계산 (화살표와 독립적으로 배치)
                     var tooltipX = arrowTargetX - estimatedTooltipWidth / 2
-                    
+
                     // 화면 오른쪽 끝을 넘지 않도록 조정
                     val rightEdge = progressBarWidth.value - estimatedTooltipWidth - padding
                     if (tooltipX > rightEdge) {
                         tooltipX = rightEdge.coerceAtLeast(padding)
                     }
-                    
+
                     // 화면 왼쪽 끝을 넘지 않도록 보정
                     tooltipX = tooltipX.coerceAtLeast(padding)
-                    
+
                     // 최종적으로 툴팁이 화면 밖으로 나가지 않는지 확인
                     val tooltipRightEdge = tooltipX + estimatedTooltipWidth
                     if (tooltipRightEdge > progressBarWidth.value - padding) {
-                        tooltipX = (progressBarWidth.value - estimatedTooltipWidth - padding).coerceAtLeast(padding)
+                        tooltipX =
+                            (progressBarWidth.value - estimatedTooltipWidth - padding).coerceAtLeast(
+                                padding
+                            )
                     }
-                    
+
                     // 화살표와 툴팁을 독립적으로 배치
                     // 프로그래스 바 끝에서 툴팁 박스 시작까지 정확히 20dp가 되도록 배치
                     // 화살표 높이: 15dp, 화살표를 프로그래스 바 위 5dp 위치에 배치
@@ -255,7 +260,7 @@ fun GoalProgressCard(
                                 )
                             }
                         }
-                        
+
                         // 툴팁 박스 (프로그래스 바 위 20dp 위치에 배치)
                         Row(
                             modifier = Modifier
@@ -295,7 +300,7 @@ fun GoalProgressCardPreview() {
             targetStepCount = 10000,
             targetWalkCount = 5,
         )
-        
+
         val currentSession = WalkingSession(
             id = "preview-session",
             startTime = System.currentTimeMillis() - 3600000, // 1시간 전
@@ -303,12 +308,12 @@ fun GoalProgressCardPreview() {
             stepCount = 12000, // 목표 달성
             locations = emptyList(),
             totalDistance = 5000f,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.JOYFUL,
+            preWalkEmotion = "JOYFUL",
+            postWalkEmotion = "JOYFUL",
             note = null,
             createdDate = ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
         )
-        
+
         // 일주일 내 동기화된 세션 목록 (목표 달성한 세션 2개)
         val syncedSessionsThisWeek = listOf(
             WalkingSession(
@@ -318,10 +323,11 @@ fun GoalProgressCardPreview() {
                 stepCount = 11000, // 목표 달성
                 locations = emptyList(),
                 totalDistance = 4500f,
-                preWalkEmotion = EmotionType.JOYFUL,
-                postWalkEmotion = EmotionType.JOYFUL,
+                preWalkEmotion = "JOYFUL",
+                postWalkEmotion = "JOYFUL",
                 note = null,
-                createdDate = ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_LOCAL_DATE),
+                createdDate = ZonedDateTime.now().minusDays(2)
+                    .format(DateTimeFormatter.ISO_LOCAL_DATE),
             ),
             WalkingSession(
                 id = "session-2",
@@ -330,13 +336,14 @@ fun GoalProgressCardPreview() {
                 stepCount = 8000, // 목표 미달성
                 locations = emptyList(),
                 totalDistance = 3500f,
-                preWalkEmotion = EmotionType.JOYFUL,
-                postWalkEmotion = EmotionType.JOYFUL,
+                preWalkEmotion = "JOYFUL",
+                postWalkEmotion = "JOYFUL",
                 note = null,
-                createdDate = ZonedDateTime.now().minusDays(3).format(DateTimeFormatter.ISO_LOCAL_DATE),
+                createdDate = ZonedDateTime.now().minusDays(3)
+                    .format(DateTimeFormatter.ISO_LOCAL_DATE),
             ),
         )
-        
+
         GoalProgressCard(
             goal = goal,
             currentSession = currentSession,
@@ -354,7 +361,7 @@ fun GoalProgressCardNotAchievedPreview() {
             targetStepCount = 10000,
             targetWalkCount = 5,
         )
-        
+
         val currentSession = WalkingSession(
             id = "preview-session",
             startTime = System.currentTimeMillis() - 3600000,
@@ -362,60 +369,13 @@ fun GoalProgressCardNotAchievedPreview() {
             stepCount = 8000, // 목표 미달성
             locations = emptyList(),
             totalDistance = 4000f,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.JOYFUL,
+            preWalkEmotion = "JOYFUL",
+            postWalkEmotion = "JOYFUL",
             note = null,
             createdDate = ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
         )
-        
+
         val syncedSessionsThisWeek = emptyList<WalkingSession>()
-        
-        GoalProgressCard(
-            goal = goal,
-            currentSession = currentSession,
-            syncedSessionsThisWeek = syncedSessionsThisWeek,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "목표 100% 달성")
-@Composable
-fun GoalProgressCard100PercentPreview() {
-    WalkItTheme {
-        val goal = Goal(
-            targetStepCount = 10000,
-            targetWalkCount = 6,
-        )
-        
-        val currentSession = WalkingSession(
-            id = "preview-session",
-            startTime = System.currentTimeMillis() - 3600000,
-            endTime = System.currentTimeMillis(),
-            stepCount = 12000, // 목표 달성
-            locations = emptyList(),
-            totalDistance = 5000f,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.JOYFUL,
-            note = null,
-            createdDate = ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
-        )
-        
-        // 일주일 내 동기화된 세션 목록 (목표 달성한 세션 6개 - 6일)
-        val syncedSessionsThisWeek = (1..6).map { dayOffset ->
-            WalkingSession(
-                id = "session-$dayOffset",
-                startTime = System.currentTimeMillis() - 86400000L * dayOffset,
-                endTime = System.currentTimeMillis() - 86400000L * dayOffset + 3600000,
-                stepCount = 11000, // 목표 달성
-                locations = emptyList(),
-                totalDistance = 4500f,
-                preWalkEmotion = EmotionType.JOYFUL,
-                postWalkEmotion = EmotionType.JOYFUL,
-                note = null,
-                createdDate = ZonedDateTime.now().minusDays(dayOffset.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE),
-            )
-        }
 
         GoalProgressCard(
             goal = goal,
@@ -426,50 +386,4 @@ fun GoalProgressCard100PercentPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "이번 산책으로 100% 달성")
-@Composable
-fun GoalProgressCardCompletedByCurrentPreview() {
-    WalkItTheme {
-        val goal = Goal(
-            targetStepCount = 10000,
-            targetWalkCount = 5,
-        )
-
-        val currentSession = WalkingSession(
-            id = "preview-session",
-            startTime = System.currentTimeMillis() - 3600000,
-            endTime = System.currentTimeMillis(),
-            stepCount = 12000, // 목표 달성 (마지막 하나)
-            locations = emptyList(),
-            totalDistance = 5000f,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.JOYFUL,
-            note = null,
-            createdDate = ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
-        )
-
-        // 일주일 내 동기화된 세션 목록 (목표 달성한 세션 6개 - 6일)
-        val syncedSessionsThisWeek = (1..6).map { dayOffset ->
-            WalkingSession(
-                id = "session-$dayOffset",
-                startTime = System.currentTimeMillis() - 86400000L * dayOffset,
-                endTime = System.currentTimeMillis() - 86400000L * dayOffset + 3600000,
-                stepCount = 11000, // 목표 달성
-                locations = emptyList(),
-                totalDistance = 4500f,
-                preWalkEmotion = EmotionType.JOYFUL,
-                postWalkEmotion = EmotionType.JOYFUL,
-                note = null,
-                createdDate = ZonedDateTime.now().minusDays(dayOffset.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE),
-            )
-        }
-
-        GoalProgressCard(
-            goal = goal,
-            currentSession = currentSession,
-            syncedSessionsThisWeek = syncedSessionsThisWeek,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
 

@@ -98,8 +98,8 @@ class LocationManager @Inject constructor(
                     accuracy = it.accuracy,
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "현재 위치 가져오기 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "현재 위치 가져오기 실패")
             null
         }
     }
@@ -131,8 +131,8 @@ class LocationManager @Inject constructor(
                     accuracy = it.accuracy,
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "마지막 위치 가져오기 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "마지막 위치 가져오기 실패")
             null
         }
     }

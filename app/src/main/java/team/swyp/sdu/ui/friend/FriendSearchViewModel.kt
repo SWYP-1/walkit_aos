@@ -76,8 +76,8 @@ constructor(
             // 3️⃣ 현재 위치 가져오기
             val currentLocation = try {
                 locationManager.getCurrentLocationOrLast()
-            } catch (e: Exception) {
-                Timber.w(e, "현재 위치를 가져올 수 없음 - 서울 시청 좌표 사용")
+            } catch (t: Throwable) {
+                Timber.w(t, "현재 위치를 가져올 수 없음 - 서울 시청 좌표 사용")
                 null
             }
 
@@ -92,8 +92,11 @@ constructor(
                     is Result.Success -> {
                         val data = result.data
 
+                        Timber.d("🎭 FriendSearchDetail Character 데이터: head=${data.character.headImageName}, body=${data.character.bodyImageName}, feet=${data.character.feetImageName}, tag=${data.character.headImageTag}")
+
                         // Lottie 캐릭터 JSON 생성
-                        val lottieJson = generateFriendSearchCharacterLottie(data.character)
+                        val lottieJson = generateFriendCharacterLottie(data.character)
+                        Timber.d("🎭 FriendSearchDetail Lottie JSON 생성 완료: ${lottieJson?.length} characters")
 
                         // 팔로우 상태는 네비게이션 파라미터에서 이미 설정됨
                         Timber.d("FriendSearchViewModel.loadFollowerWalkRecord: $nickname 팔로우 상태 이미 설정됨 - ${_followStatus.value}")
@@ -178,8 +181,8 @@ constructor(
                 // 이미 팔로우 중이므로 ACCEPTED 상태로 변경
                 _followStatus.value = FollowStatus.ACCEPTED
                 saveFollowStatusToLocal(trimmedNickname, FollowStatus.ACCEPTED)
-            } catch (e: Exception) {
-                Timber.e(e, "팔로우 실패: $trimmedNickname")
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로우 실패: $trimmedNickname")
                 // 롤백: 이전 상태로 복원
                 rollbackFollowStatus(previousFollowStatus)
             } finally {
@@ -211,8 +214,8 @@ constructor(
                 .putString("follow_status_$nickname", status.name)
                 .apply()
             Timber.d("팔로우 상태 로컬 저장: $nickname -> $status")
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 상태 로컬 저장 실패: $nickname")
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 상태 로컬 저장 실패: $nickname")
         }
     }
 
@@ -228,8 +231,8 @@ constructor(
             val status = statusString?.let { FollowStatus.valueOf(it) } ?: FollowStatus.EMPTY
             Timber.d("팔로우 상태 로컬 로드: $nickname -> $status")
             status
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 상태 로컬 로드 실패: $nickname")
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 상태 로컬 로드 실패: $nickname")
             FollowStatus.EMPTY
         }
     }
@@ -237,7 +240,7 @@ constructor(
     /**
      * 친구 검색 캐릭터 Lottie JSON 생성
      */
-    private suspend fun generateFriendSearchCharacterLottie(character: team.swyp.sdu.domain.model.Character): String? {
+    private suspend fun generateFriendCharacterLottie(character: team.swyp.sdu.domain.model.Character): String? {
         return try {
             withContext(Dispatchers.IO) {
                 // 캐릭터 등급에 따른 base Lottie JSON 로드
@@ -251,8 +254,8 @@ constructor(
 
                 modifiedJson.toString()
             }
-        } catch (e: Exception) {
-            Timber.e(e, "친구 검색 캐릭터 Lottie JSON 생성 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "친구 캐릭터 Lottie JSON 생성 실패")
             null
         }
     }
@@ -283,8 +286,8 @@ constructor(
                 Timber.d("✅ FriendSearch JSONObject 생성 성공")
 
                 jsonObject
-            } catch (e: Exception) {
-                Timber.e(e, "❌ FriendSearch base Lottie JSON 로드 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ FriendSearch base Lottie JSON 로드 실패")
                 JSONObject() // 실패 시 빈 JSON 반환
             }
         }

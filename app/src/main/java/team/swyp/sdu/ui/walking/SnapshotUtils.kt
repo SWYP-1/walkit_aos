@@ -51,8 +51,8 @@ fun View.toBitmap(): Bitmap? {
         
         Timber.d("View.draw() 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
         bitmap
-    } catch (e: Exception) {
-        Timber.e(e, "View.draw() 스냅샷 생성 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "View.draw() 스냅샷 생성 실패: ${t.message}")
         null
     }
 }
@@ -85,8 +85,8 @@ fun View.saveToFile(
         val absolutePath = file.absolutePath
         Timber.d("스냅샷 파일 저장 완료: $absolutePath")
         absolutePath
-    } catch (e: Exception) {
-        Timber.e(e, "스냅샷 파일 저장 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "스냅샷 파일 저장 실패: ${t.message}")
         null
     } finally {
         bitmap.recycle()

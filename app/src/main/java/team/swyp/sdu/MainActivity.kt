@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                         val isWalkingGraphInBackStack = try {
                             navController.getBackStackEntry(Screen.WalkingGraph.route)
                             true
-                        } catch (e: Exception) {
+                        } catch (t: Throwable) {
                             false
                         }
 

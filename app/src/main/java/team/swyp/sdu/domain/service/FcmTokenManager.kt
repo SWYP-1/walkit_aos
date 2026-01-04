@@ -75,8 +75,8 @@ class FcmTokenManager @Inject constructor(
             }
 
             Timber.d("=== FCM 토큰 상태 확인 완료 ===")
-        } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 확인 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "FCM 토큰 확인 실패")
         }
     }
 
@@ -98,12 +98,12 @@ class FcmTokenManager @Inject constructor(
                 fcmTokenDataStore.saveToken(token)
                 // 서버 전송은 onNewToken에서 자동으로 처리되므로 여기서는 하지 않음
                 return // 성공 시 종료
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 val isLastAttempt = attempt == maxRetries - 1
                 if (isLastAttempt) {
-                    Timber.e(e, "FCM 토큰 발급 실패 (최대 재시도 횟수 도달)")
+                    Timber.e(t, "FCM 토큰 발급 실패 (최대 재시도 횟수 도달)")
                 } else {
-                    Timber.w(e, "FCM 토큰 발급 실패, ${retryDelay}ms 후 재시도 (시도 ${attempt + 1}/$maxRetries)")
+                    Timber.w(t, "FCM 토큰 발급 실패, ${retryDelay}ms 후 재시도 (시도 ${attempt + 1}/$maxRetries)")
                     delay(retryDelay)
                     retryDelay *= 2 // 지수 백오프: 1초 -> 2초 -> 4초
                 }
@@ -132,8 +132,8 @@ class FcmTokenManager @Inject constructor(
                 Timber.d("로그아웃 상태이므로 서버 전송 생략 (로컬에만 저장)")
             }
             Timber.d("=== FCM 토큰 갱신 완료 ===")
-        } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 갱신 처리 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "FCM 토큰 갱신 처리 실패")
         }
     }
 
@@ -172,9 +172,9 @@ class FcmTokenManager @Inject constructor(
                 }
             }
             Timber.d("=== FCM 토큰 서버 동기화 완료 ===")
-        } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 서버 동기화 중 예외 발생")
-            Timber.e("예외 상세: ${e.stackTraceToString()}")
+        } catch (t: Throwable) {
+            Timber.e(t, "FCM 토큰 서버 동기화 중 예외 발생")
+            Timber.e("예외 상세: ${t.stackTraceToString()}")
         }
     }
 

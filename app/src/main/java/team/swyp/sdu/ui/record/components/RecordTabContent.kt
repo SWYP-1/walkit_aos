@@ -24,7 +24,7 @@ fun RecordTabContent(
     onMonthChanged: (YearMonth) -> Unit,
 ) {
     when (selectedTab) {
-        RecordTabType.Month -> MonthSection(
+        RecordTabType.Month -> MonthSectionSafe(
             stats = monthStats,
             sessions = monthSessions,
             missionsCompleted = monthMissionsCompleted,
@@ -32,7 +32,7 @@ fun RecordTabContent(
             onMonthChanged = onMonthChanged,
         )
 
-        RecordTabType.Week -> WeekSection(
+        RecordTabType.Week -> WeekSectionSafe(
             stats = weekStats,
             currentDate = currentDate,
             onPrevWeek = onPrevWeek,

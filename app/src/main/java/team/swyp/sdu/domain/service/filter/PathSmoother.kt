@@ -58,8 +58,8 @@ class PathSmoother @Inject constructor() {
 
             return smoothedPoints.map { it.latitude } to smoothedPoints.map { it.longitude }
 
-        } catch (e: Exception) {
-            Timber.e(e, "경로 스무딩 중 오류 발생")
+        } catch (t: Throwable) {
+            Timber.e(t, "경로 스무딩 중 오류 발생")
             return latitudes to longitudes  // 오류 시 원본 반환
         }
     }

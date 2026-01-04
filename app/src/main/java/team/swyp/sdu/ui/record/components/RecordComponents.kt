@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.ui.walking.utils.stringToEmotionType
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.ui.components.SectionCard
@@ -68,8 +69,10 @@ import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
@@ -84,10 +87,25 @@ fun Modifier.customShadow(): Modifier = this.graphicsLayer {
 }
 
 /**
- * 월간 섹션 컴포넌트
+ * 안전하게 epochMilli를 LocalDate로 변환
+ * 예외 발생 시 오늘 날짜 반환
+ */
+fun safeEpochMilliToLocalDate(epochMilli: Long): LocalDate {
+    return try {
+        Instant.ofEpochMilli(epochMilli)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    } catch (e: Exception) {
+        LocalDate.now()
+    }
+}
+
+
+/**
+ * 월간 섹션 컴포넌트 (릴리즈 안전 버전)
  */
 @Composable
-fun MonthSection(
+fun MonthSectionSafe(
     stats: WalkAggregate,
     sessions: List<WalkingSession>,
     missionsCompleted: List<String>,
@@ -96,19 +114,27 @@ fun MonthSection(
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
-    val emotionsByDate = remember(sessions) {
-        emptyMap<LocalDate, List<team.swyp.sdu.data.model.Emotion>>()
-    }
-
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
-            java.time.Instant.ofEpochMilli(session.startTime)
-                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            safeEpochMilliToLocalDate(session.startTime)
         }
     }
 
     val monthlyStats = remember(sessions, currentMonth) {
-        calculateMonthlyStatsForRecord(sessions, currentMonth)
+        try {
+            calculateMonthlyStatsForRecord(sessions, currentMonth)
+        } catch (e: Exception) {
+            // 이상값 발생 시 기본값 반환
+            MonthlyStatsRecord(
+                primaryMood = null,
+                emotionCount = 0,
+                description = "이번 달의 주요 감정입니다.",
+                totalSteps = 0,
+                averageSteps = 0,
+                walkingTimeMinutes = 0,
+                sessionsCount = 0
+            )
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -140,7 +166,6 @@ fun MonthSection(
             )
         }
 
-        // 월간 통계 카드 (평균 걸음, 산책 시간)
         WalkingStatsCard(
             sessions = sessions,
             modifier = Modifier.fillMaxWidth(),
@@ -155,45 +180,49 @@ fun MonthSection(
     }
 }
 
+
 /**
  * 주간 섹션 컴포넌트
  */
+/**
+ * 주간 섹션 컴포넌트 (릴리즈 안전 버전)
+ */
 @Composable
-fun WeekSection(
+fun WeekSectionSafe(
     stats: WalkAggregate,
     currentDate: LocalDate,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
     sessions: List<WalkingSession> = emptyList(), // 이미 해당 주의 세션만 필터링된 데이터
 ) {
-    // 주간 날짜 범위 계산 (월요일 ~ 일요일)
     val startOfWeek = currentDate.with(DayOfWeek.MONDAY)
     val weekDates = remember(startOfWeek) {
         (0..6).map { startOfWeek.plusDays(it.toLong()) }
     }
 
-    // 세션을 날짜별로 그룹화 (이미 해당 주의 세션만 포함)
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
-            java.time.Instant.ofEpochMilli(session.startTime)
-                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            safeEpochMilliToLocalDate(session.startTime)
         }
     }
 
-    // sessions는 이미 해당 주의 세션만 포함하므로 추가 필터링 불필요
     val weekSessions = sessions
 
-    // 주요 감정 계산: postWalkEmotion 기준으로 가장 빈도가 높은 감정 찾기
     val dominantEmotionInfo = remember(weekSessions) {
-        val emotionFrequency = weekSessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
+        try {
+            val emotionFrequency = weekSessions.map { session ->
+                stringToEmotionType(session.postWalkEmotion)
+            }.groupingBy { it }.eachCount()
 
-        if (emotionFrequency.isNotEmpty()) {
-            // 가장 빈도가 높은 감정 찾기
-            val mostFrequentEmotion = emotionFrequency.maxByOrNull { it.value }?.key
-            val frequency = emotionFrequency[mostFrequentEmotion] ?: 0
-            Pair(mostFrequentEmotion, frequency)
-        } else {
-            Pair(null as EmotionType?, 0)
+            if (emotionFrequency.isNotEmpty()) {
+                val mostFrequentEmotion = emotionFrequency.maxByOrNull { it.value }?.key
+                val frequency = emotionFrequency[mostFrequentEmotion] ?: 0
+                Pair(mostFrequentEmotion, frequency)
+            } else {
+                Pair(null as EmotionType?, 0)
+            }
+        } catch (e: Exception) {
+            Pair(null, 0)
         }
     }
 
@@ -205,7 +234,6 @@ fun WeekSection(
                 .customShadow()
                 .background(SemanticColor.backgroundWhitePrimary, shape = RoundedCornerShape(12.dp))
         ) {
-            // 주간 네비게이터
             WeekNavigator(
                 currentDate = currentDate,
                 onPreviousWeek = onPrevWeek,
@@ -213,7 +241,6 @@ fun WeekSection(
             )
             Spacer(Modifier.height(13.dp))
 
-            // 주간 캘린더
             WeekCalendarGrid(
                 weekDates = weekDates,
                 sessionsByDate = sessionsByDate,
@@ -221,8 +248,6 @@ fun WeekSection(
             )
         }
 
-
-        // 주간 통계 카드 (평균 걸음, 산책 시간)
         WalkingStatsCard(
             sessions = weekSessions,
             modifier = Modifier.fillMaxWidth(),
@@ -234,7 +259,6 @@ fun WeekSection(
             periodText = "이번주",
         )
 
-//        GoalCheckRow()
         Spacer(Modifier.height(22.dp))
     }
 }
@@ -746,7 +770,9 @@ private fun calculateMonthlyStatsForRecord(
     val walkingTimeMinutes = totalWalkingTimeMillis / (1000 * 60) // 밀리초를 분으로 변환
 
     // 주요 감정 계산: postWalkEmotion 기준으로 가장 빈도가 높은 감정 찾기
-    val emotionFrequency = monthSessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
+    val emotionFrequency = monthSessions.map { session ->
+        stringToEmotionType(session.postWalkEmotion)
+    }.groupingBy { it }.eachCount()
 
     val primaryMood: EmotionType?
     val description: String
@@ -892,10 +918,10 @@ fun WalkingDiaryCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // 산책 전 감정
-                    EmotionCircleIcon(session.preWalkEmotion)
-                    // 산책 후 감정
-                    EmotionCircleIcon(session.postWalkEmotion)
+                    // 산책 전 감정 (String을 EmotionType으로 변환)
+                    EmotionCircleIcon(stringToEmotionType(session.preWalkEmotion))
+                    // 산책 후 감정 (String을 EmotionType으로 변환)
+                    EmotionCircleIcon(stringToEmotionType(session.postWalkEmotion))
                 }
 
                 Box {
@@ -923,7 +949,7 @@ fun WalkingDiaryCard(
             }
             // 일기 내용
             val innerPadding = 10.dp
-            if(note.isNotEmpty() || isEditMode){
+            if (note.isNotEmpty() || isEditMode) {
                 HorizontalDivider(color = Color(0xFFF3F3F5), thickness = 1.dp)
                 SectionCard {
                     if (isEditMode) {
@@ -950,7 +976,9 @@ fun WalkingDiaryCard(
                                 .fillMaxWidth()
                                 .height(138.dp)
                                 .then(
-                                    if (focusRequester != null) Modifier.focusRequester(focusRequester)
+                                    if (focusRequester != null) Modifier.focusRequester(
+                                        focusRequester
+                                    )
                                     else Modifier
                                 )
                         )
@@ -983,8 +1011,9 @@ fun getCircleEmotionIcon(emotion: EmotionType): Int {
         EmotionType.IRRITATED -> R.drawable.ic_circle_anxious
     }
 }
+
 @Composable
-fun EmotionCircleIcon(emotion: EmotionType,size : Dp = 52.dp) {
+fun EmotionCircleIcon(emotion: EmotionType, size: Dp = 52.dp) {
     Box(
         modifier = Modifier
             .size(size)
@@ -1229,8 +1258,8 @@ fun WalkingDiaryCardPreview() {
             id = "session_01",
             startTime = System.currentTimeMillis() - 3600_000, // 1시간 전
             stepCount = 3500,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.HAPPY,
+            preWalkEmotion = "JOYFUL",
+            postWalkEmotion = "HAPPY",
             locations = emptyList(), // 좌표 생략
             note = "오늘은 날씨가 좋아서 산책이 즐거웠어요.",
             endTime = 12314556L,

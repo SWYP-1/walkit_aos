@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- 릴리즈 빌드에서는 HTTPS만 허용 (보안) -->
+    <!-- 디버그 빌드에서만 cleartext 허용이 필요한 경우 base-config 사용 -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- 디버그 빌드에서만 cleartext 허용 (필요한 경우) -->
+    <!-- 릴리즈에서는 이 설정이 무시됨 -->
+    <!--
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">walkit-shop-swyp-11.shop</domain>
     </domain-config>
+    -->
 </network-security-config>

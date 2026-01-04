@@ -58,8 +58,8 @@ class TokenAuthenticator @Inject constructor(
         //     return response.request.newBuilder()
         //         .header("Authorization", "Bearer ${newTokenResponse.accessToken}")
         //         .build()
-        // } catch (e: Exception) {
-        //     Timber.e(e, "토큰 갱신 실패")
+        // } catch (t: Throwable) {
+        //     Timber.e(t, "토큰 갱신 실패")
         //     return null
         // }
     }

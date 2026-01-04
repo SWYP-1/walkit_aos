@@ -44,9 +44,9 @@ class CosmeticItemRemoteDataSource @Inject constructor(
                 Timber.e("코스메틱 아이템 조회 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("코스메틱 아이템 조회 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 조회 중 예외 발생: ${e.message}")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "코스메틱 아이템 조회 중 예외 발생: ${t.message}")
+            throw t
         }
     }
 
@@ -68,9 +68,9 @@ class CosmeticItemRemoteDataSource @Inject constructor(
                 Timber.e("코스메틱 아이템 구매 실패: $errorMessage (코드: ${response.code()})")
                 Result.Error(Exception(errorMessage))
             }
-        } catch (e: Exception) {
-            Timber.e(e, "코스메틱 아이템 구매 중 예외 발생 (Ask Gemini)")
-            Result.Error(e, "코스메틱 아이템 구매 중 예외 발생")
+        } catch (t: Throwable) {
+            Timber.e(t, "코스메틱 아이템 구매 중 예외 발생 (Ask Gemini)")
+            Result.Error(t, "코스메틱 아이템 구매 중 예외 발생")
         }
     }
 
@@ -109,9 +109,9 @@ class CosmeticItemRemoteDataSource @Inject constructor(
                 Timber.e("캐릭터 아이템 ${if (isWorn) "착용" else "해제"} 실패: $errorMessage (코드: ${response.code()})")
                 Result.Error(Exception(errorMessage))
             }
-        } catch (e: Exception) {
-            Timber.e(e, "캐릭터 아이템 착용/해제 중 예외 발생: itemId=$itemId")
-            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "캐릭터 아이템 착용/해제 중 예외 발생: itemId=$itemId")
+            Result.Error(t)
         }
     }
 

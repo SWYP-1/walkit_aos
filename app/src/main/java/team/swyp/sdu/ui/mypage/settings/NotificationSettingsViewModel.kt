@@ -365,12 +365,12 @@ constructor(
                         Timber.d("알림 설정 저장 중...")
                     }
                 }
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // 예외 발생 시 저장 중 상태 해제
                 viewModelScope.launch {
                     _isSaving.value = false
                 }
-                Timber.e(e, "알림 설정 저장 중 예외 발생")
+                Timber.e(t, "알림 설정 저장 중 예외 발생")
             }
         }
     }

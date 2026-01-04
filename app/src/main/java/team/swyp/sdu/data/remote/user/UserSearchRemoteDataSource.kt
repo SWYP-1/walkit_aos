@@ -47,9 +47,9 @@ class UserSearchRemoteDataSource @Inject constructor(
                     throw e
                 }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 검색 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 검색 실패: $nickname")
+            throw t
         }
     }
 
@@ -65,9 +65,9 @@ class UserSearchRemoteDataSource @Inject constructor(
             val dto = userApi.getUserSummaryByNickname(nickname, lat, lon)
             Timber.d("사용자 요약 정보 조회 성공: ${dto.responseCharacterDto.nickName}")
             dto
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 요약 정보 조회 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 요약 정보 조회 실패: $nickname")
+            throw t
         }
     }
 }

@@ -19,7 +19,7 @@ enum class Grade(val level: Int, val displayName: String) {
          * 레벨로 등급을 찾습니다.
          */
         fun fromLevel(level: Int): Grade? {
-            return entries.find { it.level == level }
+            return values().find { it.level == level }
         }
 
         /**

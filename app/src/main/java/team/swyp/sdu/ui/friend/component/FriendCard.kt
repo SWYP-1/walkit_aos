@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -97,7 +98,9 @@ fun FriendCard(
                             .data(imageName)
                             .build(),
                         contentDescription = "목걸이",
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -190,6 +193,7 @@ private fun FollowButton(
                 fontWeight = FontWeight.Medium,
             )
         }
+
         FollowStatus.REJECTED -> {
             ButtonConfig(
                 text = "거절됨",
@@ -234,7 +238,7 @@ private fun FollowButton(
     //TODO : && followStatus != FollowStatus.REJECTED 거절당하면 두번다시 못누르나?
     Button(
         onClick = onClick,
-        enabled = enabled && followStatus != FollowStatus.ACCEPTED ,
+        enabled = enabled && followStatus != FollowStatus.ACCEPTED,
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = buttonColor,

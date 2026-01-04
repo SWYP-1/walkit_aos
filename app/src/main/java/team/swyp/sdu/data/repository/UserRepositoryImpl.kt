@@ -75,9 +75,9 @@ class UserRepositoryImpl @Inject constructor(
                     // 캐시에 없으면 서버에서 가져오기
                     refreshUser()
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 조회 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 조회 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -99,9 +99,9 @@ class UserRepositoryImpl @Inject constructor(
                 Timber.d("Room 저장 확인: userId=${savedEntity?.userId}, nickname=${savedEntity?.nickname}, imageName=${savedEntity?.imageName}")
 
                 Result.Success(user)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 프로필 갱신 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 프로필 갱신 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -111,9 +111,9 @@ class UserRepositoryImpl @Inject constructor(
                 // TODO: 서버 API 연동 시 Remote → Room 으로 변경
                 userDao.upsert(UserMapper.toEntity(user))
                 Result.Success(user)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 업데이트 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 업데이트 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -145,10 +145,10 @@ class UserRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // 네트워크 오류, JSON 파싱 오류 등
-                Timber.e(e, "닉네임 등록 실패: $nickname")
-                Result.Error(e, e.message ?: "닉네임 등록 실패")
+                Timber.e(t, "닉네임 등록 실패: $nickname")
+                Result.Error(t, t.message ?: "닉네임 등록 실패")
             }
         }
 
@@ -158,9 +158,9 @@ class UserRepositoryImpl @Inject constructor(
             try {
                 remoteDataSource.updateBirthDate(birthDate)
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "생년월일 업데이트 실패: $birthDate")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "생년월일 업데이트 실패: $birthDate")
+                Result.Error(t, t.message)
             }
         }
 
@@ -171,9 +171,9 @@ class UserRepositoryImpl @Inject constructor(
                 remoteDataSource.updateUserProfileImage(imageUri)
                 Timber.d("프로필 이미지 서버 업로드 완료: $imageUri")
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 프로필 이미지 업데이트 실패: $imageUri")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 프로필 이미지 업데이트 실패: $imageUri")
+                Result.Error(t, t.message)
             }
         }
 
@@ -210,9 +210,9 @@ class UserRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 프로필 업데이트 실패: $nickname")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 프로필 업데이트 실패: $nickname")
+                Result.Error(t, t.message)
             }
         }
 
@@ -231,9 +231,9 @@ class UserRepositoryImpl @Inject constructor(
                     marketingConsent = marketingConsent,
                 )
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "약관 동의 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "약관 동의 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -252,8 +252,8 @@ class UserRepositoryImpl @Inject constructor(
                 authDataStore.clear()
                 userDao.clear() // 🔥 Room clear → Flow emit → StateFlow null
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Result.Error(t, t.message)
             }
         }
 
@@ -269,9 +269,9 @@ class UserRepositoryImpl @Inject constructor(
                 )
                 Timber.d("사용자 검색 성공: ${domainResult.nickname}")
                 Result.Success(domainResult)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 검색 실패: $nickname")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 검색 실패: $nickname")
+                Result.Error(t, t.message)
             }
         }
 
@@ -286,9 +286,9 @@ class UserRepositoryImpl @Inject constructor(
                 val domainResult = UserSummaryMapper.toDomain(dto)
                 Timber.d("사용자 요약 정보 조회 성공: ${domainResult.character.nickName}")
                 Result.Success(domainResult)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 요약 정보 조회 실패: $nickname")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 요약 정보 조회 실패: $nickname")
+                Result.Error(t, t.message)
             }
         }
 
@@ -298,9 +298,9 @@ class UserRepositoryImpl @Inject constructor(
                 val response = userManagementRemoteDataSource.deleteUser()
                 Timber.d("사용자 탈퇴 요청 완료")
                 Result.Success(response)
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 탈퇴 실패")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 탈퇴 실패")
+                Result.Error(t, t.message)
             }
         }
 
@@ -310,9 +310,9 @@ class UserRepositoryImpl @Inject constructor(
                 val response = userProfileRemoteDataSource.deleteImage()
                 Timber.d("프로필 이미지 삭제 요청 완료:")
                 Result.Success(response)
-            } catch (e: Exception) {
-                Timber.e(e, "프로필 이미지 삭제 실패:")
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Timber.e(t, "프로필 이미지 삭제 실패:")
+                Result.Error(t, t.message)
             }
         }
 }

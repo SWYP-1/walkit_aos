@@ -176,9 +176,9 @@ class UserInfoManagementViewModel @Inject constructor(
                 }
                 Result.Loading -> Result.Loading
             }
-        } catch (e: Exception) {
-            Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
-            Result.Error(e, "이미지 삭제 중 오류가 발생했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "프로필 이미지 삭제 중 예외 발생")
+            Result.Error(t, "이미지 삭제 중 오류가 발생했습니다")
         }
     }
 
@@ -345,8 +345,8 @@ class UserInfoManagementViewModel @Inject constructor(
                     }
                 }
 
-            } catch (e: Exception) {
-                Timber.e(e, "프로필 저장 중 예외 발생")
+            } catch (t: Throwable) {
+                Timber.e(t, "프로필 저장 중 예외 발생")
                 _uiState.value = UserInfoUiState.Error("프로필 저장에 실패했습니다")
             }
         }
@@ -359,9 +359,9 @@ class UserInfoManagementViewModel @Inject constructor(
     suspend fun deleteImage(): Result<Response<Unit>> {
         return try {
             userRepository.deleteImage()
-        } catch (e: Exception) {
-            Timber.e(e, "프로필 이미지 삭제 중 예외 발생")
-            Result.Error(e, e.message ?: "프로필 이미지 삭제에 실패했습니다")
+        } catch (t: Throwable) {
+            Timber.e(t, "프로필 이미지 삭제 중 예외 발생")
+            Result.Error(t, t.message ?: "프로필 이미지 삭제에 실패했습니다")
         }
     }
 

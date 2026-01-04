@@ -57,14 +57,14 @@ object CharacterDisplayUtils {
                 isLoading = false
             )
 
-        } catch (e: Exception) {
-            Timber.e(e, "캐릭터 Lottie 상태 생성 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "캐릭터 Lottie 상태 생성 실패")
             LottieCharacterState(
                 baseJson = baseLottieJson,
                 modifiedJson = null,
                 assets = emptyMap(),
                 isLoading = false,
-                error = e.message ?: "캐릭터 표시 준비 실패"
+                error = t.message ?: "캐릭터 표시 준비 실패"
             )
         }
     }

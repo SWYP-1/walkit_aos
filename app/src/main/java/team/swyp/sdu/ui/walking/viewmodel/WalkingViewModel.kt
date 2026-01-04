@@ -3,6 +3,7 @@ package team.swyp.sdu.ui.walking.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.ui.walking.utils.emotionTypeToString
 import team.swyp.sdu.domain.contract.WalkingRawEvent
 import team.swyp.sdu.domain.contract.WalkingTrackingContract
 import team.swyp.sdu.domain.model.StepValidationResult
@@ -113,11 +114,11 @@ class WalkingViewModel @Inject constructor(
 
     // 산책 전 감정을 저장 (StateFlow로 통일하여 일관성 유지)
     // 초기값을 HAPPY로 설정하여 에러 방지
-    private val _preWalkingEmotion = MutableStateFlow<EmotionType?>(EmotionType.HAPPY)
-    val preWalkingEmotion: StateFlow<EmotionType?> = _preWalkingEmotion.asStateFlow()
+    private val _preWalkingEmotion = MutableStateFlow<String?>("HAPPY")
+    val preWalkingEmotion: StateFlow<String?> = _preWalkingEmotion.asStateFlow()
 
     // 산책 후 감정을 저장 (별도 화면에서 사용)
-    private val _postWalkingEmotion = MutableStateFlow<EmotionType?>(null)
+    private val _postWalkingEmotion = MutableStateFlow<String?>(null)
 
     // 산책 중 사용할 캐릭터 정보 (위치 기반)
     private val _walkingCharacter = MutableStateFlow<Character?>(null)
@@ -156,7 +157,7 @@ class WalkingViewModel @Inject constructor(
         Timber.d("WalkingViewModel: 현재 목표 설정 - ${goal?.targetStepCount ?: 0} 걸음")
     }
 
-    val postWalkingEmotion: StateFlow<EmotionType?> = _postWalkingEmotion.asStateFlow()
+    val postWalkingEmotion: StateFlow<String?> = _postWalkingEmotion.asStateFlow()
 
     private val _emotionPhotoUri = MutableStateFlow<android.net.Uri?>(null)
     val emotionPhotoUri: StateFlow<android.net.Uri?> = _emotionPhotoUri.asStateFlow()
@@ -228,15 +229,19 @@ class WalkingViewModel @Inject constructor(
     fun selectPreWalkingEmotion(emotionType: EmotionType) {
         val currentState = _uiState.value
         if (currentState is WalkingUiState.PreWalkingEmotionSelection) {
-            _preWalkingEmotion.value = emotionType
-            _postWalkingEmotion.value = emotionType
-            _uiState.value = currentState.copy(preWalkingEmotion = emotionType)
+            val emotionString = emotionTypeToString(emotionType)
+            _preWalkingEmotion.value = emotionString
+            _postWalkingEmotion.value = emotionString
+            _uiState.value = currentState.copy(
+                preWalkingEmotion = emotionType,
+            )
         }
     }
 
     fun selectPostWalkingEmotion(emotionType: EmotionType) {
-        _postWalkingEmotion.value = emotionType
-        Timber.i("Post Emotion : $emotionType")
+        val emotionString = emotionTypeToString(emotionType)
+        _postWalkingEmotion.value = emotionString
+        Timber.i("Post Emotion : $emotionString")
     }
 
     /**
@@ -295,17 +300,17 @@ class WalkingViewModel @Inject constructor(
                         preferences[PreferencesKeys.WALKING_DURATION] = currentState.duration
                         preferences[PreferencesKeys.WALKING_IS_PAUSED] = currentState.isPaused
                         preferences[PreferencesKeys.PRE_WALKING_EMOTION] =
-                            _preWalkingEmotion.value?.name ?: ""
+                            _preWalkingEmotion.value ?: ""
                         preferences[PreferencesKeys.POST_WALKING_EMOTION] =
-                            _postWalkingEmotion.value?.name ?: ""
+                            _postWalkingEmotion.value ?: ""
                     } else {
                         preferences[PreferencesKeys.IS_WALKING_ACTIVE] = false
                         // 다른 키들은 유지 (다음 복원을 위해)
                     }
                 }
                 Timber.d("산책 상태 DataStore에 저장됨: ${_uiState.value}")
-            } catch (e: Exception) {
-                Timber.e(e, "DataStore 저장 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "DataStore 저장 실패")
             }
         }
     }
@@ -359,8 +364,8 @@ class WalkingViewModel @Inject constructor(
                 } else {
                     Timber.w("현재 위치를 가져올 수 없어 캐릭터 정보 로드 건너뜀")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "산책용 캐릭터 정보 로드 중 예외 발생")
+            } catch (t: Throwable) {
+                Timber.e(t, "산책용 캐릭터 정보 로드 중 예외 발생")
             }
         }
     }
@@ -382,8 +387,8 @@ class WalkingViewModel @Inject constructor(
                 _walkingCharacterLottieJson.value = lottieJsonString
 
                 Timber.d("산책용 캐릭터 Lottie JSON 생성 완료: ${lottieJsonString.length} chars")
-            } catch (e: Exception) {
-                Timber.e(e, "산책용 캐릭터 Lottie JSON 생성 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "산책용 캐릭터 Lottie JSON 생성 실패")
                 _walkingCharacterLottieJson.value = null
             }
         }
@@ -392,24 +397,26 @@ class WalkingViewModel @Inject constructor(
     /**
      * DressingRoom과 동일한 방식으로 캐릭터 기본 이미지가 적용된 깨끗한 baseJson 생성
      */
-    private suspend fun createCleanBaseJson(character: Character): JSONObject = withContext(Dispatchers.IO) {
-        try {
-            Timber.d("🧹 Walking createCleanBaseJson 시작")
+    private suspend fun createCleanBaseJson(character: Character): JSONObject =
+        withContext(Dispatchers.IO) {
+            try {
+                Timber.d("🧹 Walking createCleanBaseJson 시작")
 
-            // 기본 Lottie JSON 로드
-            val jsonObject = loadBaseLottieJson(character)
-            Timber.d("📂 기본 Lottie JSON 로드 완료")
+                // 기본 Lottie JSON 로드
+                val jsonObject = loadBaseLottieJson(character)
+                Timber.d("📂 기본 Lottie JSON 로드 완료")
 
-            // 캐릭터의 기본 이미지로 asset들을 교체 (투명 PNG 적용)
-            val characterBaseJson = lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
-            Timber.d("✅ 캐릭터 기본 이미지 설정 완료")
+                // 캐릭터의 기본 이미지로 asset들을 교체 (투명 PNG 적용)
+                val characterBaseJson =
+                    lottieImageProcessor.updateCharacterPartsInLottie(jsonObject, character)
+                Timber.d("✅ 캐릭터 기본 이미지 설정 완료")
 
-            characterBaseJson
-        } catch (e: Exception) {
-            Timber.e(e, "❌ cleanBaseJson 생성 실패")
-            JSONObject("{}") // 빈 JSON 반환
+                characterBaseJson
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ cleanBaseJson 생성 실패")
+                JSONObject("{}") // 빈 JSON 반환
+            }
         }
-    }
 
     /**
      * 이번 주 목표 초과 세션 개수 계산
@@ -423,8 +430,9 @@ class WalkingViewModel @Inject constructor(
                 Timber.d("이번 주 범위: ${weekRange.first} ~ ${weekRange.second}")
 
                 // 이번 주 세션들 가져오기
-                val thisWeekSessions = walkingSessionRepository.getSessionsBetween(weekRange.first, weekRange.second)
-                    .firstOrNull() ?: emptyList()
+                val thisWeekSessions =
+                    walkingSessionRepository.getSessionsBetween(weekRange.first, weekRange.second)
+                        .firstOrNull() ?: emptyList()
 
                 Timber.d("이번 주 세션 수: ${thisWeekSessions.size}")
 
@@ -448,8 +456,8 @@ class WalkingViewModel @Inject constructor(
                 Timber.d("목표 걸음 수(${currentGoal.targetStepCount}) 초과 세션 수: $goalExceededCount")
                 _currentWeekGoalChallengeCount.value = goalExceededCount
 
-            } catch (e: Exception) {
-                Timber.e(e, "이번 주 목표 초과 세션 개수 계산 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "이번 주 목표 초과 세션 개수 계산 실패")
                 _currentWeekGoalChallengeCount.value = 0
             }
         }
@@ -458,26 +466,27 @@ class WalkingViewModel @Inject constructor(
     /**
      * 기본 Lottie JSON 로드
      */
-    private suspend fun loadBaseLottieJson(character: Character): JSONObject = withContext(Dispatchers.IO) {
-        try {
-            // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
-            val resourceId = when (character.grade) {
-                Grade.SEED -> R.raw.seed
-                Grade.SPROUT -> R.raw.sprout
-                Grade.TREE -> R.raw.tree
+    private suspend fun loadBaseLottieJson(character: Character): JSONObject =
+        withContext(Dispatchers.IO) {
+            try {
+                // 캐릭터 grade에 따라 적절한 Lottie 리소스 선택
+                val resourceId = when (character.grade) {
+                    Grade.SEED -> R.raw.seed
+                    Grade.SPROUT -> R.raw.sprout
+                    Grade.TREE -> R.raw.tree
+                }
+
+                Timber.d("🎭 Walking loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
+
+                // res/raw에서 기본 캐릭터 Lottie JSON 로드
+                val inputStream = context.resources.openRawResource(resourceId)
+                val jsonString = inputStream.bufferedReader().use { it.readText() }
+                JSONObject(jsonString)
+            } catch (t: Throwable) {
+                Timber.e(t, "기본 Lottie JSON 로드 실패, 빈 JSON 사용")
+                JSONObject("{}")
             }
-
-            Timber.d("🎭 Walking loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
-
-            // res/raw에서 기본 캐릭터 Lottie JSON 로드
-            val inputStream = context.resources.openRawResource(resourceId)
-            val jsonString = inputStream.bufferedReader().use { it.readText() }
-            JSONObject(jsonString)
-        } catch (e: Exception) {
-            Timber.e(e, "기본 Lottie JSON 로드 실패, 빈 JSON 사용")
-            JSONObject("{}")
         }
-    }
 
 
     /**
@@ -520,20 +529,14 @@ class WalkingViewModel @Inject constructor(
                         isPaused = true // 재시작 시 일시정지 상태로 시작
                     )
 
-                    // 감정 상태 복원
+                    // 감정 상태 복원 (String으로 직접 저장)
                     if (preEmotionName.isNotEmpty()) {
-                        _preWalkingEmotion.value = try {
-                            EmotionType.valueOf(preEmotionName)
-                        } catch (e: Exception) {
-                            EmotionType.HAPPY
-                        }
+                        _preWalkingEmotion.value = preEmotionName
+                    } else {
+                        _preWalkingEmotion.value = "HAPPY" // 기본값
                     }
                     if (postEmotionName.isNotEmpty()) {
-                        _postWalkingEmotion.value = try {
-                            EmotionType.valueOf(postEmotionName)
-                        } catch (e: Exception) {
-                            null
-                        }
+                        _postWalkingEmotion.value = postEmotionName
                     }
 
                     // 시간 변수 복원
@@ -546,8 +549,8 @@ class WalkingViewModel @Inject constructor(
                     _uiState.value = WalkingUiState.PreWalkingEmotionSelection()
                     Timber.d("DataStore에 유효한 산책 상태가 없어 기본 상태로 초기화")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "DataStore 복원 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "DataStore 복원 실패")
                 // 에러 발생 시에도 기본 상태로 설정
                 _uiState.value = WalkingUiState.PreWalkingEmotionSelection()
             }
@@ -569,48 +572,48 @@ class WalkingViewModel @Inject constructor(
                 preferences.remove(PreferencesKeys.POST_WALKING_EMOTION)
             }
             Timber.d("DataStore에서 산책 상태 초기화됨")
-        } catch (e: Exception) {
-            Timber.e(e, "DataStore 초기화 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "DataStore 초기화 실패")
         }
     }
 
     /**
      * 앱 재시작 시 저장된 세션 상태 복원 (DB 기반)
      */
-    private fun restoreSessionState() {
-        viewModelScope.launch {
-            try {
-                // 가장 최근의 미완료 세션 조회 (endTime이 null인 세션)
-                val latestIncompleteSession = walkingSessionRepository.getAllSessions()
-                    .firstOrNull()
-                    ?.firstOrNull { it.endTime == null }
-
-                if (latestIncompleteSession != null) {
-                    Timber.d("미완료 세션 발견, Walking 상태로 복원: ${latestIncompleteSession.id}")
-
-                    // 세션 ID 설정 (Flow가 자동으로 세션 데이터를 로드)
-                    _currentSessionLocalId.value = latestIncompleteSession.id
-
-                    // Walking 상태로 복원
-                    _uiState.value = WalkingUiState.Walking(
-                        stepCount = latestIncompleteSession.stepCount,
-                        duration = System.currentTimeMillis() - latestIncompleteSession.startTime,
-                        isPaused = false // 재시작 시 일시정지 해제
-                    )
-
-                    // 기존 감정 상태 복원
-                    _preWalkingEmotion.value = latestIncompleteSession.preWalkEmotion
-                    _postWalkingEmotion.value = latestIncompleteSession.postWalkEmotion
-
-                    // 트래킹 재시작 (포그라운드 서비스 재개)
-                    tracking.startTracking()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "세션 상태 복원 실패")
-                // 복원 실패 시 기본 상태 유지
-            }
-        }
-    }
+//    private fun restoreSessionState() {
+//        viewModelScope.launch {
+//            try {
+//                // 가장 최근의 미완료 세션 조회 (endTime이 null인 세션)
+//                val latestIncompleteSession = walkingSessionRepository.getAllSessions()
+//                    .firstOrNull()
+//                    ?.firstOrNull { it.endTime == null }
+//
+//                if (latestIncompleteSession != null) {
+//                    Timber.d("미완료 세션 발견, Walking 상태로 복원: ${latestIncompleteSession.id}")
+//
+//                    // 세션 ID 설정 (Flow가 자동으로 세션 데이터를 로드)
+//                    _currentSessionLocalId.value = latestIncompleteSession.id
+//
+//                    // Walking 상태로 복원
+//                    _uiState.value = WalkingUiState.Walking(
+//                        stepCount = latestIncompleteSession.stepCount,
+//                        duration = System.currentTimeMillis() - latestIncompleteSession.startTime,
+//                        isPaused = false // 재시작 시 일시정지 해제
+//                    )
+//
+//                    // 기존 감정 상태 복원
+//                    _preWalkingEmotion.value = latestIncompleteSession.preWalkEmotion
+//                    _postWalkingEmotion.value = latestIncompleteSession.postWalkEmotion
+//
+//                    // 트래킹 재시작 (포그라운드 서비스 재개)
+//                    tracking.startTracking()
+//                }
+//            } catch (t: Throwable) {
+//                Timber.e(t, "세션 상태 복원 실패")
+//                // 복원 실패 시 기본 상태 유지
+//            }
+//        }
+//    }
 
     /**
      * 추적 상태 관찰 및 센서 상태 업데이트
@@ -705,16 +708,16 @@ class WalkingViewModel @Inject constructor(
         viewModelScope.launch {
             val initialLocations = mutableListOf<LocationPoint>()
 
-            // 현재 위치 가져오기 (권한 체크 포함)
-            // 실패하면 빈 배열로 시작하고, LocationTrackingService가 위치를 추적하여 추가함
-            val currentLocation = locationManager.getCurrentLocation()
+            // 현재 위치 가져오기 (getCurrentLocation 실패 시 getLastLocation 시도)
+            // fusedLocation의 최신 위치를 가져와서 크기가 0이 아닌 location 리스트 생성
+            val currentLocation = locationManager.getCurrentLocationOrLast()
             if (currentLocation != null) {
                 // 현재 위치를 첫 번째에 추가
                 initialLocations.add(currentLocation)
                 _currentLocation.value = currentLocation
-                Timber.d("산책 시작: 현재 위치를 locations 배열 첫 번째에 추가 - ${currentLocation.latitude}, ${currentLocation.longitude}")
+                Timber.d("산책 시작: 현재 위치를 locations 배열 첫 번째에 추가 - ${currentLocation.latitude}, ${currentLocation.longitude}, accuracy=${currentLocation.accuracy}m")
             } else {
-                Timber.d("산책 시작: 현재 위치를 가져올 수 없음. LocationTrackingService가 위치를 추적하여 추가할 예정")
+                Timber.w("산책 시작: 현재 위치와 마지막 위치 모두 가져올 수 없음. LocationTrackingService가 위치를 추적하여 추가할 예정")
             }
 
             _locations.value = initialLocations
@@ -815,12 +818,12 @@ class WalkingViewModel @Inject constructor(
             clearWalkingStateFromDataStore()
 
             Timber.d("🚶 WalkingViewModel.stopWalking - 모든 작업 완료: sessionId=$sessionId")
-        } catch (e: Exception) {
-            Timber.e(e, "부분 세션 저장 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "부분 세션 저장 실패")
             // 에러 발생 시 Error 상태로 변경 (사용자에게 에러 표시)
             _isSessionSaved.value = false  // 세션 저장 실패 플래그
             _isSavingSession.value = false  // 세션 저장 실패
-            Timber.e(message = e.message)
+            Timber.e(message = t.message)
             // 에러를 다시 던지지 않고 로그만 남김 (UI에서 에러 상태 표시)
         }
     }
@@ -999,13 +1002,13 @@ class WalkingViewModel @Inject constructor(
                 // DB만 업데이트 (Flow가 자동으로 UI 갱신)
                 walkingSessionRepository.updatePostWalkEmotion(
                     localId = localId,
-                    postWalkEmotion = postWalkEmotion
+                    postWalkEmotion = postWalkEmotion.name
                 )
 
                 Timber.d("산책 후 감정 업데이트 완료: localId=$localId, emotion=$postWalkEmotion")
-            } catch (e: Exception) {
-                Timber.e(e, "산책 후 감정 업데이트 실패")
-                throw e
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 후 감정 업데이트 실패")
+                throw t
             }
         }
     }
@@ -1056,8 +1059,8 @@ class WalkingViewModel @Inject constructor(
                     note = note
                 )
                 Timber.d("세션 노트 업데이트 완료: localId=$localId, note=$note")
-            } catch (e: Exception) {
-                Timber.e(e, "세션 노트 업데이트 실패: localId=$localId")
+            } catch (t: Throwable) {
+                Timber.e(t, "세션 노트 업데이트 실패: localId=$localId")
             }
         }
     }
@@ -1077,8 +1080,8 @@ class WalkingViewModel @Inject constructor(
                 )
                 Timber.d("세션 노트 삭제 완료: localId=$localId")
                 // TODO: 삭제 성공 시 관련 UI 상태 업데이트 (필요시 구현)
-            } catch (e: Exception) {
-                Timber.e(e, "세션 노트 삭제 실패: localId=$localId")
+            } catch (t: Throwable) {
+                Timber.e(t, "세션 노트 삭제 실패: localId=$localId")
                 // Repository에서 이미 에러 처리를 하므로 여기서는 추가 처리 불필요
             }
         }
@@ -1096,8 +1099,8 @@ class WalkingViewModel @Inject constructor(
                     walkingSessionRepository.deleteSession(localId)
                     _currentSessionLocalId.value = null
                     Timber.d("임시 산책 세션 삭제 완료: localId=$localId")
-                } catch (e: Exception) {
-                    Timber.e(e, "임시 산책 세션 삭제 실패: localId=$localId")
+                } catch (t: Throwable) {
+                    Timber.e(t, "임시 산책 세션 삭제 실패: localId=$localId")
                 }
             } else {
                 Timber.w("삭제할 임시 세션이 없습니다")
@@ -1130,10 +1133,10 @@ class WalkingViewModel @Inject constructor(
                 // nonCancellable을 사용했으므로 이 경우는 발생하지 않아야 하지만, 안전을 위해 처리
                 _snapshotState.value = SnapshotState.Error("서버 동기화 취소됨")
                 Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${_currentSessionLocalId.value}")
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // 실제 서버 에러인 경우에만 로깅 및 사용자 알림
-                _snapshotState.value = SnapshotState.Error(e.message ?: "서버 동기화 실패")
-                Timber.e(e, "서버 동기화 실패: ${e.message}")
+                _snapshotState.value = SnapshotState.Error(t.message ?: "서버 동기화 실패")
+                Timber.e(t, "서버 동기화 실패: ${t.message}")
                 // TODO: 에러 처리 (사용자에게 알림)
             }
         }
@@ -1162,9 +1165,9 @@ class WalkingViewModel @Inject constructor(
                 _snapshotState.value = SnapshotState.Error("스냅샷 생성 실패")
                 false
             }
-        } catch (e: Exception) {
-            Timber.e(e, "스냅샷 생성 중 오류 발생")
-            _snapshotState.value = SnapshotState.Error(e.message ?: "스냅샷 생성 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "스냅샷 생성 중 오류 발생")
+            _snapshotState.value = SnapshotState.Error(t.message ?: "스냅샷 생성 실패")
             false
         }
     }

@@ -25,9 +25,9 @@ class UserManagementRemoteDataSource @Inject constructor(
             val response = userApi.registerNickname(nickname)
             Timber.d("닉네임 등록 호출 완료: $nickname (HTTP ${response.code()})")
             response
-        } catch (e: Exception) {
-            Timber.e(e, "닉네임 등록 호출 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "닉네임 등록 호출 실패: $nickname")
+            throw t
         }
     }
 
@@ -44,9 +44,9 @@ class UserManagementRemoteDataSource @Inject constructor(
                 Timber.e("생년월일 업데이트 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("생년월일 업데이트 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "생년월일 업데이트 실패: $birthDate")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "생년월일 업데이트 실패: $birthDate")
+            throw t
         }
     }
 
@@ -76,9 +76,9 @@ class UserManagementRemoteDataSource @Inject constructor(
                 Timber.e("약관 동의 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("약관 동의 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "약관 동의 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "약관 동의 실패")
+            throw t
         }
     }
 
@@ -95,9 +95,9 @@ class UserManagementRemoteDataSource @Inject constructor(
                 Timber.e("사용자 탈퇴 실패: $errorMessage (코드: ${response.code()})")
             }
             return response
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 탈퇴 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 탈퇴 실패")
+            throw t
         }
     }
 }

@@ -12,7 +12,7 @@ enum class MissionStatus(
 
     companion object {
         fun fromApiValue(apiValue: String): MissionStatus? {
-            return entries.find { it.apiValue == apiValue }
+            return values().find { it.apiValue == apiValue }
         }
     }
 }

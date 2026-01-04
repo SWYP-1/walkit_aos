@@ -32,8 +32,8 @@ class MissionProgressRepositoryImpl @Inject constructor(
             try {
                 missionProgressDao.upsert(MissionProgressMapper.toEntity(progress))
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Result.Error(t, t.message)
             }
         }
 
@@ -42,8 +42,8 @@ class MissionProgressRepositoryImpl @Inject constructor(
             try {
                 missionProgressDao.deleteByDate(date.format(formatter))
                 Result.Success(Unit)
-            } catch (e: Exception) {
-                Result.Error(e, e.message)
+            } catch (t: Throwable) {
+                Result.Error(t, t.message)
             }
         }
 }

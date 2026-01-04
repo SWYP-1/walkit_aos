@@ -146,7 +146,7 @@ fun EmotionRecordStepRoute(
             // 🚨 영상 촬영 검증: 사용자가 영상 모드로 전환했는지 확인
             val actualMimeType = try {
                 context.contentResolver.getType(cameraImageUri)
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 null
             }
 
@@ -160,8 +160,8 @@ fun EmotionRecordStepRoute(
                 try {
                     context.contentResolver.delete(cameraImageUri, null, null)
                     Timber.d("영상 파일 정리 완료")
-                } catch (e: Exception) {
-                    Timber.e(e, "영상 파일 정리 실패")
+                } catch (t: Throwable) {
+                    Timber.e(t, "영상 파일 정리 실패")
                 }
 
                 // TODO: 사용자에게 토스트 메시지 표시
@@ -580,8 +580,8 @@ private fun EmotionRecordStepScreenContent(
                             try {
                                 onUpdateSessionImageAndNote()
                                 onNext()
-                            } catch (e: Exception) {
-                                Timber.e(e, "세션 이미지/노트 업데이트 실패")
+                            } catch (t: Throwable) {
+                                Timber.e(t, "세션 이미지/노트 업데이트 실패")
                                 // 에러 발생 시에도 다음 화면으로 이동 (사용자 경험 고려)
                                 onNext()
                             }

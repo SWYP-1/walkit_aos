@@ -68,40 +68,6 @@ fun BirthYearStep(
     var monthText by remember { mutableStateOf(TextFieldValue("")) }
     var dayText by remember { mutableStateOf(TextFieldValue("")) }
 
-    // 초기값 설정 및 외부 값 변경 시 텍스트 필드 동기화
-    LaunchedEffect(currentYear) {
-        if (currentYear > 0) {
-            val formatted = String.format("%04d", currentYear)
-            if (yearText.text != formatted) {
-                yearText = TextFieldValue(formatted)
-            }
-        } else if (yearText.text.isNotEmpty()) {
-            yearText = TextFieldValue("")
-        }
-    }
-
-    LaunchedEffect(currentMonth) {
-        if (currentMonth > 0) {
-            val formatted = String.format("%02d", currentMonth)
-            if (monthText.text != formatted) {
-                monthText = TextFieldValue(formatted)
-            }
-        } else if (monthText.text.isNotEmpty()) {
-            monthText = TextFieldValue("")
-        }
-    }
-
-    LaunchedEffect(currentDay) {
-        if (currentDay > 0) {
-            val formatted = String.format("%02d", currentDay)
-            if (dayText.text != formatted) {
-                dayText = TextFieldValue(formatted)
-            }
-        } else if (dayText.text.isNotEmpty()) {
-            dayText = TextFieldValue("")
-        }
-    }
-
     // 해당 월의 마지막 날짜 계산
     val daysInMonth = remember(currentYear, currentMonth) {
         try {
@@ -110,7 +76,7 @@ fun BirthYearStep(
             } else {
                 31
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             31
         }
     }
@@ -126,7 +92,7 @@ fun BirthYearStep(
             } else {
                 false
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             false
         }
         yearValid && monthValid && dayValid
@@ -155,7 +121,7 @@ fun BirthYearStep(
 //            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
 //                try {
 //                    LocalDate.of(currentYear, currentMonth, currentDay)
-//                } catch (e: Exception) {
+//                } catch (t: Throwable) {
 //                    // 유효하지 않은 날짜인 경우, 해당 월의 마지막 날로 조정
 //                    val safeDay = daysInMonth.coerceAtMost(31)
 //                    onDayChange(safeDay)

@@ -34,8 +34,8 @@ class SessionSyncWorker @AssistedInject constructor(
             Timber.d("SessionSyncWorker 완료")
             Result.success()
 
-        } catch (e: Exception) {
-            Timber.e(e, "SessionSyncWorker 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "SessionSyncWorker 실패")
             // 실패 시 재시도 (최대 3회)
             if (runAttemptCount < 3) {
                 Result.retry()

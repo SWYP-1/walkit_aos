@@ -75,8 +75,8 @@ fun PreWalkingEmotionSelectRoute(
                 // 로그인 필요 메시지를 표시하거나 이전 화면으로 돌아감
                 onPrev()
             }
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 상태 확인 실패")
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 상태 확인 실패")
             onPrev()
         }
     }
@@ -103,10 +103,8 @@ fun PreWalkingEmotionSelectScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 감정 옵션 리스트 생성
-    val emotionOptions = remember {
-        createDefaultEmotionOptions()
-    }
+    // 감정 옵션 리스트 생성 (Composable 함수 사용)
+    val emotionOptions = createDefaultEmotionOptions()
 
     // 선택된 감정의 인덱스 찾기
     val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)

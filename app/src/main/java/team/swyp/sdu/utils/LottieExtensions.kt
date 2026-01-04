@@ -51,9 +51,9 @@ fun JSONObject.replaceAssetP(assetId: String, dataUrl: String): JSONObject {
         }
 
         throw IllegalArgumentException("assetId '$assetId'를 찾을 수 없습니다")
-    } catch (e: Exception) {
-        Timber.e(e, "Lottie asset 교체 실패: $assetId")
-        throw e
+    } catch (t: Throwable) {
+        Timber.e(t, "Lottie asset 교체 실패: $assetId")
+        throw t
     }
 }
 fun JSONObject.findAssetSize(assetId: String): LottieAssetSize {

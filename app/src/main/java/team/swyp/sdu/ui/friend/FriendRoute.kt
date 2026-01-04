@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -246,7 +247,8 @@ private fun FriendListScreen(
         tonalElevation = 0.dp,
         modifier =
             Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .background(SemanticColor.backgroundWhitePrimary),
     ) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -292,6 +294,7 @@ private fun FriendRow(
                 Box(
                     modifier =
                         Modifier
+                            .clip(CircleShape)
                             .size(36.dp)
                             .background(
                                 Color(0xFFF3F3F5), // color/text-border/secondary-inverse

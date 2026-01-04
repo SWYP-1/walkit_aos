@@ -47,6 +47,7 @@ import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.EmotionType.*
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.ui.walking.utils.stringToEmotionType
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
 import team.swyp.sdu.ui.theme.walkItTypography
@@ -116,7 +117,7 @@ fun WeeklyRecordCard(
                             .align(Alignment.BottomEnd)
                             .offset(x = -16.dp,y = 26.dp),
                 ) {
-                    EmotionCircle(emotionType = session.postWalkEmotion)
+                    EmotionCircle(emotionType = stringToEmotionType(session.postWalkEmotion))
                 }
             }
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
@@ -186,7 +187,7 @@ fun WeeklyRecordCard(
                             style = MaterialTheme.walkItTypography.bodyS,
                             color = SemanticColor.textBorderPrimary
                         )
-
+                        Spacer(Modifier.width(4.dp))
                         // 분 표시
                         Text(
                             text = totalMinutes.toString(),
@@ -292,8 +293,8 @@ fun WeeklyRecordCardPreview() {
             LocationPoint(37.5665, 126.9790),
             LocationPoint(37.5670, 126.9785)
         ),
-        preWalkEmotion = EmotionType.HAPPY,
-        postWalkEmotion = EmotionType.CONTENT,
+        preWalkEmotion = "HAPPY",
+        postWalkEmotion = "CONTENT",
         localImagePath = null,
         serverImageUrl = "https://picsum.photos/seed/picsum/400/300", // 이미지가 없는 상태
         createdDate = "2015-12-29",
@@ -324,8 +325,8 @@ fun WeeklyRecordCardPathPreview() {
             LocationPoint(37.5665, 126.9790),
             LocationPoint(37.5670, 126.9785)
         ),
-        preWalkEmotion = EmotionType.HAPPY,
-        postWalkEmotion = EmotionType.CONTENT,
+        preWalkEmotion = "HAPPY",
+        postWalkEmotion = "CONTENT",
         localImagePath = null,
         serverImageUrl = null, // 이미지가 없는 상태
         createdDate = "2015-12-29",

@@ -121,9 +121,9 @@ class BillingManager @Inject constructor(
                     Exception("제품 조회 실패: ${productDetailsResult.billingResult.debugMessage}"),
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "제품 상세 정보 조회 중 오류")
-            Result.failure(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "제품 상세 정보 조회 중 오류")
+            Result.failure(t)
         }
     }
 
@@ -191,9 +191,9 @@ class BillingManager @Inject constructor(
                     Exception("구매 소비 실패: ${consumeResult.billingResult.debugMessage}"),
                 )
             }
-        } catch (e: Exception) {
-            Timber.e(e, "구매 소비 중 오류")
-            Result.failure(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "구매 소비 중 오류")
+            Result.failure(t)
         }
     }
 

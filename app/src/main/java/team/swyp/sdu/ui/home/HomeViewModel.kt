@@ -29,6 +29,7 @@ import java.util.Locale
 import team.swyp.sdu.domain.model.Goal
 import timber.log.Timber
 import team.swyp.sdu.data.model.EmotionType
+import team.swyp.sdu.ui.walking.utils.stringToEmotionType
 import team.swyp.sdu.data.model.WalkingSession
 import team.swyp.sdu.data.model.LocationPoint
 import team.swyp.sdu.data.repository.WalkingSessionRepository
@@ -107,9 +108,9 @@ data class MissionWithState(
 // Walking Session 데이터 모델 (API 독립적)
 data class WalkingSessionData(
     val sessionsThisWeek: List<WalkingSession>,
-    val dominantEmotion: EmotionType?,
+    val dominantEmotion: String?,  // String으로 변경 (EmotionType.name)
     val dominantEmotionCount: Int?,  // dominant emotion의 등장 횟수
-    val recentEmotions: List<EmotionType?>
+    val recentEmotions: List<String?>  // String으로 변경 (EmotionType.name)
 )
 
 
@@ -187,14 +188,14 @@ class HomeViewModel @Inject constructor(
                 _characterLottieState.value = lottieState
                 Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 완료")
 
-            } catch (e: Exception) {
-                Timber.e(e, "🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 실패")
                 _characterLottieState.value = team.swyp.sdu.domain.model.LottieCharacterState(
                     baseJson = "{}",
                     modifiedJson = null,
                     assets = emptyMap(),
                     isLoading = false,
-                    error = e.message ?: "캐릭터 표시 준비 실패"
+                    error = t.message ?: "캐릭터 표시 준비 실패"
                 )
             }
         }
@@ -230,8 +231,8 @@ class HomeViewModel @Inject constructor(
 
                 jsonObject
 
-            } catch (e: Exception) {
-                Timber.e(e, "❌ HomeViewModel: Lottie 파일 로드 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ HomeViewModel: Lottie 파일 로드 실패")
                 JSONObject() // 실패 시 빈 JSON 반환
             }
         }
@@ -426,14 +427,7 @@ class HomeViewModel @Inject constructor(
                 // 🚀 최적화: DB 쿼리로 이번 주 우세 감정 계산 (suspend 함수)
                 val dominantEmotionData = walkingSessionRepository.getDominantEmotionInPeriod(weekStart, weekEnd)
 
-                val dominantEmotion = dominantEmotionData?.let { data ->
-                    try {
-                        EmotionType.valueOf(data.emotion)
-                    } catch (e: IllegalArgumentException) {
-                        Timber.w("Unknown dominant emotion type: ${data.emotion}")
-                        null
-                    }
-                }
+                val dominantEmotion = dominantEmotionData?.emotion // String으로 직접 사용
 
                 val dominantEmotionCount = dominantEmotionData?.count ?: 0
 
@@ -451,14 +445,9 @@ class HomeViewModel @Inject constructor(
                         Timber.d("🏠 [recentEmotions] 세션 ${index + 1}: 시작시간=${emotionData.startTime.formatTimestamp()}, 산책후감정=${emotionData.postWalkEmotion}")
                     }
 
-                    // EmotionType으로 변환 (String -> EmotionType)
-                    val recentEmotions = recentSessionEmotions.mapNotNull { emotionData ->
-                        try {
-                            EmotionType.valueOf(emotionData.postWalkEmotion)
-                        } catch (e: IllegalArgumentException) {
-                            Timber.w("Unknown emotion type: ${emotionData.postWalkEmotion}")
-                            null
-                        }
+                    // String으로 직접 사용 (변환 불필요)
+                    val recentEmotions = recentSessionEmotions.map { emotionData ->
+                        emotionData.postWalkEmotion
                     }
                     Timber.d("🏠 [recentEmotions] 최종 추출된 감정들: $recentEmotions")
 
@@ -475,9 +464,9 @@ class HomeViewModel @Inject constructor(
                 }.collect { walkingSessionData ->
                     _walkingSessionDataState.value = DataState.Success(walkingSessionData)
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "세션 로드 중 오류")
-                _walkingSessionDataState.value = DataState.Error(e.message ?: "세션 로드 중 오류가 발생했습니다.")
+            } catch (t: Throwable) {
+                Timber.e(t, "세션 로드 중 오류")
+                _walkingSessionDataState.value = DataState.Error(t.message ?: "세션 로드 중 오류가 발생했습니다.")
             }
         }
     }
@@ -549,8 +538,8 @@ class HomeViewModel @Inject constructor(
                         missions = missions,
                         missionCardStates = missionCardStates
                     )
-                } catch (e: Exception) {
-                    Timber.e(e, "미션 카드 상태 매핑 실패")
+                } catch (t: Throwable) {
+                    Timber.e(t, "미션 카드 상태 매핑 실패")
                     // 매핑 실패 시 기존 로직으로 fallback
                     _missionUiState.value = MissionUiState.Success(
                         missions = missions,
@@ -652,53 +641,6 @@ class HomeViewModel @Inject constructor(
         return 0
     }
 
-    private fun loadSessions(
-        nickname: String,
-        levelLabel: String,
-        todaySteps: Int,
-        missions: List<WeeklyMission>,
-        goal: Goal? = null,
-    ) {
-        viewModelScope.launch {
-            walkingSessionRepository.getAllSessions().catch { e ->
-                _uiState.value = HomeUiState.Error(e.message ?: "세션을 불러오지 못했습니다.")
-            }.collect { sessions ->
-                val thisWeekSessions = sessions.filterThisWeek()
-
-                // recentEmotions 추출 과정 로깅 (loadSessions)
-                Timber.d("🏠 [loadSessions] 총 세션 수: ${sessions.size}")
-                val sortedSessions = sessions.sortedByDescending { it.startTime }.take(7)
-                Timber.d("🏠 [loadSessions] 최근 7개 세션 추출:")
-                sortedSessions.forEachIndexed { index, session ->
-                    Timber.d("🏠 [loadSessions] 세션 ${index + 1}: id=${session.id}, 시작시간=${session.startTime.formatTimestamp()}, 산책후감정=${session.postWalkEmotion}")
-                }
-                val recentEmotions = sortedSessions.map { it.postWalkEmotion }
-                Timber.d("🏠 [loadSessions] 최종 추출된 감정들: $recentEmotions")
-                val dominantEmotion = findDominantEmotion(thisWeekSessions)
-
-                // 기본 Character Domain 모델 생성 (Fallback용)
-                val defaultCharacter = Character(
-                    headImageName = null,
-                    bodyImageName = null,
-                    feetImageName = null,
-                    characterImageName = null,
-                    backgroundImageName = null,
-                    level = 1,
-                    grade = Grade.SEED,
-                    nickName = nickname,
-                )
-
-                _uiState.value = HomeUiState.Success(
-                    character = defaultCharacter,
-                    walkProgressPercentage = "0",
-                    temperature = null,
-                    weather = null,
-                    goal = goal,
-                )
-            }
-        }
-    }
-
     private fun List<WalkingSession>.filterThisWeek(): List<WalkingSession> {
         val today = LocalDate.now()
         val startOfWeek = today.with(java.time.DayOfWeek.MONDAY)
@@ -718,7 +660,7 @@ class HomeViewModel @Inject constructor(
      * 1. HAPPY (기쁨) > 2. JOYFUL (즐거움) > 3. CONTENT (행복함)
      * > 4. DEPRESSED (우울함) > 5. TIRED (지침) > 6. IRRITATED (짜증남)
      */
-    private fun findDominantEmotion(sessions: List<WalkingSession>): EmotionType? {
+    private fun findDominantEmotion(sessions: List<WalkingSession>): String? {
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
         if (emotionCounts.isEmpty()) return null
@@ -729,8 +671,11 @@ class HomeViewModel @Inject constructor(
         // 2. 최대 등장 횟수를 가진 감정들 필터링
         val candidates = emotionCounts.filter { it.value == maxCount }.keys
 
-        // 3. 우선순위가 가장 높은 감정 선택 (priority 값이 낮을수록 우선)
-        return candidates.minByOrNull { it.priority }
+        // 3. 우선순위가 가장 높은 감정 선택 (String을 EmotionType으로 변환하여 value 비교)
+        // value가 높을수록 우선순위가 높음 (HAPPY=5가 가장 높음)
+        return candidates.maxByOrNull { emotionString ->
+            stringToEmotionType(emotionString).value
+        }
     }
 
     /**
@@ -738,7 +683,7 @@ class HomeViewModel @Inject constructor(
      *
      * 동일한 등장 횟수를 가진 감정이 여러 개일 경우 우선순위에 따라 결정
      */
-    private fun findDominantEmotionWithCount(sessions: List<WalkingSession>): Pair<EmotionType?, Int?> {
+    private fun findDominantEmotionWithCount(sessions: List<WalkingSession>): Pair<String?, Int?> {
         val emotionCounts = sessions.map { it.postWalkEmotion }.groupingBy { it }.eachCount()
 
         if (emotionCounts.isEmpty()) return Pair(null, null)
@@ -749,8 +694,11 @@ class HomeViewModel @Inject constructor(
         // 2. 최대 등장 횟수를 가진 감정들 필터링
         val candidates = emotionCounts.filter { it.value == maxCount }.keys
 
-        // 3. 우선순위가 가장 높은 감정 선택
-        val dominantEmotion = candidates.minByOrNull { it.priority }
+        // 3. 우선순위가 가장 높은 감정 선택 (String을 EmotionType으로 변환하여 value 비교)
+        // value가 높을수록 우선순위가 높음 (HAPPY=5가 가장 높음)
+        val dominantEmotion = candidates.maxByOrNull { emotionString ->
+            stringToEmotionType(emotionString).value
+        }
 
         return Pair(dominantEmotion, maxCount)
     }
@@ -766,8 +714,8 @@ class HomeViewModel @Inject constructor(
                 Timber.d("수동 세션 동기화 시작")
                 SessionSyncWorker.scheduleOneTimeSync(context)
                 Timber.d("수동 세션 동기화 작업 예약됨")
-            } catch (e: Exception) {
-                Timber.e(e, "수동 세션 동기화 예약 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "수동 세션 동기화 예약 실패")
             }
         }
     }
@@ -851,8 +799,8 @@ class HomeViewModel @Inject constructor(
                         missions = updatedMissions,
                         missionCardStates = updatedMissionCardStates
                     )
-                } catch (e: Exception) {
-                    Timber.e(e, "미션 카드 상태 업데이트 실패")
+                } catch (t: Throwable) {
+                    Timber.e(t, "미션 카드 상태 업데이트 실패")
                     // 실패 시 미션 정보만 업데이트
                     _missionUiState.value = MissionUiState.Success(
                         missions = updatedMissions,

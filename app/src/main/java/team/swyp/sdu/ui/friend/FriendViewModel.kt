@@ -162,8 +162,8 @@ constructor(
             } catch (e: UserNotFoundException) {
                 Timber.Forest.e(e, "사용자를 찾을 수 없음: $trimmedNickname")
                 _searchUiState.value = SearchUiState.Error("존재하지 않는 유저입니다")
-            } catch (e: Exception) {
-                Timber.Forest.e(e, "사용자 검색 실패: $trimmedNickname")
+            } catch (t: Throwable) {
+                Timber.Forest.e(t, "사용자 검색 실패: $trimmedNickname")
                 _searchUiState.value = SearchUiState.Error("검색 중 오류가 발생했습니다")
             }
         }
@@ -264,8 +264,8 @@ constructor(
                     }
                 }
                 saveFollowStatusToLocal(trimmedNickname, FollowStatus.ACCEPTED)
-            } catch (e: Exception) {
-                Timber.e(e, "팔로우 실패: $trimmedNickname")
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로우 실패: $trimmedNickname")
                 // 롤백: 이전 상태로 복원
                 rollbackFollowStatus(previousResult, previousFollowStatus)
             } finally {
@@ -304,8 +304,8 @@ constructor(
         return try {
             val statusString = followPrefs.getString("follow_status_$nickname", null)
             statusString?.let { FollowStatus.valueOf(it) } ?: FollowStatus.EMPTY
-        } catch (e: Exception) {
-            Timber.e(e, "로컬 팔로우 상태 로드 실패: $nickname")
+        } catch (t: Throwable) {
+            Timber.e(t, "로컬 팔로우 상태 로드 실패: $nickname")
             FollowStatus.EMPTY
         }
     }
@@ -319,8 +319,8 @@ constructor(
                 .putString("follow_status_$nickname", status.name)
                 .apply()
             Timber.d("FriendView: 팔로우 상태 로컬 저장 - $nickname: $status, key=follow_status_$nickname")
-        } catch (e: Exception) {
-            Timber.e(e, "팔로우 상태 로컬 저장 실패: $nickname")
+        } catch (t: Throwable) {
+            Timber.e(t, "팔로우 상태 로컬 저장 실패: $nickname")
         }
     }
 
@@ -333,8 +333,8 @@ constructor(
                 .remove("follow_status_$nickname")
                 .apply()
             Timber.d("FriendView: 로컬 팔로우 상태 초기화 - $nickname")
-        } catch (e: Exception) {
-            Timber.e(e, "로컬 팔로우 상태 초기화 실패: $nickname")
+        } catch (t: Throwable) {
+            Timber.e(t, "로컬 팔로우 상태 초기화 실패: $nickname")
         }
     }
 }

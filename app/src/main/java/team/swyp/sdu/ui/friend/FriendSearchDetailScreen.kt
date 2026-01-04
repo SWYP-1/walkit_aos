@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -244,7 +245,7 @@ fun FriendSearchDetailScreenContent(
                         LottieAnimation(
                             composition = composition,
                             iterations = LottieConstants.IterateForever,
-                            modifier = Modifier.size(300.dp)
+                            modifier = Modifier .size(290.dp).offset(y = -10.dp),
                         )
                     } ?: run {
                         // Lottie가 없을 경우 기존 AsyncImage 사용 (fallback)

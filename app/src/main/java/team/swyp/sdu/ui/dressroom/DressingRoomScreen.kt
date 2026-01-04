@@ -10,6 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
@@ -17,11 +18,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Character
 import team.swyp.sdu.domain.model.CosmeticItem
 import team.swyp.sdu.domain.model.EquipSlot
+import team.swyp.sdu.domain.model.WearState
 import team.swyp.sdu.domain.service.LottieImageProcessor
 import team.swyp.sdu.ui.components.*
 import team.swyp.sdu.ui.dressroom.component.CartDialog
@@ -48,8 +51,8 @@ fun DressingRoomRoute(
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
     val selectedItemIds by viewModel.selectedItemIds.collectAsStateWithLifecycle()
     val isWearLoading by viewModel.isWearLoading.collectAsStateWithLifecycle()
+    val isRefreshLoading by viewModel.isRefreshLoading.collectAsStateWithLifecycle()
     val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
-    val serverWornItems by viewModel.serverWornItems.collectAsStateWithLifecycle()
 
     // 선택 상태 변경 로깅
     LaunchedEffect(selectedItemIds) {
@@ -65,10 +68,10 @@ fun DressingRoomRoute(
         cartItems = cartItems,
         lottieImageProcessor = viewModel.lottieImageProcessor, // 실제 주입
         isWearLoading = isWearLoading,
+        isRefreshLoading = isRefreshLoading,
         showCartDialog = showCartDialog,
         selectedItemIds = selectedItemIds,
         wornItemsByPosition = wornItemsByPosition,
-        serverWornItems = serverWornItems,
         onBackClick = onNavigateBack,
         onRefreshClick = {
             scope.launch {
@@ -79,8 +82,9 @@ fun DressingRoomRoute(
         onToggleOwnedOnly = viewModel::toggleShowOwnedOnly,
         onItemClick = { itemId ->
             if (!isWearLoading) { // 로딩 중 클릭 방지
-                viewModel.selectItem(itemId)
+
             }
+            viewModel.selectItem(itemId)
         },
         onPerformPurchase = { viewModel.performPurchase() },
         onSaveItem = { viewModel.saveItems() },
@@ -98,10 +102,10 @@ fun DressingRoomScreen(
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?, // ⭐ nullable
     isWearLoading: Boolean = false,
+    isRefreshLoading: Boolean = false,
     showCartDialog: Boolean = false,
-    selectedItemIds : LinkedHashSet<Int>,
-    wornItemsByPosition: Map<EquipSlot, Int> = emptyMap(),
-    serverWornItems: Map<EquipSlot, Int> = emptyMap(),
+    selectedItemIds: Set<Int>,
+    wornItemsByPosition: Map<EquipSlot, WearState> = emptyMap(),
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onToggleOwnedOnly: () -> Unit,
@@ -128,11 +132,11 @@ fun DressingRoomScreen(
                 is DressingRoomUiState.Success ->
                     SuccessContent(
                         wornItemsByPosition = wornItemsByPosition,
-                        serverWornItems = serverWornItems,
                         selectedItemIds = selectedItemIds,
                         uiState = uiState,
                         cartItems = cartItems,
                         lottieImageProcessor = lottieImageProcessor,
+                        isRefreshLoading = isRefreshLoading,
 
                         onBackClick = onBackClick,
                         onRefreshClick = onRefreshClick,
@@ -143,7 +147,10 @@ fun DressingRoomScreen(
                         onShowCartDialog = onShowCartDialog,
                         showGradeInfoDialog = showGradeInfoDialog,
                         processedLottieJson = uiState.processedLottieJson,
-                    )
+                    ).also {
+                        Timber.d("📤 CharacterAndBackground 전달 - processedLottieJson: ${uiState.processedLottieJson?.length ?: 0}자")
+                    }
+
             }
 
             Timber.d("💬 다이얼로그 표시 상태: $showCartDialog, 장바구니 아이템 수: ${cartItems.size}")
@@ -164,8 +171,8 @@ fun DressingRoomScreen(
                 }
             }
 
-            // 로딩 오버레이 (착용 요청 중)
-            if (isWearLoading) {
+            // 로딩 오버레이 (착용 요청 중 또는 새로고침 중)
+            if (isWearLoading || isRefreshLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -184,12 +191,12 @@ fun DressingRoomScreen(
  */
 @Composable
 private fun SuccessContent(
-    wornItemsByPosition: Map<EquipSlot, Int>,
-    serverWornItems: Map<EquipSlot, Int>,
+    wornItemsByPosition: Map<EquipSlot, WearState>,
     selectedItemIds: Set<Int>,
     uiState: DressingRoomUiState.Success,
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?,
+    isRefreshLoading: Boolean = false,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
@@ -245,7 +252,9 @@ private fun SuccessContent(
                     androidx.compose.material3.Text(
                         text = "캐릭터 정보를 불러오는 중...",
                         style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = 0.6f
+                        )
                     )
                 }
             }
@@ -262,7 +271,7 @@ private fun SuccessContent(
                 ItemGrid(
                     items = uiState.items,
                     selectedItemIds = selectedItemIds,
-                    serverWornItems = serverWornItems,
+                    wornItemsByPosition = wornItemsByPosition,
                     onItemClick = onItemClick
                 )
             }
@@ -279,7 +288,9 @@ private fun SuccessContent(
             CtaButton(
                 text = "저장하기",
                 onClick = onSaveItem,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 iconResId = R.drawable.ic_arrow_forward
             )
         }
@@ -302,7 +313,7 @@ private fun SuccessContent(
 private fun ItemGrid(
     items: List<CosmeticItem>,
     selectedItemIds: Set<Int>,
-    serverWornItems: Map<EquipSlot, Int>,
+    wornItemsByPosition: Map<EquipSlot, WearState>,
     onItemClick: (Int) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -314,9 +325,8 @@ private fun ItemGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items) { item ->
-            val isWorn = serverWornItems[item.position] == item.itemId
             val isSelected = selectedItemIds.contains(item.itemId)
-            Timber.d("🎴 ItemCard - itemId: ${item.itemId}, isSelected: $isSelected, selectedItemIds: $selectedItemIds")
+
             ItemCard(
                 itemImageUrl = item.imageName,
                 position = item.position, // EquipSlot 직접 전달
@@ -324,7 +334,6 @@ private fun ItemGrid(
                 point = item.point,
                 isMine = item.owned,
                 isSelected = isSelected,
-                isWorn = isWorn,
                 onClick = { onItemClick(item.itemId) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -356,7 +365,7 @@ private fun ErrorContent(message: String) {
 @Composable
 private fun LoadingContent() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-//        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
     }
 }
 
@@ -379,6 +388,7 @@ fun PreviewDressingRoomFullSample() {
                 imageName = "헤어",
                 name = "",
                 owned = false,
+                worn = false,
                 point = 200,
                 position = EquipSlot.BODY
             ),
@@ -387,6 +397,7 @@ fun PreviewDressingRoomFullSample() {
                 imageName = "상의",
                 name = "",
                 owned = true,
+                worn = true,  // 미리보기용으로 worn=true 설정
                 point = 2500,
                 position = EquipSlot.HEAD
             ),
@@ -395,6 +406,7 @@ fun PreviewDressingRoomFullSample() {
                 imageName = "헤어",
                 name = "",
                 owned = false,
+                worn = false,
                 point = 200,
                 position = EquipSlot.FEET
             ),
@@ -404,19 +416,19 @@ fun PreviewDressingRoomFullSample() {
         DressingRoomScreen(
             uiState = DressingRoomUiState.Success(
                 items = items,
-                selectedItemId = 2,
-                selectedItemIdSet = linkedSetOf(1, 2), // 다중 선택 예시
                 character = character,
                 myPoint = 12500, // API에서 가져온 포인트 값 예시
                 showOwnedOnly = false
             ),
-            cartItems = linkedSetOf(items[1], items[2]),
+            cartItems = linkedSetOf(items[1]),
             lottieImageProcessor = null, // ⭐ Preview 핵심
             showCartDialog = false,
+            selectedItemIds = LinkedHashSet(setOf(1, 2)), // 선택된 아이템 ID들
             wornItemsByPosition = mapOf(
                 // 착용 상태 예시
-                EquipSlot.HEAD to 1, // 첫 번째 HEAD 아이템 착용
-                EquipSlot.BODY to 2, // 첫 번째 BODY 아이템 착용
+                EquipSlot.HEAD to WearState.Worn(2), // HEAD 아이템 착용
+                EquipSlot.BODY to WearState.Default, // BODY 기본 상태
+                EquipSlot.FEET to WearState.Unworn  // FEET 미착용 상태
             ),
             onBackClick = {},
             onRefreshClick = {},
@@ -425,9 +437,7 @@ fun PreviewDressingRoomFullSample() {
             onSaveItem = {},
             onDismissCartDialog = {},
             onShowCartDialog = {},
-            onPerformPurchase = {},
-            serverWornItems = emptyMap(),
-            selectedItemIds = LinkedHashSet<Int>()
+            onPerformPurchase = {}
         )
     }
 }

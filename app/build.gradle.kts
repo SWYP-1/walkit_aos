@@ -35,22 +35,41 @@ android {
             }
         }
 
-        // BuildConfig에 API 키 추가 (카카오만 Manifest에서 사용)
-        buildConfigField("String", "KAKAO_APP_KEY", "\"${localProperties.getProperty("KAKAO_APP_KEY", "")}\"")
+        // BuildConfig에 API 키 추가
+        val kakaoAppKey = localProperties.getProperty("KAKAO_APP_KEY", "")
+        val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID", "")
+        val naverClientSecret = localProperties.getProperty("NAVER_CLIENT_SECRET", "")
+        
+        // 릴리즈 빌드 시 API 키 검증 (경고만 출력, 빌드는 계속 진행)
+        if (kakaoAppKey.isBlank()) {
+            println("⚠️ WARNING: KAKAO_APP_KEY가 설정되지 않았습니다. local.properties를 확인하세요.")
+        }
+        if (naverClientId.isBlank() || naverClientSecret.isBlank()) {
+            println("⚠️ WARNING: NAVER_CLIENT_ID 또는 NAVER_CLIENT_SECRET이 설정되지 않았습니다. local.properties를 확인하세요.")
+        }
+        
+        buildConfigField("String", "KAKAO_APP_KEY", "\"$kakaoAppKey\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"$naverClientId\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"$naverClientSecret\"")
 
         // AndroidManifest.xml 플레이스홀더 치환
         manifestPlaceholders["KAKAO_APP_KEY"] = localProperties.getProperty("KAKAO_APP_KEY", "")
-
-        // 네이버 API 키는 런타임에만 사용 (BuildConfig에 노출하지 않음)
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
+            isDebuggable = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
     compileOptions {
@@ -149,10 +168,8 @@ dependencies {
     implementation(libs.accompanist.systemuicontroller)
     implementation(libs.accompanist.permissions)
 
-    // Material Icons Extended
-    implementation(
-        "androidx.compose.material:material-icons-extended:${libs.versions.composeBom.get().substringAfterLast(".")}",
-    )
+    // Material Icons Extended - BOM 버전 사용 (버전 명시 불필요)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // KakaoMap SDK
     implementation(libs.kakao.map)
@@ -226,3 +243,6 @@ tasks.register("prePR") {
     description = "PR 전 체크: 빌드, 테스트, Lint"
     dependsOn("build", "test", "lint")
 }
+
+// google-services.json에 디버그 패키지(team.swyp.sdu.debug)가 추가되어
+// 이제 디버그 빌드에서도 정상적으로 Google Services 플러그인이 작동합니다.

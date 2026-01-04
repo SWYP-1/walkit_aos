@@ -66,8 +66,8 @@ class GpsFilter @Inject constructor(
 
             return finalResult
 
-        } catch (e: Exception) {
-            Timber.e(e, "GPS 필터링 중 오류 발생")
+        } catch (t: Throwable) {
+            Timber.e(t, "GPS 필터링 중 오류 발생")
             return null  // 오류 발생 시 필터링
         }
     }

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -81,7 +82,8 @@ fun ServiceInfoFooter(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderSecondary,
-                modifier = Modifier.clickable(onClick = onMarketingClick)
+                modifier = Modifier.clickable(onClick = onMarketingClick),
+                textAlign = TextAlign.Center
             )
         }
         Spacer(Modifier.height(8.dp))

@@ -71,7 +71,7 @@ enum class CharacterPart(val assetId: String, vararg val lottieAssetIds: String)
          * position 문자열로부터 CharacterPart를 찾음
          */
         fun fromPosition(position: String): CharacterPart? {
-            return entries.find { it.name.equals(position, ignoreCase = true) }
+            return values().find { it.name.equals(position, ignoreCase = true) }
         }
     }
 }

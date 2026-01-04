@@ -156,7 +156,17 @@ fun NavGraph(
                         modifier = Modifier.padding(paddingValues),
                         viewModel = viewModel,
                         onNext = { navController.navigate(Screen.EmotionRecord.route) },
-                        onClose = { navController.popBackStack(Screen.Main.route, false) },
+                        onClose = {
+                            Timber.d("🚶 NavGraph - PostEmotionSelection onClose 호출")
+                            val success = navController.popBackStack(Screen.Main.route, false)
+                            Timber.d("🚶 NavGraph - popBackStack 결과: $success")
+                            if (!success) {
+                                Timber.w("🚶 NavGraph - popBackStack 실패, navigate 사용")
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(Screen.Main.route) { inclusive = true }
+                                }
+                            }
+                        },
                     )
                 }
             }

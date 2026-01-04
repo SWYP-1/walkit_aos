@@ -90,8 +90,8 @@ class ActivityRecognitionManager
                 } else {
                     true // Android Q 이하는 권한이 필요 없음
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Activity Recognition 권한 확인 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "Activity Recognition 권한 확인 실패")
                 false
             }
 
@@ -175,8 +175,8 @@ class ActivityRecognitionManager
                 awaitClose {
                     try {
                         context.unregisterReceiver(receiver)
-                    } catch (e: Exception) {
-                        Timber.e(e, "BroadcastReceiver 해제 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "BroadcastReceiver 해제 실패")
                     }
                 }
             }
@@ -244,8 +244,8 @@ class ActivityRecognitionManager
             activityReceiver?.let {
                 try {
                     context.unregisterReceiver(it)
-                } catch (e: Exception) {
-                    Timber.e(e, "BroadcastReceiver 해제 실패")
+                } catch (t: Throwable) {
+                    Timber.e(t, "BroadcastReceiver 해제 실패")
                 }
             }
             activityReceiver = null

@@ -97,8 +97,8 @@ constructor(
             try {
                 val result = userRemoteDataSource.searchUserByNickname(trimmedNickname)
                 _searchResult.value = result
-            } catch (e: Exception) {
-                Timber.e(e, "사용자 검색 실패: $trimmedNickname")
+            } catch (t: Throwable) {
+                Timber.e(t, "사용자 검색 실패: $trimmedNickname")
                 _searchResult.value = null
             } finally {
                 _isSearching.value = false

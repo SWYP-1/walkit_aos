@@ -1,5 +1,6 @@
 package team.swyp.sdu.ui.walking
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,11 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import team.swyp.sdu.R
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.EmotionSlider
 import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.components.TextHighlight
@@ -42,6 +46,7 @@ import team.swyp.sdu.ui.components.WalkingWarningDialog
 import team.swyp.sdu.ui.walking.utils.createDefaultEmotionOptions
 import team.swyp.sdu.ui.walking.utils.findSelectedEmotionIndex
 import team.swyp.sdu.ui.walking.utils.valueToEmotionType
+import team.swyp.sdu.ui.walking.utils.stringToEmotionTypeOrNull
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -67,15 +72,17 @@ fun PostWalkingEmotionSelectRoute(
         // postWalkingEmotion 초기화 (필요한 경우)
         viewModel.initializePostWalkingEmotionIfNeeded()
     }
+    val scope = rememberCoroutineScope()
 
-    val selectedEmotion by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()
+    val selectedEmotionString by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()
+    val selectedEmotion = stringToEmotionTypeOrNull(selectedEmotionString)
 
     PostWalkingEmotionSelectScreen(
         selectedEmotion = selectedEmotion,
         onEmotionSelected = viewModel::selectPostWalkingEmotion,
         onNextClick = {
             if (selectedEmotion != null) {
-                viewModel.updatePostWalkEmotion(selectedEmotion!!)
+                viewModel.updatePostWalkEmotion(selectedEmotion)
                 onNext()
             }
         },
@@ -83,6 +90,9 @@ fun PostWalkingEmotionSelectRoute(
             // 임시로 저장된 산책 기록 삭제
             viewModel.deleteCurrentSession()
             onClose()
+        },
+        onDeleteSession = {
+            viewModel.deleteCurrentSession()
         },
         modifier = modifier,
     )
@@ -98,9 +108,12 @@ private fun PostWalkingEmotionSelectScreen(
     onEmotionSelected: (EmotionType) -> Unit,
     onNextClick: () -> Unit,
     onClose: () -> Unit = {},
+    onDeleteSession: suspend () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showWarningDialog by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -157,10 +170,8 @@ private fun PostWalkingEmotionSelectScreen(
             ) {
 
 
-                // 감정 옵션 리스트 생성
-                val emotionOptions = remember {
-                    createDefaultEmotionOptions()
-                }
+                // 감정 옵션 리스트 생성 (Composable 함수 사용)
+                val emotionOptions = createDefaultEmotionOptions()
 
                 // 선택된 감정의 인덱스 찾기
                 val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
@@ -203,6 +214,22 @@ private fun PostWalkingEmotionSelectScreen(
                 }
             }
 
+            // 삭제 진행 중 오버레이
+            if (isDeleting) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SemanticColor.backgroundWhitePrimary.copy(alpha = 0.9f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        CustomProgressIndicator()
+                    }
+                }
+            }
+
             // 경고 다이얼로그
             if (showWarningDialog) {
                 WalkingWarningDialog(
@@ -218,7 +245,21 @@ private fun PostWalkingEmotionSelectScreen(
                     onCancel = {
                         // 산책 기록 중단 및 메인 화면으로 이동
                         showWarningDialog = false
-                        onClose()
+                        Timber.d("🚶 PostEmotionSelect - 중단하기 클릭: 세션 삭제 시작")
+                        isDeleting = true
+
+                        scope.launch {
+                            try {
+                                onDeleteSession()  // 1️⃣ 세션 삭제 완료 대기
+                                Timber.d("🚶 PostEmotionSelect - 세션 삭제 완료")
+                            } catch (e: Throwable) {
+                                Timber.e(e, "🚶 PostEmotionSelect - 세션 삭제 실패")
+                            } finally {
+                                isDeleting = false
+                                onClose()  // 2️⃣ 삭제 완료 후 화면 이동
+                                Timber.d("🚶 PostEmotionSelect - onClose() 호출 완료")
+                            }
+                        }
                     },
                     onContinue = {
                         // 다이얼로그만 닫기
@@ -237,7 +278,7 @@ private fun PostWalkingEmotionSelectScreen(
 private fun PostWalkingEmotionSelectScreenPreview() {
     WalkItTheme {
         PostWalkingEmotionSelectScreen(
-            selectedEmotion = EmotionType.CONTENT,
+            selectedEmotion = stringToEmotionTypeOrNull("CONTENT"),
             onEmotionSelected = {},
             onNextClick = {},
             onClose = {},

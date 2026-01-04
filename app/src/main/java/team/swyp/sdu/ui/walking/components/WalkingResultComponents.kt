@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -139,57 +140,93 @@ fun WeekCircle(label: String, isDone: Boolean) {
 /**
  * 경로 썸네일 컴포넌트
  */
+
 @Composable
 fun PathThumbnail(
     locations: List<LocationPoint>,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp),
     pathColor: Color = Color.White,
-    endpointColor: Color = Color.White,
+    startColor: Color = Color(0xFF4CAF50),
+    endColor: Color = Color(0xFFF44336)
 ) {
-    val source =
-        if (locations.size < 2) {
-            generateRandomCityWalkPoints()
-        } else {
-            locations
+    if (locations.isEmpty()) return
+
+    Canvas(modifier = modifier) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val paddingPx = 16f
+
+        // 경로 범위
+        val minLat = locations.minOf { it.latitude }.toFloat()
+        val maxLat = locations.maxOf { it.latitude }.toFloat()
+        val minLon = locations.minOf { it.longitude }.toFloat()
+        val maxLon = locations.maxOf { it.longitude }.toFloat()
+
+        // 경로의 중심점 계산
+        val centerLat = (minLat + maxLat) / 2f
+        val centerLon = (minLon + maxLon) / 2f
+
+        // 한 점/작은 범위 대비 최소값 적용
+        val minRange = 0.001f
+        val latRange = maxOf(maxLat - minLat, minRange)
+        val lonRange = maxOf(maxLon - minLon, minRange)
+
+        // Canvas 내 사용 가능한 영역
+        val availableWidth = canvasWidth - paddingPx * 2
+        val availableHeight = canvasHeight - paddingPx * 2
+
+        // 스케일 (비율 유지)
+        val scale = minOf(availableWidth / lonRange, availableHeight / latRange)
+
+        // 캔버스의 중심점
+        val canvasCenterX = canvasWidth / 2f
+        val canvasCenterY = canvasHeight / 2f
+
+        // 좌표 변환 (경로 중심을 캔버스 중심에 맞춤)
+        val points = locations.map { loc ->
+            val x = (canvasCenterX + (loc.longitude - centerLon) * scale).toFloat()
+            val y = (canvasCenterY - (loc.latitude - centerLat) * scale).toFloat()
+            Offset(x, y)
         }
 
-    // locations 데이터를 기반으로 key 생성하여 불필요한 재구성 방지
-    key(source) {
-        Canvas(modifier = modifier) {
-        val minLat = source.minOf { it.latitude }
-        val maxLat = source.maxOf { it.latitude }
-        val minLon = source.minOf { it.longitude }
-        val maxLon = source.maxOf { it.longitude }
-
-        val latRange = (maxLat - minLat).coerceAtLeast(1e-6)
-        val lonRange = (maxLon - minLon).coerceAtLeast(1e-6)
-
-        val points =
-            source.map { loc ->
-                val x = ((loc.longitude - minLon) / lonRange).toFloat() * size.width
-                val y = size.height - ((loc.latitude - minLat) / latRange).toFloat() * size.height
-                Offset(x, y)
+        // 경로 그리기 (2점 이상)
+        if (points.size > 1) {
+            val path = Path().apply {
+                moveTo(points.first().x, points.first().y)
+                points.drop(1).forEach { lineTo(it.x, it.y) }
             }
-
-        val path = Path().apply {
-            moveTo(points.first().x, points.first().y)
-            points.drop(1).forEach { lineTo(it.x, it.y) }
+            drawPath(
+                path = path,
+                color = pathColor,
+                style = Stroke(width = 8f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
         }
 
-        drawPath(
-            path = path,
-            color = pathColor,
-            style = Stroke(width = 8f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        // 시작점
+        val startRadius = if (locations.size == 1) 12f else 10f
+        drawCircle(
+            color = startColor,
+            radius = startRadius,
+            center = points.first(),
         )
 
-        drawCircle(
-            color = endpointColor,
-            radius = 10f,
-            center = points.last(),
-        )
+        // 끝점 (시작점과 다른 경우)
+        if (points.size > 1 &&
+            (points.last().x != points.first().x || points.last().y != points.first().y)
+        ) {
+            drawCircle(
+                color = endColor,
+                radius = 10f,
+                center = points.last(),
+            )
         }
     }
 }
+
+
+
 
 /**
  * 테스트용 간단한 카카오 지도 뷰

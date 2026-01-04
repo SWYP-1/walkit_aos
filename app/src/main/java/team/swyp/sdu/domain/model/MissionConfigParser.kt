@@ -23,24 +23,24 @@ object MissionConfigParser {
             MissionType.CHALLENGE_STEPS -> {
                 try {
                     json.decodeFromString<MissionConfig.ChallengeStepsConfig>(jsonString)
-                } catch (e: Exception) {
-                    error("Failed to parse ChallengeStepsConfig: ${e.message}")
+                } catch (t: Throwable) {
+                    error("Failed to parse ChallengeStepsConfig: ${t.message}")
                 }
             }
 
             MissionType.PHOTO_COLOR -> {
                 try {
                     json.decodeFromString<MissionConfig.PhotoColorConfig>(jsonString)
-                } catch (e: Exception) {
-                    error("Failed to parse PhotoColorConfig: ${e.message}")
+                } catch (t: Throwable) {
+                    error("Failed to parse PhotoColorConfig: ${t.message}")
                 }
             }
 
             MissionType.CHALLENGE_ATTENDANCE -> {
                 try {
                     json.decodeFromString<MissionConfig.ChallengeAttendanceConfig>(jsonString)
-                } catch (e: Exception) {
-                    error("Failed to parse Challenge attendance: ${e.message}")
+                } catch (t: Throwable) {
+                    error("Failed to parse Challenge attendance: ${t.message}")
                 }
             }
         }

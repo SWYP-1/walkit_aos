@@ -22,9 +22,9 @@ class GoalRemoteDataSource @Inject constructor(
             val dto = goalApi.getGoal()
             Timber.d("목표 조회 성공: 걸음=${dto.targetStepCount}, 산책=${dto.targetWalkCount}")
             dto.toDomain()
-        } catch (e: Exception) {
-            Timber.e(e, "목표 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "목표 조회 실패")
+            throw t
         }
     }
 

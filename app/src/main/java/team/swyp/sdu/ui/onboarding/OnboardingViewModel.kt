@@ -87,7 +87,7 @@ data class OnboardingUiState(
                 val dayValid = try {
                     LocalDate.of(birthYear, birthMonth, birthDay)
                     true
-                } catch (e: Exception) {
+                } catch (t: Throwable) {
                     false
                 }
                 yearValid && monthValid && dayValid
@@ -180,11 +180,11 @@ constructor(
                             val dayValid = try {
                                 LocalDate.of(progress.birthYear, progress.birthMonth, progress.birthDay)
                                 true
-                            } catch (e: Exception) {
+                            } catch (t: Throwable) {
                                 false
                             }
                             !(yearValid && monthValid && dayValid)
-                        } catch (e: Exception) {
+                        } catch (t: Throwable) {
                             true
                         } -> {
                             Timber.d("생년월일이 유효하지 않음 → 생년월일 단계(1)로 복귀")
@@ -584,10 +584,10 @@ constructor(
                 Timber.d("온보딩 완료 성공 - onSuccess 콜백 호출")
                 // 성공 시 콜백 호출 (화면 전환을 위해 필수)
                 onSuccess()
-            } catch (e: Exception) {
-                Timber.e(e, "온보딩 완료 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "온보딩 완료 실패")
                 // TODO: 에러 처리
-                throw e
+                throw t
             }
         }
     }

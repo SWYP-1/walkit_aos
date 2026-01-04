@@ -51,9 +51,9 @@ data class WeeklyMission(
             val result = MissionConfigParser.parseMissionConfig(missionType, configJson)
             Timber.d("WeeklyMission.getMissionConfig: 파싱 결과 = $result")
             result
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // 파싱 실패 시 null 반환 (UI에서 description을 fallback으로 사용)
-            Timber.e(e, "WeeklyMission.getMissionConfig: 파싱 실패")
+            Timber.e(t, "WeeklyMission.getMissionConfig: 파싱 실패")
             null
         }
     }

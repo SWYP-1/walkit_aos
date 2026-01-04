@@ -62,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import timber.log.Timber
 import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.data.model.WalkingSession
+import team.swyp.sdu.ui.walking.utils.stringToEmotionType
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.presentation.viewmodel.KakaoMapViewModel
 import team.swyp.sdu.ui.theme.WalkItTheme
@@ -85,6 +86,8 @@ import team.swyp.sdu.ui.record.components.WalkingStatsCard
 import team.swyp.sdu.ui.theme.SemanticColor
 import team.swyp.sdu.ui.walking.components.CoilBitmapImage
 import team.swyp.sdu.ui.walking.components.ShareWalkingResultDialog
+import team.swyp.sdu.ui.walking.components.SaveStatus
+import team.swyp.sdu.utils.downloadImage
 import team.swyp.sdu.ui.walking.components.WalkingProgressBar
 import java.io.File
 import java.io.FileOutputStream
@@ -195,8 +198,8 @@ private fun saveSnapshotToFile(
         val absolutePath = file.absolutePath
         Timber.d("스냅샷 파일 저장 완료: $absolutePath")
         absolutePath
-    } catch (e: Exception) {
-        Timber.e(e, "스냅샷 파일 저장 실패: ${e.message}")
+    } catch (t: Throwable) {
+        Timber.e(t, "스냅샷 파일 저장 실패: ${t.message}")
         null
     }
 }
@@ -356,21 +359,78 @@ private fun WalkingResultScreenContent(
             }
 
             item {
-                Text(
-                    text = buildAnnotatedString {
-                        append("이번 주 ")
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = buildAnnotatedString {
+                            append("이번 주 ")
 
-                        withStyle(
-                            style = SpanStyle(color = SemanticColor.stateAquaBluePrimary)
-                        ) {
-                            append("${weekWalkOrder}번째")
+                            withStyle(
+                                style = SpanStyle(color = SemanticColor.stateAquaBluePrimary)
+                            ) {
+                                append("${weekWalkOrder}번째")
+                            }
+
+                            append(" 산책을 완료했어요.")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SemanticColor.textBorderSecondary, // 기본 색
+                    )
+
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                if (capturedSnapshotPath == null) {
+                                    Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+                                    var snapshotPath: String? = null
+                                    val success = onCaptureSnapshot {
+                                        try {
+                                            snapshotPath = if (emotionPhotoUri != null) {
+                                                capturePhotoWithPathSnapshot(
+                                                    photoWithPathBoxCoordinates,
+                                                    context
+                                                )
+                                            } else {
+                                                if (mapViewRef != null) {
+                                                    captureMapViewSnapshot(
+                                                        mapViewRef!!,
+                                                        context
+                                                    )
+                                                } else {
+                                                    Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+                                                    null
+                                                }
+                                            }
+                                            snapshotPath
+                                        } catch (t: Throwable) {
+                                            Timber.e(t, "공유용 스냅샷 생성 실패")
+                                            null
+                                        }
+                                    }
+
+                                    if (success && snapshotPath != null) {
+                                        capturedSnapshotPath = snapshotPath
+                                    } else {
+                                        Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+                                        return@launch
+                                    }
+                                }
+
+                                showShareDialog = true
+                            }
                         }
-
-                        append(" 산책을 완료했어요.")
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SemanticColor.textBorderSecondary, // 기본 색
-                )
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_external),
+                            tint = SemanticColor.iconGrey,
+                            contentDescription = "external",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             }
 
             item {
@@ -389,7 +449,10 @@ private fun WalkingResultScreenContent(
                                 photoWithPathBoxCoordinates = coordinates
                             }
                         }
-                        .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(12.dp)) // Card 대신 배경 + 모서리 둥글게
+                        .background(
+                            Color(0xFFF5F5F5),
+                            shape = RoundedCornerShape(12.dp)
+                        ) // Card 대신 배경 + 모서리 둥글게
                 ) {
                     if (emotionPhotoUri != null) {
                         // 케이스 1: 사진이 있는 경우
@@ -402,11 +465,12 @@ private fun WalkingResultScreenContent(
                                     Timber.w("영상 파일이 감정 기록에 설정됨 - 이미지 표시 불가: $mimeType")
                                     null
                                 } else {
-                                    val inputStream = context.contentResolver.openInputStream(emotionPhotoUri)
+                                    val inputStream =
+                                        context.contentResolver.openInputStream(emotionPhotoUri)
                                     android.graphics.BitmapFactory.decodeStream(inputStream)
                                 }
-                            } catch (e: Exception) {
-                                Timber.e(e, "이미지 변환 실패")
+                            } catch (t: Throwable) {
+                                Timber.e(t, "이미지 변환 실패")
                                 null
                             }
                         }
@@ -437,7 +501,8 @@ private fun WalkingResultScreenContent(
                                     .fillMaxSize()
                                     .padding(20.dp),
                                 pathColor = Color.White,
-                                endpointColor = Color.White,
+                                startColor =  Color.White,
+                                endColor = Color.White,
                             )
                         }
                     } else {
@@ -450,66 +515,6 @@ private fun WalkingResultScreenContent(
                                 mapViewRef = mapView
                             },
                         )
-                    }
-
-                    // 공유 버튼
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .align(Alignment.TopEnd),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    if (capturedSnapshotPath == null) {
-                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
-                                        var snapshotPath: String? = null
-                                        val success = onCaptureSnapshot {
-                                            try {
-                                                snapshotPath = if (emotionPhotoUri != null) {
-                                                    capturePhotoWithPathSnapshot(
-                                                        photoWithPathBoxCoordinates,
-                                                        context
-                                                    )
-                                                } else {
-                                                    if (mapViewRef != null) {
-                                                        captureMapViewSnapshot(
-                                                            mapViewRef!!,
-                                                            context
-                                                        )
-                                                    } else {
-                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
-                                                        null
-                                                    }
-                                                }
-                                                snapshotPath
-                                            } catch (e: Exception) {
-                                                Timber.e(e, "공유용 스냅샷 생성 실패")
-                                                null
-                                            }
-                                        }
-
-                                        if (success && snapshotPath != null) {
-                                            capturedSnapshotPath = snapshotPath
-                                        } else {
-                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
-                                            return@launch
-                                        }
-                                    }
-
-                                    showShareDialog = true
-                                }
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_action_external),
-                                tint = SemanticColor.iconWhite,
-                                contentDescription = "external",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -619,8 +624,8 @@ private fun WalkingResultScreenContent(
                                                 }
                                             }
                                             snapshotPath
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "스냅샷 생성 실패")
+                                        } catch (t: Throwable) {
+                                            Timber.e(t, "스냅샷 생성 실패")
                                             null
                                         }
                                     }
@@ -667,8 +672,23 @@ private fun WalkingResultScreenContent(
                 onPrev = { showShareDialog = false },
                 preWalkEmotion = currentSession.preWalkEmotion,
                 postWalkEmotion = currentSession.postWalkEmotion,
+                saveStatus = SaveStatus.IDLE,
                 onSave = {
-
+//                    scope.launch {
+//                        try {
+//                            saveStatus = SaveStatus.LOADING
+//                            downloadImage(
+//                                context = LocalContext.current,
+//                                path = capturedSnapshotPath ?: "",
+//                                fileName = "walking_result_${currentSession.id}.png"
+//                            )
+//                            saveStatus = SaveStatus.SUCCESS
+//                            Timber.d("이미지 저장 성공")
+//                        } catch (t: Throwable) {
+//                            saveStatus = SaveStatus.FAILURE
+//                            Timber.e(t, "이미지 저장 실패")
+//                        }
+//                    }
                 },
                 sessionThumbNailUri = capturedSnapshotPath ?: ""
             )
@@ -687,8 +707,8 @@ private fun WalkingResultScreenPreview() {
             stepCount = 12000,
             locations = emptyList(),
             totalDistance = 5000f,
-            preWalkEmotion = EmotionType.JOYFUL,
-            postWalkEmotion = EmotionType.JOYFUL,
+            preWalkEmotion = "JOYFUL",
+            postWalkEmotion = "JOYFUL",
             note = null,
             createdDate = java.time.ZonedDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE),

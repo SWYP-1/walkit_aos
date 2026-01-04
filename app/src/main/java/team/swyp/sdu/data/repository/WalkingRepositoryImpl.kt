@@ -101,9 +101,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingStarted)
 
             Timber.d("산책 추적 시작")
-        } catch (e: Exception) {
-            Timber.e(e, "산책 추적 시작 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 추적 시작 실패")
+            throw t
         }
     }
 
@@ -177,9 +177,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingStopped)
 
             Timber.d("산책 추적 중지")
-        } catch (e: Exception) {
-            Timber.e(e, "산책 추적 중지 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 추적 중지 실패")
+            throw t
         }
     }
 
@@ -335,8 +335,8 @@ class WalkingRepositoryImpl @Inject constructor(
                             val locations = Json.decodeFromString<List<LocationPoint>>(locationsJson)
                             handleLocationUpdate(locations)
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "위치 데이터 파싱 실패")
+                    } catch (t: Throwable) {
+                        Timber.e(t, "위치 데이터 파싱 실패")
                     }
                 }
             }
@@ -360,8 +360,8 @@ class WalkingRepositoryImpl @Inject constructor(
             try {
                 application.unregisterReceiver(it)
                 Timber.d("위치 업데이트 BroadcastReceiver 해제")
-            } catch (e: Exception) {
-                Timber.e(e, "BroadcastReceiver 해제 실패")
+            } catch (t: Throwable) {
+                Timber.e(t, "BroadcastReceiver 해제 실패")
             }
         }
         locationReceiver = null
@@ -377,9 +377,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingPaused)
             
             Timber.d("산책 추적 일시정지")
-        } catch (e: Exception) {
-            Timber.e(e, "산책 추적 일시정지 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 추적 일시정지 실패")
+            throw t
         }
     }
 
@@ -394,9 +394,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingResumed)
             
             Timber.d("산책 추적 재개")
-        } catch (e: Exception) {
-            Timber.e(e, "산책 추적 재개 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 추적 재개 실패")
+            throw t
         }
     }
 

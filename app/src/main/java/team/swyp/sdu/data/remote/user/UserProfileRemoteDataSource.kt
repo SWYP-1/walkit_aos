@@ -88,8 +88,8 @@ class UserProfileRemoteDataSource @Inject constructor(
 
             Timber.d("이미지 압축 완료: ${originalWidth}x${originalHeight} -> ${scaledBitmap.width}x${scaledBitmap.height}, 파일 크기: ${tempFile.length()} bytes")
             tempFile
-        } catch (e: Exception) {
-            Timber.e(e, "이미지 압축 실패: $uri")
+        } catch (t: Throwable) {
+            Timber.e(t, "이미지 압축 실패: $uri")
             null
         }
     }
@@ -102,9 +102,9 @@ class UserProfileRemoteDataSource @Inject constructor(
             val dto = userApi.getUser()
             Timber.d("사용자 정보 조회 성공: ${dto.nickname}")
             dto.toDomain()
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 정보 조회 실패")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 정보 조회 실패")
+            throw t
         }
     }
 
@@ -123,9 +123,9 @@ class UserProfileRemoteDataSource @Inject constructor(
             val response = userApi.updateUserProfile(dto)
             Timber.d("프로필 업데이트 호출 완료: $nickname (HTTP ${response.code()})")
             response
-        } catch (e: Exception) {
-            Timber.e(e, "프로필 업데이트 호출 실패: $nickname")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "프로필 업데이트 호출 실패: $nickname")
+            throw t
         }
     }
 
@@ -148,15 +148,15 @@ class UserProfileRemoteDataSource @Inject constructor(
                 Timber.e("사용자 프로필 이미지 업데이트 실패: $errorMessage (코드: ${response.code()})")
                 throw Exception("프로필 이미지 업데이트 실패: ${response.code()}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "사용자 프로필 이미지 업데이트 실패: ${file.name}")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 프로필 이미지 업데이트 실패: ${file.name}")
+            throw t
         } finally {
             // 임시 파일 정리
             try {
                 file.delete()
-            } catch (e: Exception) {
-                Timber.w(e, "임시 파일 삭제 실패: ${file.absolutePath}")
+            } catch (t: Throwable) {
+                Timber.w(t, "임시 파일 삭제 실패: ${file.absolutePath}")
             }
         }
     }
@@ -174,9 +174,9 @@ class UserProfileRemoteDataSource @Inject constructor(
                 Timber.e("프로필 이미지 삭제 실패: $errorMessage (코드: ${response.code()})")
             }
             response
-        } catch (e: Exception) {
-            Timber.e(e, "프로필 이미지 삭제 실패:")
-            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "프로필 이미지 삭제 실패:")
+            throw t
         }
     }
 }

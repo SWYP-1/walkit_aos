@@ -48,7 +48,6 @@ fun ItemCard(
     point: Int,
     isMine: Boolean,
     isSelected: Boolean,
-    isWorn: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -60,7 +59,6 @@ fun ItemCard(
 
     // 배경색 우선순위: 착용 > 선택 > 기본
     val cardBackgroundColor = when {
-        isWorn -> SemanticColor.stateAquaBlueTertiary // 착용 중 파란색 배경
         isSelected -> SemanticColor.backgroundGreenPrimary // 선택 시 초록색 배경
         else -> SemanticColor.backgroundWhitePrimary // 기본 흰색
     }
@@ -74,7 +72,6 @@ fun ItemCard(
             )
             .border(
                 width = 1.5.dp, color = when {
-                    isWorn -> SemanticColor.stateAquaBluePrimary
                     isSelected -> SemanticColor.stateGreenPrimary
                     else -> SemanticColor.textBorderSecondaryInverse
                 }, shape = RoundedCornerShape(12.dp)
