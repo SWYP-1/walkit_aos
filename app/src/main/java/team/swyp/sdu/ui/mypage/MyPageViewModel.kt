@@ -85,7 +85,7 @@ constructor(
                     // 캐릭터 등급 정보 로드 (API 호출 없이 DB만 조회)
                     var grade: Grade? = null
                     try {
-                        val character = characterRepository.getCharacterFromDb(user.userId.toString())
+                        val character = characterRepository.getCharacterFromDb(user.userId)
                         if (character != null) {
                             grade = character.grade
                             Timber.d("캐릭터 등급 로드 성공: ${user.userId} - $grade")
@@ -131,6 +131,7 @@ constructor(
                 walkingSessionRepository.getTotalStepCount(),
                 walkingSessionRepository.getTotalDuration(),
             ) { totalSteps, totalDurationMs ->
+                Timber.d("마이페이지 통계 계산: 걸음수=$totalSteps, 시간=${totalDurationMs}ms (${totalDurationMs / 1000 / 3600}시간)")
                 StatsData(
                     totalStepCount = totalSteps,
                     totalWalkingTime = totalDurationMs

@@ -31,10 +31,10 @@ class UserRemoteDataSource @Inject constructor(
      * 닉네임으로 사용자 검색
      *
      * @param nickname 검색할 닉네임
-     * @return 검색 결과 (사용자 정보 및 친구 요청 상태)
+     * @return 검색 결과 리스트 (사용자 정보 및 친구 요청 상태)
      * @throws UserNotFoundException 존재하지 않는 유저를 조회한 경우 (404, 1001)
      */
-    suspend fun searchUserByNickname(nickname: String): team.swyp.sdu.data.remote.user.UserSearchResult {
+    suspend fun searchUserByNickname(nickname: String): List<team.swyp.sdu.data.remote.user.UserSearchResult> {
         return userSearchRemoteDataSource.searchUserByNickname(nickname)
     }
 

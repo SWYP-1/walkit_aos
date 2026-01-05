@@ -11,6 +11,7 @@ import team.swyp.sdu.core.Result
 import team.swyp.sdu.data.remote.friend.FollowRemoteDataSource
 import team.swyp.sdu.data.remote.notification.NotificationRemoteDataSource
 import team.swyp.sdu.data.remote.user.UserRemoteDataSource
+import team.swyp.sdu.data.repository.NotificationRepository
 import team.swyp.sdu.domain.model.AlarmType
 import team.swyp.sdu.domain.repository.FriendRepository
 import timber.log.Timber
@@ -27,6 +28,7 @@ class AlarmViewModel
 @Inject
 constructor(
     private val notificationRemoteDataSource: NotificationRemoteDataSource,
+    private val notificationRepository: NotificationRepository,
     private val followRemoteDataSource: FollowRemoteDataSource,
     private val friendRepository: FriendRepository,
 ) : ViewModel() {
@@ -181,6 +183,33 @@ constructor(
             } catch (t: Throwable) {
                 Timber.e(t, "알람 삭제 실패: $alarmId")
                 // 에러 발생 시에도 UI는 업데이트하지 않음 (사용자가 재시도할 수 있도록)
+            }
+        }
+    }
+
+    /**
+     * 알림 삭제 (실제 알림 제거)
+     */
+    fun deleteNotification(notificationId: Long) {
+        viewModelScope.launch {
+            try {
+                Timber.d("알림 삭제 시작: $notificationId")
+                when (val result = notificationRepository.deleteNotification(notificationId)) {
+                    is Result.Success -> {
+                        Timber.d("알림 삭제 성공: $notificationId")
+                        // 알람 목록에서 제거
+                        _alarms.value = _alarms.value.filter { it.id != notificationId.toString() }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "알림 삭제 실패: $notificationId")
+                        // 에러 발생 시에도 UI는 업데이트하지 않음 (사용자가 재시도할 수 있도록)
+                    }
+                    Result.Loading -> {
+                        // 로딩 상태 처리
+                    }
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "알림 삭제 실패: $notificationId")
             }
         }
     }

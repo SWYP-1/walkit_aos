@@ -49,10 +49,12 @@ fun DressingRoomRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
-    val selectedItemIds by viewModel.selectedItemIds.collectAsStateWithLifecycle()
     val isWearLoading by viewModel.isWearLoading.collectAsStateWithLifecycle()
     val isRefreshLoading by viewModel.isRefreshLoading.collectAsStateWithLifecycle()
     val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
+
+    // UiState에서 선택 상태 가져오기
+    val selectedItemIds = (uiState as? DressingRoomUiState.Success)?.selectedItemIdSet ?: LinkedHashSet()
 
     // 선택 상태 변경 로깅
     LaunchedEffect(selectedItemIds) {

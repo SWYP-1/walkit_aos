@@ -13,16 +13,16 @@ import team.swyp.sdu.data.local.entity.CharacterEntity
 @Dao
 interface CharacterDao {
     @Query("SELECT * FROM character_profile WHERE userId = :userId LIMIT 1")
-    fun observeCharacter(userId: String): Flow<CharacterEntity?>
+    fun observeCharacter(userId: Long): Flow<CharacterEntity?>
 
     @Query("SELECT * FROM character_profile WHERE userId = :userId LIMIT 1")
-    suspend fun getCharacter(userId: String): CharacterEntity?
+    suspend fun getCharacter(userId: Long): CharacterEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: CharacterEntity)
 
     @Query("DELETE FROM character_profile WHERE userId = :userId")
-    suspend fun deleteByUserId(userId: String)
+    suspend fun deleteByUserId(userId: Long)
 
     @Query("DELETE FROM character_profile")
     suspend fun clear()

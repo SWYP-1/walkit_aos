@@ -984,7 +984,7 @@ class WalkingViewModel @Inject constructor(
         return WalkingSession(
             startTime = startTimeMillis,
             endTime = endTime,
-            stepCount = lastStepCount,
+            stepCount = 5000,
             locations = collectedLocations,
             totalDistance = totalDistance,
             preWalkEmotion = preEmotion,

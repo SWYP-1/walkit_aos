@@ -9,11 +9,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FriendListItemDto(
     @SerialName("nickname")
-    val nickname: String,
-    
+    val nickname: String?,
+
     @SerialName("userId")
     val userId: Long,
-    
+
     @SerialName("imageName")
     val userImageUrl: String? = null,
 )

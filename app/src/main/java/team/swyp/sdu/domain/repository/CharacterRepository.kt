@@ -14,17 +14,17 @@ interface CharacterRepository {
     /**
      * userId로 캐릭터 정보 조회 (Flow)
      */
-    fun observeCharacter(userId: String): Flow<Character?>
+    fun observeCharacter(userId: Long): Flow<Character?>
 
     /**
      * userId로 캐릭터 정보 조회 (DB 우선, 없으면 API 호출)
      */
-    suspend fun getCharacter(userId: String): Result<Character>
+    suspend fun getCharacter(userId: Long): Result<Character>
 
     /**
      * userId로 캐릭터 정보 조회 (DB만, API 호출 없음)
      */
-    suspend fun getCharacterFromDb(userId: String): Character?
+    suspend fun getCharacterFromDb(userId: Long): Character?
 
     /**
      * 캐릭터 정보 조회 (API 직접 호출 - 위치 기반)
@@ -34,12 +34,12 @@ interface CharacterRepository {
     /**
      * 캐릭터 정보 저장/업데이트
      */
-    suspend fun saveCharacter(userId: String, character: Character): Result<Unit>
+    suspend fun saveCharacter(userId: Long, character: Character): Result<Unit>
 
     /**
      * userId로 캐릭터 정보 삭제
      */
-    suspend fun deleteCharacter(userId: String): Result<Unit>
+    suspend fun deleteCharacter(userId: Long): Result<Unit>
 
     /**
      * 위치 기반 캐릭터 정보 조회

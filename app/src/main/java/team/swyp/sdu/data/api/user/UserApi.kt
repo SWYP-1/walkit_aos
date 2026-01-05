@@ -32,12 +32,12 @@ interface UserApi {
      * 닉네임으로 사용자 검색
      *
      * @param nickname 검색할 닉네임
-     * @return 검색 결과 (사용자 정보 및 친구 요청 상태)
+     * @return 검색 결과 리스트 (사용자 정보 및 친구 요청 상태)
      */
     @GET("/users/nickname")
     suspend fun searchByNickname(
         @Query("nickname") nickname: String
-    ): UserSearchResultDto
+    ): List<UserSearchResultDto>
 
 //    /**
 //     * 닉네임 중복 체크

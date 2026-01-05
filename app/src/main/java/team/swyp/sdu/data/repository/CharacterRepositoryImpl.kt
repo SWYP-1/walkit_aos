@@ -26,11 +26,11 @@ class CharacterRepositoryImpl @Inject constructor(
     private val characterRemoteDataSource: CharacterRemoteDataSource,
 ) : CharacterRepository {
 
-    override fun observeCharacter(userId: String): Flow<Character?> =
+    override fun observeCharacter(userId: Long): Flow<Character?> =
         characterDao.observeCharacter(userId)
             .map { entity -> entity?.let(CharacterMapper::toDomain) }
 
-    override suspend fun getCharacterFromDb(userId: String): Character? =
+    override suspend fun getCharacterFromDb(userId: Long): Character? =
         withContext(Dispatchers.IO) {
             try {
                 val entity = characterDao.getCharacter(userId)
@@ -41,7 +41,7 @@ class CharacterRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun getCharacter(userId: String): Result<Character> =
+    override suspend fun getCharacter(userId: Long): Result<Character> =
         withContext(Dispatchers.IO) {
             try {
                 val entity = characterDao.getCharacter(userId)
@@ -83,7 +83,7 @@ class CharacterRepositoryImpl @Inject constructor(
         }
 
     override suspend fun saveCharacter(
-        userId: String,
+        userId: Long,
         character: Character,
     ): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -98,7 +98,7 @@ class CharacterRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun deleteCharacter(userId: String): Result<Unit> =
+    override suspend fun deleteCharacter(userId: Long): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 characterDao.deleteByUserId(userId)

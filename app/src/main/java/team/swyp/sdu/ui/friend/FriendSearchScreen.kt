@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,7 +54,9 @@ fun FriendSearchScreen(
     val searchUiState by viewModel.searchUiState.collectAsStateWithLifecycle()
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
 
-    Column(modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary)) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .background(SemanticColor.backgroundWhitePrimary)) {
         AppHeader(title = "친구 찾기", onNavigateBack = {
             viewModel.clearQuery()
             onNavigateBack()
@@ -89,8 +92,8 @@ fun FriendSearchScreen(
             },
             onFollowClick = {
                 // 검색 결과가 Success 상태일 때만 팔로우 가능
-                if (searchUiState is SearchUiState.Success) {
-                    viewModel.followUser((searchUiState as SearchUiState.Success).result.nickname)
+                if (searchUiState is SearchUiState.Success && (searchUiState as SearchUiState.Success).results.isNotEmpty()) {
+                    viewModel.followUser((searchUiState as SearchUiState.Success).results.first().nickname)
                 }
             },
         )
@@ -140,11 +143,11 @@ private fun SearchResultScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    item {
+                    items(searchUiState.results) { result ->
                         FriendCard(
-                            nickname = searchUiState.result.nickname,
-                            imageName = searchUiState.result.imageName,
-                            followStatus = searchUiState.result.followStatus,
+                            nickname = result.nickname,
+                            imageName = result.imageName,
+                            followStatus = result.followStatus,
                             onFollowClick = onFollowClick,
                             onCardClick = onNavigateToDetail,
                             enabled = !isFollowing,

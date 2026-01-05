@@ -16,6 +16,7 @@ import android.graphics.Color
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import org.json.JSONObject
 import team.swyp.sdu.R
 import team.swyp.sdu.core.Result
@@ -64,9 +65,6 @@ class DressingRoomViewModel @Inject constructor(
     // 전체 아이템 리스트 (필터링용)
     private var allItems: List<CosmeticItem> = emptyList()
 
-    // 선택된 아이템 ID들 (UI 선택 상태)
-    private val _selectedItemIds = MutableStateFlow<LinkedHashSet<Int>>(LinkedHashSet())
-    val selectedItemIds: StateFlow<LinkedHashSet<Int>> = _selectedItemIds.asStateFlow()
 
     // 장바구니 아이템들 (직접 관리)
     private val _cartItems = MutableStateFlow<LinkedHashSet<CosmeticItem>>(LinkedHashSet())
@@ -75,8 +73,6 @@ class DressingRoomViewModel @Inject constructor(
     // UI 미리보기 착용 상태 (실제 API 반영 전) - 핵심 관리 변수
     private val _wornItemsByPosition = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
     val wornItemsByPosition: StateFlow<Map<EquipSlot, WearState>> = _wornItemsByPosition.asStateFlow()
-
-
 
     // 서버에 반영된 실제 착용 상태
     private val _serverWornItems = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
@@ -106,7 +102,7 @@ class DressingRoomViewModel @Inject constructor(
 
     init {
         // selectedItemIds 초기화 보장
-        _selectedItemIds.value = LinkedHashSet()
+        // UiState에서 관리되므로 별도 초기화 불필요
         loadDressingRoom()
     }
 
@@ -119,7 +115,7 @@ class DressingRoomViewModel @Inject constructor(
                 Timber.d("드레스룸 로딩 시작 - position: $position")
 
                 // refresh 시 선택 상태 및 장바구니 초기화
-                _selectedItemIds.value = LinkedHashSet()
+                // UiState에서 관리되므로 별도 초기화 불필요
                 _cartItems.value = LinkedHashSet()
                 _showCartDialog.value = false
                 Timber.d("✅ 선택 상태 및 장바구니 초기화 완료")
@@ -127,13 +123,13 @@ class DressingRoomViewModel @Inject constructor(
                 _uiState.value = DressingRoomUiState.Loading
 
                 // 사용자 정보 확보
-                var userId: String? = null
+                var userId: Long? = null
                 val userResult = userRepository.getUser()
                 Timber.d("사용자 정보 API 호출 결과: $userResult")
 
                 userResult
                     .onSuccess {
-                        userId = it.userId.toString()
+                        userId = it.userId
                         Timber.d("사용자 정보 로드 성공: $userId")
                     }
                     .onError { exception, message ->
@@ -272,12 +268,13 @@ class DressingRoomViewModel @Inject constructor(
 
                 // 전체 아이템 저장 (필터링용)
                 allItems = items
+                val wornSet = allItems.filter { it.worn }.map { item -> item.itemId }.toSet()
 
                 // UI 업데이트 (초기에는 전체 아이템 표시)
                 val newSuccessState = DressingRoomUiState.Success(
                     items = items,
                     selectedItemId = null,
-                    selectedItemIdSet = LinkedHashSet(),
+                    selectedItemIdSet = LinkedHashSet(wornSet), // 초기에는 착용된 아이템들 선택
                     currentPosition = position,
                     character = character,
                     myPoint = userPoint,
@@ -628,32 +625,39 @@ class DressingRoomViewModel @Inject constructor(
 
             Timber.d("📦 아이템 정보: id=$itemId, name=${item.name}, owned=${item.owned}, position=${item.position}")
 
-            // 선택 상태 토글 (착용 상태와 관계없이 항상 수행)
-            val currentSelected = _selectedItemIds.value
-            val newSelected = LinkedHashSet(currentSelected)
-            val wasSelected = newSelected.contains(itemId)
+            // 선택 상태 토글 및 장바구니 동기화 (UiState에서 관리)
+            _uiState.update { currentState ->
+                if (currentState is DressingRoomUiState.Success) {
+                    val currentSelected = currentState.selectedItemIdSet
+                    val newSelected = LinkedHashSet(currentSelected)
+                    val wasSelected = newSelected.contains(itemId)
 
-            if (wasSelected) {
-                newSelected.remove(itemId)
-                Timber.d("❌ 선택 해제: $itemId")
-            } else {
-                newSelected.add(itemId)
-                Timber.d("✅ 선택 추가: $itemId")
-            }
-            _selectedItemIds.value = newSelected
+                    if (wasSelected) {
+                        newSelected.remove(itemId)
+                        Timber.d("❌ 선택 해제: $itemId")
+                    } else {
+                        newSelected.add(itemId)
+                        Timber.d("✅ 선택 추가: $itemId")
+                    }
 
-            // 선택 상태 맵 로깅
-            Timber.d("🗺️ selectedItemIds 상태: [${newSelected.joinToString(", ")}] (${newSelected.size}개)")
+                    // 선택 상태 맵 로깅
+                    Timber.d("🗺️ selectedItemIdSet 상태: [${newSelected.joinToString(", ")}] (${newSelected.size}개)")
 
-            // 장바구니 업데이트 (selectedItemIds 기반으로 자동 동기화)
-            val updatedCart = LinkedHashSet<CosmeticItem>()
-            newSelected.forEach { selectedId ->
-                val selectedItem = currentState.items.find { it.itemId == selectedId && !it.owned }
-                if (selectedItem != null) {
-                    updatedCart.add(selectedItem)
+                    // 장바구니 업데이트 (selectedItemIdSet 기반으로 자동 동기화)
+                    val updatedCart = LinkedHashSet<CosmeticItem>()
+                    newSelected.forEach { selectedId ->
+                        val selectedItem = currentState.items.find { it.itemId == selectedId && !it.owned }
+                        if (selectedItem != null) {
+                            updatedCart.add(selectedItem)
+                        }
+                    }
+                    _cartItems.value = updatedCart
+
+                    currentState.copy(selectedItemIdSet = newSelected)
+                } else {
+                    currentState
                 }
             }
-            _cartItems.value = updatedCart
 
             // 착용 상태 토글 (항상 수행)
             val currentWearState = _wornItemsByPosition.value[item.position]
@@ -691,9 +695,15 @@ class DressingRoomViewModel @Inject constructor(
         }
         _cartItems.value = newCart
 
-        // selectedItemIds도 동기화
-        val newSelected = LinkedHashSet(newCart.map { it.itemId })
-        _selectedItemIds.value = newSelected
+        // selectedItemIdSet도 동기화
+        _uiState.update { currentState ->
+            if (currentState is DressingRoomUiState.Success) {
+                val newSelected = LinkedHashSet(newCart.map { it.itemId })
+                currentState.copy(selectedItemIdSet = newSelected)
+            } else {
+                currentState
+            }
+        }
 
         Timber.d("장바구니 토글 - itemId: ${item.itemId}, 장바구니: ${newCart.size}개")
     }
@@ -703,7 +713,7 @@ class DressingRoomViewModel @Inject constructor(
      */
     fun clearCart() {
         _cartItems.value = LinkedHashSet()
-        _selectedItemIds.value = LinkedHashSet()
+        // UiState에서 관리되므로 별도 초기화 불필요
         Timber.d("장바구니 비움")
     }
 
@@ -731,39 +741,6 @@ class DressingRoomViewModel @Inject constructor(
     }
 
     /**
-     * 코스메틱 아이템 구매 요청
-     *
-     * 카트에 아이템이 있으면 구매 다이얼로그 표시
-     */
-    fun purchaseItems() {
-        Timber.d("🛒 purchaseItems() 호출됨")
-
-        viewModelScope.launch {
-            // 이미 작업 중이면 무시
-            if (_isWearLoading.value) {
-                Timber.d("구매 작업 진행 중 - 무시")
-                return@launch
-            }
-
-            val currentCartItems = cartItems.value
-            Timber.d("🛒 현재 장바구니 상태: ${currentCartItems.size}개 아이템")
-            currentCartItems.forEach { item ->
-                Timber.d("  - ${item.name} (ID: ${item.itemId})")
-            }
-
-            if (currentCartItems.isNotEmpty()) {
-                // 카트에 아이템이 있으면 구매 다이얼로그 표시
-                Timber.d("카트에 아이템 존재 - 구매 다이얼로그 표시: ${currentCartItems.size}개")
-                _showCartDialog.value = true
-                Timber.d("다이얼로그 상태 설정: true")
-            } else {
-                // 카트가 비어있으면 아무 작업도 하지 않음
-                Timber.d("카트가 비어있음 - 구매할 아이템 없음")
-            }
-        }
-    }
-
-    /**
      * 코스메틱 아이템 실제 구매 수행
      *
      * 다이얼로그에서 확인 버튼을 눌렀을 때 호출됨
@@ -787,13 +764,18 @@ class DressingRoomViewModel @Inject constructor(
 
                     _cartItems.value = updatedCart
 
-                    // 구매 성공 시 selectedItemIds에서도 제거 (UI 선택 상태 정리)
-                    val currentSelected = _selectedItemIds.value
-                    val updatedSelected = currentSelected.filterNot { selectedId ->
-                        items.any { purchased -> purchased.itemId == selectedId }
-                    }.toCollection(LinkedHashSet())
+                    // 구매 성공 시 selectedItemIdSet에서도 제거 (UI 선택 상태 정리)
+                    _uiState.update { currentState ->
+                        if (currentState is DressingRoomUiState.Success) {
+                            val updatedSelected = currentState.selectedItemIdSet.filterNot { selectedId ->
+                                items.any { purchased -> purchased.itemId == selectedId }
+                            }.toCollection(LinkedHashSet())
 
-                    _selectedItemIds.value = updatedSelected
+                            currentState.copy(selectedItemIdSet = updatedSelected)
+                        } else {
+                            currentState
+                        }
+                    }
 
                     // UI 상태 업데이트 (아이템 소유 상태 변경)
                     if (_uiState.value is DressingRoomUiState.Success) {
@@ -1084,7 +1066,7 @@ class DressingRoomViewModel @Inject constructor(
                     val userResult = userRepository.getUser()
                     when (userResult) {
                         is Result.Success -> {
-                            val userId = userResult.data.userId.toString()
+                            val userId = userResult.data.userId
                             characterRepository.saveCharacter(userId, updatedCharacter)
                                 .onSuccess {
                                     Timber.d("캐릭터 정보 DB 저장 성공: userId=$userId")

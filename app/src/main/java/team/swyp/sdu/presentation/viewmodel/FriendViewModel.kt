@@ -44,8 +44,8 @@ constructor(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query
 
-    private val _searchResult = MutableStateFlow<UserSearchResult?>(null)
-    val searchResult: StateFlow<UserSearchResult?> = _searchResult
+    private val _searchResult = MutableStateFlow<List<UserSearchResult>>(emptyList())
+    val searchResult: StateFlow<List<UserSearchResult>> = _searchResult
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching
@@ -66,7 +66,9 @@ constructor(
         combine(_friends, _query) { list, q ->
             val keyword = q.trim()
             if (keyword.isBlank()) list
-            else list.filter { it.nickname.contains(keyword, ignoreCase = true) }
+            else list.filter { friend ->
+                friend.nickname.contains(keyword, ignoreCase = true)
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -79,7 +81,7 @@ constructor(
 
     fun clearQuery() {
         _query.value = ""
-        _searchResult.value = null
+        _searchResult.value = emptyList()
     }
 
     /**
@@ -88,18 +90,18 @@ constructor(
     fun searchUser(nickname: String) {
         val trimmedNickname = nickname.trim()
         if (trimmedNickname.isBlank()) {
-            _searchResult.value = null
+            _searchResult.value = emptyList()
             return
         }
 
         viewModelScope.launch {
             _isSearching.value = true
             try {
-                val result = userRemoteDataSource.searchUserByNickname(trimmedNickname)
-                _searchResult.value = result
+                val results = userRemoteDataSource.searchUserByNickname(trimmedNickname)
+                _searchResult.value = results
             } catch (t: Throwable) {
                 Timber.e(t, "사용자 검색 실패: $trimmedNickname")
-                _searchResult.value = null
+                _searchResult.value = emptyList()
             } finally {
                 _isSearching.value = false
             }

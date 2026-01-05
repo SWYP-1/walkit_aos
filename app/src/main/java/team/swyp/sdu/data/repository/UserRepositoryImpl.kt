@@ -271,18 +271,20 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun searchUserByNickname(nickname: String): Result<UserSearchResult> =
+    override suspend fun searchUserByNickname(nickname: String): Result<List<UserSearchResult>> =
         withContext(Dispatchers.IO) {
             try {
                 val remoteResult = remoteDataSource.searchUserByNickname(nickname)
-                val domainResult = UserSearchResult(
-                    userId = remoteResult.userId,
-                    imageName = remoteResult.imageName,
-                    nickname = remoteResult.nickname,
-                    followStatus = remoteResult.followStatus,
-                )
-                Timber.d("사용자 검색 성공: ${domainResult.nickname}")
-                Result.Success(domainResult)
+                val domainResults = remoteResult.map { result ->
+                    UserSearchResult(
+                        userId = result.userId,
+                        imageName = result.imageName,
+                        nickname = result.nickname,
+                        followStatus = result.followStatus,
+                    )
+                }
+                Timber.d("사용자 검색 성공: ${domainResults.size}개 결과")
+                Result.Success(domainResults)
             } catch (t: Throwable) {
                 Timber.e(t, "사용자 검색 실패: $nickname")
                 Result.Error(t, t.message)

@@ -39,7 +39,7 @@ import team.swyp.sdu.data.local.entity.WalkingSessionEntity
         GoalEntity::class,
         NotificationSettingsEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import team.swyp.sdu.core.DataState
 import team.swyp.sdu.core.Result
@@ -48,7 +49,11 @@ import team.swyp.sdu.domain.model.WalkRecord
 import team.swyp.sdu.domain.model.Grade
 import team.swyp.sdu.ui.home.utils.WeatherType
 import team.swyp.sdu.data.mapper.MissionCardStateMapper
+import team.swyp.sdu.domain.model.User
 import team.swyp.sdu.presentation.viewmodel.CalendarViewModel.WalkAggregate
+import team.swyp.sdu.ui.home.MissionUiState.*
+import team.swyp.sdu.ui.home.ProfileUiState.*
+import team.swyp.sdu.ui.mypage.model.UserInfoData
 import team.swyp.sdu.utils.CalenderUtils.weekRange
 import team.swyp.sdu.utils.LocationConstants
 import java.time.Instant
@@ -136,8 +141,10 @@ class HomeViewModel @Inject constructor(
     val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
 
     // 캐릭터 Lottie 상태 관리
-    private val _characterLottieState = MutableStateFlow<team.swyp.sdu.domain.model.LottieCharacterState?>(null)
-    val characterLottieState: StateFlow<team.swyp.sdu.domain.model.LottieCharacterState?> = _characterLottieState.asStateFlow()
+    private val _characterLottieState =
+        MutableStateFlow<team.swyp.sdu.domain.model.LottieCharacterState?>(null)
+    val characterLottieState: StateFlow<team.swyp.sdu.domain.model.LottieCharacterState?> =
+        _characterLottieState.asStateFlow()
 
     /**
      * 캐릭터 Lottie 표시 상태 로드
@@ -148,14 +155,11 @@ class HomeViewModel @Inject constructor(
                 Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 시작")
 
                 // 현재 사용자 ID 가져오기
-                val userResult = userRepository.getUser()
-                val userId = when (userResult) {
-                    is Result.Success -> userResult.data.userId.toString()
-                    else -> {
-                        Timber.w("🏠 HomeViewModel: 사용자 정보를 가져올 수 없음")
-                        _characterLottieState.value = null
-                        return@launch
-                    }
+                val userId = currentUser.value?.userId
+                if (userId == null) {
+                    Timber.w("🏠 HomeViewModel: 사용자 정보를 가져올 수 없음")
+                    _characterLottieState.value = null
+                    return@launch
                 }
 
                 // userId로 캐릭터 정보 가져오기
@@ -166,6 +170,7 @@ class HomeViewModel @Inject constructor(
                         Timber.w("🏠 HomeViewModel: 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
                         null
                     }
+
                     Result.Loading -> null
                 }
 
@@ -240,6 +245,21 @@ class HomeViewModel @Inject constructor(
     private val _missionUiState = MutableStateFlow<MissionUiState>(MissionUiState.Loading)
     val missionUiState: StateFlow<MissionUiState> = _missionUiState.asStateFlow()
 
+    /**
+     * 현재 사용자 정보를 전역으로 관리
+     *
+     * 사용법:
+     * - `currentUser.value?.userId`로 ID 접근
+     * - `currentUser.collect()`로 Flow 구독
+     * - null이면 로그인하지 않은 상태
+     */
+    val currentUser: StateFlow<User?> = userRepository.userFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+
     // Goal 정보를 별도 StateFlow로 관리
     private val _goalState = MutableStateFlow<Goal?>(null)
 
@@ -301,15 +321,31 @@ class HomeViewModel @Inject constructor(
                 }
         }
 
-        // 사용자 로그인 상태에 따라 세션 데이터 로드
+        // 사용자 정보 변경 감지 및 UI 업데이트
         viewModelScope.launch {
             userRepository.userFlow.collect { user ->
+                Timber.d("🏠 userRepository.userFlow 수신: user=${user?.nickname ?: "null"}")
                 if (user != null) {
+                    Timber.d("🏠 사용자 정보 업데이트 감지: nickname=${user.nickname}")
+
                     // 로그인 상태: 세션 데이터 로드
                     loadWalkingSessionsFromRoom()
+
+                    // 프로필 상태 실시간 업데이트 (닉네임 변경 등)
+                    _profileUiState.update { currentState ->
+                        when (currentState) {
+                            is ProfileUiState.Success -> {
+                                // 기존 데이터 유지하면서 닉네임만 실시간 업데이트
+                                Timber.d("🏠 프로필 닉네임 실시간 업데이트: ${currentState.nickname} -> ${user.nickname}")
+                                currentState.copy(nickname = user.nickname)
+                            }
+                            else -> currentState // Loading/Error 상태는 유지
+                        }
+                    }
                 } else {
-                    // 로그아웃 상태: 세션 데이터 초기화 도달해선안됨
-                    Timber.d("🏠 로그아웃 상태: 세션 데이터 초기화")
+                    Timber.d("🏠 로그아웃 상태 감지")
+                    // 로그아웃 시 세션 데이터 초기화
+                    _walkingSessionDataState.value = DataState.Success(WalkingSessionData(emptyList(), null, null, emptyList()))
                 }
             }
         }
@@ -369,25 +405,28 @@ class HomeViewModel @Inject constructor(
                     Timber.d("API 응답 데이터 확인 - character: ${homeData.character}")
 
                     // Home API에서 받은 Character 정보를 Room에 저장
+                    val userId = currentUser.value?.userId
                     homeData.character.nickName?.let { nickname ->
-                        characterRepository.saveCharacter(nickname, homeData.character)
-                            .onError { exception, message ->
-                                Timber.w(exception, "캐릭터 정보 저장 실패: $message")
-                            }
-                    }
-
-                    // ✅ Home API 호출 후 User 정보를 Room에 저장 (마이페이지 닉네임 표시용)
-                    userRepository.refreshUser()
-                        .onError { exception, message ->
-                            Timber.w(exception, "사용자 정보 저장 실패: $message")
+                        if (userId != null) {
+                            characterRepository.saveCharacter(userId, homeData.character)
+                                .onError { exception, message ->
+                                    Timber.w(exception, "캐릭터 정보 저장 실패: $message")
+                                }
                         }
 
-                    // Section별 UiState 업데이트
-                    updateProfileSection(homeData)
-                    updateMissionSection(homeData)
+                        // ✅ Home API 호출 후 User 정보를 Room에 저장 (마이페이지 닉네임 표시용)
+                        userRepository.refreshUser()
+                            .onError { exception, message ->
+                                Timber.w(exception, "사용자 정보 저장 실패: $message")
+                            }
 
-                    // 기존 로직 유지 (세션 정보 등)
-                    loadSessionsWithHomeData(homeData)
+                        // Section별 UiState 업데이트
+                        updateProfileSection(homeData)
+                        updateMissionSection(homeData)
+
+                        // 기존 로직 유지 (세션 정보 등)
+                        loadSessionsWithHomeData(homeData)
+                    }
                 }
 
                 is Result.Error -> {
@@ -420,12 +459,16 @@ class HomeViewModel @Inject constructor(
     private fun loadWalkingSessionsFromRoom() {
         viewModelScope.launch {
             try {
-                // 이번 주 범위 계산
-                val (weekStart, weekEnd) = weekRange(today.value)
-                Timber.d("🏠 이번 주 범위: ${weekStart.formatTimestamp()} ~ ${weekEnd.formatTimestamp()}")
+                // 이번 주 범위 계산 (월요일~일요일)
+                val currentDate = today.value
+                val weekStart = currentDate.minusDays(currentDate.dayOfWeek.value - 1L).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val weekEnd = currentDate.plusDays(8L - currentDate.dayOfWeek.value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+                Timber.d("🏠 이번 주 범위 (월~일): ${weekStart.formatTimestamp()} ~ ${weekEnd.formatTimestamp()}")
+                Timber.d("🏠 이번 주 범위 (raw): start=$weekStart, end=$weekEnd")
 
                 // 🚀 최적화: DB 쿼리로 이번 주 우세 감정 계산 (suspend 함수)
-                val dominantEmotionData = walkingSessionRepository.getDominantEmotionInPeriod(weekStart, weekEnd)
+                val dominantEmotionData =
+                    walkingSessionRepository.getDominantEmotionInPeriod(weekStart, weekEnd)
 
                 val dominantEmotion = dominantEmotionData?.emotion // String으로 직접 사용
 
@@ -438,6 +481,12 @@ class HomeViewModel @Inject constructor(
                     walkingSessionRepository.getRecentSessionsForEmotions(),
                     walkingSessionRepository.getSessionsBetween(weekStart, weekEnd)
                 ) { recentSessionEmotions, thisWeekSessions ->
+                    // 이번 주 세션 수 로깅 추가
+                    Timber.d("🏠 [thisWeekSessions] 이번 주 세션 수: ${thisWeekSessions.size}")
+                    thisWeekSessions.forEachIndexed { index, session ->
+                        Timber.d("🏠 [thisWeekSessions] 세션 ${index + 1}: 시작시간=${session.startTime.formatTimestamp()}, 걸음=${session.stepCount}")
+                    }
+
                     // recentEmotions 추출 과정 로깅 (최적화된 데이터 사용)
                     Timber.d("🏠 [recentEmotions] 최적화된 쿼리로 조회된 최근 세션 수: ${recentSessionEmotions.size}")
                     Timber.d("🏠 [recentEmotions] 최근 감정 데이터:")
@@ -484,7 +533,7 @@ class HomeViewModel @Inject constructor(
         val goal = _goalState.value
 
         _profileUiState.value = ProfileUiState.Success(
-            nickname = homeData.character.nickName ?: "사용자",
+            nickname = currentUser.value?.nickname ?: "게스트",
             character = homeData.character,
             walkProgressPercentage = homeData.walkProgressPercentage,
             goal = goal,
@@ -554,8 +603,6 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-
-
     private fun loadSessionsWithHomeData(homeData: team.swyp.sdu.domain.model.HomeData) {
         viewModelScope.launch {
             // 목표 정보는 별도 StateFlow에서 가져옴 (flow로 관리)
@@ -729,7 +776,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             Timber.d("주간 미션 보상 요청 시작: $userWeeklyMissionId")
 
-            when (val result = missionRepository.verifyWeeklyMissionReward(userWeeklyMissionId)) {
+            when (val result =
+                missionRepository.verifyWeeklyMissionReward(userWeeklyMissionId)) {
                 is Result.Success -> {
                     val verifiedMission = result.data
                     Timber.d("미션 보상 검증 성공: ${verifiedMission.title}, 상태: ${verifiedMission.status}")

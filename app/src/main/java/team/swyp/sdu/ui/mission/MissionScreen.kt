@@ -75,6 +75,8 @@ fun MissionScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedCategory by remember { mutableStateOf<MissionCategory?>(null) }
+    val activeMissionId = uiState.weeklyMissions.firstOrNull()?.mission?.missionId ?: -1
+
 
     Column(
         modifier = modifier
@@ -156,7 +158,7 @@ fun MissionScreen(
                     mission = missionCard.mission,
                     onChallengeClick = { onNavigateToWalk() },
                     onRewardClick = { missionId -> onRewardClick(missionId) },
-                    isActive = index == 0 // 첫 번째 카드(index 0)에만 특별 처리
+                    isActive = if (missionCard.mission.missionId == activeMissionId) true else false
                 )
             }
 

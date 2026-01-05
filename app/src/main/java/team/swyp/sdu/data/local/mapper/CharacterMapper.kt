@@ -10,7 +10,7 @@ import team.swyp.sdu.domain.model.Grade
  * Character 도메인 모델과 CharacterEntity 간의 변환을 담당합니다.
  */
 object CharacterMapper {
-    fun toEntity(domain: Character, userId: String): CharacterEntity =
+    fun toEntity(domain: Character, userId: Long): CharacterEntity =
         CharacterEntity(
             userId = userId,
             headImageName = domain.headImageName,

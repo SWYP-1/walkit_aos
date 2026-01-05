@@ -314,7 +314,7 @@ private fun FriendRow(
 
                 // 닉네임
                 Text(
-                    text = friend.nickname,
+                    text = friend.nickname ?: "게스트",
                     fontFamily = Pretendard,
                     fontSize = TypeScale.BodyM, // 16sp
                     fontWeight = FontWeight.Medium, // Medium

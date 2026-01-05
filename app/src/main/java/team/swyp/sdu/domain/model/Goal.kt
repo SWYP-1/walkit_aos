@@ -12,8 +12,8 @@ data class Goal(
 ) {
     companion object {
         val EMPTY = Goal(
-            targetStepCount = 1,
-            targetWalkCount = 1000,
+            targetStepCount = 1000,
+            targetWalkCount = 1,
         )
     }
 }

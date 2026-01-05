@@ -169,8 +169,17 @@ interface WalkingSessionDao {
 
     /**
      * 총 걸음수 집계 (Flow로 실시간 업데이트)
+     * 비정상적인 데이터(10만 걸음 초과)는 제외
      */
-    @Query("SELECT COALESCE(SUM(stepCount), 0) FROM walking_sessions")
+    @Query("""
+        SELECT COALESCE(SUM(
+            CASE
+                WHEN stepCount > 100000 THEN 0  -- 10만 걸음 초과는 제외
+                WHEN stepCount < 0 THEN 0        -- 음수 걸음수는 제외
+                ELSE stepCount
+            END
+        ), 0) FROM walking_sessions
+    """)
     fun getTotalStepCount(): Flow<Int>
 
     /**
@@ -181,7 +190,16 @@ interface WalkingSessionDao {
 
     /**
      * 총 산책 시간 집계 (Flow로 실시간 업데이트, 밀리초 단위)
+     * 비정상적인 데이터(24시간 이상)는 제외
      */
-    @Query("SELECT COALESCE(SUM(endTime - startTime), 0) FROM walking_sessions")
+    @Query("""
+        SELECT COALESCE(SUM(
+            CASE
+                WHEN (endTime - startTime) > 86400000 THEN 0  -- 24시간(86400000ms) 초과는 제외
+                WHEN (endTime - startTime) < 0 THEN 0         -- 음수 시간은 제외
+                ELSE (endTime - startTime)
+            END
+        ), 0) FROM walking_sessions
+    """)
     fun getTotalDuration(): Flow<Long>
 }

@@ -119,13 +119,6 @@ private fun PostWalkingEmotionSelectScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            // 헤더 (닫기 버튼)
-            AppHeader(
-                title = "",
-                onNavigateBack = {
-                    showWarningDialog = true
-                },
-            )
 
             // 진행 바 (1번째 칸 채워짐)
             WalkingProgressBar(

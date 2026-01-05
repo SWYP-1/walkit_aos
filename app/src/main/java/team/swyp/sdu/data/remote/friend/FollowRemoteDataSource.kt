@@ -32,7 +32,7 @@ class FollowRemoteDataSource @Inject constructor(
             response.map { dto ->
                 Friend(
                     id = dto.userId.toString(),
-                    nickname = dto.nickname,
+                    nickname = dto.nickname ?: "게스트", // null이면 "게스트"로 설정
                     avatarUrl = dto.userImageUrl
                 )
             }

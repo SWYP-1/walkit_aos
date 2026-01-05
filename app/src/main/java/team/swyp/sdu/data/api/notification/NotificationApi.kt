@@ -2,9 +2,11 @@ package team.swyp.sdu.data.api.notification
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 import team.swyp.sdu.data.remote.notification.dto.FcmTokenRequestDto
 import team.swyp.sdu.data.remote.notification.dto.NotificationItemDto
@@ -55,5 +57,16 @@ interface NotificationApi {
     suspend fun getNotificationList(
         @Query("limit") limit: Int = 20,
     ): List<NotificationItemDto>
+
+    /**
+     * 알림 삭제
+     *
+     * @param notificationId 삭제할 알림 ID
+     * @return Response<Unit>
+     */
+    @DELETE("/notification/{notificationId}")
+    suspend fun deleteNotification(
+        @Path("notificationId") notificationId: Long,
+    ): Response<Unit>
 }
 

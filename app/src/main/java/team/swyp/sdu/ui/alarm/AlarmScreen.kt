@@ -49,6 +49,7 @@ fun AlarmScreen(
         onNavigateBack = onNavigateBack,
         onConfirmFollow = viewModel::confirmFollow,
         onDeleteAlarm = viewModel::deleteAlarm,
+        onDeleteNotification = viewModel::deleteNotification,
     )
 }
 
@@ -64,6 +65,7 @@ private fun AlarmScreenContent(
     onNavigateBack: () -> Unit,
     onConfirmFollow: (String) -> Unit,
     onDeleteAlarm: (String) -> Unit,
+    onDeleteNotification: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -111,11 +113,7 @@ private fun AlarmScreenContent(
                             } else {
                                 null
                             },
-                            onDelete = if (alarm.type == AlarmType.FOLLOW) {
-                                { onDeleteAlarm(alarm.id) }
-                            } else {
-                                null
-                            },
+                            onDelete = { alarm.id.toLongOrNull()?.let { notificationId -> onDeleteNotification(notificationId) } },
                         )
                     }
                 }

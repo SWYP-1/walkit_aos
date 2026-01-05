@@ -16,7 +16,7 @@ import team.swyp.sdu.domain.model.Grade
 @TypeConverters(Converters::class)
 data class CharacterEntity(
     @PrimaryKey
-    val userId: String,
+    val userId: Long,
     val headImageName: String? = null,
     val headImageTag: String? = null,  // HEAD 영역의 tag 정보
     val bodyImageName: String? = null,

@@ -50,6 +50,7 @@ import team.swyp.sdu.ui.login.terms.TermsAgreementOverlayRoute
 import team.swyp.sdu.ui.login.terms.TermsAgreementUiState
 import team.swyp.sdu.ui.theme.Blue3
 import team.swyp.sdu.ui.theme.Red5
+import timber.log.Timber
 
 
 /**
@@ -101,25 +102,20 @@ fun LoginRoute(
      * ✅ 단 하나의 Navigation 진입점
      * - isNavigating 상태를 체크하여 중복 네비게이션 방지
      */
-    LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted, isNavigating) {
+    LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted) {
+        Timber.d("여기 오냐?")
         if (!isLoggedIn || isNavigating) return@LaunchedEffect
 
-        when {
-            onboardingCompleted -> {
-                isNavigating = true
-                // 충분한 딜레이로 다이얼로그 완전히 사라진 후 네비게이션
-                delay(400)
-                onNavigateToMain()
-            }
-
-            termsAgreed -> {
-                isNavigating = true
-                // 충분한 딜레이로 다이얼로그 완전히 사라진 후 네비게이션
-                delay(400)
-                onNavigateToTermsAgreement()
-            }
+        if(termsAgreed){
+            onNavigateToTermsAgreement()
         }
     }
+    LaunchedEffect(isNavigating) {
+        if (isNavigating == true) {
+            onNavigateToMain()
+        }
+    }
+
 
     /**
      * 로그인 화면

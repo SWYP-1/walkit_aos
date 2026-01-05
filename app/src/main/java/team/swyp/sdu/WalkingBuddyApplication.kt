@@ -135,7 +135,7 @@ class WalkingBuddyApplication : Application() {
         }
 
         // 세션 동기화 WorkManager 초기화
-        // 앱 시작 시 주기적 동기화 작업 예약 (15분 간격)
+        // 앱 시작 시 주기적 동기화 작업 예약 (30분 간격)
         SessionSyncWorker.schedulePeriodicSync(this, 30L)
 
         Timber.d("WalkingBuddyApplication onCreate")

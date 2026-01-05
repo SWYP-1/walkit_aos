@@ -19,16 +19,19 @@ class UserSearchRemoteDataSource @Inject constructor(
     /**
      * 닉네임으로 사용자 검색
      */
-    suspend fun searchUserByNickname(nickname: String): UserSearchResult {
+    suspend fun searchUserByNickname(nickname: String): List<UserSearchResult> {
         return try {
-            val dto = userApi.searchByNickname(nickname)
-            Timber.d("사용자 검색 성공: ${dto.nickName}, 상태: ${dto.followStatus}")
-            UserSearchResult(
-                userId = dto.userId,
-                imageName = dto.imageName,
-                nickname = dto.nickName,
-                followStatus = dto.getFollowStatusEnum(),
-            )
+            val dtoList = userApi.searchByNickname(nickname)
+            Timber.d("사용자 검색 성공: ${dtoList.size}개 결과")
+            dtoList.map { dto ->
+                Timber.d("사용자 검색 결과: ${dto.nickName}, 상태: ${dto.followStatus}")
+                UserSearchResult(
+                    userId = dto.userId,
+                    imageName = dto.imageName,
+                    nickname = dto.nickName,
+                    followStatus = dto.getFollowStatusEnum(),
+                )
+            }
         } catch (e: HttpException) {
             // 404 또는 1001 에러 코드 처리
             when (e.code()) {

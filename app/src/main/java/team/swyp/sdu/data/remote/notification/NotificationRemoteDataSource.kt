@@ -110,5 +110,31 @@ class NotificationRemoteDataSource @Inject constructor(
             Result.Error(t)
         }
     }
+
+    /**
+     * 알림 삭제
+     *
+     * @param notificationId 삭제할 알림 ID
+     * @return Response<Unit>
+     */
+    suspend fun deleteNotification(notificationId: Long): Result<Unit> {
+        return try {
+            val response = notificationApi.deleteNotification(notificationId)
+            if (response.isSuccessful) {
+                Timber.d("알림 삭제 성공: $notificationId")
+                Result.Success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "알림 삭제 실패"
+                Timber.e("알림 삭제 실패: $errorMessage (코드: ${response.code()})")
+                Result.Error(Exception("알림 삭제 실패: ${response.code()}"))
+            }
+        } catch (e: HttpException) {
+            Timber.e(e, "알림 삭제 HTTP 오류: ${e.code()}")
+            Result.Error(e)
+        } catch (t: Throwable) {
+            Timber.e(t, "알림 삭제 실패: $notificationId")
+            Result.Error(t)
+        }
+    }
 }
 

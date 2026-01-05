@@ -360,8 +360,8 @@ private fun WeekNavigator(
 // ========================================
 
 fun formatWeekLabel(date: LocalDate): String {
-    // 현재 날짜가 속한 주의 일요일
-    val currentWeekStart = date.with(DayOfWeek.SUNDAY)
+    // 현재 날짜가 속한 주의 월요일
+    val currentWeekStart = date.with(DayOfWeek.MONDAY)
 
     // 그 주의 7일 생성
     val weekDates = (0..6).map { currentWeekStart.plusDays(it.toLong()) }
@@ -380,8 +380,8 @@ fun formatWeekLabel(date: LocalDate): String {
     // 해당 월의 1일
     val firstDayOfMonth = LocalDate.of(dominantYear, dominantMonth, 1)
 
-    // 1일이 속한 주의 일요일 (이게 첫째 주의 시작)
-    val firstWeekStart = firstDayOfMonth.with(DayOfWeek.SUNDAY)
+    // 1일이 포함된 주의 시작을 첫째주로 계산 (월요일 시작)
+    val firstWeekStart = firstDayOfMonth.with(DayOfWeek.MONDAY)
 
     // 주차 계산
     val weekNumber = ((currentWeekStart.toEpochDay() - firstWeekStart.toEpochDay()) / 7).toInt() + 1

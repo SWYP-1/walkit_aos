@@ -24,7 +24,7 @@ class FriendRemoteDataSource @Inject constructor(
             response.map { dto ->
                 Friend(
                     id = dto.userId.toString(),
-                    nickname = dto.nickname,
+                    nickname = dto.nickname ?: "게스트",
                     avatarUrl = dto.userImageUrl
                 )
             }

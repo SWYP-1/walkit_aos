@@ -12,10 +12,8 @@ import team.swyp.sdu.data.local.datastore.NotificationDataStore
 import team.swyp.sdu.data.local.entity.NotificationSettingsEntity
 import team.swyp.sdu.data.local.entity.SyncState
 import team.swyp.sdu.data.remote.notification.NotificationRemoteDataSource
-import team.swyp.sdu.data.mapper.NotificationMapper
 import team.swyp.sdu.data.remote.notification.dto.NotificationSettingsDto
 import team.swyp.sdu.data.remote.notification.dto.UpdateNotificationSettingsRequest
-import team.swyp.sdu.domain.model.NotificationItem
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,27 +47,6 @@ class NotificationRepository @Inject constructor(
         token: String,
         deviceId: String,
     ): Result<Unit> = remoteDataSource.registerFcmToken(token, deviceId)
-
-    /**
-     * 알림 목록 조회
-     *
-     * @param limit 조회할 알림 개수 (기본값: 20)
-     * @return 알림 목록 (domain model)
-     */
-    suspend fun getNotificationList(limit: Int = 20): Result<List<NotificationItem>> {
-        return when (val result = remoteDataSource.getNotificationList(limit)) {
-            is Result.Success -> {
-                val domainItems = NotificationMapper.toDomainList(result.data)
-                Timber.d("알림 목록 변환 성공: ${domainItems.size}개")
-                Result.Success(domainItems)
-            }
-            is Result.Error -> {
-                Timber.e(result.exception, "알림 목록 조회 실패")
-                Result.Error(result.exception, result.message)
-            }
-            Result.Loading -> Result.Loading
-        }
-    }
 
     /**
      * 로컬 DataStore에서 알림 설정 Flow 조회
@@ -212,9 +189,9 @@ class NotificationRepository @Inject constructor(
                 updatedAt = System.currentTimeMillis(),
             )
             Timber.d("알림 설정 서버 동기화 성공")
-        } catch (t: Throwable) {
+        } catch (e: Exception) {
             // CancellationException인 경우 PENDING 상태로 되돌림 (재시도 가능)
-            if (t is CancellationException) {
+            if (e is CancellationException) {
                 notificationSettingsDao.updateSyncState(
                     syncState = SyncState.PENDING,
                     updatedAt = System.currentTimeMillis(),
@@ -228,8 +205,8 @@ class NotificationRepository @Inject constructor(
                 syncState = SyncState.FAILED,
                 updatedAt = System.currentTimeMillis(),
             )
-            Timber.e(t, "알림 설정 서버 동기화 실패")
-            throw t
+            Timber.e(e, "알림 설정 서버 동기화 실패")
+            throw e
         }
     }
 
@@ -287,8 +264,8 @@ class NotificationRepository @Inject constructor(
                 updatedAt = System.currentTimeMillis(),
             )
             Timber.d("알림 설정 재동기화 성공")
-        } catch (t: Throwable) {
-            if (t is CancellationException) {
+        } catch (e: Exception) {
+            if (e is CancellationException) {
                 notificationSettingsDao.updateSyncState(
                     syncState = SyncState.PENDING,
                     updatedAt = System.currentTimeMillis(),
@@ -300,9 +277,18 @@ class NotificationRepository @Inject constructor(
                 syncState = SyncState.FAILED,
                 updatedAt = System.currentTimeMillis(),
             )
-            Timber.e(t, "알림 설정 재동기화 실패")
-            throw t
+            Timber.e(e, "알림 설정 재동기화 실패")
+            throw e
         }
     }
+
+    /**
+     * 알림 삭제
+     *
+     * @param notificationId 삭제할 알림 ID
+     * @return Response<Unit>
+     */
+    suspend fun deleteNotification(notificationId: Long): Result<Unit> =
+        remoteDataSource.deleteNotification(notificationId)
 }
 

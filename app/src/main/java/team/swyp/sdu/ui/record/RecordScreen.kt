@@ -68,6 +68,12 @@ fun RecordRoute(
     val monthMissionsCompleted by calendarViewModel.monthMissionsCompleted.collectAsStateWithLifecycle()
     val currentDate by calendarViewModel.currentDate.collectAsStateWithLifecycle()
 
+    // RecordScreen 진입 시 친구 목록 캐시 확인 및 갱신
+    LaunchedEffect(Unit) {
+        Timber.d("📱 RecordScreen 진입 - 친구 목록 캐시 확인 및 갱신")
+        friendBarViewModel.refreshFriendsIfNeeded()
+    }
+
     // 디버그: 데이터 상태 확인
     LaunchedEffect(monthSessions, weekSessions) {
         Timber.d("📊 RecordScreen 데이터 상태 - monthSessions: ${monthSessions.size}개, weekSessions: ${weekSessions.size}개")
@@ -222,46 +228,37 @@ private fun RecordScreenContent(
                     .fillMaxWidth()
                     .background(SemanticColor.backgroundWhiteSecondary)
             ) {
-                if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
-                    // 친구 선택 시 FriendRecordScreen 표시
-                    FriendRecordScreen(
-                        nickname = recordUiState.selectedFriendNickname,
-                        onNavigateBack = onFriendDeselected,
-                        onBlockUser = onBlockUser,
-                        modifier = Modifier.fillMaxSize()
+                // 친구 미선택 시 탭 콘텐츠 표시
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                ) {
+                    Spacer(Modifier.height(16.dp))
+                    RecordTabRow(
+                        selectedTabIndex = tabIndex,
+                        onTabSelected = { tabIndex = it }
                     )
-                } else {
-                    // 친구 미선택 시 탭 콘텐츠 표시
-                    Column(
-                        modifier = Modifier.padding(horizontal = 20.dp)
-                    ) {
-                        Spacer(Modifier.height(16.dp))
-                        RecordTabRow(
-                            selectedTabIndex = tabIndex,
-                            onTabSelected = { tabIndex = it }
-                        )
-                        Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                        RecordTabContent(
-                            selectedTab = tabs[tabIndex],
-                            monthStats = monthStats,
-                            weekStats = weekStats,
-                            monthSessions = monthSessions,
-                            weekSessions = weekSessions,
-                            monthMissionsCompleted = monthMissionsCompleted,
-                            currentDate = currentDate,
-                            onPrevWeek = onPrevWeek,
-                            onNextWeek = onNextWeek,
-                            onNavigateToDailyRecord = onNavigateToDailyRecord,
-                            onMonthChanged = onMonthChanged
-                        )
+                    RecordTabContent(
+                        selectedTab = tabs[tabIndex],
+                        monthStats = monthStats,
+                        weekStats = weekStats,
+                        monthSessions = monthSessions,
+                        weekSessions = weekSessions,
+                        monthMissionsCompleted = monthMissionsCompleted,
+                        currentDate = currentDate,
+                        onPrevWeek = onPrevWeek,
+                        onNextWeek = onNextWeek,
+                        onNavigateToDailyRecord = onNavigateToDailyRecord,
+                        onMonthChanged = onMonthChanged
+                    )
 
-                        Spacer(Modifier.height(16.dp))
-                    }
+                    Spacer(Modifier.height(16.dp))
                 }
             }
-
         }
+
     }
 }
+
 
