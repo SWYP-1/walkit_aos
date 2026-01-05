@@ -3,7 +3,9 @@ package team.swyp.sdu.data.remote.user
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -15,6 +17,7 @@ import team.swyp.sdu.data.api.user.UserApi
 import team.swyp.sdu.domain.model.User
 import timber.log.Timber
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,17 +64,24 @@ class UserProfileRemoteDataSource @Inject constructor(
                 BitmapFactory.decodeStream(input, null, decodeOptions)
             } ?: return null
 
-            // 최종 크기 제한 (1024x1024)
-            val scaledBitmap = if (originalBitmap.width > maxDimension || originalBitmap.height > maxDimension) {
-                val scale = minOf(maxDimension.toFloat() / originalBitmap.width, maxDimension.toFloat() / originalBitmap.height)
-                val newWidth = (originalBitmap.width * scale).toInt()
-                val newHeight = (originalBitmap.height * scale).toInt()
-
-                Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true).also {
-                    originalBitmap.recycle() // 메모리 해제
-                }
-            } else {
+            // EXIF orientation 읽기 및 이미지 회전 적용
+            val orientedBitmap = try {
+                val orientation = getExifOrientation(uri, context)
+                rotateBitmap(originalBitmap, orientation)
+            } catch (e: Exception) {
+                Timber.w(e, "EXIF orientation 처리 실패, 원본 이미지 사용")
                 originalBitmap
+            }
+
+            // 최종 크기 제한 (1024x1024)
+            val scaledBitmap = if (orientedBitmap.width > maxDimension || orientedBitmap.height > maxDimension) {
+                val scale = minOf(maxDimension.toFloat() / orientedBitmap.width, maxDimension.toFloat() / orientedBitmap.height)
+                val newWidth = (orientedBitmap.width * scale).toInt()
+                val newHeight = (orientedBitmap.height * scale).toInt()
+
+                Bitmap.createScaledBitmap(orientedBitmap, newWidth, newHeight, true)
+            } else {
+                orientedBitmap
             }
 
             // 압축된 파일로 저장
@@ -83,14 +93,97 @@ class UserProfileRemoteDataSource @Inject constructor(
                 scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
             }
 
-            // 메모리 해제
-            scaledBitmap.recycle()
+            // 메모리 해제 (scaledBitmap 사용 후)
+            // rotateBitmap()에서 이미 원본 bitmap을 recycle하므로, 여기서는 scaledBitmap만 해제
+            // orientedBitmap이 scaledBitmap과 다르면 (스케일링이 적용된 경우) 해제
+            if (orientedBitmap != scaledBitmap) {
+                orientedBitmap.recycle()
+            } else {
+                // orientedBitmap == scaledBitmap인 경우, rotateBitmap에서 이미 recycle했으므로
+                // originalBitmap만 해제 (회전이 적용되지 않은 경우)
+                if (orientedBitmap == originalBitmap) {
+                    scaledBitmap.recycle()
+                }
+            }
 
             Timber.d("이미지 압축 완료: ${originalWidth}x${originalHeight} -> ${scaledBitmap.width}x${scaledBitmap.height}, 파일 크기: ${tempFile.length()} bytes")
             tempFile
         } catch (t: Throwable) {
             Timber.e(t, "이미지 압축 실패: $uri")
             null
+        }
+    }
+
+    /**
+     * EXIF orientation 값 읽기
+     */
+    private fun getExifOrientation(uri: Uri, context: Context): Int {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val exif = ExifInterface(input)
+                exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        } catch (e: Exception) {
+            Timber.w(e, "EXIF orientation 읽기 실패")
+            ExifInterface.ORIENTATION_NORMAL
+        }
+    }
+
+    /**
+     * EXIF orientation에 따라 Bitmap 회전
+     */
+    private fun rotateBitmap(bitmap: Bitmap, orientation: Int): Bitmap {
+        return when (orientation) {
+            ExifInterface.ORIENTATION_NORMAL -> bitmap
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> {
+                val matrix = Matrix().apply { postScale(-1f, 1f) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_ROTATE_180 -> {
+                val matrix = Matrix().apply { postRotate(180f) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+                val matrix = Matrix().apply { postScale(1f, -1f) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                val matrix = Matrix().apply {
+                    postRotate(90f)
+                    postScale(-1f, 1f)
+                }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_ROTATE_90 -> {
+                val matrix = Matrix().apply { postRotate(90f) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                val matrix = Matrix().apply {
+                    postRotate(-90f)
+                    postScale(-1f, 1f)
+                }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            ExifInterface.ORIENTATION_ROTATE_270 -> {
+                val matrix = Matrix().apply { postRotate(270f) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                    bitmap.recycle()
+                }
+            }
+            else -> bitmap
         }
     }
 

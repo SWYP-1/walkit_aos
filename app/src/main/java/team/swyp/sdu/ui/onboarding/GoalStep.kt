@@ -28,6 +28,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.domain.goal.GoalRange
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.PreviousButton
 import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.mypage.goal.component.GoalSettingCard
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
@@ -160,11 +161,8 @@ fun GoalStep(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CtaButton(
-                        text = "이전으로",
-                        variant = CtaButtonVariant.SECONDARY,
-                        onClick = onPrev,
-                        modifier = Modifier.width(96.dp)
+                    PreviousButton(
+                        onClick = onPrev
                     )
 
                     CtaButton(

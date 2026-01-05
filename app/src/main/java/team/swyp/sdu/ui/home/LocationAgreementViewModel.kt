@@ -36,7 +36,6 @@ sealed interface LocationAgreementUiState {
 class LocationAgreementViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val locationManager: LocationManager,
-    private val locationAgreementDataStore: LocationAgreementDataStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LocationAgreementUiState>(LocationAgreementUiState.Idle)
@@ -56,15 +55,6 @@ class LocationAgreementViewModel @Inject constructor(
                 _uiState.value = LocationAgreementUiState.Idle
                 return@launch
             }
-
-            // 이미 다이얼로그를 표시했는지 확인
-            val hasShownDialog = locationAgreementDataStore.hasShownDialog()
-            if (hasShownDialog) {
-                Timber.d("이미 다이얼로그를 표시했으므로 다시 표시 안 함")
-                _uiState.value = LocationAgreementUiState.Idle
-                return@launch
-            }
-
             // 다이얼로그 표시 필요
             Timber.d("위치 동의 다이얼로그 표시")
             _uiState.value = LocationAgreementUiState.ShouldShowDialog
@@ -83,8 +73,6 @@ class LocationAgreementViewModel @Inject constructor(
      */
     fun dismissDialog() {
         viewModelScope.launch {
-            // 다이얼로그를 표시했다고 기록
-            locationAgreementDataStore.setHasShownLocationAgreementDialog(true)
             _uiState.value = LocationAgreementUiState.Idle
         }
     }
@@ -118,13 +106,13 @@ class LocationAgreementViewModel @Inject constructor(
             if (granted) {
                 _uiState.value = LocationAgreementUiState.Granted
                 Timber.d("위치 권한 승인됨")
+                // 권한 승인 시 다이얼로그 표시 기록
             } else {
                 _uiState.value = LocationAgreementUiState.Denied
                 Timber.d("위치 권한 거부됨")
+                // 권한 거부 시 다이얼로그 표시 기록하지 않음 (재시도 가능)
+                // locationAgreementDataStore.setHasShownLocationAgreementDialog(true) // 제거
             }
-
-            // 다이얼로그를 표시했다고 기록
-            locationAgreementDataStore.setHasShownLocationAgreementDialog(true)
         }
     }
 

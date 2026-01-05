@@ -23,6 +23,7 @@ import team.swyp.sdu.domain.repository.GoalRepository
 import team.swyp.sdu.data.local.datastore.AuthDataStore
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.*
 import team.swyp.sdu.ui.mypage.userInfo.UserInput
+import team.swyp.sdu.utils.formatBirthDate
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -35,6 +36,30 @@ class UserInfoManagementViewModel @Inject constructor(
     private val goalRepository: GoalRepository,
     private val authDataStore: AuthDataStore,
 ) : ViewModel() {
+
+    companion object {
+        private const val MAX_NICKNAME_LENGTH = 20
+        private const val ERROR_TOO_LONG = "닉네임은 최대 20자까지 입력 가능합니다"
+        private const val ERROR_HAS_SPACE = "닉네임에 띄어쓰기를 사용할 수 없습니다"
+
+        /**
+         * 닉네임 유효성 검증
+         * - 최소 1자 ~ 최대 20자
+         * - 한글/영문(대소문자 구분) 가능
+         * - 숫자/특수문자 불가능
+         * - 띄어쓰기 불가능
+         */
+        fun validateNickname(nickname: String): String? {
+            if (nickname.isEmpty()) return null
+
+            return when {
+                nickname.length > MAX_NICKNAME_LENGTH -> ERROR_TOO_LONG
+                nickname.contains(" ") -> ERROR_HAS_SPACE
+                !nickname.matches(Regex("^[가-힣a-zA-Z]*$")) -> "숫자와 특수문자는 사용할 수 없습니다"
+                else -> null
+            }
+        }
+    }
 
     // UI 상태
     private val _uiState = MutableStateFlow<UserInfoUiState>(UserInfoUiState.Loading)
@@ -76,6 +101,11 @@ class UserInfoManagementViewModel @Inject constructor(
     // 현재 사용자 데이터 (UI 상태 복원을 위해)
     private var currentUser: User? = null
 
+    // 초기 상태 (변경사항 판별용)
+    private var initialImageName: String? = null
+    private var initialNickname: String = ""
+    private var initialBirthDate: String = ""
+
 
     init {
         loadUserInfo()
@@ -102,6 +132,10 @@ class UserInfoManagementViewModel @Inject constructor(
                 is Result.Success -> {
                     val user = result.data
                     currentUser = user // 현재 사용자 데이터 저장
+                    // 초기 상태 저장 (변경사항 판별용)
+                    initialImageName = user.imageName
+                    initialNickname = user.nickname ?: ""
+                    initialBirthDate = user.birthDate ?: ""
                     _userInput.value = UserInput(
                         nickname = user.nickname ?: "",
                         birthDate = user.birthDate ?: "",
@@ -134,11 +168,62 @@ class UserInfoManagementViewModel @Inject constructor(
         _hasChange.value = true
         Timber.d("userInput updated successfully")
     }
+
+    /**
+     * 닉네임 업데이트 (유효성 검증 포함)
+     */
+    fun updateNickname(nickname: String) {
+        val validationError = validateNickname(nickname)
+        _userInput.value = _userInput.value.copy(
+            nickname = nickname,
+            isNicknameDuplicate = null, // validation 시 중복 상태 초기화
+            nicknameValidationError = validationError
+        )
+        // 실제 변경이 있을 때만 hasChange 설정
+        if (nickname != initialNickname) {
+            _hasChange.value = true
+            Timber.d("닉네임 변경됨: $initialNickname → $nickname")
+        } else {
+            Timber.d("닉네임 변경 없음: $nickname")
+        }
+    }
+
+    /**
+     * 생년월일 업데이트
+     */
+    fun updateBirthDate(birthYear: String, birthMonth: String, birthDay: String) {
+        val formattedBirthDate = formatBirthDate(birthYear, birthMonth, birthDay)
+        _userInput.value = _userInput.value.copy(
+            birthDate = formattedBirthDate
+        )
+        // 실제 변경이 있을 때만 hasChange 설정
+        if (formattedBirthDate != initialBirthDate) {
+            _hasChange.value = true
+            Timber.d("생년월일 변경됨: $initialBirthDate → $formattedBirthDate")
+        } else {
+            Timber.d("생년월일 변경 없음: $formattedBirthDate")
+        }
+    }
     /**
      * 사용자 입력 상태 업데이트
      * uri가 null이면 이미지 삭제
      */
     fun updateProfileImageUri(uri: Uri?) {
+        val hasActualChange = when {
+            uri == null -> {
+                // 이미지 삭제: 기존 이미지가 있었을 때만 변경으로 간주
+                initialImageName?.isNotBlank() == true
+            }
+            uri != Uri.EMPTY -> {
+                // 새 이미지 선택: 항상 변경으로 간주 (같은 이미지 다시 선택해도 URI가 다를 수 있음)
+                true
+            }
+            else -> {
+                // URI.EMPTY 설정: 변경 아님
+                false
+            }
+        }
+
         if (uri == null) {
             // 이미지 삭제
             _imageDeleted.value = true
@@ -148,7 +233,13 @@ class UserInfoManagementViewModel @Inject constructor(
             _imageDeleted.value = false
             _uploadedImageUri.value = uri
         }
-        _hasChange.value = true // 이미지 변경 시 변경사항 표시
+
+        if (hasActualChange) {
+            _hasChange.value = true // 실제 변경이 있을 때만 변경사항 표시
+            Timber.d("이미지 변경 감지: uri=$uri, hasChange=true")
+        } else {
+            Timber.d("이미지 변경 없음: uri=$uri, hasChange=false")
+        }
     }
 
     /**
@@ -329,7 +420,10 @@ class UserInfoManagementViewModel @Inject constructor(
                                     isNicknameDuplicate = false, // 저장 성공 시 중복 상태 초기화
                                     nicknameValidationError = null // 에러 상태 초기화
                                 )
-                                // 성공 시 상태 초기화
+                                // 성공 시 상태 초기화 (새로운 값들을 초기 상태로 설정)
+                                initialImageName = updatedUser.imageName
+                                initialNickname = updatedUser.nickname ?: ""
+                                initialBirthDate = updatedUser.birthDate ?: ""
                                 _uploadedImageUri.value = Uri.EMPTY
                                 _imageDeleted.value = false
                                 _hasChange.value = false // 저장 성공 시 변경사항 리셋

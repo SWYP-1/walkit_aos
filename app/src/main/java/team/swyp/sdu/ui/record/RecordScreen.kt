@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -132,15 +134,19 @@ private fun RecordScreenContent(
     var tabIndex by remember { mutableIntStateOf(0) }
     val tabs = RecordTabType.values()
 
+    // 스크롤 상태
+    val scrollState = rememberScrollState()
+
     // 친구 선택 시 FriendRecordScreen에서 자동으로 로드됨
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
+            .verticalScroll(scrollState)
     ) {
 
-        // 상단 영역 (고정 높이)
+        // 상단 영역들
         RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
         Spacer(Modifier.height(16.dp))
         Row(
@@ -155,7 +161,6 @@ private fun RecordScreenContent(
                 color = SemanticColor.textBorderPrimary,
             )
         }
-
         Spacer(Modifier.height(8.dp))
 
         // 상단 API 기반 영역
@@ -195,49 +200,48 @@ private fun RecordScreenContent(
 
         Divider()
 
-        // 하단 영역 (남은 공간 차지)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(SemanticColor.backgroundWhiteSecondary)
-
-        ) {
-            if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+        // 하단 영역
+        if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+            // 친구 선택 시 FriendRecordScreen 표시
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SemanticColor.backgroundWhiteSecondary)
+            ) {
                 FriendRecordScreen(
                     nickname = recordUiState.selectedFriendNickname,
                     onNavigateBack = onFriendDeselected,
                     onBlockUser = onBlockUser,
-                    modifier = Modifier.fillMaxSize() // Box 내 전체 공간
+                    modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize() // Box 내 전체 공간
-                        .padding(horizontal = 20.dp)
-                ) {
-//                    item {
-//                        HeaderRow(
-//                            onDummyClick = { /*TODO*/ },
-//                            onStartOnboarding = onStartOnboarding
-//                        )
-//                    }
-                    item {
+            }
+        } else {
+            // 친구 미선택 시 탭 콘텐츠 표시
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SemanticColor.backgroundWhiteSecondary)
+            ) {
+                if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+                    // 친구 선택 시 FriendRecordScreen 표시
+                    FriendRecordScreen(
+                        nickname = recordUiState.selectedFriendNickname,
+                        onNavigateBack = onFriendDeselected,
+                        onBlockUser = onBlockUser,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // 친구 미선택 시 탭 콘텐츠 표시
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    ) {
                         Spacer(Modifier.height(16.dp))
-                    }
-
-                    item {
                         RecordTabRow(
                             selectedTabIndex = tabIndex,
                             onTabSelected = { tabIndex = it }
                         )
-                    }
-
-                    item {
                         Spacer(Modifier.height(24.dp))
-                    }
 
-                    item {
                         RecordTabContent(
                             selectedTab = tabs[tabIndex],
                             monthStats = monthStats,
@@ -251,12 +255,12 @@ private fun RecordScreenContent(
                             onNavigateToDailyRecord = onNavigateToDailyRecord,
                             onMonthChanged = onMonthChanged
                         )
-                    }
-                    item {
+
                         Spacer(Modifier.height(16.dp))
                     }
                 }
             }
+
         }
     }
 }

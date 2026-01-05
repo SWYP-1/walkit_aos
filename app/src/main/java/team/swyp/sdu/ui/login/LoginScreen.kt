@@ -94,7 +94,7 @@ fun LoginRoute(
 
     // 다이얼로그 표시 여부 결정
     LaunchedEffect(isLoggedIn, termsAgreed, isNavigating) {
-        showTermsDialog = !termsAgreed && !isNavigating
+        showTermsDialog = isLoggedIn && !termsAgreed && !isNavigating
     }
 
     /**
@@ -139,6 +139,7 @@ fun LoginRoute(
      * - showTermsDialog로 제어하여 깜박임 방지
      */
     TermsAgreementOverlayRoute(
+        modifier = modifier,
         isVisible = showTermsDialog,
         onDismiss = {
             // 약관 거부 → 로그아웃

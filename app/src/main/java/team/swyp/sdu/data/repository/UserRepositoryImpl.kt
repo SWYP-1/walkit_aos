@@ -188,7 +188,21 @@ class UserRepositoryImpl @Inject constructor(
                     birthDate = birthDate,
                 )
                 if (response.isSuccessful) {
-                    // HTTP 2xx 성공
+                    // HTTP 2xx 성공 - 로컬 DB 업데이트
+                    try {
+                        val currentUser = userDao.getCurrentUser()
+                        if (currentUser != null) {
+                            val updatedUser = currentUser.copy(
+                                nickname = nickname,
+                                birthDate = birthDate
+                            )
+                            userDao.upsert(updatedUser)
+                            Timber.d("프로필 업데이트 성공: 로컬 DB 업데이트됨")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "로컬 DB 업데이트 실패")
+                        // 서버 업데이트는 성공했으므로 Result.Success 반환
+                    }
                     Result.Success(Unit)
                 } else {
                     // HTTP 실패 (4xx, 5xx)

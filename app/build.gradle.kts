@@ -68,7 +68,6 @@ android {
         }
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
     }
@@ -199,6 +198,9 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // ExifInterface (EXIF orientation 처리)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)

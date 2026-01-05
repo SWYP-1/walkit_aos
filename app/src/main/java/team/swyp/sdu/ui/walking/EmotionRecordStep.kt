@@ -64,6 +64,7 @@ import timber.log.Timber
 import team.swyp.sdu.R
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.PreviousButton
 import team.swyp.sdu.ui.components.CustomProgressIndicator
 import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
@@ -579,11 +580,8 @@ private fun EmotionRecordStepScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                CtaButton(
-                    text = "이전으로",
-                    variant = CtaButtonVariant.SECONDARY,
-                    onClick = onPrevious,
-                    modifier = Modifier.width(96.dp)
+                PreviousButton(
+                    onClick = onPrevious
                 )
 
                 CtaButton(

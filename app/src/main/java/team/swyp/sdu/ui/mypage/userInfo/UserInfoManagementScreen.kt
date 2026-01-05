@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +38,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,11 +48,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import timber.log.Timber
 import team.swyp.sdu.ui.components.CustomProgressIndicator
+import team.swyp.sdu.ui.components.InfoBanner
 import team.swyp.sdu.ui.components.ProgressIndicatorSize
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState
 import team.swyp.sdu.ui.mypage.userInfo.UserInfoUiState.Error
@@ -65,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
+import team.swyp.sdu.R
 import team.swyp.sdu.domain.model.Goal
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.ConfirmDialog
@@ -101,6 +108,7 @@ fun UserInfoManagementRoute(
     val userInput by viewModel.userInput.collectAsStateWithLifecycle()
     val goal by viewModel.goalFlow.collectAsStateWithLifecycle()
     val provider by viewModel.provider.collectAsStateWithLifecycle()
+    val hasChange by viewModel.hasChange.collectAsStateWithLifecycle()
 
     UserInfoManagementScreen(
         modifier = modifier,
@@ -108,6 +116,7 @@ fun UserInfoManagementRoute(
         userInput = userInput,
         provider = provider ?: "알수없음",
         goal = goal,
+        hasChange = hasChange,
         onNavigateBack = onNavigateBack,
         onSaveUserProfile = viewModel::saveUserProfile,
         onUpdateProfileImageUri = { uri -> viewModel.updateProfileImageUri(uri) }
@@ -141,6 +150,13 @@ private object UserInfoConstants {
     const val FILE_SIZE_GUIDE_TEXT = "10MB 이내의 파일만 업로드 가능합니다."
 }
 
+// Banner 상태
+private sealed class BannerState {
+    data object Hidden : BannerState()
+    data object Success : BannerState()
+    data class Error(val message: String) : BannerState()
+}
+
 @Composable
 fun UserInfoManagementScreen(
     modifier: Modifier = Modifier,
@@ -149,6 +165,7 @@ fun UserInfoManagementScreen(
     userInput: UserInput,
     provider: String,
     goal: team.swyp.sdu.domain.model.Goal?,
+    hasChange: Boolean = false,
     onNavigateBack: () -> Unit = {},
     onSaveUserProfile: (birthYear: String, birthMonth: String, birthDay: String, nickname: String) -> Unit = { _, _, _, _ -> },
     onUpdateProfileImageUri: (Uri?) -> Unit = {},
@@ -170,9 +187,18 @@ fun UserInfoManagementScreen(
         mutableStateOf(
             ProfileImageState.fromUserInput(
                 userInput.imageName,
-                userInput.selectedImageUri)
+                userInput.selectedImageUri
+            )
         )
     }
+    // Banner 상태
+    var bannerState by remember { mutableStateOf<BannerState>(BannerState.Hidden) }
+
+    // 이전 UI 상태 (banner 표시 조건 판별용)
+    var previousUiState by remember { mutableStateOf<UserInfoUiState?>(null) }
+
+    // 스크롤 상태
+    val scrollState = rememberScrollState()
 
     // userInput에서 로컬 상태로 데이터 복사하는 함수
     fun updateLocalStateFromUserInput() {
@@ -187,7 +213,8 @@ fun UserInfoManagementScreen(
         if (!imageDeleted) {
             profileImageState = ProfileImageState.fromUserInput(
                 userInput.imageName,
-                userInput.selectedImageUri)
+                userInput.selectedImageUri
+            )
         }
         // imageDeleted가 true일 때는 수동으로 설정한 빈 상태 유지
 
@@ -200,8 +227,41 @@ fun UserInfoManagementScreen(
 
     // userInput 또는 imageDeleted가 변경될 때 로컬 상태 업데이트
     // 단, 닉네임 검증 상태가 변경될 때는 nickname 필드를 업데이트하지 않음
-    LaunchedEffect(userInput.name, userInput.birthDate, userInput.email, userInput.imageName, userInput.selectedImageUri, imageDeleted) {
+    LaunchedEffect(
+        userInput.name,
+        userInput.birthDate,
+        userInput.email,
+        userInput.imageName,
+        userInput.selectedImageUri,
+        imageDeleted
+    ) {
         updateLocalStateFromUserInput()
+    }
+
+    // UI 상태 변경 감지하여 Banner 표시
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is UserInfoUiState.Success -> {
+                // 저장 성공 시 (Updating -> Success로 바뀔 때만)
+                if (previousUiState is UserInfoUiState.Updating) {
+                    bannerState = BannerState.Success
+                    // 3초 후 자동 숨김
+                    kotlinx.coroutines.delay(UserInfoConstants.SUCCESS_MESSAGE_DURATION_MS)
+                    bannerState = BannerState.Hidden
+                }
+            }
+
+            is UserInfoUiState.Error -> {
+                // 저장 실패 시
+                bannerState = BannerState.Error(uiState.message)
+            }
+
+            else -> {
+                // 다른 상태에서는 banner 숨김
+            }
+        }
+        // 이전 상태 저장
+        previousUiState = uiState
     }
 
     // 카메라 촬영용 Uri 생성
@@ -298,292 +358,296 @@ fun UserInfoManagementScreen(
         )
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
-
     ) {
-        // 로딩 상태 표시
-        if (uiState is Loading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-            }
-            return@Column
-        }
-
-        AppHeader(
-            title = "내 정보 관리",
-            onNavigateBack = ::handleNavigateBack,
-        )
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 프로필 업로드 섹션
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // 프로필 이미지
+            // 로딩 상태 표시
+            if (uiState is Loading) {
                 Box(
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val displayUrl = profileImageState.currentDisplayUrl
-                    Timber.d("🎨 UI 표시용 이미지 URL: $displayUrl (original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri})")
-                    // 이미지 표시 로직 - profileImageState 변경 시 강제 리컴포지션
-                    androidx.compose.runtime.key(profileImageState) { // profileImageState 변경 시 컴포넌트 재생성
-                        if (!displayUrl.isNullOrBlank()) {
-                            Image(
-                                painter = rememberAsyncImagePainter(displayUrl),
-                                contentDescription = "프로필 이미지",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop,
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Grey2, CircleShape),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = Grey7,
-                                    modifier = Modifier.size(32.dp),
+                    CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                }
+                return@Column
+            }
+
+            AppHeader(
+                title = "내 정보 관리",
+                onNavigateBack = ::handleNavigateBack,
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+
+                // 프로필 업로드 섹션
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 프로필 이미지
+                    Box(
+                        modifier = Modifier.size(80.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val displayUrl = profileImageState.currentDisplayUrl
+                        Timber.d("🎨 UI 표시용 이미지 URL: $displayUrl (original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri})")
+                        // 이미지 표시 로직 - profileImageState 변경 시 강제 리컴포지션
+                        androidx.compose.runtime.key(profileImageState) { // profileImageState 변경 시 컴포넌트 재생성
+                            if (!displayUrl.isNullOrBlank()) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(displayUrl),
+                                    contentDescription = "프로필 이미지",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop,
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Grey2, CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = Grey7,
+                                        modifier = Modifier.size(32.dp),
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // 이미지 업로드 버튼 및 안내 텍스트
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    // 이미지 업로드 버튼 및 드랍다운 메뉴
-                    ImageUploadMenu(
-                        onCameraClick = {
-                            // Android 12+에서는 카메라 실행 전에 권한 재확인 필수
-                            // 카메라 권한 체크 및 실행 (재사용 가능한 패턴 사용)
-                            launchCameraWithPermission(
-                                context = context,
-                                config = CameraLaunchConfig(
-                                    cameraLauncher = cameraLauncher,
-                                    permissionLauncher = cameraPermissionLauncher,
-                                    imageUri = cameraImageUri,
-                                    onImageCaptured = { uri ->
-                                        // 이미 촬영 완료 후 처리되므로 여기서는 로깅만
-                                        Timber.d("UserInfoManagement: 카메라 촬영 완료: $uri")
-                                    }
+                    // 이미지 업로드 버튼 및 안내 텍스트
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // 이미지 업로드 버튼 및 드랍다운 메뉴
+                        ImageUploadMenu(
+                            onCameraClick = {
+                                // Android 12+에서는 카메라 실행 전에 권한 재확인 필수
+                                // 카메라 권한 체크 및 실행 (재사용 가능한 패턴 사용)
+                                launchCameraWithPermission(
+                                    context = context,
+                                    config = CameraLaunchConfig(
+                                        cameraLauncher = cameraLauncher,
+                                        permissionLauncher = cameraPermissionLauncher,
+                                        imageUri = cameraImageUri,
+                                        onImageCaptured = { uri ->
+                                            // 이미 촬영 완료 후 처리되므로 여기서는 로깅만
+                                            Timber.d("UserInfoManagement: 카메라 촬영 완료: $uri")
+                                        }
+                                    )
                                 )
-                            )
-                        },
-                        onGalleryClick = {
-                            Timber.d("갤러리 선택 클릭됨")
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
-                                val hasPermission = ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.READ_MEDIA_IMAGES
-                                ) == PackageManager.PERMISSION_GRANTED
-                                Timber.d("Android 13+ 권한 상태: $hasPermission")
-                                if (hasPermission) {
-                                    Timber.d("갤러리 Launcher 실행")
-                                    galleryLauncher.launch(
-                                        PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                            },
+                            onGalleryClick = {
+                                Timber.d("갤러리 선택 클릭됨")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    // Android 13+에서는 READ_MEDIA_IMAGES 권한 사용
+                                    val hasPermission = ContextCompat.checkSelfPermission(
+                                        context,
+                                        android.Manifest.permission.READ_MEDIA_IMAGES
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    Timber.d("Android 13+ 권한 상태: $hasPermission")
+                                    if (hasPermission) {
+                                        Timber.d("갤러리 Launcher 실행")
+                                        galleryLauncher.launch(
+                                            PickVisualMediaRequest(
+                                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                                            )
                                         )
-                                    )
-                                } else {
-                                    Timber.d("READ_MEDIA_IMAGES 권한 요청")
-                                    galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                                }
-                            } else {
-                                // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
-                                val hasPermission = ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.READ_EXTERNAL_STORAGE
-                                ) == PackageManager.PERMISSION_GRANTED
-                                Timber.d("Android 12 이하 권한 상태: $hasPermission")
-                                if (hasPermission) {
-                                    Timber.d("갤러리 Launcher 실행")
-                                    galleryLauncher.launch(
-                                        PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                                        )
-                                    )
-                                } else {
-                                    Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
-                                    galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                                }
-                            }
-                        },
-                        showDeleteOption = true,
-                        onDeleteClick = {
-                            Timber.d("🔥 이미지 삭제 클릭 시작!")
-                            Timber.d("📸 삭제 전 상태: original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri}, display=${profileImageState.currentDisplayUrl}")
-
-                            // 이미지 삭제: uri를 null로 설정
-                            viewModel.updateProfileImageUri(null)
-
-                            // 화면 상태도 업데이트하여 이미지 즉시 사라지게 함
-                            val newState = ProfileImageState(
-                                originalImageName = null, // 기존 이미지 정보도 제거하여 완전 빈 상태
-                                selectedImageUri = null, // 선택된 이미지는 제거
-                                displayUrl = null // 삭제 시 무조건 빈 상태로 만듦
-                            )
-
-                            profileImageState = newState
-
-                            Timber.d("📸 삭제 후 상태: original=${newState.originalImageName}, selected=${newState.selectedImageUri}, display=${newState.currentDisplayUrl}")
-                            Timber.d("🔥 이미지 삭제 클릭 완료 - UI 리컴포지션 대기")
-                        }
-                    )
-
-                    // 안내 텍스트
-                    Text(
-                        text = UserInfoConstants.FILE_SIZE_GUIDE_TEXT,
-                        style = MaterialTheme.walkItTypography.captionM.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = Grey7,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 사용자 정보 입력 폼
-            UserInfoFormSection(
-                nickname = nickname,
-                isLoading = uiState is UserInfoUiState.Loading,
-                onNicknameChange = {
-                    val newNickname = it
-                    nickname = newNickname
-                    // 닉네임 변경 시 검증 상태 초기화
-                    viewModel.updateUserInput(userInput.copy(
-                        nickname = newNickname,
-                        isNicknameDuplicate = null,
-                        nicknameValidationError = null
-                    ))
-                },
-                birthYear = birthYear,
-                onBirthYearChange = { birthYear = it },
-                birthMonth = birthMonth,
-                onBirthMonthChange = { birthMonth = it },
-                birthDay = birthDay,
-                onBirthDayChange = { birthDay = it },
-                isNicknameDuplicate = userInput.isNicknameDuplicate,
-                nicknameValidationError = userInput.nicknameValidationError,
-            )
-
-
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 사용자 정보 표시 섹션
-            UserInfoDisplaySection(
-                provider = provider,
-                email = userInput.email
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // 하단 버튼들
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // 뒤로가기 버튼
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(47.dp)
-                        .clickable(onClick = ::handleNavigateBack)
-                        .border(
-                            width = 1.dp,
-                            color = Grey3,
-                            shape = RoundedCornerShape(8.dp),
-                        )
-                        .background(Color.White, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "뒤로가기",
-                        style = MaterialTheme.walkItTypography.bodyM.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = tertiaryText,
-                    )
-                }
-
-                // 저장하기 버튼
-                // canSave 계산 - userInput 상태 변경 시 자동으로 recomposition
-                val canSave = nickname.isNotBlank() &&
-                              birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank() &&
-                              userInput.nicknameValidationError == null &&  // 닉네임 검증 에러가 없음
-                              userInput.isNicknameDuplicate != true  // 중복 상태가 아님
-
-                // 디버깅용 로그
-                Timber.d("=== canSave 계산 ===")
-                Timber.d("로컬 상태: nickname=$nickname, birthYear=$birthYear, birthMonth=$birthMonth, birthDay=$birthDay")
-                Timber.d("userInput 상태: nickname=${userInput.nickname}, isNicknameDuplicate=${userInput.isNicknameDuplicate}, nicknameValidationError=${userInput.nicknameValidationError}")
-                Timber.d("조건 결과: nicknameNotBlank=${nickname.isNotBlank()}, datesValid=${birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank()}, validationErrorNull=${userInput.nicknameValidationError == null}, notDuplicate=${userInput.isNicknameDuplicate != true}")
-                Timber.d("최종 canSave=$canSave")
-                Timber.d("uiState=$uiState")
-                Timber.d("==================")
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(47.dp)
-                        .then(
-                            if (uiState is UserInfoUiState.Updating || uiState is UserInfoUiState.CheckingDuplicate) {
-                                Timber.d("버튼 상태: 로딩중 (uiState=$uiState)")
-                                Modifier.background(Grey3, RoundedCornerShape(8.dp))
-                            } else if (canSave) {
-                                Timber.d("버튼 상태: 활성화됨 (canSave=$canSave)")
-                                Modifier
-                                    .clickable {
-                                        onSaveUserProfile(
-                                            birthYear,
-                                            birthMonth,
-                                            birthDay,
-                                            nickname,
-                                        )
+                                    } else {
+                                        Timber.d("READ_MEDIA_IMAGES 권한 요청")
+                                        galleryPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
                                     }
-                                    .background(greenPrimary, RoundedCornerShape(8.dp))
-                            } else {
-                                Timber.d("버튼 상태: 비활성화됨 (canSave=$canSave, uiState=$uiState)")
-                                Modifier.background(Grey3, RoundedCornerShape(8.dp))
+                                } else {
+                                    // Android 12 이하에서는 READ_EXTERNAL_STORAGE 권한 사용
+                                    val hasPermission = ContextCompat.checkSelfPermission(
+                                        context,
+                                        android.Manifest.permission.READ_EXTERNAL_STORAGE
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    Timber.d("Android 12 이하 권한 상태: $hasPermission")
+                                    if (hasPermission) {
+                                        Timber.d("갤러리 Launcher 실행")
+                                        galleryLauncher.launch(
+                                            PickVisualMediaRequest(
+                                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                                            )
+                                        )
+                                    } else {
+                                        Timber.d("READ_EXTERNAL_STORAGE 권한 요청")
+                                        galleryPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                                    }
+                                }
+                            },
+                            showDeleteOption = true,
+                            onDeleteClick = {
+                                Timber.d("🔥 이미지 삭제 클릭 시작!")
+                                Timber.d("📸 삭제 전 상태: original=${profileImageState.originalImageName}, selected=${profileImageState.selectedImageUri}, display=${profileImageState.currentDisplayUrl}")
+
+                                // 이미지 삭제: uri를 null로 설정
+                                viewModel.updateProfileImageUri(null)
+
+                                // 화면 상태도 업데이트하여 이미지 즉시 사라지게 함
+                                val newState = ProfileImageState(
+                                    originalImageName = null, // 기존 이미지 정보도 제거하여 완전 빈 상태
+                                    selectedImageUri = null, // 선택된 이미지는 제거
+                                    displayUrl = null // 삭제 시 무조건 빈 상태로 만듦
+                                )
+
+                                profileImageState = newState
+
+                                Timber.d("📸 삭제 후 상태: original=${newState.originalImageName}, selected=${newState.selectedImageUri}, display=${newState.currentDisplayUrl}")
+                                Timber.d("🔥 이미지 삭제 클릭 완료 - UI 리컴포지션 대기")
                             }
                         )
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
+
+                        // 안내 텍스트
+                        Text(
+                            text = UserInfoConstants.FILE_SIZE_GUIDE_TEXT,
+                            style = MaterialTheme.walkItTypography.captionM.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Grey7,
+                        )
+                    }
+                }
+
+                // 사용자 정보 입력 폼
+                UserInfoFormSection(
+                    nickname = nickname,
+                    isLoading = uiState is UserInfoUiState.Loading,
+                    onNicknameChange = {
+                        val newNickname = it
+                        nickname = newNickname
+                        // 닉네임 변경 시 유효성 검증 수행 (ViewModel에서 실제 변경 판별)
+                        viewModel.updateNickname(newNickname)
+                    },
+                    birthYear = birthYear,
+                    onBirthYearChange = {
+                        birthYear = it
+                        viewModel.updateBirthDate(it, birthMonth, birthDay)
+                    },
+                    birthMonth = birthMonth,
+                    onBirthMonthChange = {
+                        birthMonth = it
+                        viewModel.updateBirthDate(birthYear, it, birthDay)
+                    },
+                    birthDay = birthDay,
+                    onBirthDayChange = {
+                        birthDay = it
+                        viewModel.updateBirthDate(birthYear, birthMonth, it)
+                    },
+                    isNicknameDuplicate = userInput.isNicknameDuplicate,
+                    nicknameValidationError = userInput.nicknameValidationError,
+                )
+
+                // 사용자 정보 표시 섹션
+                UserInfoDisplaySection(
+                    provider = provider,
+                    email = userInput.email
+                )
+                
+                Spacer(Modifier.weight(1f))
+
+                // 하단 버튼들
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = "저장하기",
-                        style = MaterialTheme.walkItTypography.bodyM.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = Color.White,
-                    )
+                    // 뒤로가기 버튼
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clickable(onClick = ::handleNavigateBack)
+                            .border(
+                                width = 1.dp,
+                                color = Grey3,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                            .background(Color.White, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "뒤로가기",
+                            style = MaterialTheme.walkItTypography.bodyM.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = tertiaryText,
+                        )
+                    }
+
+                    // 저장하기 버튼
+                    // canSave 계산 - userInput 상태 변경 시 자동으로 recomposition
+                    val canSave = hasChange &&  // 변경사항이 있어야 함
+                            nickname.isNotBlank() &&
+                            birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank() &&
+                            userInput.nicknameValidationError == null &&  // 닉네임 검증 에러가 없음
+                            userInput.isNicknameDuplicate != true  // 중복 상태가 아님
+
+                    // 디버깅용 로그
+                    Timber.d("=== canSave 계산 ===")
+                    Timber.d("로컬 상태: nickname=$nickname, birthYear=$birthYear, birthMonth=$birthMonth, birthDay=$birthDay")
+                    Timber.d("userInput 상태: nickname=${userInput.nickname}, isNicknameDuplicate=${userInput.isNicknameDuplicate}, nicknameValidationError=${userInput.nicknameValidationError}")
+                    Timber.d("조건 결과: hasChange=$hasChange, nicknameNotBlank=${nickname.isNotBlank()}, datesValid=${birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank()}, validationErrorNull=${userInput.nicknameValidationError == null}, notDuplicate=${userInput.isNicknameDuplicate != true}")
+                    Timber.d("최종 canSave=$canSave")
+                    Timber.d("uiState=$uiState")
+                    Timber.d("==================")
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(47.dp)
+                            .then(
+                                if (uiState is UserInfoUiState.Updating || uiState is UserInfoUiState.CheckingDuplicate) {
+                                    Timber.d("버튼 상태: 로딩중 (uiState=$uiState)")
+                                    Modifier.background(Grey3, RoundedCornerShape(8.dp))
+                                } else if (canSave) {
+                                    Timber.d("버튼 상태: 활성화됨 (canSave=$canSave)")
+                                    Modifier
+                                        .clickable {
+                                            onSaveUserProfile(
+                                                birthYear,
+                                                birthMonth,
+                                                birthDay,
+                                                nickname,
+                                            )
+                                        }
+                                        .background(greenPrimary, RoundedCornerShape(8.dp))
+                                } else {
+                                    Timber.d("버튼 상태: 비활성화됨 (canSave=$canSave, uiState=$uiState)")
+                                    Modifier.background(Grey3, RoundedCornerShape(8.dp))
+                                }
+                            )
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "저장하기",
+                            style = MaterialTheme.walkItTypography.bodyM.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Color.White,
+                        )
+                    }
                 }
             }
         }
@@ -609,8 +673,83 @@ fun UserInfoManagementScreen(
         if (uiState is UserInfoUiState.Updating || uiState is UserInfoUiState.CheckingDuplicate) {
             CustomProgressIndicator(size = ProgressIndicatorSize.Small)
         }
+
+
+        // Banner 오버레이 (하단)
+        when (val currentBannerState = bannerState) {
+            is BannerState.Success -> {
+                InfoBanner(
+                    title = "저장 완료",
+                    description = "프로필 정보가 성공적으로 저장되었습니다.",
+                    backgroundColor = SemanticColor.backgroundDarkSecondary,
+                    borderColor = SemanticColor.backgroundDarkSecondary,
+                    iconTint = SemanticColor.iconWhite,
+                    textColor = SemanticColor.textBorderPrimaryInverse,
+                    icon = { tint ->
+                        androidx.compose.material3.Icon(
+                            painter = painterResource(R.drawable.ic_info_check),
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 48.dp + 32.dp + 16.dp) // CTA 버튼 높이 + 여백
+                        .padding(horizontal = 16.dp)
+                )
+            }
+
+            is BannerState.Error -> {
+                InfoBanner(
+                    title = "저장 실패",
+                    description = currentBannerState.message,
+                    backgroundColor = SemanticColor.stateRedSecondary,
+                    borderColor = SemanticColor.stateRedPrimary,
+                    iconTint = SemanticColor.stateRedPrimary,
+                    textColor = SemanticColor.stateRedPrimary,
+                    icon = { tint ->
+                        androidx.compose.material3.Icon(
+                            painter = painterResource(R.drawable.ic_action_clear),
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 48.dp + 32.dp + 16.dp) // CTA 버튼 높이 + 여백
+                        .padding(horizontal = 16.dp)
+                        .clickable { bannerState = BannerState.Hidden } // 클릭하여 숨김
+                )
+            }
+
+            BannerState.Hidden -> {
+                // 표시하지 않음
+            }
+        }
+
+        // 변경사항 확인 다이얼로그
+        if (showConfirmDialog) {
+            ConfirmDialog(
+                title = "변경된 사항이 있습니다.",
+                message = "저장하시겠습니까?",
+                negativeButtonText = "아니요",
+                positiveButtonText = "예",
+                onDismiss = { showConfirmDialog = false },
+                onNegative = {
+                    showConfirmDialog = false
+                    onNavigateBack()
+                },
+                onPositive = {
+                    showConfirmDialog = false
+                    handleSaveAndNavigateBack()
+                },
+            )
+        }
     }
 }
+
 
 @Composable
 @Preview(showBackground = true, heightDp = 800)

@@ -3,20 +3,30 @@ package team.swyp.sdu.ui.walking
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +48,7 @@ import team.swyp.sdu.data.model.EmotionType
 import team.swyp.sdu.ui.components.AppHeader
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.PreviousButton
 import team.swyp.sdu.ui.components.EmotionSlider
 import team.swyp.sdu.ui.components.SectionCard
 import team.swyp.sdu.ui.theme.SemanticColor
@@ -136,7 +147,8 @@ fun PreWalkingEmotionSelectScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .systemBarsPadding()      // ⭐ 1. 시스템 영역 회피
+            .verticalScroll(rememberScrollState()) // ⭐ 2. 콘텐츠 스크롤
             .background(SemanticColor.backgroundWhitePrimary),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -186,28 +198,50 @@ fun PreWalkingEmotionSelectScreen(
             )
             Spacer(Modifier.weight(1f))
 
+            Spacer(Modifier.height(24.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                CtaButton(
-                    text = "이전으로",
-                    variant = CtaButtonVariant.SECONDARY,
-                    onClick = onPrev,
-                    modifier = Modifier.width(96.dp)
+                PreviousButton(
+                    onClick = onPrev
                 )
 
-                CtaButton(
-                    text = "다음으로",
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f),
-                    enabled = permissionsGranted, // 권한이 없으면 버튼 비활성화
-                    iconResId = R.drawable.ic_arrow_forward
-                )
+                if (permissionsGranted) {
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        CtaButton(
+                            text = "다음으로",
+                            onClick = onNext,
+                            enabled = true,
+                            iconResId = R.drawable.ic_arrow_forward,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    // 권한이 없을 때는 버튼 대신 메시지 표시
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "권한 허용 필요",
+                            style = MaterialTheme.walkItTypography.bodyS.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = SemanticColor.textBorderSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable

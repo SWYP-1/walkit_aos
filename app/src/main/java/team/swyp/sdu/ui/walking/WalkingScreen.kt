@@ -15,7 +15,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
@@ -138,7 +140,7 @@ fun WalkingScreenRoute(
     }
 
     Column(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     ) {
         when (val state = screenState.uiState) {
             is WalkingUiState.Loading -> {
@@ -265,6 +267,7 @@ private fun WalkingScreenContent(
         Season.AUTUMN -> R.drawable.bg_autumn_full
         Season.WINTER -> R.drawable.bg_winter_full
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()

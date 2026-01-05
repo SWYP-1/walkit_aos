@@ -49,10 +49,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -92,9 +94,7 @@ fun Modifier.customShadow(): Modifier = this.graphicsLayer {
  */
 fun safeEpochMilliToLocalDate(epochMilli: Long): LocalDate {
     return try {
-        Instant.ofEpochMilli(epochMilli)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
+        Instant.ofEpochMilli(epochMilli).atZone(ZoneId.systemDefault()).toLocalDate()
     } catch (e: Exception) {
         LocalDate.now()
     }
@@ -195,10 +195,16 @@ fun WeekSectionSafe(
     onNextWeek: () -> Unit,
     sessions: List<WalkingSession> = emptyList(), // 이미 해당 주의 세션만 필터링된 데이터
 ) {
-    val startOfWeek = currentDate.with(DayOfWeek.MONDAY)
+    // 현재 월과 연도
+    val currentMonth = currentDate.month
+    val currentYear = currentDate.year
+
+    // 해당 주의 전체 날짜 범위 (일요일 시작)
+    val startOfWeek = currentDate.with(DayOfWeek.SUNDAY)
     val weekDates = remember(startOfWeek) {
         (0..6).map { startOfWeek.plusDays(it.toLong()) }
     }
+
 
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
@@ -309,22 +315,33 @@ private fun WeekNavigator(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 35.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPreviousWeek) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "이전 주")
+            Icon(
+                painter = painterResource(R.drawable.ic_calendar_left),
+                contentDescription = "이전 주",
+                tint = Color(0xFFD9D9D9)
+            )
         }
 
         Text(
             text = weekLabel,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.walkItTypography.bodyL.copy(
+                fontWeight = FontWeight.Medium
+            ),
         )
 
         IconButton(onClick = onNextWeek) {
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, "다음 주")
+            Icon(
+                painter = painterResource(R.drawable.ic_calendar_right),
+                contentDescription = "다음 주",
+                tint = Color(0xFFD9D9D9)
+            )
         }
     }
 }
@@ -336,24 +353,39 @@ private fun WeekNavigator(
  * 해당 주의 시작일(월요일)이 속한 월을 기준으로,
  * 그 월의 첫 번째 날이 포함된 주를 첫째주로 계산합니다.
  */
-private fun formatWeekLabel(date: LocalDate): String {
-    val startOfWeek = date.with(DayOfWeek.MONDAY)
-    val month = startOfWeek.monthValue
-    val year = startOfWeek.year
 
-    // 해당 월의 첫 번째 날
-    val firstDayOfMonth = LocalDate.of(year, month, 1)
 
-    // 첫 번째 날이 속한 주의 시작일(월요일) 찾기
-    val firstDayWeekStart = when (val dayOfWeek = firstDayOfMonth.dayOfWeek.value) {
-        1 -> firstDayOfMonth // 월요일이면 그대로
-        else -> firstDayOfMonth.minusDays((dayOfWeek - 1).toLong()) // 이전 월요일
+// ========================================
+// 1. formatWeekLabel 수정
+// ========================================
+
+fun formatWeekLabel(date: LocalDate): String {
+    // 현재 날짜가 속한 주의 일요일
+    val currentWeekStart = date.with(DayOfWeek.SUNDAY)
+
+    // 그 주의 7일 생성
+    val weekDates = (0..6).map { currentWeekStart.plusDays(it.toLong()) }
+
+    // 각 월별로 날짜 개수 세기
+    val monthCounts = weekDates.groupingBy { it.month to it.year }.eachCount()
+    // 가장 많은 날짜가 속한 월을 기준으로
+    val dominantEntry = monthCounts.maxByOrNull { it.value }
+    val (dominantMonth, dominantYear) = if (dominantEntry != null) {
+        val (month, year) = dominantEntry.key
+        month to year
+    } else {
+        date.month to date.year
     }
 
-    // 주차 계산 (첫 번째 날이 속한 주의 시작일로부터 몇 주째인지)
-    val weekNumber = ((startOfWeek.toEpochDay() - firstDayWeekStart.toEpochDay()) / 7).toInt() + 1
+    // 해당 월의 1일
+    val firstDayOfMonth = LocalDate.of(dominantYear, dominantMonth, 1)
 
-    // 주차를 한글로 변환
+    // 1일이 속한 주의 일요일 (이게 첫째 주의 시작)
+    val firstWeekStart = firstDayOfMonth.with(DayOfWeek.SUNDAY)
+
+    // 주차 계산
+    val weekNumber = ((currentWeekStart.toEpochDay() - firstWeekStart.toEpochDay()) / 7).toInt() + 1
+
     val weekLabel = when (weekNumber) {
         1 -> "첫째주"
         2 -> "둘째주"
@@ -364,8 +396,21 @@ private fun formatWeekLabel(date: LocalDate): String {
         else -> "${weekNumber}째주"
     }
 
-    return "${month}월 $weekLabel"
+    return "${dominantMonth.value}월 $weekLabel"
 }
+
+// 예시:
+// 12월 29일(일)~1월 4일(토)
+// → 12월: 3일, 1월: 4일
+// → dominantMonth = 1월
+// → "1월 첫째주" ✅
+
+
+// 예시:
+// 12월 31일(화) 선택 시
+// → weekDates = [12/29(일), 12/30(월), 12/31(화), 1/1(수), 1/2(목), 1/3(금), 1/4(토)]
+// → 12월이 3일, 1월이 4일 → dominantMonth = 1월
+// → "1월 첫째주"로 표시됨 ✅
 
 /**
  * 캘린더 그리드 컴포넌트
@@ -519,8 +564,8 @@ private fun CalendarDayCellRecord(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
+            .clip(RoundedCornerShape(4.dp))
             .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(4.dp))
             .then(
                 if (hasWalkSession) {
@@ -530,8 +575,7 @@ private fun CalendarDayCellRecord(
                         onClick = {
                             Log.d("CalendarDayCellRecord", "Clicked $date")
                             onNavigateToDailyRecord(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-                        }
-                    )
+                        })
                 } else {
                     Modifier // 클릭 불가능
                 }
@@ -585,17 +629,13 @@ private fun WeekCalendarGrid(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        //요일 헤더 - 날짜 표시
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
         ) {
             weekDates.forEach { date ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(28.dp),
-                    contentAlignment = Alignment.Center,
+                Column(
+                    modifier = Modifier.weight(1f), // ⭐ 핵심
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = date.dayOfMonth.toString(),
@@ -603,29 +643,23 @@ private fun WeekCalendarGrid(
                             fontWeight = FontWeight.SemiBold
                         ),
                         color = SemanticColor.textBorderSecondary,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
+                    )
+
+                    val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
+
+                    WeekCalendarDayCell(
+                        date = date,
+                        hasWalkSession = hasWalkSession,
+                        modifier = Modifier
+                            .fillMaxWidth()      // Column 폭 = 1/7
+                            .aspectRatio(1f)
+                            .padding(4.dp),
                     )
                 }
             }
         }
 
-        // 주간 날짜 행
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            weekDates.forEach { date ->
-                val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
-                WeekCalendarDayCell(
-                    date = date,
-                    hasWalkSession = hasWalkSession,
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(1f)
-                        .padding(4.dp),
-                )
-            }
-        }
     }
 }
 
@@ -638,14 +672,11 @@ private fun WeekCalendarDayCell(
     hasWalkSession: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val backgroundColor = MaterialTheme.colorScheme.surface
 
     Box(
-        modifier = modifier
-            .background(
-                color = backgroundColor,
-                shape = RoundedCornerShape(8.dp)
-            ),
+        modifier = modifier.background(
+            color = Color.Transparent, shape = CircleShape
+        ),
         contentAlignment = Alignment.Center,
     ) {
         if (hasWalkSession) {
@@ -663,7 +694,8 @@ private fun WeekCalendarDayCell(
 
         } else {
             Box(
-                contentAlignment = Alignment.Center, modifier = Modifier
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
                     .clip(CircleShape)
                     .size(32.dp)
                     .background(
@@ -954,15 +986,12 @@ fun WalkingDiaryCard(
                 SectionCard {
                     if (isEditMode) {
                         TextField(
-                            value = textFieldValue,
-                            onValueChange = { newValue ->
+                            value = textFieldValue, onValueChange = { newValue ->
                                 textFieldValue = newValue
                                 onNoteChange(newValue.text)
-                            },
-                            textStyle = MaterialTheme.walkItTypography.captionM.copy(
+                            }, textStyle = MaterialTheme.walkItTypography.captionM.copy(
                                 color = SemanticColor.textBorderSecondary
-                            ),
-                            colors = TextFieldDefaults.colors(
+                            ), colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
                                 unfocusedContainerColor = Color.Transparent,
                                 disabledContainerColor = Color.Transparent,
@@ -971,8 +1000,7 @@ fun WalkingDiaryCard(
                                 unfocusedIndicatorColor = Color.Transparent,
                                 disabledIndicatorColor = Color.Transparent,
                                 errorIndicatorColor = Color.Transparent,
-                            ),
-                            modifier = Modifier
+                            ), modifier = Modifier
                                 .fillMaxWidth()
                                 .height(138.dp)
                                 .then(
@@ -1241,9 +1269,7 @@ fun DropMenuItem(
                 )
             }
             Text(
-                text = text,
-                style = MaterialTheme.walkItTypography.bodyS,
-                color = currentTextColor
+                text = text, style = MaterialTheme.walkItTypography.bodyS, color = currentTextColor
             )
         }
     }
@@ -1292,9 +1318,7 @@ fun DiaryMoreMenuPreview() {
         var showMenu by remember { mutableStateOf(true) }
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth(),
-            contentAlignment = Alignment.TopEnd
+            modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd
         ) {
             if (showMenu) {
                 Column(
@@ -1309,8 +1333,7 @@ fun DiaryMoreMenuPreview() {
                         iconColor = Color(0xFF191919),
                         textColor = Color(0xFF191919),
                         backgroundColor = Color.White,
-                        onClick = {}
-                    )
+                        onClick = {})
 
                     DropMenuItem(
                         text = "삭제하기가 더 길어지면",
@@ -1318,8 +1341,7 @@ fun DiaryMoreMenuPreview() {
                         iconColor = Color(0xFF191919),
                         textColor = Color(0xFF191919),
                         backgroundColor = Color.White,
-                        onClick = {}
-                    )
+                        onClick = {})
                 }
             }
         }

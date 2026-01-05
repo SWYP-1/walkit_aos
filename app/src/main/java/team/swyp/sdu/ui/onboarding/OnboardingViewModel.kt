@@ -53,6 +53,7 @@ data class NicknameState(
             return when {
                 nickname.length > MAX_NICKNAME_LENGTH -> ERROR_TOO_LONG
                 nickname.contains(" ") -> ERROR_HAS_SPACE
+                !nickname.matches(Regex("^[가-힣a-zA-Z]*$")) -> ERROR_INVALID_CHARS
                 else -> null
             }
         }

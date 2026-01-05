@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
@@ -75,7 +72,9 @@ fun AlarmListItem(
                 Icon(
                     painter = when (alarmType) {
                         AlarmType.FOLLOW -> painterResource(R.drawable.ic_persion_plus)
-                        AlarmType.GOAL_ACHIEVEMENT -> painterResource(R.drawable.ic_award_start)
+                        AlarmType.GOAL -> painterResource(R.drawable.ic_award_start)
+                        AlarmType.INACTIVE_USER -> painterResource(R.drawable.ic_award_start)
+                        AlarmType.MISSION_OPEN -> painterResource(R.drawable.ic_award_start)
                     },
                     contentDescription = null,
                     tint = SemanticColor.iconGrey,
@@ -111,7 +110,7 @@ fun AlarmListItem(
             }
 
             // 오른쪽: 버튼 (팔로우 알람일 때만 표시)
-            if (alarmType == AlarmType.FOLLOW && (onConfirm != null || onDelete != null)) {
+            if (alarmType == AlarmType.FOLLOW) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -205,7 +204,7 @@ private fun AlarmListItemFollowPreview() {
 private fun AlarmListItemGoalAchievementPreview() {
     WalkItTheme {
         AlarmListItem(
-            alarmType = AlarmType.GOAL_ACHIEVEMENT,
+            alarmType = AlarmType.GOAL,
             message = "목표 달성까지 1회 남았어요!",
             date = "2025년 12월 16일",
         )

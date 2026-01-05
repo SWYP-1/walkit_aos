@@ -155,7 +155,6 @@ class CalendarViewModel @Inject constructor(
             )
 
 
-
     val weekSessions: StateFlow<List<WalkingSession>> =
         today
             .flatMapLatest { date ->
@@ -175,7 +174,15 @@ class CalendarViewModel @Inject constructor(
         today
             .flatMapLatest { date ->
                 val (start, end) = dayRange(date)
-                Timber.d("📅 CalendarViewModel - daySessions 쿼리: date=$date, start=$start (${java.time.Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault())}), end=$end (${java.time.Instant.ofEpochMilli(end).atZone(ZoneId.systemDefault())})")
+                Timber.d(
+                    "📅 CalendarViewModel - daySessions 쿼리: date=$date, start=$start (${
+                        java.time.Instant.ofEpochMilli(
+                            start
+                        ).atZone(ZoneId.systemDefault())
+                    }), end=$end (${
+                        java.time.Instant.ofEpochMilli(end).atZone(ZoneId.systemDefault())
+                    })"
+                )
                 walkingSessionRepository.getSessionsBetween(start, end)
                     .onEach { sessions ->
                         Timber.d("📅 CalendarViewModel - daySessions 결과: ${sessions.size}개 세션")
@@ -247,7 +254,8 @@ class CalendarViewModel @Inject constructor(
             }
         }
     }
-    fun deleteSessionNote(id: String){
+
+    fun deleteSessionNote(id: String) {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
@@ -290,12 +298,26 @@ class CalendarViewModel @Inject constructor(
         today.value = today.value.plusDays(1)
     }
 
-    fun prevWeek() {
-        today.value = today.value.minusWeeks(1)
-    }
+// CalendarViewModel.kt 수정 부분
 
-    fun nextWeek() {
-        today.value = today.value.plusWeeks(1)
+
+// CalendarViewModel.kt
+fun nextWeek() {
+    val current = today.value
+    val currentWeekStart = current.with(DayOfWeek.SUNDAY)
+    val nextWeekStart = currentWeekStart.plusWeeks(1)
+
+    today.value = nextWeekStart
+    _isLoadingDaySessions.value = true
+}
+
+    fun prevWeek() {
+        val current = today.value
+        val currentWeekStart = current.with(DayOfWeek.SUNDAY)
+        val prevWeekStart = currentWeekStart.minusWeeks(1)
+
+        today.value = prevWeekStart
+        _isLoadingDaySessions.value = true
     }
 
     private fun List<WalkingSession>.aggregate(): WalkAggregate {

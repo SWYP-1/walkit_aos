@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,7 +91,6 @@ fun CtaButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
-            .fillMaxWidth()
             .height(buttonHeight)
             .then(
                 colors.border?.let {
@@ -186,4 +186,23 @@ fun CtaWithIconPreview() {
             iconResId = android.R.drawable.ic_media_next // 기본 아이콘 사용
         )
     }
+}
+
+/**
+ * 이전으로 버튼 (공통 컴포넌트)
+ * 앱 전체에서 일관된 스타일과 너비를 유지
+ */
+@Composable
+fun PreviousButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier.widthIn(min = 80.dp, max = 120.dp),
+    enabled: Boolean = true
+) {
+    CtaButton(
+        text = "이전으로",
+        variant = CtaButtonVariant.SECONDARY,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled
+    )
 }

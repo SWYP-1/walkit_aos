@@ -19,7 +19,7 @@ object CalenderUtils {
 
     fun weekRange(date: LocalDate): Pair<Long, Long> {
         val systemZone = ZoneId.systemDefault()
-        val startDate = date.with(DayOfWeek.MONDAY)
+        val startDate = date.with(DayOfWeek.SUNDAY)
         val endDate = startDate.plusDays(7)
         val start = startDate.atStartOfDay(systemZone).toInstant().toEpochMilli()
         val end = endDate.atStartOfDay(systemZone).toInstant().toEpochMilli() - 1

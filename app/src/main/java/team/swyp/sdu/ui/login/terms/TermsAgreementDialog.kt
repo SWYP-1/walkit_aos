@@ -616,6 +616,7 @@ fun TermsAgreementOverlay(
     onTermsClick: () -> Unit,
     onPrivacyClick: () -> Unit,
     onLocationClick: () -> Unit,
+    onMarketingClick: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -639,7 +640,8 @@ fun TermsAgreementOverlay(
                 onTermsClick = onTermsClick,
                 onPrivacyClick = onPrivacyClick,
                 onLocationClick = onLocationClick,
-                onConfirm = onConfirm,
+                onSubmit = onConfirm,
+                onMarketingClick = onMarketingClick,
                 onDismiss = onDismiss,
             )
         }
@@ -653,6 +655,7 @@ fun TermsAgreementOverlay(
  */
 @Composable
 fun TermsAgreementOverlayRoute(
+    modifier: Modifier,
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onTermsAgreedUpdated: () -> Unit,
@@ -662,6 +665,7 @@ fun TermsAgreementOverlayRoute(
     val context = LocalContext.current
 
     TermsAgreementOverlay(
+        modifier = modifier,
         isVisible = isVisible,
         uiState = uiState,
         onTermsAgreedChange = viewModel::updateTermsAgreed,
@@ -697,6 +701,10 @@ fun TermsAgreementOverlayRoute(
         },
         onConfirm = {
             onTermsAgreedUpdated()
+        },
+        onMarketingClick =  {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9802cb0e2c7f58ec65ec1"))
+            context.startActivity(intent)
         },
         onDismiss = onDismiss,
     )

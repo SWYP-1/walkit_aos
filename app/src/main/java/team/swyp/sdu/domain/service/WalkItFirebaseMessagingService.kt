@@ -95,17 +95,6 @@ class WalkItFirebaseMessagingService : FirebaseMessagingService() {
         // ✅ 현재 구현: notification이든 data든 모두 처리 가능
         Timber.d("메시지 처리 시작")
 
-        // 1. notification 필드가 있는 경우 (시스템 알림 또는 혼합 메시지)
-        remoteMessage.notification?.let { notification ->
-            Timber.d("✅ Notification 메시지 처리: ${notification.title}")
-            showSystemNotification(
-                title = notification.title ?: "알림",
-                body = notification.body ?: "",
-                data = remoteMessage.data
-            )
-            return
-        }
-
         // 2. data-only 메시지인 경우 직접 알림 생성 (서버가 잘못된 형식으로 줘도 처리 가능)
         if (remoteMessage.data.isNotEmpty()) {
             Timber.d("✅ Data-only 메시지 처리 (서버가 notification 안 줘도 OK)")

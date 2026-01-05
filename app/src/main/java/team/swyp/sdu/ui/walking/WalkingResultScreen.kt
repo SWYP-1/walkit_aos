@@ -79,6 +79,7 @@ import team.swyp.sdu.R
 import team.swyp.sdu.presentation.viewmodel.KakaoMapUiState
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.PreviousButton
 import team.swyp.sdu.ui.components.SummaryUnit
 import team.swyp.sdu.ui.components.WalkingSummaryCard
 import team.swyp.sdu.ui.record.components.WalkingDiaryCard
@@ -586,11 +587,8 @@ private fun WalkingResultScreenContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CtaButton(
-                            text = "이전으로",
-                            variant = CtaButtonVariant.SECONDARY,
+                        PreviousButton(
                             onClick = onNavigateToPrevious,
-                            modifier = Modifier.width(96.dp),
                             enabled = snapshotState is SnapshotState.Idle ||
                                     snapshotState is SnapshotState.Error,
                         )

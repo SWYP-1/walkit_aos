@@ -38,6 +38,7 @@ import team.swyp.sdu.R
 import java.time.LocalDate
 import team.swyp.sdu.ui.components.CtaButton
 import team.swyp.sdu.ui.components.CtaButtonVariant
+import team.swyp.sdu.ui.components.PreviousButton
 import team.swyp.sdu.ui.components.LoadingOverlay
 import team.swyp.sdu.ui.onboarding.component.OnBoardingStepTag
 import team.swyp.sdu.ui.theme.Black
@@ -289,11 +290,8 @@ fun BirthYearStep(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CtaButton(
-                        text = "이전으로",
-                        variant = CtaButtonVariant.SECONDARY,
-                        onClick = onPrev,
-                        modifier = Modifier.width(96.dp)      // 1
+                    PreviousButton(
+                        onClick = onPrev
                     )
 
                     CtaButton(

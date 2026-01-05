@@ -11,8 +11,14 @@ enum class AlarmType {
     @SerialName("FOLLOW")
     FOLLOW, // 팔로우 알람
 
-    @SerialName("GOAL_ACHIEVEMENT")
-    GOAL_ACHIEVEMENT, // 목표 달성 알람
+    @SerialName("GOAL")
+    GOAL, // 목표 달성 알람
+
+    @SerialName("INACTIVE_USER")
+    INACTIVE_USER, // 미접속 알람
+
+    @SerialName("MISSION_OPEN")
+    MISSION_OPEN, // 미접속 알람
 }
 
 
