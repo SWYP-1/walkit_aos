@@ -201,7 +201,7 @@ internal fun TermsAgreementDialogContent(
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // 구분선
                 Box(

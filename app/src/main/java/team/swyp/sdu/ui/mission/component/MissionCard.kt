@@ -224,7 +224,7 @@ fun MissionCard(
                     color = cardState.titleTextColor()
                 )
                 Text(
-                    text = "${mission.rewardPoints} Exp",
+                    text = "${mission.rewardPoints}P",
                     // body S/medium
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.Medium

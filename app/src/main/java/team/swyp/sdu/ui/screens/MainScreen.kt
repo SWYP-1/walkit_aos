@@ -162,7 +162,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier
             .fillMaxSize(),
-        contentWindowInsets = WindowInsets.systemBars.exclude(WindowInsets.navigationBars), // Status bar만 고려, 시스템 네비게이션 바는 제외
+        contentWindowInsets = WindowInsets.systemBars, // Status bar만 고려, 시스템 네비게이션 바는 제외
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (currentTabIndex == 0) {
@@ -184,7 +184,7 @@ fun MainScreen(
                             locationViewModel.checkShouldShowDialog()
                         }
                     },
-                    modifier = Modifier.padding(bottom = 64.dp), // Custom Bottom Navigation 위에 표시 (시스템 네비게이션 바는 이미 고려됨)
+                    modifier = Modifier.padding(bottom = 24.dp), // Custom Bottom Navigation 위에 표시 (시스템 네비게이션 바는 이미 고려됨)
                 )
             }
         },

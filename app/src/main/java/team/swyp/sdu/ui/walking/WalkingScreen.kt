@@ -598,7 +598,7 @@ fun CurrentChanllgeGoal(modifier: Modifier = Modifier, challengeCount: Int = 0) 
         // ▲ 위쪽 삼각형
         Canvas(
             modifier = Modifier
-                .size(width = 16.dp, height = 16.dp)
+                .size(width = 15.dp, height = 15.dp)
         ) {
             val path = Path().apply {
                 moveTo(size.width / 2, 0f)          // 꼭대기

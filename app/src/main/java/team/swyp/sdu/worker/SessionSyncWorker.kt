@@ -29,7 +29,7 @@ class SessionSyncWorker @AssistedInject constructor(
             Timber.d("SessionSyncWorker 시작")
 
             // 미동기화 세션들을 모두 동기화
-            walkingSessionRepository.syncAllPendingSessions()
+//            walkingSessionRepository.syncAllPendingSessions()
 
             Timber.d("SessionSyncWorker 완료")
             Result.success()

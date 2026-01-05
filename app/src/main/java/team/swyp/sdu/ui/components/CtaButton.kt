@@ -37,6 +37,16 @@ import team.swyp.sdu.ui.theme.White
 import team.swyp.sdu.ui.theme.walkItTypography
 
 
+enum class ButtonSize(val height: Dp) {
+    MEDIUM(46.dp),  // 일반 버튼 (46px)
+    SMALL(40.dp)    // 작은 버튼 (40px)
+}
+
+enum class CtaButtonSize(val height: Dp) {
+    MEDIUM(52.dp),  // CTA 버튼 (52px)
+    SMALL(46.dp)    // CTA 작은 버튼 (46px) - 기본값
+}
+
 enum class CtaButtonVariant {
     PRIMARY,    // 초록 배경 + 흰 글자
     SECONDARY   // 흰 배경 + 초록 글자 + 초록 테두리
@@ -80,7 +90,7 @@ fun CtaButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     variant: CtaButtonVariant = CtaButtonVariant.PRIMARY,
-    buttonHeight: Dp = 47.dp,
+    size: CtaButtonSize = CtaButtonSize.SMALL,
     iconResId: Int? = null,
     iconTint: Color? = null, // null이면 content 색상 자동 적용
 ) {
@@ -90,8 +100,7 @@ fun CtaButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier
-            .height(buttonHeight)
+        modifier = modifier.height(size.height)
             .then(
                 colors.border?.let {
                     Modifier.border(
