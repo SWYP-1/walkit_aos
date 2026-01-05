@@ -63,6 +63,7 @@ class WalkingBuddyApplication : Application() {
             // return // 위험: 앱 초기화 완전 중단은 피하자
         } else {
             // Kakao SDK 초기화
+            Timber.e("Kakao App Key가 설정 local.properties에 ${kakaoAppKey.take(7)}")
             KakaoSdk.init(this, kakaoAppKey)
             // KakaoMap SDK 초기화
             KakaoMapSdk.init(this, kakaoAppKey)
@@ -118,17 +119,19 @@ class WalkingBuddyApplication : Application() {
         // NotificationChannel 생성
         createNotificationChannel()
 
-        // FCM 토큰 초기화 및 로그 출력 (비동기, 지연 실행)
-        // FCM 서비스가 완전히 초기화될 때까지 대기
-        val fcmEntryPoint = EntryPoints.get(this, FcmEntryPoint::class.java)
-        val fcmTokenManager = fcmEntryPoint.fcmTokenManager()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            // FCM 초기화 완료를 위해 짧은 지연 추가
-            kotlinx.coroutines.delay(1000)
-            // 앱 실행 시마다 현재 토큰 로그 출력
-            fcmTokenManager.logCurrentToken()
-            // 토큰이 없으면 초기화
-            fcmTokenManager.initializeToken()
+        // FCM 토큰 초기화 및 로그 출력 (릴리즈 빌드에서는 비활성화)
+        if (BuildConfig.DEBUG) {
+            // FCM 서비스가 완전히 초기화될 때까지 대기
+            val fcmEntryPoint = EntryPoints.get(this, FcmEntryPoint::class.java)
+            val fcmTokenManager = fcmEntryPoint.fcmTokenManager()
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                // FCM 초기화 완료를 위해 짧은 지연 추가
+                kotlinx.coroutines.delay(1000)
+                // 앱 실행 시마다 현재 토큰 로그 출력
+                fcmTokenManager.logCurrentToken()
+                // 토큰이 없으면 초기화
+                fcmTokenManager.initializeToken()
+            }
         }
 
         // 세션 동기화 WorkManager 초기화

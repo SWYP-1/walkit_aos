@@ -84,6 +84,9 @@ import team.swyp.sdu.utils.createCameraImageUri
 import team.swyp.sdu.utils.formatBirthDate
 import team.swyp.sdu.utils.parseBirthDate
 import team.swyp.sdu.utils.ProfileImageState
+import team.swyp.sdu.utils.launchCameraWithPermission
+import team.swyp.sdu.utils.CameraLaunchConfig
+import team.swyp.sdu.utils.handleCameraPermissionResult
 
 /**
  * 내 정보 관리 화면 Route (ViewModel 연결)
@@ -243,15 +246,14 @@ fun UserInfoManagementScreen(
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            cameraImageUri?.let { uri ->
-                cameraLauncher.launch(uri)
-            }
-        } else {
-            // 권한 거부 시 사용자에게 알림 (다시 시도할 수 있음)
-            Timber.d("카메라 권한 거부됨")
-//            errorMessage = "카메라 권한이 필요합니다. 다시 시도해주세요."
-        }
+        // 권한 요청 결과 처리 (재사용 가능한 패턴 사용)
+        handleCameraPermissionResult(
+            context = context,
+            cameraLauncher = cameraLauncher,
+            imageUri = cameraImageUri,
+            createUri = { createCameraImageUri(context) },
+            isGranted = isGranted
+        )
     }
 
     val galleryPermissionLauncher = rememberLauncherForActivityResult(
@@ -374,17 +376,20 @@ fun UserInfoManagementScreen(
                     // 이미지 업로드 버튼 및 드랍다운 메뉴
                     ImageUploadMenu(
                         onCameraClick = {
-                            if (ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                cameraImageUri?.let { uri ->
-                                    cameraLauncher.launch(uri)
-                                }
-                            } else {
-                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                            }
+                            // Android 12+에서는 카메라 실행 전에 권한 재확인 필수
+                            // 카메라 권한 체크 및 실행 (재사용 가능한 패턴 사용)
+                            launchCameraWithPermission(
+                                context = context,
+                                config = CameraLaunchConfig(
+                                    cameraLauncher = cameraLauncher,
+                                    permissionLauncher = cameraPermissionLauncher,
+                                    imageUri = cameraImageUri,
+                                    onImageCaptured = { uri ->
+                                        // 이미 촬영 완료 후 처리되므로 여기서는 로깅만
+                                        Timber.d("UserInfoManagement: 카메라 촬영 완료: $uri")
+                                    }
+                                )
+                            )
                         },
                         onGalleryClick = {
                             Timber.d("갤러리 선택 클릭됨")

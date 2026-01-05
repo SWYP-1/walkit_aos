@@ -73,6 +73,9 @@ import team.swyp.sdu.ui.theme.walkItTypography
 import team.swyp.sdu.ui.walking.components.WalkingProgressBar
 import team.swyp.sdu.ui.walking.utils.canUploadPhoto
 import team.swyp.sdu.ui.walking.viewmodel.WalkingViewModel
+import team.swyp.sdu.utils.launchCameraWithPermission
+import team.swyp.sdu.utils.CameraLaunchConfig
+import team.swyp.sdu.utils.handleCameraPermissionResult
 import java.util.Date
 
 /**
@@ -199,11 +202,27 @@ fun EmotionRecordStepRoute(
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            cameraImageUri?.let { uri ->
-                cameraLauncher.launch(uri)
-            }
-        }
+        // 권한 요청 결과 처리 (재사용 가능한 패턴 사용)
+        handleCameraPermissionResult(
+            context = context,
+            cameraLauncher = cameraLauncher,
+            imageUri = cameraImageUri,
+            createUri = {
+                // URI 생성 로직 (권한 승인 후 재생성)
+                val contentValues = ContentValues().apply {
+                    put(
+                        MediaStore.MediaColumns.DISPLAY_NAME,
+                        "emotion_image_${System.currentTimeMillis()}.jpg"
+                    )
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/Emotions")
+                    }
+                }
+                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            },
+            isGranted = isGranted
+        )
     }
 
     val galleryPermissionLauncher = rememberLauncherForActivityResult(
@@ -416,24 +435,19 @@ private fun EmotionRecordStepScreenContent(
                     photoUri = emotionPhotoUri,
                     onPhotoUriChange = onPhotoUriChange,
                     cameraLauncher = {
-                        // 카메라 권한 체크 및 실행
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (androidx.core.content.ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.CAMERA
-                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            ) {
-                                cameraImageUri?.let { uri ->
-                                    cameraLauncher.launch(uri)
+                        // 카메라 권한 체크 및 실행 (재사용 가능한 패턴 사용)
+                        launchCameraWithPermission(
+                            context = context,
+                            config = CameraLaunchConfig(
+                                cameraLauncher = cameraLauncher,
+                                permissionLauncher = cameraPermissionLauncher,
+                                imageUri = cameraImageUri,
+                                onImageCaptured = { uri ->
+                                    // 이미 촬영 완료 후 처리되므로 여기서는 로깅만
+                                    Timber.d("EmotionRecordStep: 카메라 촬영 완료: $uri")
                                 }
-                            } else {
-                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                            }
-                        } else {
-                            cameraImageUri?.let { uri ->
-                                cameraLauncher.launch(uri)
-                            }
-                        }
+                            )
+                        )
                     },
                     galleryLauncher = {
                         // 갤러리 권한 체크 및 실행
