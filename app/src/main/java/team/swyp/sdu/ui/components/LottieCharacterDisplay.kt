@@ -4,11 +4,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -67,30 +72,33 @@ fun LottieCharacterDisplay(
             )
         } else {
             // 아이템 교체 중이거나 로딩 완료 상태 → Lottie 애니메이션 표시
-            // 아이템 교체 중일 때는 기존 캐릭터를 유지하여 깜빡임 방지
-            val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
+        // 아이템 교체 중일 때는 기존 캐릭터를 유지하여 깜빡임 방지
+        val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
 
-            // ✅ Keyed Composition: 같은 JSON이면 기존 composition 재사용하여 깜빡임 방지
-            val compositionKey = when (compositionSpec) {
-                is LottieCompositionSpec.JsonString -> compositionSpec.jsonString.hashCode().toString()
-                is LottieCompositionSpec.RawRes -> compositionSpec.resId.toString()
-                else -> "default"
-            }
+            // ✅ Composition 상태 관리 (깜빡임 방지)
+            var currentComposition by remember { mutableStateOf<LottieComposition?>(null) }
 
-            val composition by rememberLottieComposition(
-                cacheKey = compositionKey, // 🔑 같은 key면 composition 재사용
+            // 새로운 composition 로드
+            val newComposition by rememberLottieComposition(
                 spec = compositionSpec
             )
 
-            // ✅ Composition이 준비될 때까지 기본 애니메이션 표시 (깜빡임 방지)
-            if (composition != null) {
+            // 새로운 composition이 준비되면 즉시 교체 (기존 composition 유지)
+            LaunchedEffect(newComposition) {
+                newComposition?.let { composition ->
+                    currentComposition = composition
+                }
+            }
+
+            // 현재 composition이 있으면 표시, 없으면 기본 애니메이션
+            currentComposition?.let { composition ->
                 LottieAnimation(
                     composition = composition,
                     iterations = LottieConstants.IterateForever,
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                // Composition 로드 중일 때 기본 애니메이션 표시
+            } ?: run {
+                // 초기 로딩 시 기본 애니메이션 표시
                 val fallbackComposition by rememberLottieComposition(
                     LottieCompositionSpec.RawRes(defaultAnimationResId)
                 )

@@ -48,8 +48,7 @@ class FriendRecordViewModel @Inject constructor(
     private var likeToggleJob: Job? = null
 
     // LRU 캐시: 최근 MAX_CACHE_SIZE명 저장
-    // 키: nickname (현재 API 구조상 nickname으로 팔로워 정보 조회)
-    // TODO: 추후 팔로워 ID나 userId 기반 캐시로 개선 권장
+    // 키: "${nickname}_${level}_${grade}" (레벨/등급 변경 시 캐시 무효화를 위해 포함)
     private val friendStateCache: LinkedHashMap<String, FriendRecordState> =
         object : LinkedHashMap<String, FriendRecordState>(MAX_CACHE_SIZE + 1, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, FriendRecordState>?): Boolean {
@@ -58,33 +57,21 @@ class FriendRecordViewModel @Inject constructor(
         }
 
     /**
+     * 캐시 키 생성 (nickname, level, grade를 포함)
+     */
+    private fun createCacheKey(nickname: String, level: Int, grade: Grade): String {
+        return "${nickname}_${level}_${grade.name}"
+    }
+
+    /**
      * 팔로워 산책 기록 로드
      */
     fun loadFollowerWalkRecord(nickname: String) {
         viewModelScope.launch {
-            // 1️⃣ 캐시 확인 (nickname만으로 캐시)
-            friendStateCache[nickname]?.let { cachedState ->
-                // 캐시된 Lottie JSON 사용 (없으면 생성)
-                val lottieJson = cachedState.processedLottieJson
-                    ?: generateFriendCharacterLottie(cachedState.record.character)
-
-                Timber.d("🎭 FriendRecord 캐시 사용: nickname=$nickname, lottieJson=${lottieJson?.length} characters")
-
-                _uiState.value = FriendRecordUiState.Success(
-                    data = cachedState.record,
-                    like = LikeUiState(
-                        count = cachedState.record.likeCount,
-                        isLiked = cachedState.record.liked
-                    ),
-                    processedLottieJson = lottieJson
-                )
-                return@launch
-            }
-
-            // 2️⃣ 로딩 상태
+            // 1️⃣ 로딩 상태
             _uiState.value = FriendRecordUiState.Loading
 
-            // 3️⃣ 현재 위치 가져오기
+            // 2️⃣ 현재 위치 가져오기
             val currentLocation = try {
                 locationManager.getCurrentLocationOrLast()
             } catch (t: Throwable) {
@@ -92,7 +79,7 @@ class FriendRecordViewModel @Inject constructor(
                 null
             }
 
-            // 4️⃣ 서버 요청 (위치 정보 포함)
+            // 3️⃣ 서버 요청 (위치 정보 포함)
             val result = withContext(Dispatchers.IO) {
                 walkRepository.getFollowerWalkRecord(
                     nickname = nickname,
@@ -104,19 +91,43 @@ class FriendRecordViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> {
                     val record = result.data
+                    val character = record.character
 
-                    // 4️⃣ Lottie 캐릭터 JSON 생성
-                    Timber.d("🎭 FriendRecord Character 데이터: head=${record.character.headImageName}, body=${record.character.bodyImageName}, feet=${record.character.feetImageName}, tag=${record.character.headImageTag}")
-                    val lottieJson = generateFriendCharacterLottie(record.character)
+                    // 1️⃣ 캐시 키 생성 (level과 grade 포함)
+                    val cacheKey = createCacheKey(nickname, character.level, character.grade)
+
+                    // 2️⃣ 캐시 확인 (레벨/등급이 포함된 키로 확인)
+                    friendStateCache[cacheKey]?.let { cachedState ->
+                        // 캐시된 Lottie JSON 사용 (없으면 생성)
+                        val lottieJson = cachedState.processedLottieJson
+                            ?: generateFriendCharacterLottie(cachedState.record.character)
+
+                        Timber.d("🎭 FriendRecord 캐시 사용: cacheKey=$cacheKey, lottieJson=${lottieJson?.length} characters")
+
+                        _uiState.value = FriendRecordUiState.Success(
+                            data = cachedState.record,
+                            like = LikeUiState(
+                                count = cachedState.record.likeCount,
+                                isLiked = cachedState.record.liked
+                            ),
+                            processedLottieJson = lottieJson
+                        )
+                        return@launch
+                    }
+
+                    // 3️⃣ 캐시가 없으면 Lottie JSON 생성 및 캐시 저장
+                    Timber.d("🎭 FriendRecord Character 데이터: head=${character.headImageName}, body=${character.bodyImageName}, feet=${character.feetImageName}, tag=${character.headImageTag}, level=${character.level}, grade=${character.grade}")
+                    val lottieJson = generateFriendCharacterLottie(character)
                     Timber.d("🎭 FriendRecord Lottie JSON 생성 완료: ${lottieJson?.length} characters")
 
-                    // 5️⃣ 캐시에 저장 (성공 시, Lottie JSON 포함)
-                    friendStateCache[nickname] = FriendRecordState(
+                    // 4️⃣ 캐시에 저장 (레벨/등급이 포함된 키로 저장, Lottie JSON 포함)
+                    friendStateCache[cacheKey] = FriendRecordState(
                         record = record,
                         processedLottieJson = lottieJson
                     )
+                    Timber.d("🎭 FriendRecord 캐시 저장: cacheKey=$cacheKey")
 
-                    // 6️⃣ UI 업데이트 (Lottie JSON 포함)
+                    // 5️⃣ UI 업데이트 (Lottie JSON 포함)
                     _uiState.value = FriendRecordUiState.Success(
                         data = record,
                         like = LikeUiState(
@@ -182,8 +193,17 @@ class FriendRecordViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 친구 캐시 삭제 (nickname으로 시작하는 모든 캐시 키 삭제)
+     * 레벨/등급이 변경되어도 이전 캐시가 남아있을 수 있으므로 모두 삭제
+     */
     fun deleteFriend(nickname: String) {
-        friendStateCache.remove(nickname)
+        val keysToRemove = friendStateCache.keys.filter { it.startsWith("${nickname}_") }
+        keysToRemove.forEach { key ->
+            friendStateCache.remove(key)
+            Timber.d("🎭 FriendRecord 캐시 삭제: key=$key")
+        }
+        Timber.d("🎭 FriendRecord 캐시 삭제 완료: nickname=$nickname, 삭제된 키 개수=${keysToRemove.size}")
     }
 
     /**

@@ -146,6 +146,21 @@ class HomeViewModel @Inject constructor(
     val characterLottieState: StateFlow<team.swyp.sdu.domain.model.LottieCharacterState?> =
         _characterLottieState.asStateFlow()
 
+    // 캐릭터 Lottie 상태 캐시 (레벨/등급 변경 시 캐시 무효화를 위해 포함)
+    // 본인 캐릭터만 관리하므로 단순 변수로 저장
+    private var cachedCharacterLottieState: team.swyp.sdu.domain.model.LottieCharacterState? = null
+    private var cachedCharacterKey: String? = null // "${userId}_${level}_${grade}"
+
+    // 테스트용 레벨/등급 순환 카운터
+    private var testLevelCycleCount = 0
+
+    /**
+     * 캐시 키 생성 (userId, level, grade를 포함)
+     */
+    private fun createCharacterCacheKey(userId: Long, level: Int, grade: Grade): String {
+        return "${userId}_${level}_${grade.name}"
+    }
+
     /**
      * 캐릭터 Lottie 표시 상태 로드
      */
@@ -162,16 +177,26 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
 
-                // userId로 캐릭터 정보 가져오기
-                val characterResult = characterRepository.getCharacter(userId)
-                val character = when (characterResult) {
-                    is Result.Success -> characterResult.data
-                    is Result.Error -> {
-                        Timber.w("🏠 HomeViewModel: 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
-                        null
+                // 캐릭터 정보 가져오기 (테스트용 UI 상태 우선 사용)
+                val character = when (val currentProfileState = _profileUiState.value) {
+                    is ProfileUiState.Success -> {
+                        // 테스트용: UI 상태의 캐릭터 정보 우선 사용
+                        Timber.d("🏠 HomeViewModel: UI 상태의 캐릭터 정보 사용 - level=${currentProfileState.character.level}, grade=${currentProfileState.character.grade}")
+                        currentProfileState.character
                     }
-
-                    Result.Loading -> null
+                    else -> {
+                        // 서버에서 캐릭터 정보 가져오기
+                        Timber.d("🏠 HomeViewModel: 서버에서 캐릭터 정보 가져오기")
+                        val characterResult = characterRepository.getCharacter(userId)
+                        when (characterResult) {
+                            is Result.Success -> characterResult.data
+                            is Result.Error -> {
+                                Timber.w("🏠 HomeViewModel: 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
+                                null
+                            }
+                            Result.Loading -> null
+                        }
+                    }
                 }
 
                 if (character == null) {
@@ -179,6 +204,19 @@ class HomeViewModel @Inject constructor(
                     _characterLottieState.value = null
                     return@launch
                 }
+
+                // 1️⃣ 캐시 키 생성 (level과 grade 포함)
+                val cacheKey = createCharacterCacheKey(userId, character.level, character.grade)
+
+                // 2️⃣ 캐시 확인 (레벨/등급이 포함된 키로 확인)
+                if (cachedCharacterKey == cacheKey && cachedCharacterLottieState != null) {
+                    Timber.d("🏠 HomeViewModel: 캐시 사용: cacheKey=$cacheKey")
+                    _characterLottieState.value = cachedCharacterLottieState
+                    return@launch
+                }
+
+                // 3️⃣ 캐시가 없거나 키가 변경되었으면 Lottie 상태 생성 및 캐시 저장
+                Timber.d("🏠 HomeViewModel: 캐시 없음 또는 키 변경, 새로 생성: cacheKey=$cacheKey, level=${character.level}, grade=${character.grade}")
 
                 // 캐릭터 등급에 따른 base Lottie JSON 로드
                 val baseJson = loadBaseLottieJson(character)
@@ -189,6 +227,11 @@ class HomeViewModel @Inject constructor(
                     lottieImageProcessor = lottieImageProcessor,
                     baseLottieJson = baseJson.toString()
                 )
+
+                // 4️⃣ 캐시에 저장 (레벨/등급이 포함된 키로 저장)
+                cachedCharacterKey = cacheKey
+                cachedCharacterLottieState = lottieState
+                Timber.d("🏠 HomeViewModel: 캐시 저장: cacheKey=$cacheKey")
 
                 _characterLottieState.value = lottieState
                 Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 완료")
@@ -203,6 +246,56 @@ class HomeViewModel @Inject constructor(
                     error = t.message ?: "캐릭터 표시 준비 실패"
                 )
             }
+        }
+    }
+
+    /**
+     * 캐릭터 Lottie 캐시 초기화 (레벨업 시 호출)
+     */
+    fun clearCharacterLottieCache() {
+        cachedCharacterKey = null
+        cachedCharacterLottieState = null
+        Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 캐시 초기화 완료")
+    }
+
+    /**
+     * 테스트용: ProfileUiState의 level과 grade를 순환시키는 함수
+     * 첫 번째 클릭: level 1, grade SEED
+     * 두 번째 클릭: level 4, grade SPROUT
+     * 세 번째 클릭: level 9, grade TREE
+     */
+    fun cycleCharacterLevelAndGradeForTest() {
+        viewModelScope.launch {
+            val currentProfileState = _profileUiState.value
+            if (currentProfileState !is ProfileUiState.Success) {
+                Timber.w("🏠 HomeViewModel: ProfileUiState가 Success 상태가 아님")
+                return@launch
+            }
+
+            // 테스트 순환 카운터 증가 (0, 1, 2 순환)
+            testLevelCycleCount = (testLevelCycleCount + 1) % 3
+
+            // 새로운 level과 grade 설정
+            val (newLevel, newGrade) = when (testLevelCycleCount) {
+                0 -> 1 to Grade.SEED
+                1 -> 4 to Grade.SPROUT
+                2 -> 9 to Grade.TREE
+                else -> 1 to Grade.SEED
+            }
+
+            // 캐릭터 업데이트 (level과 grade만 변경)
+            val updatedCharacter = currentProfileState.character.copy(
+                level = newLevel,
+                grade = newGrade
+            )
+
+            // ProfileUiState 업데이트
+            _profileUiState.value = currentProfileState.copy(character = updatedCharacter)
+
+            // 캐릭터 Lottie 재로드 (캐시 키 변경으로 자동 캐시 무효화)
+            loadCharacterDisplay()
+
+            Timber.d("🏠 HomeViewModel: 테스트용 레벨/등급 순환 - count=$testLevelCycleCount, level=$newLevel, grade=$newGrade")
         }
     }
 

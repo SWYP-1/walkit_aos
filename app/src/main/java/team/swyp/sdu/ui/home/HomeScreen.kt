@@ -87,6 +87,7 @@ fun HomeRoute(
         onRewardClick = { missionId ->
             viewModel.requestWeeklyMissionReward(missionId)
         },
+        onTestClick = { viewModel.cycleCharacterLevelAndGradeForTest() },
         onClickMissionMore = onClickMissionMore,
         onNavigateToRecord = onNavigateToRecord,
         modifier = modifier,
@@ -113,6 +114,7 @@ private fun HomeScreenContent(
     onRewardClick: (Long) -> Unit,
     onRetry: () -> Unit,
     onNavigateToRecord : () -> Unit,
+    onTestClick : () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -130,6 +132,7 @@ private fun HomeScreenContent(
             goalState = goalState,
             uiState = profileUiState,
             characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
+            onTestClick = onTestClick, // 테스트용 클릭 핸들러
             modifier = Modifier.fillMaxWidth(),
             onRetry = onRetry
         )
@@ -186,6 +189,7 @@ fun HomeScreen(
     onClickMissionMore: () -> Unit = {},
     onNavigateToRecord : () -> Unit = {},
     onRetry: () -> Unit = {},
+    onTestClick : () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     HomeScreenContent(
@@ -203,6 +207,7 @@ fun HomeScreen(
         onRetry = onRetry,
         onNavigateToRecord = onNavigateToRecord,
         onClickWalk = onClickWalk,
+        onTestClick = onTestClick,
         modifier = modifier,
     )
 }

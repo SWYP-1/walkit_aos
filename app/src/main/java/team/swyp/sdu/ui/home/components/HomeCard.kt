@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -61,156 +62,174 @@ fun WeeklyRecordCard(
     session: WalkingSession,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.width(230.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SemanticColor.backgroundWhitePrimary),
-        border = BorderStroke(width = 1.dp, color = SemanticColor.backgroundWhiteQuaternary)
+    Box(
+        modifier = modifier.width(230.dp)
     ) {
-        Column {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(190.dp)
-                        .background(
-                            Color(0xFFE6E6E6),
-                        ),
-                contentAlignment = Alignment.BottomStart,
-            ) {
-                // 이미지 URI 가져오기 (localImage -> serverImage 순서)
-                val imageUri = session.getImageUri()
-                if (imageUri != null) {
-                    // 이미지가 있으면 이미지 표시
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(
-                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
-                                    // 서버 URL인 경우
-                                    imageUri
-                                } else {
-                                    // 로컬 파일 경로인 경우
-                                    File(imageUri)
-                                }
-                            )
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "산책 기록 썸네일",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    )
-                } else {
-                    // 이미지가 없으면 경로 썸네일 표시
-                    PathThumbnail(
-                        locations = session.locations,
-                        modifier =
-                            Modifier
+
+        /* =========================
+         * 1. 카드 본체
+         * ========================= */
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = SemanticColor.backgroundWhitePrimary
+            ),
+            border = BorderStroke(
+                width = 1.dp,
+                color = SemanticColor.textBorderSecondaryInverse
+            )
+        ) {
+            Column {
+
+                /* ---------- 썸네일 영역 ---------- */
+                Box(
+                    modifier = Modifier
+                        .size(230.dp)
+                        .background(Color(0xFFE6E6E6)),
+                    contentAlignment = Alignment.BottomStart
+                ) {
+                    val imageUri = session.getImageUri()
+
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(
+                                    if (
+                                        imageUri.startsWith("http://") ||
+                                        imageUri.startsWith("https://")
+                                    ) {
+                                        imageUri
+                                    } else {
+                                        File(imageUri)
+                                    }
+                                )
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "산책 기록 썸네일",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        PathThumbnail(
+                            locations = session.locations,
+                            modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp),
-                        pathColor = Color(0xFF4A4A4A),
-                    )
-                }
-
-                Row(
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = -16.dp,y = 26.dp),
-                ) {
-                    EmotionCircle(emotionType = stringToEmotionType(session.postWalkEmotion))
-                }
-            }
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text(
-                    text = FormatUtils.formatDate(session.startTime),
-                    // caption M/medium
-                    style = MaterialTheme.walkItTypography.captionM.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = SemanticColor.textBorderSecondary,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
-                ) {
-                    // 걸음 수 (AnnotatedString)
-                    Row(
-                        Modifier.weight(1f),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = buildAnnotatedString {
-                                append("%,d".format(session.stepCount))
-                                withStyle(
-                                    SpanStyle(
-                                        fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
-                                        fontWeight = FontWeight.Normal,
-                                        color = SemanticColor.textBorderPrimary
-                                    )
-                                ) {
-                                    append(" 걸음")
-                                }
-                            },
-                            style = MaterialTheme.walkItTypography.bodyXL,
-                            color = SemanticColor.textBorderPrimary,
+                            pathColor = Color(0xFF4A4A4A),
                         )
                     }
-                    VerticalDivider(
-                        thickness = 1.dp,
-                        modifier = Modifier.height(18.dp),
-                        color = SemanticColor.backgroundWhiteQuaternary
+                }
+
+                /* ---------- 하단 텍스트 영역 ---------- */
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
+                    Text(
+                        text = FormatUtils.formatDate(session.startTime),
+                        style = MaterialTheme.walkItTypography.captionM.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = SemanticColor.textBorderSecondary,
                     )
 
-                    // 시간 분 (WalkingStatsCard와 동일한 형식)
-                    Row(
-                        Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val durationMillis = session.duration
-                        val totalHours = (durationMillis / (1000 * 60 * 60)).toInt()
-                        val totalMinutes = ((durationMillis / (1000 * 60)) % 60).toInt()
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                        // 시간 표시
-                        Text(
-                            text = totalHours.toString(),
-                            style = MaterialTheme.walkItTypography.bodyXL.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = SemanticColor.textBorderPrimary
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+
+                        /* 걸음 수 */
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = "%,d".format(session.stepCount),
+                                style = MaterialTheme.walkItTypography.bodyXL,
+                                color = SemanticColor.textBorderPrimary
+                            )
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            Text(
+                                text = "걸음",
+                                style = MaterialTheme.walkItTypography.bodyS.copy(
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = SemanticColor.textBorderPrimary
+                            )
+                        }
+
+
+                        VerticalDivider(
+                            thickness = 1.dp,
+                            modifier = Modifier.height(18.dp),
+                            color = SemanticColor.backgroundWhiteQuaternary
                         )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = "시간",
-                            style = MaterialTheme.walkItTypography.bodyS,
-                            color = SemanticColor.textBorderPrimary
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        // 분 표시
-                        Text(
-                            text = totalMinutes.toString(),
-                            style = MaterialTheme.walkItTypography.bodyXL.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = SemanticColor.textBorderPrimary
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = "분",
-                            style = MaterialTheme.walkItTypography.bodyS,
-                            color = SemanticColor.textBorderPrimary
-                        )
+
+                        /* 시간 */
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val durationMillis = session.duration
+                            val totalHours =
+                                (durationMillis / (1000 * 60 * 60)).toInt()
+                            val totalMinutes =
+                                ((durationMillis / (1000 * 60)) % 60).toInt()
+
+                            Text(
+                                text = totalHours.toString(),
+                                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = SemanticColor.textBorderPrimary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "시간",
+                                style = MaterialTheme.walkItTypography.bodyS,
+                                color = SemanticColor.textBorderPrimary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = totalMinutes.toString(),
+                                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = SemanticColor.textBorderPrimary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "분",
+                                style = MaterialTheme.walkItTypography.bodyS,
+                                color = SemanticColor.textBorderPrimary
+                            )
+                        }
                     }
                 }
             }
         }
+
+        /* =========================
+         * 2. 감정 아이콘 (카드 오버레이)
+         * ========================= */
+        EmotionCircle(
+            emotionType = stringToEmotionType(session.postWalkEmotion),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = (-12).dp, y = -58.dp)
+        )
     }
 }
 
+
 @Composable
-fun EmotionCircle(emotionType: EmotionType) {
+fun EmotionCircle(emotionType: EmotionType,modifier: Modifier) {
 
 
     val drawable = when (emotionType) {
@@ -224,7 +243,7 @@ fun EmotionCircle(emotionType: EmotionType) {
     Image(
         painter = painterResource(drawable),
         contentDescription = "감정",
-        modifier = Modifier.size(52.dp),
+        modifier = modifier.size(52.dp),
     )
 }
 
@@ -294,7 +313,7 @@ fun WeeklyRecordCardPreview() {
             LocationPoint(37.5670, 126.9785)
         ),
         preWalkEmotion = "HAPPY",
-        postWalkEmotion = "CONTENT",
+        postWalkEmotion = "HAPPY",
         localImagePath = null,
         serverImageUrl = "https://picsum.photos/seed/picsum/400/300", // 이미지가 없는 상태
         createdDate = "2015-12-29",
@@ -317,7 +336,7 @@ fun WeeklyRecordCardPathPreview() {
         id = "session456",
         startTime = System.currentTimeMillis() - 172800000, // 그저께
         endTime = System.currentTimeMillis(),
-        stepCount = 3100,
+        stepCount = 710,
         totalDistance = 2500f,
         locations = listOf(
             LocationPoint(37.5665, 126.9780), // 서울 시청

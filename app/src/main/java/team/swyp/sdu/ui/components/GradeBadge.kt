@@ -28,21 +28,25 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun GradeBadge(
     grade: Grade,
+    level: Int? = null, // character의 실제 level을 사용할 수 있도록 추가
     modifier: Modifier = Modifier,
 ) {
+    // level 파라미터가 있으면 사용, 없으면 grade의 기본 level 사용
+    val displayLevel = level ?: grade.level
+
     val (text, backgroundColor, textColor) = when (grade) {
         Grade.SEED -> Triple(
-            "Lv.${grade.level} 씨앗",
+            "Lv.$displayLevel 씨앗",
             SemanticColor.stateAquaBlueTertiary,
             SemanticColor.stateAquaBluePrimary,
         )
         Grade.SPROUT -> Triple(
-            "Lv.${grade.level} 새싹",
+            "Lv.$displayLevel 새싹",
             SemanticColor.stateAquaBlueTertiary,
             SemanticColor.stateAquaBluePrimary,
         )
         Grade.TREE -> Triple(
-            "Lv.${grade.level} 나무",
+            "Lv.$displayLevel 나무",
             SemanticColor.stateAquaBlueTertiary,
             SemanticColor.stateAquaBluePrimary,
         )

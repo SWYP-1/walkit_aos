@@ -48,8 +48,8 @@ fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
         EmotionType.JOYFUL -> EmotionOption(
             imageResId = R.drawable.ic_circle_joyful,
             label = "즐겁다",
-            boxColor = SemanticColor.stateGreenPrimary,
-            textColor = SemanticColor.stateGreenTertiary,
+            boxColor = SemanticColor.stateGreenTertiary,
+            textColor = SemanticColor.stateGreenPrimary,
             value = emotionType.value
         )
 

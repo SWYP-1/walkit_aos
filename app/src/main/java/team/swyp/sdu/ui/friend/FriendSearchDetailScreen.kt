@@ -270,7 +270,8 @@ fun FriendSearchDetailScreenContent(
 
                         Row {
                             GradeBadge(
-                                grade = data.character.grade
+                                grade = data.character.grade,
+                                level = data.character.level
                             )
                             Spacer(Modifier.width(8.dp))
 

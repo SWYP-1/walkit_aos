@@ -211,7 +211,7 @@ private fun RecordScreenContent(
             // 친구 선택 시 FriendRecordScreen 표시
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .background(SemanticColor.backgroundWhiteSecondary)
             ) {
                 FriendRecordScreen(

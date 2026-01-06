@@ -61,6 +61,15 @@ fun getGradeLevelText(grade: Grade): String {
     return "Lv.${grade.level} $gradeName"
 }
 
+fun getGradeLevelText(level : Int,grade: Grade): String {
+    val gradeName = when (grade) {
+        Grade.SEED -> "씨앗"
+        Grade.SPROUT -> "묘목"
+        Grade.TREE -> "나무"
+    }
+    return "Lv.${level} $gradeName"
+}
+
 @Composable
 fun HomeNameAndGoalContent(
     nickName: String,
@@ -98,7 +107,7 @@ fun HomeNameAndGoalContent(
                     )
             ) {
                 Text(
-                    text = " ${getGradeLevelText(grade)}",
+                    text = " ${getGradeLevelText(level,grade)}",
                     // body S/semibold
                     style = MaterialTheme.walkItTypography.bodyS.copy(
                         fontWeight = FontWeight.SemiBold

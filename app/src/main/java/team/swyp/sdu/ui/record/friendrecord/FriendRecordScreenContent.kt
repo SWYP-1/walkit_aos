@@ -306,7 +306,7 @@ private fun CharacterInfoSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        GradeBadge(grade = character.grade)
+                        GradeBadge(grade = character.grade, level = character.level)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = character.nickName,

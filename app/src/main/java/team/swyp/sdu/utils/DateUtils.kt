@@ -45,6 +45,17 @@ object DateUtils {
             .atZone(ZoneId.of("UTC"))
             .format(isoDateTimeFormatter)
     }
+    fun formatDateYearMonthDate(timestampMillis: Long): String {
+        val formatter = DateTimeFormatter.ofPattern(
+            "yyyy년 M월 d일",
+            Locale.KOREAN
+        )
+
+        return Instant.ofEpochMilli(timestampMillis)
+            .atZone(ZoneId.systemDefault())
+            .format(formatter)
+    }
+
 
     /**
      * 밀리초 타임스탬프를 ISO 8601 UTC 형식의 문자열로 변환

@@ -154,7 +154,7 @@ fun PreWalkingEmotionSelectScreen(
     ) {
 
         AppHeader(title = "", showBackButton = true, onNavigateBack = onPrev)
-        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
+        Column(modifier = modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp)) {
             SectionCard {
                 Column(
                     Modifier
@@ -196,47 +196,29 @@ fun PreWalkingEmotionSelectScreen(
                     }
                 }
             )
-            Spacer(Modifier.weight(1f))
 
-            Spacer(Modifier.height(24.dp))
+        }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        // 🔹 하단 고정 영역
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PreviousButton(
+                onClick = onPrev
+            )
+            Box(
+                modifier = Modifier.weight(1f)
             ) {
-                PreviousButton(
-                    onClick = onPrev
+                CtaButton(
+                    text = "다음으로",
+                    onClick = onNext,
+                    enabled = true,
+                    iconResId = R.drawable.ic_arrow_forward,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                if (permissionsGranted) {
-                    Box(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        CtaButton(
-                            text = "다음으로",
-                            onClick = onNext,
-                            enabled = true,
-                            iconResId = R.drawable.ic_arrow_forward,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                } else {
-                    // 권한이 없을 때는 버튼 대신 메시지 표시
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "권한 허용 필요",
-                            style = MaterialTheme.walkItTypography.bodyS.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = SemanticColor.textBorderSecondary,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
             }
         }
     }

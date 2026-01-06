@@ -184,7 +184,7 @@ fun MainScreen(
                             locationViewModel.checkShouldShowDialog()
                         }
                     },
-                    modifier = Modifier.padding(bottom = 24.dp), // Custom Bottom Navigation 위에 표시 (시스템 네비게이션 바는 이미 고려됨)
+                    modifier = Modifier.padding(bottom = 8.dp), // Custom Bottom Navigation 위에 표시 (시스템 네비게이션 바는 이미 고려됨)
                 )
             }
         },

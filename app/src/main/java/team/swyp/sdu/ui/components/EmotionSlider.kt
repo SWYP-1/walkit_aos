@@ -66,7 +66,6 @@ fun EmotionSlider(
     onEmotionSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val thumbRadius = 28.dp
 
     // 현재 선택된 인덱스
     val currentSelectedIndex = selectedIndex ?: (emotions.size / 2).coerceIn(0, emotions.size - 1)
@@ -108,7 +107,7 @@ fun EmotionSlider(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(414.dp)
+            .height(432.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -137,7 +136,7 @@ fun EmotionSlider(
                         // 커스텀 thumb 디자인
                         Box(
                             modifier = Modifier
-                                .size(thumbRadius * 2)
+                                .height(48.dp).width(35.dp)
                                 .clip(CircleShape)
                                 .background(SemanticColor.buttonPrimaryActive),
                             contentAlignment = Alignment.Center
@@ -164,7 +163,7 @@ fun EmotionSlider(
             ) {
                 emotions.forEachIndexed { index, emotion ->
                     val isSelected = index == currentSelectedIndex
-                    val alpha = if (isSelected) 1.0f else 0.4f
+                    val alpha = if (isSelected) 1.0f else 0.5f
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -183,26 +182,27 @@ fun EmotionSlider(
                             }
                         )
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(20.dp))
 
                         // 라벨
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
+                                .width(72.dp)
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(emotion.boxColor)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = emotion.label,
                                 fontSize = 16.sp,
-                                fontWeight = if (isSelected) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.Normal
-                                },
-                                color = emotion.textColor
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = emotion.textColor,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
+
                     }
                 }
             }

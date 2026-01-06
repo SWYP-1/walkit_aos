@@ -186,7 +186,7 @@ object FormatUtils {
 
     // HomeCard.kt에서 사용하던 함수들
     fun formatDurationMMSS(durationMillis: Long): String = formatDuration(durationMillis, DurationStyle.MINUTES_SECONDS)
-    fun formatDate(timestampMillis: Long): String = DateUtils.formatToIsoDateTime(timestampMillis).substring(0, 10) // YYYY-MM-DD 형식
+    fun formatDate(timestampMillis: Long): String = DateUtils.formatDateYearMonthDate(timestampMillis)
 
     // WalkingUtils.kt에서 사용하던 함수들
     fun formatToMinutesSeconds(millis: Long): String = formatDuration(millis, DurationStyle.MINUTES_SECONDS)

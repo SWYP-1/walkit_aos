@@ -37,8 +37,8 @@ fun WalkingFloatingActionButton(
             .shadow(
                 elevation = 12.dp,
                 shape = CircleShape,
-                spotColor = Color.Black.copy(alpha = 0.15f),
-                ambientColor = Color.Black.copy(alpha = 0.15f),
+                spotColor = Color(0x26000000),
+                ambientColor = Color(0x26000000),
             ),
         shape = CircleShape,
         containerColor = SemanticColor.stateGreenTertiary, // #F3FFF8

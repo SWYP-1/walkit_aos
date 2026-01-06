@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -54,6 +55,7 @@ fun ProfileSection(
     uiState: ProfileUiState,
     goalState: DataState<Goal>,
     characterLottieState: LottieCharacterState?, // ✅ Lottie 캐릭터 상태 추가
+    onTestClick: () -> Unit = {}, // 테스트용 클릭 핸들러
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -64,7 +66,10 @@ fun ProfileSection(
     ) {
         when (uiState) {
             is ProfileUiState.Loading -> ProfileSkeleton()
-            is ProfileUiState.Success -> ProfileContent(uiState, goalState, characterLottieState)
+            is ProfileUiState.Success -> ProfileContent(
+                uiState, goalState, characterLottieState, onTestClick
+            )
+
             is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = onRetry)
         }
     }
@@ -77,30 +82,41 @@ fun ProfileSection(
 private fun ProfileContent(
     uiState: ProfileUiState.Success,
     goalState: DataState<Goal>,
-    characterLottieState: LottieCharacterState?, // ✅ Lottie 캐릭터 상태 추가
+    characterLottieState: LottieCharacterState?,
+    onTestClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
     Box(modifier = modifier.fillMaxSize()) {
-        // 배경 이미지
+
+        /* =====================================================
+         * 1. 배경 이미지
+         * ===================================================== */
         uiState.character.backgroundImageName?.let { bgImageUrl ->
             AsyncImage(
                 model = ImageRequest.Builder(context).data(bgImageUrl).crossfade(true).build(),
-                contentDescription = "배경 이미지",
+                contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                contentScale = ContentScale.Crop
             )
         }
-        Row(modifier = Modifier.padding(16.dp)) {
+
+        /* =====================================================
+         * 2. 상단 좌측 걸음 수
+         * ===================================================== */
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        ) {
             Text(
-                text = "${formatNumber(uiState.todaySteps)}",
+                text = formatNumber(uiState.todaySteps),
                 style = MaterialTheme.walkItTypography.headingXL.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
                 color = SemanticColor.textBorderPrimary,
-                modifier = Modifier.alignBy { it[FirstBaseline] }
-            )
+                modifier = Modifier.alignBy { it[FirstBaseline] })
             Spacer(Modifier.width(4.dp))
             Text(
                 text = "걸음",
@@ -108,57 +124,65 @@ private fun ProfileContent(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderPrimary,
-                modifier = Modifier.alignBy { it[FirstBaseline] } // 숫자와 베이스라인 맞춤
-            )
+                modifier = Modifier.alignBy { it[FirstBaseline] })
         }
 
-
-        // 우측 상단 날씨 텍스트
+        /* =====================================================
+         * 3. 상단 우측 날씨
+         * ===================================================== */
         uiState.weather?.let { weather ->
-            val weatherRes =
-                resolveWeatherIconRes(weather)
-            val temperatureText = uiState.temperature?.toInt()?.toString()
-                ?: "-"
+            val weatherRes = resolveWeatherIconRes(weather)
+            val temperatureText = uiState.temperature?.toInt()?.toString() ?: "-"
 
             InfoBadge(
                 iconPainter = painterResource(weatherRes),
                 text = temperatureText,
-                modifier = modifier
-                    .padding(vertical = 20.5.dp, horizontal = 16.dp)
+                modifier = Modifier
+                    .padding(vertical = 20.dp, horizontal = 16.dp)
                     .align(Alignment.TopEnd)
             )
         }
 
-        // 바텀 컨텐츠
-        Column(
+        /* =====================================================
+         * 4. 캐릭터 (⭐ 바닥 기준 고정 ⭐)
+         * ===================================================== */
+
+        val logicalSize = 130.dp
+        val visualScale = 2f
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                // 하단 UI 영역만큼 띄워줌 (겹침 방지)
+                .padding(bottom = 140.dp), contentAlignment = Alignment.BottomCenter
         ) {
-            // Lottie 캐릭터 표시
             LottieCharacterDisplay(
                 characterLottieState = characterLottieState,
-                size = 280, // 기존 캐릭터 이미지 크기와 동일,
-                modifier = Modifier.offset(y = 70.dp)
-            )
-
-            // 사용자 정보 및 목표
-            HomeNameAndGoalContent(
-                nickName = uiState.nickname,
-                goal = uiState.goal ?: Goal.EMPTY,
-                grade = uiState.character.grade,
-                level = uiState.character.level,
-                walkProgressPercentage = uiState.walkProgressPercentage,
                 modifier = Modifier
-                    .background(
-                        GradientUtils.fadeToDark()
-                    )
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .size(logicalSize)
+                    .scale(visualScale)
+                    .clickable(onClick = onTestClick)
             )
         }
+
+        /* =====================================================
+         * 5. 하단 사용자 정보 & 목표 (완전 분리)
+         * ===================================================== */
+        HomeNameAndGoalContent(
+            nickName = uiState.nickname,
+            goal = uiState.goal ?: Goal.EMPTY,
+            grade = uiState.character.grade,
+            level = uiState.character.level,
+            walkProgressPercentage = uiState.walkProgressPercentage,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(GradientUtils.fadeToDark())
+                .padding(horizontal = 16.dp, vertical = 20.dp)
+        )
     }
 }
+
 
 /**
  * 프로필 스켈레톤 (레이아웃 계약 준수)
@@ -367,14 +391,12 @@ private fun ProfileSectionSuccessPreview() {
                     backgroundImageName = "https://example.com/background.png"
                 ), walkProgressPercentage = "75", goal = Goal(
                     targetStepCount = 10000, targetWalkCount = 30
-                ), weather = WeatherType.SNOW,
-                temperature = 12.4, todaySteps = 8500
+                ), weather = WeatherType.SNOW, temperature = 12.4, todaySteps = 8500
             ), goalState = DataState.Success(
                 Goal(
                     targetStepCount = 10000, targetWalkCount = 30
                 )
-            ),
-            characterLottieState = null // Preview에서는 null로 설정
+            ), characterLottieState = null // Preview에서는 null로 설정
         )
     }
 }

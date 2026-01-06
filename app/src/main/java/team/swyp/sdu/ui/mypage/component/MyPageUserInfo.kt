@@ -53,6 +53,7 @@ fun MyPageUserInfo(
     nickname: String,
     profileImageUrl: String? = null,
     grade: Grade?,
+    level: Int? = null,
     consecutiveDays: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -77,7 +78,7 @@ fun MyPageUserInfo(
             )
             if (grade != null) {
                 Spacer(Modifier.width(8.dp))
-                GradeBadge(grade = grade)
+                GradeBadge(grade = grade, level = level)
             }
         }
         Spacer(Modifier.height(4.dp))

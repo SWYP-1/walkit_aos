@@ -33,6 +33,7 @@ import team.swyp.sdu.ui.theme.walkItTypography
 @Composable
 fun DressingRoomHeader(
     grade: team.swyp.sdu.domain.model.Grade,
+    level: Int? = null,
     nickName: String,
     onBack: () -> Unit = {},
     onClickQuestion: () -> Unit = {},
@@ -62,7 +63,7 @@ fun DressingRoomHeader(
             modifier = Modifier.weight(1f) // 남는 공간 채우기
         ) {
 
-            GradeBadge(grade)
+            GradeBadge(grade = grade, level = level)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = nickName,

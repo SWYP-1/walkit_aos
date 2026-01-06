@@ -69,7 +69,7 @@ fun MyPageSettingsSection(
             Spacer(Modifier.height(8.dp))
             MenuItem("내 미션",onNavigateMission)
 //            Spacer(Modifier.height(8.dp))
-//            MenuItem("커스텀 테스트", onNavigateCustomTest)
+            MenuItem("커스텀 테스트", onNavigateCustomTest)
             Spacer(Modifier.height(12.dp))
         }
     }

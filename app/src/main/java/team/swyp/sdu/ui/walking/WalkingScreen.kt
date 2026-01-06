@@ -225,6 +225,7 @@ fun WalkingScreenRoute(
                 }
             }
         }
+
         ConfirmDialog(
             title = "산책 중단",
             message = "산책을 중단하시겠습니까?",
