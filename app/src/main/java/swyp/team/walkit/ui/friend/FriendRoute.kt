@@ -1,0 +1,386 @@
+package swyp.team.walkit.ui.friend
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
+import swyp.team.walkit.R
+import swyp.team.walkit.domain.model.Friend
+import swyp.team.walkit.ui.components.AppHeader
+import swyp.team.walkit.ui.components.ConfirmDialog
+import swyp.team.walkit.ui.components.LoadingOverlay
+import swyp.team.walkit.ui.components.SearchBar
+import swyp.team.walkit.ui.theme.Pretendard
+import swyp.team.walkit.ui.theme.SemanticColor
+import swyp.team.walkit.ui.theme.TypeScale
+import swyp.team.walkit.ui.theme.WalkItTheme
+import swyp.team.walkit.ui.theme.walkItTypography
+
+/**
+ * 친구 목록 화면 Route
+ *
+ * ViewModel 주입 및 상태 수집을 담당합니다.
+ */
+@Composable
+fun FriendRoute(
+    onNavigateBack: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: FriendViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val filteredFriends by viewModel.filteredFriends.collectAsStateWithLifecycle()
+
+    FriendScreen(
+        uiState = uiState,
+        filteredFriends = filteredFriends,
+        query = viewModel.query,
+        onNavigateBack = onNavigateBack,
+        onNavigateToSearch = onNavigateToSearch,
+        onQueryChange = viewModel::updateQuery,
+        onClearQuery = viewModel::clearQuery,
+        onBlockFriend = viewModel::blockFriend,
+        onRetry = viewModel::loadFriends,
+        modifier = modifier,
+    )
+}
+
+/**
+ * 친구 목록 화면
+ *
+ * 로딩 상태 및 UI 상태에 따른 화면 분기 처리
+ */
+@Composable
+private fun FriendScreen(
+    uiState: FriendUiState,
+    filteredFriends: List<Friend>,
+    query: StateFlow<String>,
+    onNavigateBack: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    onBlockFriend: (String) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        when (uiState) {
+            is FriendUiState.Loading -> {
+                // 로딩 중일 때는 빈 화면 표시 (LoadingOverlay가 오버레이로 표시됨)
+                Box(modifier = Modifier.fillMaxSize())
+            }
+            is FriendUiState.Success -> {
+                FriendScreenContent(
+                    filteredFriends = filteredFriends,
+                    query = query,
+                    onNavigateBack = onNavigateBack,
+                    onNavigateToSearch = onNavigateToSearch,
+                    onQueryChange = onQueryChange,
+                    onClearQuery = onClearQuery,
+                    onBlockFriend = onBlockFriend,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            is FriendUiState.Error -> {
+                // 에러 상태일 때는 빈 화면 표시 (나중에 에러 화면 추가 가능)
+                Box(modifier = Modifier.fillMaxSize())
+            }
+        }
+
+        // 로딩 오버레이 (로딩 중일 때만 표시)
+        LoadingOverlay(isLoading = uiState is FriendUiState.Loading)
+    }
+}
+
+/**
+ * 친구 목록 화면 Content
+ *
+ * 실제 UI 컴포넌트를 렌더링합니다.
+ */
+@Composable
+private fun FriendScreenContent(
+    filteredFriends: List<Friend>,
+    query: StateFlow<String>,
+    onNavigateBack: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    onBlockFriend: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val queryValue by query.collectAsStateWithLifecycle()
+    var menuTargetId by remember { mutableStateOf<String?>(null) }
+    var confirmTarget by remember { mutableStateOf<Friend?>(null) }
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(SemanticColor.backgroundWhitePrimary),
+    ) {
+        AppHeader(title = "친구목록", onNavigateBack = onNavigateBack, rightAction = {
+            IconButton(
+                onClick = { onNavigateToSearch() },
+                modifier = Modifier.size(24.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_plus),
+                    contentDescription = "친구 추가로 이동",
+                    tint = SemanticColor.iconBlack,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        })
+
+        SearchBar(
+            query = queryValue,
+            onQueryChange = onQueryChange,
+            onClear = onClearQuery,
+            modifier = Modifier.padding(16.dp)
+        )
+        Row(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "${filteredFriends.size}",
+                // body S/medium
+                style = MaterialTheme.walkItTypography.bodyS.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = SemanticColor.textBorderGreenSecondary
+            )
+            Spacer(Modifier.width(4.dp))
+            // body S/regular
+            Text(
+                text = "명",
+                style = MaterialTheme.walkItTypography.bodyS,
+                color = SemanticColor.iconGrey
+            )
+        }
+        // 친구 목록 화면 (로컬 필터링)
+        FriendListScreen(
+            friends = filteredFriends,
+            menuTargetId = menuTargetId,
+            onMoreClick = { friend -> menuTargetId = friend.id },
+            onMenuDismiss = { menuTargetId = null },
+            onBlockClick = { friend ->
+                confirmTarget = friend
+                menuTargetId = null
+            },
+        )
+    }
+
+    confirmTarget?.let { target ->
+        ConfirmDialog(
+            title = "친구 차단하기",
+            message = "${target.nickname} 을(를) 차단하시겠습니까?",
+            onDismiss = { confirmTarget = null },
+            onNegative = { confirmTarget = null },
+            onPositive = {
+                onBlockFriend(target.id)
+                confirmTarget = null
+            },
+        )
+    }
+}
+
+/**
+ * 친구 목록 화면
+ */
+@Composable
+private fun FriendListScreen(
+    friends: List<Friend>,
+    menuTargetId: String?,
+    onMoreClick: (Friend) -> Unit,
+    onMenuDismiss: () -> Unit,
+    onBlockClick: (Friend) -> Unit,
+) {
+    Surface(
+        tonalElevation = 0.dp,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(SemanticColor.backgroundWhitePrimary),
+    ) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            items(friends) { friend ->
+                FriendRow(
+                    friend = friend,
+                    menuOpen = menuTargetId == friend.id,
+                    onMoreClick = onMoreClick,
+                    onMenuDismiss = onMenuDismiss,
+                    onBlockClick = onBlockClick,
+                )
+            }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun FriendRow(
+    friend: Friend,
+    menuOpen: Boolean,
+    onMoreClick: (Friend) -> Unit,
+    onMenuDismiss: () -> Unit,
+    onBlockClick: (Friend) -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFFFFF)) // color/background/whtie-primary
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            // 왼쪽: 프로필 이미지 + 닉네임
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // 프로필 이미지 (36x36, 원형)
+                Box(
+                    modifier =
+                        Modifier
+                            .clip(CircleShape)
+                            .size(36.dp)
+                            .background(
+                                Color(0xFFF3F3F5), // color/text-border/secondary-inverse
+                                CircleShape,
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(friend.avatarUrl)
+                            .build(),
+                        contentDescription = "기본 캐릭터",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                // 닉네임
+                Text(
+                    text = friend.nickname ?: "게스트",
+                    fontFamily = Pretendard,
+                    fontSize = TypeScale.BodyM, // 16sp
+                    fontWeight = FontWeight.Medium, // Medium
+                    lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
+                    letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
+                    color = Color(0xFF191919), // color/text-border/primary
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // 오른쪽: 더보기 아이콘
+            Box {
+                IconButton(onClick = { onMoreClick(friend) }) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = "더보기",
+                        tint = Color(0xFF818185), // grey
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = onMenuDismiss,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("친구 차단하기") },
+                        onClick = { onBlockClick(friend) },
+                    )
+                }
+            }
+        }
+
+        // 하단 Divider
+        Divider(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
+            color = Color(0xFFF3F3F5), // color/text-border/secondary-inverse
+            thickness = 1.dp,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FriendScreenPreview() {
+    val mockFriends = listOf(
+        Friend("1", "닉네임 01"),
+        Friend("2", "닉네임 02"),
+        Friend("3", "닉네임 03"),
+        Friend("4", "닉네임 04"),
+        Friend("5", "닉네임 05"),
+    )
+
+    WalkItTheme {
+        FriendScreen(
+            uiState = FriendUiState.Success(mockFriends),
+            filteredFriends = mockFriends,
+            query = flowOf("") as StateFlow<String>,
+            onNavigateBack = {},
+            onNavigateToSearch = {},
+            onQueryChange = {},
+            onClearQuery = {},
+            onBlockFriend = {},
+            onRetry = {},
+            modifier = Modifier,
+        )
+    }
+}

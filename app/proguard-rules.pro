@@ -39,38 +39,38 @@
 -keepclasseswithmembers class kotlinx.serialization.json.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
--keep,includedescriptorclasses class team.swyp.sdu.**$$serializer { *; }
--keepclassmembers class team.swyp.sdu.** {
+-keep,includedescriptorclasses class swyp.team.walkit.**$$serializer { *; }
+-keepclassmembers class swyp.team.walkit.** {
     *** Companion;
 }
--keepclasseswithmembers class team.swyp.sdu.** {
+-keepclasseswithmembers class swyp.team.walkit.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
 # Keep all serializable classes
--keep @kotlinx.serialization.Serializable class team.swyp.sdu.** { *; }
+-keep @kotlinx.serialization.Serializable class swyp.team.walkit.** { *; }
 
 # ============================================
 # Kotlinx Serialization Enum 보호
 # ============================================
 # @Serializable 어노테이션이 있는 enum 클래스 보호
--keep @kotlinx.serialization.Serializable enum team.swyp.sdu.** {
+-keep @kotlinx.serialization.Serializable enum swyp.team.walkit.** {
     *;
 }
 
 # @SerialName 어노테이션이 있는 enum 값 보호
--keepclassmembers @kotlinx.serialization.Serializable enum team.swyp.sdu.** {
+-keepclassmembers @kotlinx.serialization.Serializable enum swyp.team.walkit.** {
     @kotlinx.serialization.SerialName <fields>;
 }
 
 # enum의 values()와 valueOf() 메서드 보호 (직렬화/역직렬화에 필요)
--keepclassmembers @kotlinx.serialization.Serializable enum team.swyp.sdu.** {
+-keepclassmembers @kotlinx.serialization.Serializable enum swyp.team.walkit.** {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
 # enum의 모든 필드와 메서드 보호
--keepclassmembers @kotlinx.serialization.Serializable enum team.swyp.sdu.** {
+-keepclassmembers @kotlinx.serialization.Serializable enum swyp.team.walkit.** {
     <fields>;
     <methods>;
 }
@@ -81,7 +81,7 @@
 -keep class * implements android.os.Parcelable {
     public static final ** CREATOR;
 }
--keepclassmembers class team.swyp.sdu.** implements android.os.Parcelable {
+-keepclassmembers class swyp.team.walkit.** implements android.os.Parcelable {
     static ** CREATOR;
 }
 
@@ -123,25 +123,25 @@
 }
 
 # Hilt EntryPoint 보호
--keep @dagger.hilt.EntryPoint interface team.swyp.sdu.** { *; }
+-keep @dagger.hilt.EntryPoint interface swyp.team.walkit.** { *; }
 
 # Hilt AndroidEntryPoint 보호
--keep @dagger.hilt.android.AndroidEntryPoint class team.swyp.sdu.** { *; }
+-keep @dagger.hilt.android.AndroidEntryPoint class swyp.team.walkit.** { *; }
 -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.app.Activity { *; }
 -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.app.Service { *; }
 -keep @dagger.hilt.android.AndroidEntryPoint class * extends android.content.BroadcastReceiver { *; }
 
 # Hilt ViewModel 보호
--keep @dagger.hilt.android.lifecycle.HiltViewModel class team.swyp.sdu.** { *; }
+-keep @dagger.hilt.android.lifecycle.HiltViewModel class swyp.team.walkit.** { *; }
 
 # ============================================
 # Room Database
 # ============================================
 -keep class * extends androidx.room.RoomDatabase
 -dontwarn androidx.room.paging.**
--keep @androidx.room.Entity class team.swyp.sdu.** { *; }
--keep class team.swyp.sdu.**_Impl { *; }
--keep class team.swyp.sdu.**_Impl$* { *; }
+-keep @androidx.room.Entity class swyp.team.walkit.** { *; }
+-keep class swyp.team.walkit.**_Impl { *; }
+-keep class swyp.team.walkit.**_Impl$* { *; }
 
 # ============================================
 # Jetpack Compose
@@ -156,8 +156,8 @@
 -dontwarn androidx.navigation.**
 
 # Navigation Screen (sealed class) 보호
--keep class team.swyp.sdu.navigation.Screen { *; }
--keep class team.swyp.sdu.navigation.Screen$* { *; }
+-keep class swyp.team.walkit.navigation.Screen { *; }
+-keep class swyp.team.walkit.navigation.Screen$* { *; }
 
 # ============================================
 # Lottie
@@ -166,7 +166,7 @@
 -dontwarn com.airbnb.lottie.**
 
 # LottieImageProcessor 보호 (JSONObject 사용)
--keep class team.swyp.sdu.domain.service.LottieImageProcessor { *; }
+-keep class swyp.team.walkit.domain.service.LottieImageProcessor { *; }
 -keep class org.json.JSONObject { *; }
 -keep class org.json.JSONArray { *; }
 
@@ -221,10 +221,10 @@
 -dontwarn com.google.android.gms.**
 
 # Location Tracking Service 보호
--keep class team.swyp.sdu.domain.service.LocationTrackingService { *; }
--keep class team.swyp.sdu.domain.service.LocationTrackingService$* { *; }
--keep class team.swyp.sdu.domain.service.ActivityRecognitionManager { *; }
--keep class team.swyp.sdu.domain.service.ActivityRecognitionManager$* { *; }
+-keep class swyp.team.walkit.domain.service.LocationTrackingService { *; }
+-keep class swyp.team.walkit.domain.service.LocationTrackingService$* { *; }
+-keep class swyp.team.walkit.domain.service.ActivityRecognitionManager { *; }
+-keep class swyp.team.walkit.domain.service.ActivityRecognitionManager$* { *; }
 
 # BroadcastReceiver 보호 (PendingIntent에서 사용)
 -keep class * extends android.content.BroadcastReceiver { *; }
@@ -264,13 +264,13 @@
 -dontwarn androidx.work.**
 
 # WorkManager Worker 보호
--keep class team.swyp.sdu.worker.** { *; }
--keepclassmembers class team.swyp.sdu.worker.** {
+-keep class swyp.team.walkit.worker.** { *; }
+-keepclassmembers class swyp.team.walkit.worker.** {
     *;
 }
 
 # Hilt Worker 보호
--keep @androidx.hilt.work.HiltWorker class team.swyp.sdu.** { *; }
+-keep @androidx.hilt.work.HiltWorker class swyp.team.walkit.** { *; }
 
 # ============================================
 # DataStore
@@ -290,122 +290,122 @@
 -dontwarn com.google.firebase.messaging.**
 
 # Firebase Messaging Service 보호
--keep class team.swyp.sdu.domain.service.WalkItFirebaseMessagingService { *; }
+-keep class swyp.team.walkit.domain.service.WalkItFirebaseMessagingService { *; }
 
 # ============================================
 # 프로젝트 특정 클래스 유지
 # ============================================
 # DTO 클래스들 유지
--keep class team.swyp.sdu.data.remote.** { *; }
--keep class team.swyp.sdu.data.model.** { *; }
--keep class team.swyp.sdu.domain.model.** { *; }
+-keep class swyp.team.walkit.data.remote.** { *; }
+-keep class swyp.team.walkit.data.model.** { *; }
+-keep class swyp.team.walkit.domain.model.** { *; }
 
 # ViewModel 유지
--keep class team.swyp.sdu.**ViewModel { *; }
--keep class team.swyp.sdu.**ViewModel$* { *; }
+-keep class swyp.team.walkit.**ViewModel { *; }
+-keep class swyp.team.walkit.**ViewModel$* { *; }
 
 # Application 클래스 유지
--keep class team.swyp.sdu.WalkingBuddyApplication { *; }
+-keep class swyp.team.walkit.WalkingBuddyApplication { *; }
 
 # ============================================
 # Enum 클래스 보호 (Enum.valueOf() 사용)
 # ============================================
--keepclassmembers enum team.swyp.sdu.** {
+-keepclassmembers enum swyp.team.walkit.** {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
 # Enum 클래스 전체 보호
--keep enum team.swyp.sdu.data.model.EmotionType { *; }
--keepclassmembers enum team.swyp.sdu.data.model.EmotionType {
+-keep enum swyp.team.walkit.data.model.EmotionType { *; }
+-keepclassmembers enum swyp.team.walkit.data.model.EmotionType {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
--keep enum team.swyp.sdu.data.local.entity.SyncState { *; }
--keep enum team.swyp.sdu.domain.model.Grade { *; }
--keep enum team.swyp.sdu.domain.service.ActivityType { *; }
--keep enum team.swyp.sdu.data.remote.walking.dto.Grade { *; }
+-keep enum swyp.team.walkit.data.local.entity.SyncState { *; }
+-keep enum swyp.team.walkit.domain.model.Grade { *; }
+-keep enum swyp.team.walkit.domain.service.ActivityType { *; }
+-keep enum swyp.team.walkit.data.remote.walking.dto.Grade { *; }
 
 # ============================================
 # Sealed Class 보호
 # ============================================
--keep class team.swyp.sdu.domain.model.WearState { *; }
--keep class team.swyp.sdu.domain.model.WearState$* { *; }
--keepclassmembers class team.swyp.sdu.domain.model.WearState {
+-keep class swyp.team.walkit.domain.model.WearState { *; }
+-keep class swyp.team.walkit.domain.model.WearState$* { *; }
+-keepclassmembers class swyp.team.walkit.domain.model.WearState {
     *;
 }
 
 # ============================================
 # Room TypeConverter 보호
 # ============================================
--keep class team.swyp.sdu.data.local.database.Converters { *; }
--keepclassmembers class team.swyp.sdu.data.local.database.Converters {
+-keep class swyp.team.walkit.data.local.database.Converters { *; }
+-keepclassmembers class swyp.team.walkit.data.local.database.Converters {
     *;
 }
 
 # Room Database 보호
--keep class team.swyp.sdu.data.local.database.AppDatabase { *; }
--keep class team.swyp.sdu.data.local.database.AppDatabase$* { *; }
+-keep class swyp.team.walkit.data.local.database.AppDatabase { *; }
+-keep class swyp.team.walkit.data.local.database.AppDatabase$* { *; }
 
 # Room DAO 인터페이스 보호
--keep interface team.swyp.sdu.data.local.dao.** { *; }
--keep class team.swyp.sdu.data.local.dao.** { *; }
+-keep interface swyp.team.walkit.data.local.dao.** { *; }
+-keep class swyp.team.walkit.data.local.dao.** { *; }
 
 # Room DAO 내부 데이터 클래스 보호 (RecentSessionEmotion, EmotionCount 등)
--keep class team.swyp.sdu.data.local.dao.**$* { *; }
+-keep class swyp.team.walkit.data.local.dao.**$* { *; }
 
 # Room Entity 보호
--keep @androidx.room.Entity class team.swyp.sdu.data.local.entity.** { *; }
--keep class team.swyp.sdu.data.local.entity.** { *; }
+-keep @androidx.room.Entity class swyp.team.walkit.data.local.entity.** { *; }
+-keep class swyp.team.walkit.data.local.entity.** { *; }
 
 # ============================================
 # EnumConverter 유틸리티 보호 (Enum.valueOf 사용)
 # ============================================
--keep class team.swyp.sdu.data.utils.EnumConverter { *; }
--keepclassmembers class team.swyp.sdu.data.utils.EnumConverter {
+-keep class swyp.team.walkit.data.utils.EnumConverter { *; }
+-keepclassmembers class swyp.team.walkit.data.utils.EnumConverter {
     *;
 }
 
 # ============================================
 # 리플렉션 사용 클래스
 # ============================================
--keepclassmembers class team.swyp.sdu.** {
+-keepclassmembers class swyp.team.walkit.** {
     @kotlinx.serialization.SerialName <fields>;
 }
 
 # @Keep 어노테이션 사용 클래스
--keep @androidx.annotation.Keep class team.swyp.sdu.** { *; }
--keepclassmembers class team.swyp.sdu.** {
+-keep @androidx.annotation.Keep class swyp.team.walkit.** { *; }
+-keepclassmembers class swyp.team.walkit.** {
     @androidx.annotation.Keep *;
 }
 
 # ============================================
 # Companion Object 보호 (리플렉션 접근 가능성)
 # ============================================
--keepclassmembers class team.swyp.sdu.** {
+-keepclassmembers class swyp.team.walkit.** {
     public static ** Companion;
 }
--keepclassmembers class team.swyp.sdu.**$Companion {
+-keepclassmembers class swyp.team.walkit.**$Companion {
     *;
 }
 
 # ============================================
 # Object 싱글톤 보호
 # ============================================
--keep class team.swyp.sdu.** {
+-keep class swyp.team.walkit.** {
     public static ** INSTANCE;
 }
 
 # ============================================
 # 데이터 클래스 보호 (Parcelize, Serialization)
 # ============================================
--keep @kotlinx.parcelize.Parcelize class team.swyp.sdu.** { *; }
--keep @kotlinx.serialization.Serializable class team.swyp.sdu.** { *; }
+-keep @kotlinx.parcelize.Parcelize class swyp.team.walkit.** { *; }
+-keep @kotlinx.serialization.Serializable class swyp.team.walkit.** { *; }
 
 # ============================================
 # Mapper 클래스 보호
 # ============================================
--keep class team.swyp.sdu.**Mapper { *; }
--keep class team.swyp.sdu.**Mapper$* { *; }
--keep class team.swyp.sdu.data.**.mapper.** { *; }
+-keep class swyp.team.walkit.**Mapper { *; }
+-keep class swyp.team.walkit.**Mapper$* { *; }
+-keep class swyp.team.walkit.data.**.mapper.** { *; }

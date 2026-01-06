@@ -15,11 +15,11 @@ plugins {
 }
 
 android {
-    namespace = "team.swyp.sdu"
+    namespace = "swyp.team.walkit"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "team.swyp.sdu"
+        applicationId = "swyp.team.walkit"
         minSdk = 27
         targetSdk = 36
         versionCode = 1
@@ -246,5 +246,5 @@ tasks.register("prePR") {
     dependsOn("build", "test", "lint")
 }
 
-// google-services.json에 디버그 패키지(team.swyp.sdu.debug)가 추가되어
+// google-services.json에 디버그 패키지(swyp.team.walkit.debug)가 추가되어
 // 이제 디버그 빌드에서도 정상적으로 Google Services 플러그인이 작동합니다.

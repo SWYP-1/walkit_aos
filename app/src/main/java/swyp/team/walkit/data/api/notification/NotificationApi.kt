@@ -1,0 +1,72 @@
+package swyp.team.walkit.data.api.notification
+
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
+import swyp.team.walkit.data.remote.notification.dto.FcmTokenRequestDto
+import swyp.team.walkit.data.remote.notification.dto.NotificationItemDto
+import swyp.team.walkit.data.remote.notification.dto.NotificationSettingsDto
+import swyp.team.walkit.data.remote.notification.dto.UpdateNotificationSettingsRequest
+
+/**
+ * 알림 관련 API
+ */
+interface NotificationApi {
+    /**
+     * FCM 토큰 등록
+     *
+     * @param request FCM 토큰 등록 요청
+     * @return Response<Unit>
+     */
+    @POST("/fcm/token")
+    suspend fun registerFcmToken(
+        @Body request: FcmTokenRequestDto,
+    ): Response<Unit>
+
+    /**
+     * 알림 설정 조회
+     *
+     * @return 알림 설정 정보
+     */
+    @GET("/notification/setting")
+    suspend fun getNotificationSettings(): NotificationSettingsDto
+
+    /**
+     * 알림 설정 업데이트
+     *
+     * @param request 알림 설정 업데이트 요청
+     * @return Response<Unit>
+     */
+    @PATCH("/notification/setting")
+    suspend fun updateNotificationSettings(
+        @Body request: UpdateNotificationSettingsRequest,
+    ): Response<Unit>
+
+    /**
+     * 알림 목록 조회
+     *
+     * @param limit 조회할 알림 개수 (기본값: 20)
+     * @return 알림 목록
+     */
+    @GET("/notification/list")
+    suspend fun getNotificationList(
+        @Query("limit") limit: Int = 20,
+    ): List<NotificationItemDto>
+
+    /**
+     * 알림 삭제
+     *
+     * @param notificationId 삭제할 알림 ID
+     * @return Response<Unit>
+     */
+    @DELETE("/notification/{notificationId}")
+    suspend fun deleteNotification(
+        @Path("notificationId") notificationId: Long,
+    ): Response<Unit>
+}
+

@@ -26,9 +26,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:188284794130:android:3d8adcfd299f66dafaefcb",
+        "mobilesdk_app_id": "1:188284794130:android:30a539b9db8b13fcfaefcb",
         "android_client_info": {
-          "package_name": "team.swyp.sdu"
+          "package_name": "swyp.team.walkit"
         }
       },
       "oauth_client": [],
@@ -47,7 +47,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:188284794130:android:3d8adcfd299f66dafaefcb",
         "android_client_info": {
-          "package_name": "team.swyp.sdu.debug"
+          "package_name": "team.swyp.sdu"
         }
       },
       "oauth_client": [],

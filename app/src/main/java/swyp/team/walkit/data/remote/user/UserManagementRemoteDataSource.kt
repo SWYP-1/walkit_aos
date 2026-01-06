@@ -1,0 +1,103 @@
+package swyp.team.walkit.data.remote.user
+
+import retrofit2.Response
+import swyp.team.walkit.data.api.user.TermsAgreementRequest
+import swyp.team.walkit.data.api.user.UserApi
+import timber.log.Timber
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * 사용자 관리 관련 원격 데이터 소스
+ * - 닉네임 등록, 생년월일 업데이트, 약관 동의
+ */
+@Singleton
+class UserManagementRemoteDataSource @Inject constructor(
+    private val userApi: UserApi,
+) {
+
+    /**
+     * 닉네임 등록
+     */
+    // HTTP 호출만 담당, 예외 throw하지 않고 Response<Unit> 그대로 반환
+    suspend fun registerNickname(nickname: String): Response<Unit> {
+        return try {
+            val response = userApi.registerNickname(nickname)
+            Timber.d("닉네임 등록 호출 완료: $nickname (HTTP ${response.code()})")
+            response
+        } catch (t: Throwable) {
+            Timber.e(t, "닉네임 등록 호출 실패: $nickname")
+            throw t
+        }
+    }
+
+    /**
+     * 생년월일 업데이트
+     */
+    suspend fun updateBirthDate(birthDate: String) {
+        try {
+            val response = userApi.updateBirthDate(birthDate)
+            if (response.isSuccessful) {
+                Timber.d("생년월일 업데이트 성공: $birthDate")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "생년월일 업데이트 실패"
+                Timber.e("생년월일 업데이트 실패: $errorMessage (코드: ${response.code()})")
+                throw Exception("생년월일 업데이트 실패: ${response.code()}")
+            }
+        } catch (t: Throwable) {
+            Timber.e(t, "생년월일 업데이트 실패: $birthDate")
+            throw t
+        }
+    }
+
+    /**
+     * 약관 동의
+     */
+    suspend fun agreeToTerms(
+        termsAgreed: Boolean,
+        privacyAgreed: Boolean,
+        locationAgreed: Boolean,
+        marketingConsent: Boolean,
+    ) {
+        try {
+            val request = TermsAgreementRequest(
+                termsAgreed = termsAgreed,
+                privacyAgreed = privacyAgreed,
+                locationAgreed = locationAgreed,
+                marketingConsent = marketingConsent,
+            )
+
+            val response = userApi.agreeToTerms(request)
+
+            if (response.isSuccessful) {
+                Timber.d("약관 동의 성공")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "약관 동의 실패"
+                Timber.e("약관 동의 실패: $errorMessage (코드: ${response.code()})")
+                throw Exception("약관 동의 실패: ${response.code()}")
+            }
+        } catch (t: Throwable) {
+            Timber.e(t, "약관 동의 실패")
+            throw t
+        }
+    }
+
+    /**
+     * 사용자 탈퇴
+     */
+    suspend fun deleteUser(): Response<Unit> {
+        try {
+            val response = userApi.deleteUser()
+            if (response.isSuccessful) {
+                Timber.d("사용자 탈퇴 성공")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "사용자 탈퇴 실패"
+                Timber.e("사용자 탈퇴 실패: $errorMessage (코드: ${response.code()})")
+            }
+            return response
+        } catch (t: Throwable) {
+            Timber.e(t, "사용자 탈퇴 실패")
+            throw t
+        }
+    }
+}
