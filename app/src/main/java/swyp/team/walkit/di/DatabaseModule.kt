@@ -2,6 +2,8 @@ package swyp.team.walkit.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import swyp.team.walkit.data.local.dao.AppliedItemDao
 import swyp.team.walkit.data.local.dao.CharacterDao
 import swyp.team.walkit.data.local.dao.GoalDao
@@ -41,6 +43,13 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    private val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // walking_sessions 테이블에 targetWalkCount 컬럼 추가
+            database.execSQL("ALTER TABLE walking_sessions ADD COLUMN targetWalkCount INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(
@@ -51,7 +60,8 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 AppDatabase.DATABASE_NAME,
-            ).fallbackToDestructiveMigration() // TODO : 반드시 배포전에 지워!!! 마이그레이션 없이 스키마 변경 시 데이터 삭제 (개발 단계)
+            )
+            .addMigrations(MIGRATION_11_12)
             .build()
 
     @Provides

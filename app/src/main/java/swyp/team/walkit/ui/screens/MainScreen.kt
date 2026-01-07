@@ -45,6 +45,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.navigation.Screen
+import swyp.team.walkit.ui.charactershop.CharacterShopRoute
+import swyp.team.walkit.ui.dressroom.DressingRoomRoute
 import swyp.team.walkit.ui.home.HomeRoute
 import swyp.team.walkit.ui.home.HomeScreen
 import swyp.team.walkit.ui.home.LocationAgreementUiState
@@ -104,13 +106,13 @@ fun MainScreen(
     val calculatedTabIndex = when (currentRoute) {
         Screen.GoalManagement.route,
         Screen.UserInfoManagement.route,
-        Screen.NotificationSettings.route -> 2 // 마이페이지 탭
+        Screen.NotificationSettings.route -> 3 // 마이페이지 탭
         else -> selectedTabIndex
     }
 
     // 계산된 탭 인덱스 사용 (navigation에서 돌아올 때)
     val currentTabIndex =
-        if (calculatedTabIndex != selectedTabIndex && calculatedTabIndex in 0..2) {
+        if (calculatedTabIndex != selectedTabIndex && calculatedTabIndex in 0..3) {
             calculatedTabIndex
         } else {
             selectedTabIndex
@@ -120,12 +122,23 @@ fun MainScreen(
     val selectedRoute = when (currentTabIndex) {
         0 -> "home"
         1 -> "record"
-        2 -> "mypage"
+        2 -> "character"
+        3 -> "mypage"
         else -> "home"
     }
 
     // Bottom Navigation 아이템 정의
     val bottomNavItems = listOf(
+        BottomBarItem(
+            route = "home",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_home),
+                    contentDescription = "홈"
+                )
+            },
+            label = "홈"
+        ),
         BottomBarItem(
             route = "record",
             icon = {
@@ -137,16 +150,15 @@ fun MainScreen(
             label = "산책 기록"
         ),
         BottomBarItem(
-            route = "home",
+            route = "character",
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_nav_home),
-                    contentDescription = "홈"
+                    painter = painterResource(R.drawable.ic_nav_character),
+                    contentDescription = "캐릭터"
                 )
             },
-            label = "홈"
+            label = "캐릭터"
         ),
-
         BottomBarItem(
             route = "mypage",
             icon = {
@@ -162,7 +174,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier
             .fillMaxSize(),
-        contentWindowInsets = WindowInsets.systemBars, // Status bar만 고려, 시스템 네비게이션 바는 제외
+        contentWindowInsets = WindowInsets.systemBars, // 시스템 바 고려 (바텀 네비게이션은 Scaffold가 자동 처리)
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (currentTabIndex == 0) {
@@ -196,7 +208,8 @@ fun MainScreen(
                     val newIndex = when (route) {
                         "home" -> 0
                         "record" -> 1
-                        "mypage" -> 2
+                        "character" -> 2
+                        "mypage" -> 3
                         else -> 0
                     }
                     selectedTabIndex = newIndex
@@ -240,6 +253,11 @@ fun MainScreen(
                 )
 
                 2 -> {
+                    // 캐릭터 화면 (CharacterShop)
+                    CharacterShopRoute()
+                }
+
+                3 -> {
                     MyPageRoute(
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateUserInfoEdit = {

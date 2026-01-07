@@ -1,5 +1,8 @@
 package swyp.team.walkit.ui.mypage.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +18,8 @@ import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -22,7 +27,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CustomSwitch
 import swyp.team.walkit.ui.components.InfoBanner
@@ -55,9 +63,12 @@ fun NotificationSettingsRoute(
 
     // 패턴 B: Ready 상태일 때만 뷰 표시
     if (uiState is NotificationSettingsUiState.Ready) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val readyState = uiState as NotificationSettingsUiState.Ready
+
         NotificationSettingsScreen(
             modifier = modifier,
-            uiState = uiState as NotificationSettingsUiState.Ready,
+            uiState = readyState,
             onNotificationEnabledChange = viewModel::setNotificationEnabled,
             onGoalNotificationEnabledChange = viewModel::setGoalNotificationEnabled,
             onMissionNotificationEnabledChange = viewModel::setMissionNotificationEnabled,
@@ -69,6 +80,14 @@ fun NotificationSettingsRoute(
                 viewModel.saveSettings()
                 onNavigateBack()
             },
+            // 기기 알림 상태 확인해서 전달
+            isDeviceNotificationsEnabled = viewModel.areNotificationsEnabledCompat(context),
+            // InfoBanner 표시 조건: 앱 알림 중 하나라도 켜져있고 기기 알림이 꺼져있음
+            shouldShowNotificationBanner = !viewModel.areNotificationsEnabledCompat(context) &&
+                    (readyState.notificationEnabled ||
+                     readyState.goalNotificationEnabled ||
+                     readyState.missionNotificationEnabled ||
+                     readyState.friendNotificationEnabled),
         )
     }
 }
@@ -98,8 +117,24 @@ fun NotificationSettingsScreen(
     onMarketingPushEnabledChange: (Boolean) -> Unit,
     onGetNotificationSettings: () -> Unit,
     onNavigateBack: () -> Unit,
+    isDeviceNotificationsEnabled: Boolean,
+    shouldShowNotificationBanner: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+
+    // 기기 알림 꺼짐 시 InfoBanner 표시 상태
+    var showNotificationDisabledBanner by remember { mutableStateOf(false) }
+
+    // 화면 진입 시 InfoBanner 표시 조건 확인
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (shouldShowNotificationBanner) {
+            showNotificationDisabledBanner = true
+            kotlinx.coroutines.delay(3000)
+            showNotificationDisabledBanner = false
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -116,12 +151,19 @@ fun NotificationSettingsScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
-            InfoBanner(
-                title = "기기 알람을 켜주세요",
-                description = "정보 알림을 받기 위해 기기 알람을 켜주세요"
-            )
+            // 전체 알림을 끄면 나타나는 InfoBanner (3초 후 사라짐)
+            AnimatedVisibility(
+                visible = showNotificationDisabledBanner,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                InfoBanner(
+                    title = "기기 알림을 켜주세요",
+                    description = "정보 알림을 받기 위해 기기 알림을 켜주세요"
+                )
+            }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
             // 전체 알림 섹션 
             Row(
@@ -231,6 +273,8 @@ private fun NotificationSettingsScreenPreview() {
             onMarketingPushEnabledChange = {},
             onGetNotificationSettings = {},
             onNavigateBack = {},
+            isDeviceNotificationsEnabled = true,
+            shouldShowNotificationBanner = false,
         )
     }
 }
@@ -255,6 +299,8 @@ private fun NotificationSettingsRoutePreview() {
             onMarketingPushEnabledChange = {},
             onGetNotificationSettings = {},
             onNavigateBack = {},
+            isDeviceNotificationsEnabled = true,
+            shouldShowNotificationBanner = false,
         )
     }
 }

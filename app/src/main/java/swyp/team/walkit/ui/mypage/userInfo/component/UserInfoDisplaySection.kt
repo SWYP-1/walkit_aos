@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,7 @@ fun UserInfoDisplaySection(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 40.dp)
                         .background(
                             color = SemanticColor.backgroundWhiteSecondary,
                             shape = RoundedCornerShape(8.dp),
@@ -89,6 +91,7 @@ fun UserInfoDisplaySection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 40.dp)
                     .background(
                         color = SemanticColor.backgroundWhiteSecondary,
                         shape = RoundedCornerShape(8.dp),

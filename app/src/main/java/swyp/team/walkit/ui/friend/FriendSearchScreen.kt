@@ -116,53 +116,48 @@ private fun SearchResultScreen(
     onNavigateToDetail: (String, FollowStatus) -> Unit,
     onFollowClick: () -> Unit,
 ) {
-    Surface(
-        tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        when (searchUiState) {
-            SearchUiState.Idle -> {
-                // 검색어 입력 대기 상태
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // 빈 상태 표시 (필요시 추가)
+    when (searchUiState) {
+        SearchUiState.Idle -> {
+            // 검색어 입력 대기 상태
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                // 빈 상태 표시 (필요시 추가)
+            }
+        }
+
+        SearchUiState.Loading -> {
+            // 로딩 상태
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CustomProgressIndicator()
+            }
+        }
+
+        is SearchUiState.Success -> {
+            // 성공 상태 - LazyColumn 사용
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(searchUiState.results) { result ->
+                    FriendCard(
+                        nickname = result.nickname,
+                        imageName = result.imageName,
+                        followStatus = result.followStatus,
+                        onFollowClick = onFollowClick,
+                        onCardClick = onNavigateToDetail,
+                        enabled = !isFollowing,
+                    )
                 }
             }
+        }
 
-            SearchUiState.Loading -> {
-                // 로딩 상태
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CustomProgressIndicator()
-                }
-            }
-
-            is SearchUiState.Success -> {
-                // 성공 상태 - LazyColumn 사용
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(searchUiState.results) { result ->
-                        FriendCard(
-                            nickname = result.nickname,
-                            imageName = result.imageName,
-                            followStatus = result.followStatus,
-                            onFollowClick = onFollowClick,
-                            onCardClick = onNavigateToDetail,
-                            enabled = !isFollowing,
-                        )
-                    }
-                }
-            }
-
-            is SearchUiState.Error -> {
-                // 에러 상태 - 전체 화면 표시
-                FriendSearchEmptyScreen()
-            }
+        is SearchUiState.Error -> {
+            // 에러 상태 - 전체 화면 표시
+            FriendSearchEmptyScreen()
         }
     }
 }

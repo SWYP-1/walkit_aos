@@ -39,7 +39,8 @@ object WalkingSessionMapper {
             localImagePath = session.localImagePath,
             serverImageUrl = session.serverImageUrl,
             createdDate = session.createdDate.orEmpty(),
-            targetStepCount = session.targetStepCount
+            targetStepCount = session.targetStepCount,
+            targetWalkCount = session.targetWalkCount
         )
 
     /** Entity → Domain */
@@ -90,7 +91,8 @@ object WalkingSessionMapper {
                 localImagePath = entity.localImagePath,
                 serverImageUrl = entity.serverImageUrl,
                 createdDate = entity.createdDate,
-                targetStepCount = entity.targetStepCount
+                targetStepCount = entity.targetStepCount,
+                targetWalkCount = entity.targetWalkCount
             )
         } catch (e: Throwable) {
             // ExceptionInInitializerError 등 Error 타입도 처리
@@ -112,7 +114,8 @@ object WalkingSessionMapper {
                 localImagePath = entity.localImagePath,
                 serverImageUrl = entity.serverImageUrl,
                 createdDate = entity.createdDate,
-                targetStepCount = entity.targetStepCount
+                targetStepCount = entity.targetStepCount,
+                targetWalkCount = entity.targetWalkCount
             )
         }
     }

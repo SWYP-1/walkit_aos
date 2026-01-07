@@ -810,7 +810,8 @@ class WalkingViewModel @Inject constructor(
 
         // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
         val targetStepCount = currentGoal?.targetStepCount ?: 0
-        val completedSession = createCompletedSession(targetStepCount = targetStepCount)
+        val targetWalkCount = currentGoal?.targetWalkCount ?: 0
+        val completedSession = createCompletedSession(targetStepCount = targetStepCount, targetWalkCount = targetWalkCount)
 
         // 세션 저장 중 상태로 변경
         _isSavingSession.value = true
@@ -965,7 +966,7 @@ class WalkingViewModel @Inject constructor(
      *
      * 하이브리드 접근: 메모리에서 즉시 세션 객체를 생성하여 Completed 상태로 사용
      */
-    private suspend fun createCompletedSession(targetStepCount: Int = 0): WalkingSession {
+    private suspend fun createCompletedSession(targetStepCount: Int = 0, targetWalkCount: Int = 0): WalkingSession {
         val preEmotion = _preWalkingEmotion.value
             ?: throw IllegalStateException("산책 전 감정이 선택되지 않았습니다")
 
@@ -994,6 +995,7 @@ class WalkingViewModel @Inject constructor(
             serverImageUrl = null, // 서버 동기화 후 업데이트
             createdDate = DateUtils.formatToIsoDateTime(startTimeMillis),
             targetStepCount = targetStepCount,
+            targetWalkCount = targetWalkCount,
             userId = currentUserId // ✅ 현재 사용자 ID 설정
         )
     }

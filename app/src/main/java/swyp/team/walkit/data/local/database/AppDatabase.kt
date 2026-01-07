@@ -39,7 +39,7 @@ import swyp.team.walkit.data.local.entity.WalkingSessionEntity
         GoalEntity::class,
         NotificationSettingsEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

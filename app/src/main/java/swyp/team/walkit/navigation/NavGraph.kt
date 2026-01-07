@@ -30,11 +30,11 @@ import swyp.team.walkit.ui.friend.FriendSearchScreen
 import swyp.team.walkit.ui.mission.MissionRoute
 import swyp.team.walkit.ui.mypage.goal.GoalManagementRoute
 import swyp.team.walkit.ui.mypage.settings.NotificationSettingsRoute
-import swyp.team.walkit.ui.mypage.userInfo.UserInfoManagementScreen
 import swyp.team.walkit.ui.onboarding.OnboardingScreen
 import swyp.team.walkit.ui.alarm.AlarmScreen
 import swyp.team.walkit.ui.customtest.CustomTestRoute
 import swyp.team.walkit.ui.customtest.MapTestScreen
+import swyp.team.walkit.ui.charactershop.CharacterShopRoute
 import swyp.team.walkit.ui.dressroom.DressingRoomRoute
 import swyp.team.walkit.ui.friend.FriendSearchDetailRoute
 import swyp.team.walkit.ui.mypage.userInfo.UserInfoManagementRoute
@@ -73,6 +73,7 @@ sealed class Screen(val route: String) {
     data object GoalManagement : Screen("goal_management")
     data object Mission : Screen("mission")
     data object DressingRoom : Screen("dressing_room")
+    data object CharacterShop : Screen("character_shop")
     data object UserInfoManagement : Screen("user_info_management")
     data object NotificationSettings : Screen("notification_settings")
     data object Alarm : Screen("alarm")

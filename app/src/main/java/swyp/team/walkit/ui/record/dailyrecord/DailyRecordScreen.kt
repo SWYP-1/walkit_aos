@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -441,17 +442,14 @@ fun SessionDailyTab(
     fun getKoreanNumber(num: Int): String {
         val koreanNumbers =
             listOf("", "첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열")
-        return if (num in 1..4) koreanNumbers[num] else "$num"
+        return if (num in 1..3) koreanNumbers[num] else "$num"
     }
 
-    var maxSessionCount = minOf(sessionCount, 4)
-    val overlap = 80.dp   // 탭 실제 너비 중 겹칠 값
-    val tabHeight = 32.dp
+    var maxSessionCount = minOf(sessionCount, 3)
+    val overlap = 85.dp   // 탭 실제 너비 중 겹칠 값
 
     Box(
         modifier = Modifier
-            .height(tabHeight)
-            .background(SemanticColor.backgroundWhitePrimary)
     ) {
         repeat(maxSessionCount) { index ->
             val isSelected = index == selectedSessionIndex
@@ -459,6 +457,7 @@ fun SessionDailyTab(
             Box(
                 modifier = Modifier
                     // ⭐ 핵심: 직접 위치 계산
+                    .width(91.dp)   // ⭐ 핵심
                     .offset(x = overlap * index)
                     .clip(RoundedCornerShape(topEnd = 8.dp))
                     .background(

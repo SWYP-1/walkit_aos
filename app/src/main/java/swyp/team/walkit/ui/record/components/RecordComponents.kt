@@ -1176,7 +1176,7 @@ fun WalkingStatsCard(
     val totalMinutes = ((totalDurationMillis / (1000 * 60)) % 60).toInt()
 
     Card(
-        modifier = modifier.customShadow(),
+        modifier = modifier.customShadow().cardBorder(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White,

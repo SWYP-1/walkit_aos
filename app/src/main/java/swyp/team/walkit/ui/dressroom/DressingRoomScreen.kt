@@ -192,7 +192,7 @@ fun DressingRoomScreen(
  * Success UI
  */
 @Composable
-private fun SuccessContent(
+fun SuccessContent(
     wornItemsByPosition: Map<EquipSlot, WearState>,
     selectedItemIds: Set<Int>,
     uiState: DressingRoomUiState.Success,

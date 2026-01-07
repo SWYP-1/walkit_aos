@@ -19,6 +19,7 @@ sealed interface FriendRecordUiState {
         val data: FollowerWalkRecord,
         val like: LikeUiState,
         val processedLottieJson: String? = null, // Lottie 캐릭터 JSON 추가
+        val lottieLoadingProgress: Int = 0, // Lottie 로딩 진행률 (0-100)
     ) : FriendRecordUiState
 
     /**

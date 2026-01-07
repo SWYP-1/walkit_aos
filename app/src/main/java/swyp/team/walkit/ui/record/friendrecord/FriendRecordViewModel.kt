@@ -24,6 +24,8 @@ import javax.inject.Inject
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.Grade
 import org.json.JSONObject
+import swyp.team.walkit.domain.model.CharacterPart
+import swyp.team.walkit.domain.service.LottieProgressCallback
 
 private const val MAX_CACHE_SIZE = 5
 private const val LIKE_DEBOUNCE_MS = 500L
@@ -110,14 +112,80 @@ class FriendRecordViewModel @Inject constructor(
                                 count = cachedState.record.likeCount,
                                 isLiked = cachedState.record.liked
                             ),
-                            processedLottieJson = lottieJson
+                            processedLottieJson = lottieJson,
+                            lottieLoadingProgress = 100 // 캐시에서 불러왔으므로 이미 완료됨
                         )
                         return@launch
                     }
 
                     // 3️⃣ 캐시가 없으면 Lottie JSON 생성 및 캐시 저장
                     Timber.d("🎭 FriendRecord Character 데이터: head=${character.headImageName}, body=${character.bodyImageName}, feet=${character.feetImageName}, tag=${character.headImageTag}, level=${character.level}, grade=${character.grade}")
-                    val lottieJson = generateFriendCharacterLottie(character)
+
+                    // 진행률 콜백을 사용한 Lottie JSON 생성
+                    Timber.d("🎯 Lottie 생성 시작 - progressCallback 등록")
+
+                    // 초기 진행률 0%로 설정 (기존 상태 복사)
+                    val currentState = _uiState.value
+                    if (currentState is FriendRecordUiState.Success) {
+                        val initialProgressState = currentState.copy(
+                            processedLottieJson = null, // 아직 생성 중
+                            lottieLoadingProgress = 0
+                        )
+                        _uiState.value = initialProgressState
+                        Timber.d("📊 초기 진행률 설정: 0% (기존 상태 복사)")
+
+                    }
+
+                    var currentProgress = 0
+                    val lottieJson = generateFriendCharacterLottie(character, object :
+                        LottieProgressCallback {
+                        override fun onItemProgress(part: CharacterPart, assetId: String, completed: Boolean) {
+                            Timber.d("🎯 onItemProgress 호출됨: part=${part}, assetId=${assetId}, completed=${completed}")
+                            if (completed) {
+                                currentProgress++
+                                // 진행률을 고정된 단계로 설정 (콜백 순서와 무관하게)
+                                val progressPercent = when (currentProgress) {
+                                    1 -> 25
+                                    2 -> 50
+                                    3 -> 75
+                                    4 -> 100
+                                    else -> 100
+                                }
+                                Timber.d("📊 Lottie 생성 진행률 계산: $progressPercent% ($currentProgress/4)")
+
+                                // 진행률을 UI에 반영 (메인 스레드에서 실행)
+                                viewModelScope.launch(Dispatchers.Main) {
+                                    // 현재 상태를 가져와서 복사 후 업데이트
+                                    val currentState = _uiState.value
+                                    if (currentState is FriendRecordUiState.Success) {
+                                        val updatedState = currentState.copy(
+                                            processedLottieJson = null, // 교체 중이므로 null 유지
+                                            lottieLoadingProgress = progressPercent
+                                        )
+                                        _uiState.value = updatedState
+                                        Timber.d("📊 UI 상태 업데이트 완료: lottieLoadingProgress=$progressPercent (기존 상태 복사)")
+                                    }
+                                }
+                            }
+                        }
+
+                        override fun onAllItemsCompleted(processedJson: String) {
+                            Timber.d("🎉 onAllItemsCompleted 호출됨!")
+                            // 최종 상태 업데이트 (기존 상태 복사)
+                            val currentState = _uiState.value
+                            if (currentState is FriendRecordUiState.Success) {
+                                val finalState = currentState.copy(
+                                    processedLottieJson = processedJson,
+                                    lottieLoadingProgress = 100
+                                )
+                                _uiState.value = finalState
+                                Timber.d("🎉 최종 UI 상태 업데이트 완료 (기존 상태 복사)")
+
+                            }
+                        }
+                    })
+                    Timber.d("🎯 Lottie 생성 완료 - 결과: ${lottieJson?.length} 글자")
+
                     Timber.d("🎭 FriendRecord Lottie JSON 생성 완료: ${lottieJson?.length} characters")
 
                     // 4️⃣ 캐시에 저장 (레벨/등급이 포함된 키로 저장, Lottie JSON 포함)
@@ -134,7 +202,8 @@ class FriendRecordViewModel @Inject constructor(
                             count = record.likeCount,
                             isLiked = record.liked
                         ),
-                        processedLottieJson = lottieJson
+                        processedLottieJson = lottieJson,
+                        lottieLoadingProgress = 100 // 생성 완료
                     )
                 }
                 is Result.Error -> {
@@ -209,7 +278,10 @@ class FriendRecordViewModel @Inject constructor(
     /**
      * 친구 캐릭터 Lottie JSON 생성
      */
-    private suspend fun generateFriendCharacterLottie(character: Character): String? {
+    private suspend fun generateFriendCharacterLottie(
+        character: Character,
+        progressCallback: LottieProgressCallback? = null
+    ): String? {
         return try {
             withContext(Dispatchers.IO) {
                 // 캐릭터 등급에 따른 base Lottie JSON 로드
@@ -218,7 +290,8 @@ class FriendRecordViewModel @Inject constructor(
                 // 캐릭터 파트들을 적용하여 최종 JSON 생성
                 val modifiedJson = lottieImageProcessor.updateCharacterPartsInLottie(
                     baseLottieJson = baseJson,
-                    character = character
+                    character = character,
+                    progressCallback = progressCallback
                 )
 
                 modifiedJson.toString()

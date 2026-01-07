@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import org.json.JSONObject
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.CharacterPart
+
 import swyp.team.walkit.domain.model.CosmeticItem
 import swyp.team.walkit.domain.model.EquipSlot
 import swyp.team.walkit.domain.model.Grade
@@ -27,6 +28,15 @@ import javax.inject.Singleton
  * 이 클래스는 전체 플로우의 orchestration만 담당하며,
  * 실제 작업은 ImageDownloader와 extension 함수들을 통해 수행됩니다.
  */
+
+/**
+ * Lottie 아이템 교체 진행률 콜백 인터페이스
+ */
+interface LottieProgressCallback {
+    fun onItemProgress(part: CharacterPart, assetId: String, completed: Boolean)
+    fun onAllItemsCompleted(processedJson: String)
+}
+
 @Singleton
 class LottieImageProcessor @Inject constructor(
     private val imageDownloader: ImageDownloader
@@ -351,7 +361,8 @@ class LottieImageProcessor @Inject constructor(
      */
     suspend fun updateCharacterPartsInLottie(
         baseLottieJson: JSONObject,
-        character: Character
+        character: Character,
+        progressCallback: LottieProgressCallback? = null
     ): JSONObject {
         Timber.d("🎭 LottieImageProcessor.updateCharacterPartsInLottie 시작")
         Timber.d("👤 캐릭터 파트: head=${character.headImageName}, body=${character.bodyImageName}, feet=${character.feetImageName}")
@@ -359,6 +370,12 @@ class LottieImageProcessor @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 var modifiedJson = baseLottieJson
+
+                // 총 작업 수 계산 (HEAD: 여러 asset, BODY/FEET: 각 1개)
+                val totalTasks = CharacterPart.values().size + (CharacterPart.HEAD.lottieAssetIds.size - 1)
+                var completedTasks = 0
+
+                Timber.d("📊 총 작업 수: $totalTasks")
 
                 // 각 캐릭터 파트 처리
                 CharacterPart.values().forEach { part ->
@@ -381,24 +398,30 @@ class LottieImageProcessor @Inject constructor(
                                 val shouldApplyTransparent =
                                     imageName.isNullOrBlank() || assetId != targetAssetId
 
-                                if (shouldApplyImage) {
-                                    // 실제 이미지가 있고 target asset이면 이미지 적용
-                                    Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
-                                    modifiedJson =
-                                        replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
-                                    Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
-                                } else if (shouldApplyTransparent) {
-                                    // 이미지가 없거나 target asset이 아니면 투명 PNG로 교체
-                                    val transparentPng = createTransparentPng(256, 256)
-                                    Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
-                                    modifiedJson =
-                                        replaceAssetWithByteArray(
-                                            modifiedJson,
-                                            assetId,
-                                            transparentPng
-                                        )
-                                    Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
-                                }
+                            if (shouldApplyImage) {
+                                // 실제 이미지가 있고 target asset이면 이미지 적용
+                                Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
+                                modifiedJson =
+                                    replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
+                                Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
+                            } else if (shouldApplyTransparent) {
+                                // 이미지가 없거나 target asset이 아니면 투명 PNG로 교체
+                                val transparentPng = createTransparentPng(256, 256)
+                                Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
+                                modifiedJson =
+                                    replaceAssetWithByteArray(
+                                        modifiedJson,
+                                        assetId,
+                                        transparentPng
+                                    )
+                                Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
+                            }
+
+                            // 진행률 업데이트
+                            completedTasks++
+                            Timber.d("📊 작업 진행률 업데이트: $completedTasks/$totalTasks (${part.name}:$assetId 완료)")
+                            progressCallback?.onItemProgress(part, assetId, true)
+                            Timber.d("📊 progressCallback 호출 완료: onItemProgress(${part}, ${assetId}, true)")
                             }
                         }
 
@@ -407,23 +430,34 @@ class LottieImageProcessor @Inject constructor(
                             part.lottieAssetIds.forEach { assetId ->
                                 Timber.d("🎯 Asset ${assetId} 처리 시작")
 
-                                if (!imageName.isNullOrBlank()) {
-                                    // 실제 이미지가 있으면 다운로드하여 교체
-                                    Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
-                                    modifiedJson =
-                                        replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
-                                    Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
-                                } else {
-                                    // 이미지가 없으면 투명 PNG로 교체
-                                    val transparentPng = createTransparentPng(256, 256)
-                                    Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
-                                    modifiedJson =
-                                        replaceAssetWithByteArray(
-                                            modifiedJson,
-                                            assetId,
-                                            transparentPng
-                                        )
-                                    Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
+                                try {
+                                    if (!imageName.isNullOrBlank()) {
+                                        // 실제 이미지가 있으면 다운로드하여 교체
+                                        Timber.d("🎨 파트 ${part.name} asset ${assetId}: 이미지 '${imageName}'로 교체 시작")
+                                        modifiedJson =
+                                            replaceAssetWithImageUrl(modifiedJson, assetId, imageName)
+                                        Timber.d("✅ 파트 ${part.name} asset ${assetId} 이미지 교체 완료")
+                                    } else {
+                                        // 이미지가 없으면 투명 PNG로 교체
+                                        val transparentPng = createTransparentPng(256, 256)
+                                        Timber.d("🔍 파트 ${part.name} asset ${assetId}: 투명 PNG 생성 (크기: ${transparentPng.size} bytes)")
+                                        modifiedJson =
+                                            replaceAssetWithByteArray(
+                                                modifiedJson,
+                                                assetId,
+                                                transparentPng
+                                            )
+                                        Timber.d("🔍 파트 ${part.name} asset ${assetId} 투명 PNG로 교체 완료")
+                                    }
+
+                                    // 진행률 업데이트
+                                    completedTasks++
+                                    progressCallback?.onItemProgress(part, assetId, true)
+                                    Timber.d("📊 작업 진행률: $completedTasks/$totalTasks (${part.name}:$assetId 완료)")
+
+                                } catch (e: Exception) {
+                                    Timber.e(e, "파트 ${part.name} asset ${assetId} 처리 실패")
+                                    progressCallback?.onItemProgress(part, assetId, false)
                                 }
                             }
                         }
@@ -431,6 +465,10 @@ class LottieImageProcessor @Inject constructor(
                 }
 
                 Timber.d("🎉 모든 캐릭터 파트 교체 완료")
+
+                // 모든 작업 완료 콜백
+                progressCallback?.onAllItemsCompleted(modifiedJson.toString())
+
                 modifiedJson
             } catch (t: Throwable) {
                 Timber.e(t, "❌ 캐릭터 파트 교체 실패")

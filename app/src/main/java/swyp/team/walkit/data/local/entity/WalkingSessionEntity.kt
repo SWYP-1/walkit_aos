@@ -36,4 +36,5 @@ data class WalkingSessionEntity(
     val createdDate: String,
     val syncState: SyncState,
     val targetStepCount: Int = 0, // 산책 당시 설정된 목표 걸음 수
+    val targetWalkCount: Int = 0, // 산책 당시 설정된 목표 산책 횟수
 )

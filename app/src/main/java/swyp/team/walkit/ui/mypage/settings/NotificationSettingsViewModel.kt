@@ -1,5 +1,8 @@
 package swyp.team.walkit.ui.mypage.settings
 
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -372,6 +375,22 @@ constructor(
                 }
                 Timber.e(t, "알림 설정 저장 중 예외 발생")
             }
+        }
+    }
+
+    /**
+     * 기기 알림이 켜져있는지 확인하는 함수
+     */
+    fun areNotificationsEnabledCompat(context: Context): Boolean {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // API 24+
+            notificationManager.areNotificationsEnabled()
+        } else {
+            // API 23 이하
+            true
         }
     }
 

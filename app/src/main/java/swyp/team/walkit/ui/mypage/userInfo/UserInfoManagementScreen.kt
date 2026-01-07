@@ -75,6 +75,7 @@ import swyp.team.walkit.R
 import swyp.team.walkit.domain.model.Goal
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.ConfirmDialog
+import swyp.team.walkit.ui.components.PreviousButton
 import swyp.team.walkit.ui.mypage.userInfo.component.DateDropdown
 import swyp.team.walkit.ui.mypage.userInfo.component.FilledTextField
 import swyp.team.walkit.ui.mypage.userInfo.component.ImageUploadMenu
@@ -571,28 +572,7 @@ fun UserInfoManagementScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         // 뒤로가기 버튼
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .clickable(onClick = ::handleNavigateBack)
-                                .border(
-                                    width = 1.dp,
-                                    color = Grey3,
-                                    shape = RoundedCornerShape(8.dp),
-                                )
-                                .background(Color.White, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "뒤로가기",
-                                style = MaterialTheme.walkItTypography.bodyM.copy(
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                                color = tertiaryText,
-                            )
-                        }
+                        PreviousButton(onClick = ::handleNavigateBack, modifier = Modifier.weight(1f))
 
                         // 저장하기 버튼
                         // canSave 계산 - userInput 상태 변경 시 자동으로 recomposition

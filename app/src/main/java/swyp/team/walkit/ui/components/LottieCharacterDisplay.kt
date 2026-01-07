@@ -58,13 +58,13 @@ fun LottieCharacterDisplay(
         contentAlignment = Alignment.Center
     ) {
         // 초기 로딩 상태 확인 (데이터가 전혀 없을 때만)
-        val isInitialLoading = characterLottieState == null || 
+        val isInitialLoading = characterLottieState == null ||
             (characterLottieState.baseJson == null && characterLottieState.modifiedJson == null)
-        
+
         // 아이템 교체 중인지 확인 (기존 캐릭터가 있고 로딩 중)
-        val isItemReplacing = characterLottieState?.isLoading == true && 
+        val isItemReplacing = characterLottieState?.isLoading == true &&
             (characterLottieState.modifiedJson != null || characterLottieState.baseJson != null)
-        
+
         if (isInitialLoading) {
             // 초기 로딩 (데이터가 전혀 없을 때) → CustomProgressIndicator 표시
             CustomProgressIndicator(
@@ -72,15 +72,15 @@ fun LottieCharacterDisplay(
             )
         } else {
             // 아이템 교체 중이거나 로딩 완료 상태 → Lottie 애니메이션 표시
-        // 아이템 교체 중일 때는 기존 캐릭터를 유지하여 깜빡임 방지
-        val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
+            // 아이템 교체 중일 때는 기존 캐릭터를 유지하여 깜빡임 방지
+            val compositionSpec = getLottieCompositionSpec(characterLottieState, defaultAnimationResId)
 
             // ✅ Composition 상태 관리 (깜빡임 방지)
             var currentComposition by remember { mutableStateOf<LottieComposition?>(null) }
 
             // 새로운 composition 로드
             val newComposition by rememberLottieComposition(
-                spec = compositionSpec
+                spec = compositionSpec,
             )
 
             // 새로운 composition이 준비되면 즉시 교체 (기존 composition 유지)
@@ -156,6 +156,8 @@ private fun getLottieCompositionSpec(
         }
     }
 }
+
+
 
 @Preview(showBackground = true)
 @Composable

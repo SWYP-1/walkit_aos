@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -238,24 +239,19 @@ private fun RecordScreenContent(
                     // 최소 높이 확보 (스크롤 가능하도록)
                     Spacer(Modifier.height(50.dp))
                 }
-            }
-        }
-
-        // 친구 선택 시 하단 전체 화면 영역 (스크롤 영역 밖)
-        if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                color = SemanticColor.backgroundWhiteSecondary
-            ) {
+            }else {
+                // 친구 선택 시 하단 전체 화면 영역 (스크롤 영역 밖)
                 FriendRecordScreen(
                     nickname = recordUiState.selectedFriendNickname,
                     onNavigateBack = onFriendDeselected,
                     onBlockUser = onBlockUser,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 600.dp) // 로딩 바 중앙 표시를 위한 최소 높이 보장
                 )
             }
         }
+
+
     }
 }

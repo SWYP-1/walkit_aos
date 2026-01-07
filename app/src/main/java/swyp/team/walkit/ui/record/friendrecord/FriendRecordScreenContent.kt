@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -66,6 +67,7 @@ import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.DateUtils.formatIsoToKoreanDate
 import swyp.team.walkit.utils.FormatUtils.formatStepCount
+import timber.log.Timber
 
 /**
  * 친구 기록 화면 Route
@@ -283,7 +285,8 @@ private fun CharacterInfoSection(
                 composition = composition,
                 iterations = LottieConstants.IterateForever, // 무한 반복
                 modifier = Modifier
-                    .fillMaxSize(0.85f) // 캐릭터 크기 조정
+                    .size(200.dp)
+                    .scale(0.85f)
                     .align(Alignment.Center)
                     .offset(y = 25.dp)
             )

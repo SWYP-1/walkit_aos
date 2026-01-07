@@ -81,7 +81,8 @@ fun formatBirthDate(year: String, month: String, day: String): String {
         val monthInt = month.toIntOrNull() ?: return ""
         val dayInt = day.toIntOrNull() ?: return ""
 
-        String.format("%04d-%02d-%02d", yearInt, monthInt, dayInt)
+        // UI 표시용으로는 0 패딩하지 않음 (사용자가 입력한 그대로 표시)
+        String.format("%04d-%d-%d", yearInt, monthInt, dayInt)
     } catch (t: Throwable) {
         Timber.e(t, "생년월일 포맷팅 실패")
         ""

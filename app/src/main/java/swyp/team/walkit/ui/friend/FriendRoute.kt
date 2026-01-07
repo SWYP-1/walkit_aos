@@ -243,27 +243,19 @@ private fun FriendListScreen(
     onMenuDismiss: () -> Unit,
     onBlockClick: (Friend) -> Unit,
 ) {
-    Surface(
-        tonalElevation = 0.dp,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(SemanticColor.backgroundWhitePrimary),
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            items(friends) { friend ->
-                FriendRow(
-                    friend = friend,
-                    menuOpen = menuTargetId == friend.id,
-                    onMoreClick = onMoreClick,
-                    onMenuDismiss = onMenuDismiss,
-                    onBlockClick = onBlockClick,
-                )
-            }
-            item { Spacer(modifier = Modifier.height(12.dp)) }
+        items(friends) { friend ->
+            FriendRow(
+                friend = friend,
+                menuOpen = menuTargetId == friend.id,
+                onMoreClick = onMoreClick,
+                onMenuDismiss = onMenuDismiss,
+                onBlockClick = onBlockClick,
+            )
         }
+        item { Spacer(modifier = Modifier.height(12.dp)) }
     }
 }
 

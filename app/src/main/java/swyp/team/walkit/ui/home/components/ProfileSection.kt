@@ -147,39 +147,36 @@ private fun ProfileContent(
          * 4. 캐릭터 (⭐ 바닥 기준 고정 ⭐)
          * ===================================================== */
 
-        val logicalSize = 130.dp
-        val visualScale = 2f
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                // 하단 UI 영역만큼 띄워줌 (겹침 방지)
-                .padding(bottom = 140.dp), contentAlignment = Alignment.BottomCenter
-        ) {
-            LottieCharacterDisplay(
-                characterLottieState = characterLottieState,
-                modifier = Modifier
-                    .size(logicalSize)
-                    .scale(visualScale)
-                    .clickable(onClick = onTestClick)
-            )
-        }
 
         /* =====================================================
          * 5. 하단 사용자 정보 & 목표 (완전 분리)
          * ===================================================== */
-        HomeNameAndGoalContent(
-            nickName = uiState.nickname,
-            goal = uiState.goal ?: Goal.EMPTY,
-            grade = uiState.character.grade,
-            level = uiState.character.level,
-            walkProgressPercentage = uiState.walkProgressPercentage,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(GradientUtils.fadeToDark())
-                .padding(horizontal = 16.dp, vertical = 20.dp)
-        )
+
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+//            val logicalSize = 130.dp
+//            val visualScale = 2f
+            LottieCharacterDisplay(
+                characterLottieState = characterLottieState,
+                modifier = Modifier
+                    .scale(0.86f)
+                    .clickable(onClick = onTestClick)
+            )
+            HomeNameAndGoalContent(
+                nickName = uiState.nickname,
+                goal = uiState.goal ?: Goal.EMPTY,
+                grade = uiState.character.grade,
+                level = uiState.character.level,
+                walkProgressPercentage = uiState.walkProgressPercentage,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(GradientUtils.fadeToDark())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
+            )
+        }
+
     }
 }
 
