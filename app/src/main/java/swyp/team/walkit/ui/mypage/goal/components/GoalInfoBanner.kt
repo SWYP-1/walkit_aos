@@ -21,10 +21,11 @@ fun GoalInfoBanner(
     InfoBanner(
         title = "목표는 설정일부터 1주일 기준으로 설정가능합니다",
         description = "목표는 한 달에 한 번만 변경 가능합니다 \n변경된 목표는 목표 달성율과 캐릭터 레벨업에 영향을 미칩니다",
-        backgroundColor = SemanticColor.backgroundWhitePrimary,
-        borderColor = SemanticColor.stateBlueSecondary,
-        textColor = SemanticColor.stateBluePrimary,
-        iconTint = SemanticColor.stateBluePrimary,
+        backgroundColor = SemanticColor.backgroundWhiteTertiary,
+        borderColor = SemanticColor.textBorderTertiary,
+        textColor = SemanticColor.textBorderPrimary,
+        descriptionTextColor = SemanticColor.textBorderSecondary,
+        iconTint = SemanticColor.textBorderPrimary,
         icon = { iconTint ->
             Icon(
                 painter = painterResource(R.drawable.ic_info_exclamation),
@@ -62,6 +63,5 @@ fun GoalErrorBanner(
                 tint = iconTint
             )
         },
-        modifier = modifier.height(72.dp)
     )
 }

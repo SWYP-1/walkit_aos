@@ -64,9 +64,9 @@ fun MyPageUserInfo(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Row(modifier = modifier) {
-        Text(
-            text = nickname,
+        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = nickname,
                 style = MaterialTheme.walkItTypography.headingM,
                 color = Grey10
             )
@@ -113,6 +113,7 @@ fun MyPageUserInfo(
                     .clip(CircleShape) // 원형으로 자르기
             )
         }
+        Spacer(Modifier.height(24.dp))
     }
 }
 

@@ -647,6 +647,7 @@ fun UserInfoManagementScreen(
                                 color = Color.White,
                             )
                         }
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
             }
@@ -694,7 +695,7 @@ fun UserInfoManagementScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 48.dp + 32.dp + 16.dp) // CTA 버튼 높이 + 여백
+                            .padding(bottom = 48.dp + 32.dp) // CTA 버튼 높이 + 여백
                             .padding(horizontal = 16.dp)
                     )
                 }

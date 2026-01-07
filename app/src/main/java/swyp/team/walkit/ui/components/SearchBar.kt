@@ -68,6 +68,7 @@ fun SearchBar(
 ) {
     val textStyle = MaterialTheme.walkItTypography.bodyM.copy(
         color = textColor,
+        fontWeight = FontWeight.Normal
     )
 
     BasicTextField(
@@ -93,7 +94,7 @@ fun SearchBar(
                             Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp))
                         } else Modifier
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

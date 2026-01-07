@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,6 +55,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -220,7 +222,10 @@ fun EmotionRecordStepRoute(
                         put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/Emotions")
                     }
                 }
-                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
             },
             isGranted = isGranted
         )
@@ -360,7 +365,7 @@ private fun EmotionRecordStepScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(vertical = 12.dp, horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             Spacer(Modifier.height(14.dp))
@@ -377,9 +382,8 @@ private fun EmotionRecordStepScreenContent(
                 fontWeight = FontWeight.SemiBold,
                 color = SemanticColor.textBorderPrimary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    .fillMaxWidth(),
+                textAlign = TextAlign.Start,
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -391,9 +395,8 @@ private fun EmotionRecordStepScreenContent(
                 fontWeight = FontWeight.Normal,
                 color = SemanticColor.textBorderSecondary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    .fillMaxWidth(),
+                textAlign = TextAlign.Start,
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -490,7 +493,10 @@ private fun EmotionRecordStepScreenContent(
                 Spacer(Modifier.height(12.dp))
 
                 // 텍스트 입력 영역
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
                     BasicTextField(
                         value = emotionText,
                         onValueChange = { newText ->
@@ -500,13 +506,14 @@ private fun EmotionRecordStepScreenContent(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(174.dp)
+                            .height(138.dp)
                             .background(
                                 color = SemanticColor.backgroundWhiteTertiary,
                                 shape = RoundedCornerShape(8.dp),
                             )
                             .padding(
-                                16.dp
+                                horizontal = 16.dp,
+                                vertical = 12.dp
                             ),
                         textStyle = MaterialTheme.walkItTypography.captionM.copy(
                             color = SemanticColor.textBorderSecondary,
@@ -601,9 +608,9 @@ private fun EmotionRecordStepScreenContent(
                     },
                     modifier = Modifier.weight(1f),
                     iconResId = R.drawable.ic_arrow_forward,
-                    )
+                )
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }

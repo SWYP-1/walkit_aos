@@ -32,7 +32,8 @@ import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.ui.login.LoginViewModel
 import timber.log.Timber
 import swyp.team.walkit.ui.components.AppHeader
-import swyp.team.walkit.ui.components.ConfirmDialog
+import swyp.team.walkit.ui.components.TextHighlight
+import swyp.team.walkit.ui.components.WalkingWarningDialog
 import swyp.team.walkit.ui.mypage.component.MyPageAccountActions
 import swyp.team.walkit.ui.mypage.component.MyPageCharacterEditButton
 import swyp.team.walkit.ui.mypage.component.MyPageUserInfo
@@ -150,18 +151,22 @@ fun MyPageRoute(
 
     // 탈퇴 확인 다이얼로그
     if (showWithdrawConfirmDialog) {
-        ConfirmDialog(
-            title = "회원 탈퇴",
-            message = "정말로 탈퇴하시겠습니까?\n탈퇴 후에는 모든 데이터가 삭제되며 복구할 수 없습니다.",
-            negativeButtonText = "취소",
-            positiveButtonText = "탈퇴하기",
+        WalkingWarningDialog(
+            title = "정말로 탈퇴하시겠습니까?",
+            message = "탈퇴 시 모든 정보는 6개월 간 보관됩니다\n" +
+                    "탈퇴한 계정은 다시 복구되지 않습니다",
+            titleHighlight = TextHighlight(
+                text = "탈퇴",
+                color = SemanticColor.stateRedPrimary
+            ),
+            cancelButtonText = "아니오",
+            continueButtonText = "네",
             onDismiss = { showWithdrawConfirmDialog = false },
-            onNegative = { showWithdrawConfirmDialog = false },
-            onPositive = {
+            onCancel = { showWithdrawConfirmDialog = false },
+            onContinue = {
                 showWithdrawConfirmDialog = false
                 viewModel.withdraw()
-            },
-            highlightedWords = mapOf("탈퇴" to SemanticColor.stateRedPrimary)
+            }
         )
     }
 }
@@ -246,7 +251,6 @@ fun MyPageScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
         }
 
         // 캐릭터 수정 버튼

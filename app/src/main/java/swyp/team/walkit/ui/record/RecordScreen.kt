@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -95,13 +97,9 @@ fun RecordRoute(
         onNavigateToFriend = onNavigateToFriend,
         onNavigateToDailyRecord = onNavigateToDailyRecord,
         onMyProfileClick = {
-            android.util.Log.d("RecordScreen", "onMyProfileClick 호출됨")
-            timber.log.Timber.d("onMyProfileClick 호출됨")
             recordViewModel.clearFriendSelection()
         },
         onFriendSelected = { friend ->
-            android.util.Log.d("RecordScreen", "RecordScreen에서 친구 선택됨: ${friend.nickname}")
-            timber.log.Timber.d("RecordScreen에서 친구 선택됨: ${friend.nickname}")
             recordViewModel.selectFriend(friend.nickname)
         },
         onFriendDeselected = { recordViewModel.clearFriendSelection() },
@@ -143,94 +141,78 @@ private fun RecordScreenContent(
     // 스크롤 상태
     val scrollState = rememberScrollState()
 
-    // 친구 선택 시 FriendRecordScreen에서 자동으로 로드됨
-
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
-            .verticalScroll(scrollState)
     ) {
 
-        // 상단 영역들
-        RecordHeader(onClickSearch = {}, onClickAlarm = onNavigateToAlarm)
-        Spacer(Modifier.height(16.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+        // 상단 스크롤 영역
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
         ) {
-            Text(
-                text = "친구목록",
-                // caption M/regular
-                style = MaterialTheme.walkItTypography.captionM,
-                color = SemanticColor.textBorderPrimary,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
+            // 상단 영역들
+            RecordHeader(onClickAlarm = onNavigateToAlarm)
+            Spacer(Modifier.height(16.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                Text(
+                    text = "친구목록",
+                    style = MaterialTheme.walkItTypography.captionM,
+                    color = SemanticColor.textBorderPrimary,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
 
-        // 상단 API 기반 영역
-        when (recordUiState) {
-            is RecordUiState.Loading -> {
-                RecordTopSectionSkeleton()
+            // 상단 API 기반 영역
+            when (recordUiState) {
+                is RecordUiState.Loading -> {
+                    RecordTopSectionSkeleton()
+                }
+
+                is RecordUiState.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("상단 데이터 로딩 실패", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+
+                is RecordUiState.Success -> {
+                    // FriendBarViewModel에서 친구 목록 상태 가져오기
+                    val friends = when (friendsState) {
+                        is swyp.team.walkit.core.Result.Success -> friendsState.data
+                        else -> emptyList()
+                    }
+
+                    RecordTopSection(
+                        user = recordUiState.user,
+                        friends = friends,
+                        selectedFriendNickname = recordUiState.selectedFriendNickname,
+                        onMyProfileClick = onMyProfileClick,
+                        onFriendSelected = onFriendSelected,
+                        onNavigateToFriend = onNavigateToFriend
+                    )
+                }
             }
 
-            is RecordUiState.Error -> {
-                Box(
+            Divider()
+
+            // 친구 미선택 시 탭 콘텐츠 표시
+            if (!(recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null)) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("상단 데이터 로딩 실패", color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            is RecordUiState.Success -> {
-                // FriendBarViewModel에서 친구 목록 상태 가져오기
-                val friends = when (friendsState) {
-                    is swyp.team.walkit.core.Result.Success -> friendsState.data
-                    else -> emptyList()
-                }
-
-                RecordTopSection(
-                    user = recordUiState.user,
-                    friends = friends,
-                    selectedFriendNickname = recordUiState.selectedFriendNickname,
-                    onMyProfileClick = onMyProfileClick,
-                    onFriendSelected = onFriendSelected,
-                    onNavigateToFriend = onNavigateToFriend
-                )
-            }
-        }
-
-        Divider()
-
-        // 하단 영역
-        if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
-            // 친구 선택 시 FriendRecordScreen 표시
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(SemanticColor.backgroundWhiteSecondary)
-            ) {
-                FriendRecordScreen(
-                    nickname = recordUiState.selectedFriendNickname,
-                    onNavigateBack = onFriendDeselected,
-                    onBlockUser = onBlockUser,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        } else {
-            // 친구 미선택 시 탭 콘텐츠 표시
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SemanticColor.backgroundWhiteSecondary)
-            ) {
-                // 친구 미선택 시 탭 콘텐츠 표시
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp)
+                        .background(SemanticColor.backgroundWhiteSecondary)
+                        .padding(horizontal = 20.dp)
                 ) {
                     Spacer(Modifier.height(16.dp))
                     RecordTabRow(
@@ -253,12 +235,27 @@ private fun RecordScreenContent(
                         onMonthChanged = onMonthChanged
                     )
 
-                    Spacer(Modifier.height(16.dp))
+                    // 최소 높이 확보 (스크롤 가능하도록)
+                    Spacer(Modifier.height(50.dp))
                 }
             }
         }
 
+        // 친구 선택 시 하단 전체 화면 영역 (스크롤 영역 밖)
+        if (recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                color = SemanticColor.backgroundWhiteSecondary
+            ) {
+                FriendRecordScreen(
+                    nickname = recordUiState.selectedFriendNickname,
+                    onNavigateBack = onFriendDeselected,
+                    onBlockUser = onBlockUser,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 }
-
-

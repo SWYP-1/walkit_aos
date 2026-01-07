@@ -72,12 +72,12 @@ fun RecordTopSection(
         )
         IconButton(
             onClick = onNavigateToFriend,
-            modifier = Modifier.size(55.dp)
+            modifier = Modifier.padding(horizontal = 16.dp).size(24.dp)
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_forward),
                 contentDescription = "friend list more",
-                tint = SemanticColor.iconGrey
+                tint = SemanticColor.iconGrey,
             )
         }
     }

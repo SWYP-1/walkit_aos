@@ -46,6 +46,7 @@ import swyp.team.walkit.ui.theme.walkItTypography
  * @param borderColor 테두리 색상 (기본값: BlueSecondary)
  * @param iconTint 아이콘 틴트 색상 (기본값: SemanticColor.stateBluePrimary)
  * @param textColor 텍스트 색상 (기본값: BluePrimary)
+ * @param descriptionTextColor 설명 텍스트 색상 (기본값: textColor)
  * @param modifier Modifier
  */
 @Composable
@@ -56,24 +57,22 @@ fun InfoBanner(
     borderColor: Color = BlueSecondary,
     iconTint: Color = SemanticColor.stateBluePrimary,
     textColor: Color = BluePrimary,
+    descriptionTextColor: Color = textColor,
     icon: @Composable (iconTint: Color) -> Unit = { tint -> InfoIcon(iconTint = tint) },
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
             )
             .padding(
-                start = 12.dp,
-                end = 16.dp,
-                top = 16.dp,
-                bottom = 16.dp,
+                12.dp
             ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = if (description != null) Alignment.Top else Alignment.CenterVertically,
@@ -100,7 +99,7 @@ fun InfoBanner(
                 Text(
                     text = it,
                     style = MaterialTheme.walkItTypography.captionM,
-                    color = textColor,
+                    color = descriptionTextColor,
                 )
             }
         }

@@ -96,7 +96,9 @@ fun AppHeader(
                     .weight(1f)
                     .padding(horizontal = 8.dp),
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.walkItTypography.bodyXL
+                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                    fontWeight = FontWeight.SemiBold
+                )
             )
 
             // 오른쪽: 액션 버튼 또는 프로필 이미지

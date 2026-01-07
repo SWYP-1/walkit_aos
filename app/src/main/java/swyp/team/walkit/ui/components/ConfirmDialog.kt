@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -70,7 +71,7 @@ fun ConfirmDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 32.dp)
                 .shadow(
                     elevation = 10.dp,
                     shape = RoundedCornerShape(12.dp),
@@ -86,7 +87,6 @@ fun ConfirmDialog(
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 // 제목
                 Text(
@@ -97,6 +97,7 @@ fun ConfirmDialog(
                     color = Grey10,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(4.dp))
 
                 // 메시지
                 Text(
@@ -137,6 +138,7 @@ fun ConfirmDialog(
                     ),
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(20.dp))
 
                 // 버튼 영역 (기존 코드 그대로)
                 Row(

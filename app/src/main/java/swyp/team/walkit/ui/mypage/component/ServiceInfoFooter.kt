@@ -37,19 +37,19 @@ fun ServiceInfoFooter(
 ) {
     Column(Modifier.fillMaxWidth().background(SemanticColor.backgroundWhiteSecondary).padding(vertical = 20.dp, horizontal = 16.dp)) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "서비스 이용 약관",
-
-                // caption M/medium
                 style = MaterialTheme.walkItTypography.captionM.copy(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderSecondary,
-                modifier = Modifier.clickable(onClick = onTermsClick)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onTermsClick),
+                textAlign = TextAlign.Center
             )
 
             VerticalDivider(
@@ -60,14 +60,16 @@ fun ServiceInfoFooter(
 
             Text(
                 text = "개인정보처리 방침",
-
-                // caption M/medium
                 style = MaterialTheme.walkItTypography.captionM.copy(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderSecondary,
-                modifier = Modifier.clickable(onClick = onPrivacyClick)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onPrivacyClick),
+                textAlign = TextAlign.Center
             )
+
             VerticalDivider(
                 Modifier
                     .width(1.dp)
@@ -76,13 +78,13 @@ fun ServiceInfoFooter(
 
             Text(
                 text = "마케팅 수신 동의",
-
-                // caption M/medium
                 style = MaterialTheme.walkItTypography.captionM.copy(
                     fontWeight = FontWeight.Medium
                 ),
                 color = SemanticColor.textBorderSecondary,
-                modifier = Modifier.clickable(onClick = onMarketingClick),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onMarketingClick),
                 textAlign = TextAlign.Center
             )
         }

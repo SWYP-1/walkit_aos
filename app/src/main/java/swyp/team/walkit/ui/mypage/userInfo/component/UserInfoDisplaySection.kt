@@ -2,14 +2,17 @@ package swyp.team.walkit.ui.mypage.userInfo.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -48,23 +51,26 @@ fun UserInfoDisplaySection(
                     color = Grey7,
                 )
 
-                OutlinedTextField(
-                    value = it,
-                    onValueChange = {},
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SemanticColor.backgroundWhiteSecondary, RoundedCornerShape(8.dp)),
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = tertiaryText,
-                        disabledBorderColor = Color.Transparent,
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    singleLine = true,
-                )
+                        .background(
+                            color = SemanticColor.backgroundWhiteSecondary,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = tertiaryText,
+                        maxLines = 1,
+                    )
+                }
+
             }
         }
         // 연동된 계정 표시 필드 (비활성화)
@@ -80,23 +86,26 @@ fun UserInfoDisplaySection(
                 color = Grey7,
             )
 
-            OutlinedTextField(
-                value = provider ?: "알 수 없음",
-                onValueChange = {},
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SemanticColor.backgroundWhiteSecondary, RoundedCornerShape(8.dp)),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = tertiaryText,
-                    disabledBorderColor = Color.Transparent,
-                ),
-                shape = RoundedCornerShape(8.dp),
-                textStyle = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Bold,
-                ),
-                singleLine = true,
-            )
+                    .background(
+                        color = SemanticColor.backgroundWhiteSecondary,
+                        shape = RoundedCornerShape(8.dp),
+                    ),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = provider ?: "알 수 없음",
+                    style = MaterialTheme.walkItTypography.bodyM.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = tertiaryText,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp) // 위/아래 8dp
+                )
+            }
+
         }
 
 

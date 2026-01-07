@@ -160,6 +160,11 @@ fun MissionScreen(
                     onRewardClick = { missionId -> onRewardClick(missionId) },
                     isActive = if (missionCard.mission.missionId == activeMissionId) true else false
                 )
+
+                // 카드 사이 간격 8dp (마지막 제외)
+                if (index != filteredMissions.lastIndex) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
 
             item { Spacer(modifier = Modifier.height(12.dp)) }

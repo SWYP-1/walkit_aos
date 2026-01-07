@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:188284794130:android:916fd43451003e04faefcb",
         "android_client_info": {
-          "package_name": "com.google.firebase.walkit.fcm"
+          "package_name": "swyp.team.walkit"
         }
       },
       "oauth_client": [],

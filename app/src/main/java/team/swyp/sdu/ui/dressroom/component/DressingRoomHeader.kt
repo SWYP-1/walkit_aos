@@ -1,4 +1,4 @@
-package swyp.team.walkit.ui.dressroom.component
+package team.swyp.sdu.ui.dressroom.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,11 +29,10 @@ import swyp.team.walkit.ui.components.GradeBadge
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
-import team.swyp.sdu.ui.dressroom.component.DressingRoomHeader
 
 @Composable
 fun DressingRoomHeader(
-    grade: swyp.team.walkit.domain.model.Grade,
+    grade: Grade,
     level: Int? = null,
     nickName: String,
     onBack: () -> Unit = {},

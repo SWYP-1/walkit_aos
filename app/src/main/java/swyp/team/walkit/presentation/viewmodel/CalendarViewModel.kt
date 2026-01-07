@@ -304,7 +304,7 @@ class CalendarViewModel @Inject constructor(
 // CalendarViewModel.kt
 fun nextWeek() {
     val current = today.value
-    val currentWeekStart = current.with(DayOfWeek.SUNDAY)
+    val currentWeekStart = current.with(DayOfWeek.MONDAY)
     val nextWeekStart = currentWeekStart.plusWeeks(1)
 
     today.value = nextWeekStart
@@ -313,7 +313,7 @@ fun nextWeek() {
 
     fun prevWeek() {
         val current = today.value
-        val currentWeekStart = current.with(DayOfWeek.SUNDAY)
+        val currentWeekStart = current.with(DayOfWeek.MONDAY)
         val prevWeekStart = currentWeekStart.minusWeeks(1)
 
         today.value = prevWeekStart

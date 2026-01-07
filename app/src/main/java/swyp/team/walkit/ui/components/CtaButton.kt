@@ -118,7 +118,7 @@ fun CtaButton(
             disabledContentColor = colors.content,
         ),
         elevation = ButtonDefaults.buttonElevation(0.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -204,7 +204,7 @@ fun CtaWithIconPreview() {
 @Composable
 fun PreviousButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier.widthIn(min = 80.dp, max = 120.dp),
+    modifier: Modifier = Modifier.widthIn(min = 95.dp, max = 120.dp),
     enabled: Boolean = true
 ) {
     CtaButton(

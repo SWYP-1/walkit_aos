@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,11 +64,10 @@ fun HomeEmptySession(modifier: Modifier = Modifier, onClick: () -> Unit) {
                     color = SemanticColor.textBorderPrimary,
                     shape = RoundedCornerShape(size = 8.dp)
                 )
-                .padding(
-                    horizontal = 16.dp,
-                    vertical = 8.dp
-                )
                 .clickableNoRipple(onClick)
+                .width(108.dp)
+                .height(40.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "산책하러 가기",

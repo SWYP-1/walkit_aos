@@ -33,8 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import swyp.team.walkit.R
+import swyp.team.walkit.data.remote.user.dto.UserSearchResultDto
 import swyp.team.walkit.domain.model.FollowStatus
+import swyp.team.walkit.domain.model.UserSearchResult
 import swyp.team.walkit.ui.friend.FriendViewModel
+import swyp.team.walkit.ui.friend.SearchUiState
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CustomProgressIndicator
 import swyp.team.walkit.ui.components.SearchBar
@@ -80,7 +83,7 @@ fun FriendSearchScreen(
             borderColor = SemanticColor.textBorderSecondary,
             iconColor = SemanticColor.iconGrey,
             backgroundColor = SemanticColor.backgroundWhitePrimary,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(vertical = 22.dp, horizontal = 16.dp)
         )
 
         // 검색 결과 화면 표시
@@ -171,7 +174,7 @@ fun FriendSearchEmptyScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .background(
                 color = SemanticColor.backgroundWhiteSecondary,
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(12.dp)
             )
             .padding(vertical = 40.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center,
@@ -183,7 +186,7 @@ fun FriendSearchEmptyScreen(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_face_default),
+                painter = painterResource(R.drawable.ic_face_search_empty),
                 contentDescription = null
             )
             Spacer(Modifier.height(20.dp))
@@ -204,6 +207,19 @@ fun FriendSearchEmptyScreen(modifier: Modifier = Modifier) {
                 color = SemanticColor.textBorderSecondary
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FriendSearchScreenErrorPreview() {
+    WalkItTheme {
+        SearchResultScreen(
+            searchUiState = SearchUiState.Error("검색 결과를 찾을 수 없습니다"),
+            isFollowing = false,
+            onNavigateToDetail = { _, _ -> },
+            onFollowClick = {}
+        )
     }
 }
 

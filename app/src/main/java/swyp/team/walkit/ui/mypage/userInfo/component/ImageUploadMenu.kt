@@ -2,13 +2,16 @@ package swyp.team.walkit.ui.mypage.userInfo.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -58,8 +61,7 @@ fun ImageUploadMenu(
                     color = greenPrimary,
                     shape = RoundedCornerShape(8.dp),
                 )
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -68,6 +70,7 @@ fun ImageUploadMenu(
                 tint = greenPrimary,
                 modifier = Modifier.size(20.dp),
             )
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = "이미지 업로드",
                 style = MaterialTheme.walkItTypography.bodyS.copy(
@@ -93,7 +96,7 @@ fun ImageUploadMenu(
                 },
                 text = {
                     Text(
-                        text = "촬영하기",
+                        text = "사진촬영하기",
                         style = MaterialTheme.walkItTypography.bodyM,
                     )
                 },
@@ -113,7 +116,7 @@ fun ImageUploadMenu(
                 },
                 text = {
                     Text(
-                        text = "갤러리에서 가져오기",
+                        text = "갤러리에서 선택",
                         style = MaterialTheme.walkItTypography.bodyM,
                     )
                 },
@@ -135,7 +138,7 @@ fun ImageUploadMenu(
                     },
                     text = {
                         Text(
-                            text = "삭제하기",
+                            text = "이미지 삭제하기",
                             style = MaterialTheme.walkItTypography.bodyM,
                         )
                     },

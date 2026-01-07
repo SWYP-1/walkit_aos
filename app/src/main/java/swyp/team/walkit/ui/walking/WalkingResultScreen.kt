@@ -333,7 +333,7 @@ private fun WalkingResultScreenContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // 진행 바 (1번째 칸 채워짐)
             item {
@@ -344,101 +344,89 @@ private fun WalkingResultScreenContent(
             }
 
             item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-
-            item {
-                Text(
-                    text = "오늘도 산책 완료!",
-                    // heading S/semibold
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.textBorderPrimary,
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Column {
                     Text(
-                        text = buildAnnotatedString {
-                            append("이번 주 ")
-
-                            withStyle(
-                                style = SpanStyle(color = SemanticColor.stateAquaBluePrimary)
-                            ) {
-                                append("${weekWalkOrder}번째")
-                            }
-
-                            append(" 산책을 완료했어요.")
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SemanticColor.textBorderSecondary, // 기본 색
+                        text = "오늘도 산책 완료!",
+                        // heading S/semibold
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = SemanticColor.textBorderPrimary,
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = buildAnnotatedString {
+                                append("이번 주 ")
 
-                    IconButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                if (capturedSnapshotPath == null) {
-                                    Timber.d("공유하기: 스냅샷이 없어 생성 시작")
-                                    var snapshotPath: String? = null
-                                    val success = onCaptureSnapshot {
-                                        try {
-                                            snapshotPath = if (emotionPhotoUri != null) {
-                                                capturePhotoWithPathSnapshot(
-                                                    photoWithPathBoxCoordinates,
-                                                    context
-                                                )
-                                            } else {
-                                                if (mapViewRef != null) {
-                                                    captureMapViewSnapshot(
-                                                        mapViewRef!!,
+                                withStyle(
+                                    style = SpanStyle(color = SemanticColor.stateAquaBluePrimary)
+                                ) {
+                                    append("${weekWalkOrder}번째")
+                                }
+
+                                append(" 산책을 완료했어요.")
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SemanticColor.textBorderSecondary, // 기본 색
+                        )
+
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (capturedSnapshotPath == null) {
+                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+                                        var snapshotPath: String? = null
+                                        val success = onCaptureSnapshot {
+                                            try {
+                                                snapshotPath = if (emotionPhotoUri != null) {
+                                                    capturePhotoWithPathSnapshot(
+                                                        photoWithPathBoxCoordinates,
                                                         context
                                                     )
                                                 } else {
-                                                    Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
-                                                    null
+                                                    if (mapViewRef != null) {
+                                                        captureMapViewSnapshot(
+                                                            mapViewRef!!,
+                                                            context
+                                                        )
+                                                    } else {
+                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+                                                        null
+                                                    }
                                                 }
+                                                snapshotPath
+                                            } catch (t: Throwable) {
+                                                Timber.e(t, "공유용 스냅샷 생성 실패")
+                                                null
                                             }
-                                            snapshotPath
-                                        } catch (t: Throwable) {
-                                            Timber.e(t, "공유용 스냅샷 생성 실패")
-                                            null
+                                        }
+
+                                        if (success && snapshotPath != null) {
+                                            capturedSnapshotPath = snapshotPath
+                                        } else {
+                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+                                            return@launch
                                         }
                                     }
 
-                                    if (success && snapshotPath != null) {
-                                        capturedSnapshotPath = snapshotPath
-                                    } else {
-                                        Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
-                                        return@launch
-                                    }
+                                    showShareDialog = true
                                 }
-
-                                showShareDialog = true
                             }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_external),
+                                tint = SemanticColor.iconGrey,
+                                contentDescription = "external",
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_action_external),
-                            tint = SemanticColor.iconGrey,
-                            contentDescription = "external",
-                            modifier = Modifier.size(24.dp)
-                        )
                     }
                 }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             item {
@@ -523,28 +511,12 @@ private fun WalkingResultScreenContent(
                 }
             }
 
-
             item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            item {
-//                WalkingSummaryCard(
-//                    leftValue = currentSession.stepCount.toString(),
-//                    leftLabel = "걸음 수",
-//                    leftUnit = SummaryUnit.Step("걸음"),
-//                    rightLabel = "산책 시간",
-//                    rightUnit = SummaryUnit.Time(currentSession.duration),
-//                )
                 WalkingStatsCard(
                     sessions = listOf(currentSession),
                     stepsLabel = "걸음 수",
                     durationLabel = "산책 시간"
                 )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
             }
 
             // 목표 진행률 카드
@@ -558,11 +530,6 @@ private fun WalkingResultScreenContent(
                     )
                 }
             }
-
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             item {
                 WalkingDiaryCard(
                     session = currentSession,
@@ -575,10 +542,6 @@ private fun WalkingResultScreenContent(
                         editedNote = "" // 삭제 후 UI 상태 초기화
                     },
                 )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(36.dp))
             }
 
             item {
@@ -644,7 +607,7 @@ private fun WalkingResultScreenContent(
                             text = "저장하기"
                         )
                     }
-                    Spacer(modifier = Modifier.height(36.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }

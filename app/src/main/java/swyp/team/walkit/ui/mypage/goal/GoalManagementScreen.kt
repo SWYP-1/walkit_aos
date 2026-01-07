@@ -1,11 +1,15 @@
 package swyp.team.walkit.ui.mypage.goal
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -20,9 +24,10 @@ import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.ConfirmDialog
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.components.CtaButtonVariant
-import swyp.team.walkit.ui.mypage.goal.components.GoalErrorBanner
+import swyp.team.walkit.ui.mypage.goal.GoalError
 import swyp.team.walkit.ui.mypage.goal.components.GoalInfoBanner
 import swyp.team.walkit.ui.mypage.goal.component.GoalSettingCard
+import swyp.team.walkit.ui.mypage.goal.components.GoalErrorBanner
 import swyp.team.walkit.ui.mypage.goal.model.GoalState
 import swyp.team.walkit.ui.mypage.goal.model.hasChangesComparedTo
 import swyp.team.walkit.ui.theme.SemanticColor
@@ -74,6 +79,32 @@ fun GoalManagementScreen(
 
     var showConfirmDialog by remember { mutableStateOf(false) }
 
+    // 에러 메시지 표시 상태 관리 (스낵바처럼 3초 후 사라짐)
+    var showErrorMessage by remember { mutableStateOf(false) }
+    var currentErrorMessage by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    // goalError가 변경될 때 스낵바 표시
+    LaunchedEffect(goalError) {
+        if (goalError != null) {
+            val (title, description) = when (goalError) {
+                is GoalError.UpdateNotAllowed -> "이번 달 목표 수정이 불가능합니다" to "목표는 한 달에 한 번만 변경 가능합니다"
+                is GoalError.SaveFailed -> "목표 저장에 실패했습니다" to "네트워크 연결을 확인하고 다시 시도해주세요"
+                else -> null to null
+            }
+
+            if (title != null && description != null) {
+                currentErrorMessage = title to description
+                showErrorMessage = true
+
+                // 3초 후 자동으로 사라짐
+                kotlinx.coroutines.delay(3000)
+                showErrorMessage = false
+                currentErrorMessage = null
+                onClearError() // ViewModel의 에러 상태도 클리어
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -81,7 +112,6 @@ fun GoalManagementScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AppHeader(title = "내 목표 관리", onNavigateBack = onNavigateBack)
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -90,31 +120,9 @@ fun GoalManagementScreen(
                 Spacer(Modifier.height(16.dp))
 
                 // GoalInfoBanner 컴포넌트 사용
-                Box(modifier = Modifier.heightIn(min = 120.dp)){
-                    when (goalError) {
-                        is GoalError.UpdateNotAllowed -> {
-                            GoalErrorBanner(
-                                modifier = Modifier.fillMaxWidth(),
-                                title = "이번 달 목표 수정이 불가능합니다",
-                                description = "목표는 한 달에 한 번만 변경 가능합니다"
-                            )
-                        }
-                        is GoalError.SaveFailed -> {
-                            GoalErrorBanner(
-                                modifier = Modifier.fillMaxWidth(),
-                                title = "목표 저장에 실패했습니다",
-                                description = "네트워크 연결을 확인하고 다시 시도해주세요"
-                            )
-                        }
-                        null -> {
-                            GoalInfoBanner(
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
-
-
+                GoalInfoBanner(
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(Modifier.height(20.dp))
 
@@ -138,11 +146,29 @@ fun GoalManagementScreen(
                     onClickMinus = { if (selectedSteps > 1000) selectedSteps -= 1000 },
                     onNumberChange = { selectedSteps = it },
                     range = GoalRange(1000, 30_000),
-                    unit = "보",
+                    unit = "걸음",
                     accentColor = SemanticColor.textBorderPrimary
                 )
 
                 Spacer(Modifier.weight(1f))
+
+                // 스낵바 스타일 에러 메시지 (CTA 버튼 위)
+                AnimatedVisibility(
+                    visible = showErrorMessage,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    currentErrorMessage?.let { (title, description) ->
+                        GoalErrorBanner(
+                            title = title,
+                            description = description,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
 
                 // 액션 버튼
                 Row(
@@ -160,7 +186,9 @@ fun GoalManagementScreen(
                     )
 
                     CtaButton(
-                        text = "저장하기", onClick = {
+                        text = "저장하기",
+                        enabled = goalError != GoalError.UpdateNotAllowed, // 한 달에 1번 변경 제한 에러에서만 비활성화
+                        onClick = {
                             if (GoalState(selectedSteps, selectedFrequency).hasChangesComparedTo(
                                     goalState
                                 )

@@ -4,6 +4,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import swyp.team.walkit.ui.record.components.DropMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +50,7 @@ fun DateDropdown(
     val tertiaryText = SemanticColor.textBorderTertiary
     val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
 
+    val textHeight = 40.dp
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -70,7 +74,7 @@ fun DateDropdown(
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_down),
                     contentDescription = "drop icon",
-                    modifier = Modifier.rotate(rotation)
+                    modifier = Modifier.rotate(rotation).size(24.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
@@ -86,9 +90,11 @@ fun DateDropdown(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 40.dp) // 최소 높이 지정, 글자 잘림 방지
                 .background(Color.White, RoundedCornerShape(4.dp))
                 .border(1.dp, Grey3, RoundedCornerShape(4.dp))
                 .menuAnchor(),
+            // 내부 패딩으로 height 조절
         )
 
         ExposedDropdownMenu(

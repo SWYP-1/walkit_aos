@@ -53,7 +53,7 @@ fun WalkingResultCompletionDialog(
         Card(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(32.dp)
                 .shadow(
                     elevation = 10.dp,
                     shape = RoundedCornerShape(12.dp),

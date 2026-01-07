@@ -1,6 +1,7 @@
 package swyp.team.walkit.ui.record.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,11 @@ fun RecordTabRow(
         modifier = modifier
             .fillMaxWidth()
             .customShadow()
+            .border(
+                width = 1.dp,
+                color = SemanticColor.textBorderSecondaryInverse,
+                shape = containerShape
+            )
             .background(
                 color = SemanticColor.backgroundWhitePrimary,
                 shape = containerShape

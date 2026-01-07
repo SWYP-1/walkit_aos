@@ -80,6 +80,14 @@ fun GoalSettingCard(
         NumberFormat.getNumberInstance(Locale.getDefault()).format(currentNumber)
     }
 
+    // 범위 숫자 포맷팅 (최소/최대 값에 천 단위 구분자 추가)
+    val formattedMin = remember(range.min) {
+        NumberFormat.getNumberInstance(Locale.getDefault()).format(range.min)
+    }
+    val formattedMax = remember(range.max) {
+        NumberFormat.getNumberInstance(Locale.getDefault()).format(range.max)
+    }
+
     Column(modifier = modifier) {
 
         Text(
@@ -91,7 +99,7 @@ fun GoalSettingCard(
         Spacer(Modifier.height(2.dp))
 
         Text(
-            text = "최소 ${range.min}${unit} ~ 최대 ${range.max}${unit}",
+            text = "최소 ${formattedMin}${unit} ~ 최대 ${formattedMax}${unit}",
             style = MaterialTheme.walkItTypography.captionM,
             color = Grey10
         )
@@ -199,7 +207,7 @@ fun GoalSettingCardCustomColorPreview() {
                 modifier = Modifier.padding(16.dp),
                 currentNumber = 10000, // 10,000으로 표시됨
                 onNumberChange = {},
-                range = GoalRange(1000, 30000),
+                range = GoalRange(1000, 30000), // 1,000 ~ 30,000으로 표시됨
                 unit = "보",
                 onClickMinus = {},
                 onClickPlus = {},
@@ -219,7 +227,7 @@ fun GoalSettingCardLargeNumberPreview() {
                 modifier = Modifier.padding(16.dp),
                 currentNumber = 100000, // 100,000으로 표시됨
                 onNumberChange = {},
-                range = GoalRange(1000, 30000),
+                range = GoalRange(1000, 500000), // 1,000 ~ 500,000으로 표시됨
                 unit = "보",
                 onClickMinus = {},
                 onClickPlus = {},

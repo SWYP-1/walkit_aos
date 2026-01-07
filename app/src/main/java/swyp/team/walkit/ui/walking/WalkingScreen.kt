@@ -22,7 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import swyp.team.walkit.ui.components.ConfirmDialog
+import swyp.team.walkit.ui.components.WalkingWarningDialog
 import swyp.team.walkit.ui.components.CustomProgressIndicator
 import swyp.team.walkit.ui.components.ProgressIndicatorSize
 import androidx.compose.runtime.*
@@ -226,13 +226,17 @@ fun WalkingScreenRoute(
             }
         }
 
-        ConfirmDialog(
-            title = "산책 중단",
-            message = "산책을 중단하시겠습니까?",
-            negativeButtonText = "중단하기",
-            positiveButtonText = "계속하기",
+        WalkingWarningDialog(
+            title = "산책 기록이 저장되지 않습니다",
+            message = "이대로 종료하시면 진행 중인 \n" +
+                    "산책 기록이 모두 사라져요!",
+            cancelButtonText = "중단하기",
+            continueButtonText = "계속하기",
+            cancelButtonTextColor = SemanticColor.textBorderSecondary,
+            cancelButtonColor = SemanticColor.buttonPrimaryDisabled,
+            cancelButtonBorderColor = SemanticColor.buttonPrimaryDisabled,
             onDismiss = { showBackDialog.value = false },
-            onNegative = {
+            onCancel = {
                 showBackDialog.value = false
                 // 산책 취소 (추적 중단만 하고 세션 저장하지 않음)
                 coroutineScope.launch {
@@ -240,7 +244,7 @@ fun WalkingScreenRoute(
                 }
                 onNavigateBack()
             },
-            onPositive = {
+            onContinue = {
                 showBackDialog.value = false
                 // 산책 계속 진행
             }

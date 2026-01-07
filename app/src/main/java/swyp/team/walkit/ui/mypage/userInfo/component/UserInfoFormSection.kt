@@ -73,6 +73,46 @@ fun UserInfoFormSection(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
 
+        // 닉네임 입력 필드
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "닉네임",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = Grey10,
+                )
+                Text(
+                    text = "*",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = redPrimary,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
+            NicknameInputField(
+                value = nickname,
+                onValueChange = onNicknameChange,
+                isError = isNicknameDuplicate == true || nicknameValidationError != null,
+                errorMessage = when {
+                    isNicknameDuplicate == true -> "중복된 닉네임입니다."
+                    nicknameValidationError != null -> nicknameValidationError
+                    else -> null
+                },
+                isLoading = isLoading,
+                focusRequester = remember { FocusRequester() },
+                keyboardController = keyboardController
+            )
+        }
+
         // 생년월일 선택 필드
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -100,7 +140,7 @@ fun UserInfoFormSection(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // 년도 선택
                 DateDropdown(
@@ -128,45 +168,7 @@ fun UserInfoFormSection(
             }
         }
 
-        // 닉네임 입력 필드
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "닉네임",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = Grey10,
-                )
-                Text(
-                    text = "*",
-                    style = MaterialTheme.walkItTypography.bodyS.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = redPrimary,
-                )
-            }
 
-            NicknameInputField(
-                value = nickname,
-                onValueChange = onNicknameChange,
-                isError = isNicknameDuplicate == true || nicknameValidationError != null,
-                errorMessage = when {
-                    isNicknameDuplicate == true -> "중복된 닉네임입니다."
-                    nicknameValidationError != null -> nicknameValidationError
-                    else -> null
-                },
-                isLoading = isLoading,
-                focusRequester = remember { FocusRequester() },
-                keyboardController = keyboardController
-            )
-        }
     }
 }
 
