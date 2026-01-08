@@ -1,19 +1,34 @@
 package swyp.team.walkit.domain.model
 
 /**
+ * 캐릭터 파트별 이미지 정보
+ * API 응답 구조의 각 파트별 이미지 정보를 표현
+ */
+data class CharacterImage(
+    val imageName: String? = null,
+    val itemTag: String? = null
+)
+
+/**
  * 캐릭터 도메인 모델
+ * API 응답 구조를 반영하여 각 파트별 이미지 정보를 객체로 관리
  */
 data class Character(
-    val headImageName: String? = null,
-    val headImageTag: String? = null,  // HEAD 영역의 tag 정보 (TOP/DECOR)
-    val bodyImageName: String? = null,
-    val feetImageName: String? = null,
-    val characterImageName: String? = null,
-    val backgroundImageName: String? = null,
+    val headImage: CharacterImage? = null,     // HEAD 영역 이미지 + 태그 정보
+    val bodyImage: CharacterImage? = null,     // BODY 영역 이미지
+    val feetImage: CharacterImage? = null,     // FEET 영역 이미지
+    val characterImageName: String? = null,    // 캐릭터 기본 이미지
+    val backgroundImageName: String? = null,   // 배경 이미지
     val level: Int = 1,
     val grade: Grade = Grade.SEED,
     val nickName: String = "게스트",
-)
+) {
+    // Backward compatibility를 위한 getter들 (기존 코드 호환성 유지)
+    val headImageName: String? get() = headImage?.imageName
+    val headImageTag: String? get() = headImage?.itemTag
+    val bodyImageName: String? get() = bodyImage?.imageName
+    val feetImageName: String? get() = feetImage?.imageName
+}
 
 /**
  * Lottie 애니메이션의 asset 정보를 표현하는 모델

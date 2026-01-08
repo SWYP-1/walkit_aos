@@ -2,6 +2,7 @@ package swyp.team.walkit.data.local.mapper
 
 import swyp.team.walkit.data.local.entity.CharacterEntity
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.Grade
 
 /**
@@ -13,10 +14,12 @@ object CharacterMapper {
     fun toEntity(domain: Character, userId: Long): CharacterEntity =
         CharacterEntity(
             userId = userId,
-            headImageName = domain.headImageName,
-            headImageTag = domain.headImageTag,
-            bodyImageName = domain.bodyImageName,
-            feetImageName = domain.feetImageName,
+            // flat 구조로만 저장 (DB 스키마 변경 없음)
+            headImageName = domain.headImageName,  // backward compatibility getter 사용
+            headImageTag = domain.headImageTag,    // backward compatibility getter 사용
+            bodyImageName = domain.bodyImageName,  // backward compatibility getter 사용
+            feetImageName = domain.feetImageName,  // backward compatibility getter 사용
+
             characterImageName = domain.characterImageName,
             backgroundImageName = domain.backgroundImageName,
             level = domain.level,
@@ -26,10 +29,10 @@ object CharacterMapper {
 
     fun toDomain(entity: CharacterEntity): Character =
         Character(
-            headImageName = entity.headImageName,
-            headImageTag = entity.headImageTag,
-            bodyImageName = entity.bodyImageName,
-            feetImageName = entity.feetImageName,
+            // flat 구조를 object 구조로 변환 (domain model에서만 개선)
+            headImage = entity.headImageName?.let { CharacterImage(it, entity.headImageTag) },
+            bodyImage = entity.bodyImageName?.let { CharacterImage(it, entity.headImageTag) }, // Note: DB에는 body/feet tag가 없으므로 headTag 재사용
+            feetImage = entity.feetImageName?.let { CharacterImage(it, null) },
             characterImageName = entity.characterImageName,
             backgroundImageName = entity.backgroundImageName,
             level = entity.level,

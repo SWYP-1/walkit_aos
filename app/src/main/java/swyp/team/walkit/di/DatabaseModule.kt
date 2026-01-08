@@ -50,6 +50,7 @@ object DatabaseModule {
         }
     }
 
+
     @Provides
     @Singleton
     fun provideAppDatabase(

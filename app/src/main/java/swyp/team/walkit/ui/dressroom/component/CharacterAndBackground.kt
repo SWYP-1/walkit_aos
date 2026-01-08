@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,8 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import swyp.team.walkit.R
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
+import swyp.team.walkit.domain.model.CharacterPart
 import swyp.team.walkit.domain.model.CosmeticItem
 import swyp.team.walkit.domain.model.EquipSlot
 import swyp.team.walkit.domain.service.LottieImageProcessor
@@ -60,7 +63,8 @@ private val SLOT_ASSET_MAPPING = mapOf(
  */
 private data class SlotImageConfig(
     val assetId: String,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val tags: String? = null  // HEAD 슬롯에서 assetId 결정에 사용
 )
 
 /**
@@ -76,32 +80,62 @@ private fun createSlotImageConfigs(
     cosmeticItems: List<CosmeticItem>
 ): List<SlotImageConfig> {
     return EquipSlot.values().map { slot ->
-        val assetId =
-            SLOT_ASSET_MAPPING[slot] ?: return@map SlotImageConfig(slot.name.lowercase(), null)
-
-        // 우선순위에 따른 이미지 URL 결정
-        val imageUrl = when (slot) {
+        // 우선순위에 따른 이미지 URL과 태그 결정
+        val (imageUrl, tags) = when (slot) {
             EquipSlot.HEAD -> {
-                // 착용된 HEAD 아이템이 있으면 해당 아이템 사용, 없으면 Character 기본값
                 wornItemsByPosition[slot]?.let { itemId ->
-                    getImageUrlForCosmeticItem(itemId, cosmeticItems)
-                } ?: character.headImageName
+                    // 착용된 HEAD 아이템이 있으면 해당 아이템의 정보 사용
+                    cosmeticItems.find { it.itemId == itemId }?.let { item ->
+                        item.imageName to item.tags
+                    } ?: (null to null)
+                } ?: (character.headImageName to character.headImageTag)
             }
 
             EquipSlot.BODY -> {
-                wornItemsByPosition[slot]?.let { itemId ->
+                val url = wornItemsByPosition[slot]?.let { itemId ->
                     getImageUrlForCosmeticItem(itemId, cosmeticItems)
                 } ?: character.bodyImageName
+                url to null
             }
 
             EquipSlot.FEET -> {
-                wornItemsByPosition[slot]?.let { itemId ->
+                val url = wornItemsByPosition[slot]?.let { itemId ->
                     getImageUrlForCosmeticItem(itemId, cosmeticItems)
                 } ?: character.feetImageName
+                url to null
             }
         }
 
-        SlotImageConfig(assetId, imageUrl)
+        // HEAD 슬롯의 경우 tags를 활용해서 assetId 결정
+        val assetId = when (slot) {
+            EquipSlot.HEAD -> {
+                tags?.let {
+                    CharacterPart.HEAD.getLottieAssetId(it)
+                } ?: run {
+                    // tags가 없으면 이미지 URL에서 힌트 추출
+                    when {
+                        imageUrl?.contains("decor", ignoreCase = true) == true ||
+                        imageUrl?.contains("earring", ignoreCase = true) == true ||
+                        imageUrl?.contains("accessory", ignoreCase = true) == true -> {
+                            "headdecor"
+                        }
+                        imageUrl?.contains("top", ignoreCase = true) == true ||
+                        imageUrl?.contains("hat", ignoreCase = true) == true ||
+                        imageUrl?.contains("cap", ignoreCase = true) == true -> {
+                            "headtop"
+                        }
+                        else -> {
+                            "headdecor" // 기본값으로 headdecor 사용
+                        }
+                    }
+                }
+            }
+            else -> {
+                SLOT_ASSET_MAPPING[slot] ?: slot.name.lowercase()
+            }
+        }
+
+        SlotImageConfig(assetId, imageUrl, tags)
     }
 }
 
@@ -127,6 +161,10 @@ fun CharacterAndBackground(
     onRefreshClick: () -> Unit = {},
     processedLottieJson: String? = null, // ViewModel에서 처리된 Lottie JSON
 ) {
+    // processedLottieJson이 없을 때 createSlotImageConfigs를 사용해서 기본 Lottie 생성
+    val slotConfigs = remember(character, wornItemsByPosition, cosmeticItems) {
+        createSlotImageConfigs(character, wornItemsByPosition, cosmeticItems)
+    }
 //    Timber.d("🎭 CharacterAndBackground 컴포넌트 렌더링")
 //    Timber.d("📄 processedLottieJson 길이: ${processedLottieJson?.length ?: 0}")
 //    Timber.d("🧷 wornItemsByPosition: $wornItemsByPosition")
@@ -167,7 +205,7 @@ fun CharacterAndBackground(
             contentDescription = "season background",
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(25f / 32f),
+                .aspectRatio(1f),
             contentScale = ContentScale.Crop,
         )
 
@@ -272,9 +310,9 @@ fun CharacterAndBackgroundPreview() {
     val dummyCharacter = Character(
         nickName = "승우",
         grade = Grade.TREE,
-        headImageName = "https://example.com/head.png", // 프리뷰용 더미 URL
-        bodyImageName = "https://example.com/body.png",
-        feetImageName = "https://example.com/feet.png"
+        headImage = CharacterImage("https://example.com/head.png", "TOP"), // 프리뷰용 더미 CharacterImage
+        bodyImage = CharacterImage("https://example.com/body.png", null),
+        feetImage = CharacterImage("https://example.com/feet.png", null)
     )
 
     // 프리뷰용 착용 아이템 설정

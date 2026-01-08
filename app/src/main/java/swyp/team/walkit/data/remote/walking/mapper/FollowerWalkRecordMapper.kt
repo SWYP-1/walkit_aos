@@ -1,7 +1,9 @@
 package swyp.team.walkit.data.remote.walking.mapper
 
 import swyp.team.walkit.data.remote.walking.dto.FollowerWalkRecordDto
+import swyp.team.walkit.data.remote.walking.dto.ItemImageDto
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.FollowerWalkRecord
 import swyp.team.walkit.domain.model.Grade
 
@@ -31,15 +33,24 @@ object FollowerWalkRecordMapper {
      */
     private fun toDomain(dto: swyp.team.walkit.data.remote.walking.dto.CharacterDto): Character {
         return Character(
-            headImageName = dto.headImage?.imageName,
-            headImageTag = dto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
-            bodyImageName = dto.bodyImage?.imageName,
-            feetImageName = dto.feetImage?.imageName,
+            headImage = dto.headImage?.toCharacterImage(),
+            bodyImage = dto.bodyImage?.toCharacterImage(),
+            feetImage = dto.feetImage?.toCharacterImage(),
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
             grade = Grade.fromApiString(dto.grade), // API String → Domain Grade 변환
             nickName = dto.nickName ?: "게스트",
+        )
+    }
+
+    /**
+     * ItemImageDto → CharacterImage 변환
+     */
+    private fun ItemImageDto.toCharacterImage(): CharacterImage {
+        return CharacterImage(
+            imageName = imageName,
+            itemTag = itemTag
         )
     }
 }

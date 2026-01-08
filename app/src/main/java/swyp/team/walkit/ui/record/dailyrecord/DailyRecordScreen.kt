@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -457,7 +458,7 @@ fun SessionDailyTab(
             Box(
                 modifier = Modifier
                     // ⭐ 핵심: 직접 위치 계산
-                    .width(91.dp)   // ⭐ 핵심
+                    .widthIn(min = 91.dp)   // ⭐ 핵심
                     .offset(x = overlap * index)
                     .clip(RoundedCornerShape(topEnd = 8.dp))
                     .background(

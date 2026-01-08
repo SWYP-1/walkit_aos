@@ -72,7 +72,7 @@ fun GoalSettingCard(
     plusButtonBackgroundColor: Color = accentColor,
     plusButtonIconTint: Color = White,
 ) {
-    val ControlHeight = 48.dp
+    val ControlHeight = 40.dp
     val ButtonShape = RoundedCornerShape(8.dp)
     
     // 숫자 포맷팅 (천 단위 구분자 추가)

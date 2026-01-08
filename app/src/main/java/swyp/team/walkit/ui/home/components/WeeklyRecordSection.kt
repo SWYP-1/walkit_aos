@@ -60,7 +60,7 @@ fun WeeklyRecordSection(
                 records.forEach { session ->
                     WeeklyRecordCard(
                         session = session,
-                        modifier = Modifier.width(260.dp),
+                        modifier = Modifier.width(230.dp),
                     )
                 }
             }

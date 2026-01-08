@@ -1,4 +1,4 @@
-package swyp.team.walkit.ui.charactershop.component
+package swyp.team.walkit.ui.character.charactershop.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

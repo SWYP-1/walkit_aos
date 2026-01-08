@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import swyp.team.walkit.ui.record.components.cardBorder
+import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.Pretendard
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.TypeScale
@@ -42,164 +45,151 @@ import swyp.team.walkit.utils.FormatUtils.formatStepCount
 @Composable
 fun MyPageStatsSection(
     totalStepCount: Int,
-    totalWalkingTime: Long, // 밀리초
+    totalWalkingTime: Long, // ms
     modifier: Modifier = Modifier,
 ) {
-    val cardHorizontalPadding = 20.dp
-    val cardVerticalPadding = 16.dp
+    val cardPadding = 16.dp
 
-    // 시간과 분 계산
+    // 시간 계산
     val totalSeconds = totalWalkingTime / 1000
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
 
-    Card(
+    Box(
         modifier = modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 10.dp,
-                shape = RoundedCornerShape(12.dp),
-                spotColor = Color(0x0F000000),
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFFFFFF),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            .customShadow()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SemanticColor.backgroundWhitePrimary)
+            .cardBorder()
+            .padding(cardPadding),
+        contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = cardHorizontalPadding, vertical = cardVerticalPadding),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 왼쪽 섹션: 누적 걸음수 (50%)
-            Row(modifier  = Modifier.weight(1f),) {
+
+            /* ---------- 왼쪽 : 누적 걸음수 (50%) ---------- */
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
                 TimeSummarySection(
                     label = "걸음수",
                     value = formatStepCount(totalStepCount),
-                    unit = "걸음",
+                    unit = "걸음"
                 )
             }
 
-            // 세로 구분선
+            /* ---------- 중앙 Divider (정확히 중앙) ---------- */
             Box(
                 modifier = Modifier
+                    .padding(horizontal = 20.dp) // divider 좌우 여백
                     .width(1.dp)
                     .height(40.dp)
-                    .background(SemanticColor.textBorderSecondaryInverse),
+                    .background(SemanticColor.textBorderSecondaryInverse)
             )
 
-            Spacer(Modifier.width(cardHorizontalPadding))
-
-            // 오른쪽 섹션: 누적 산책 시간 (50%)
-            // 시간과 분을 포함하는 컨테이너
-            Column(
+            /* ---------- 오른쪽 : 누적 산책 시간 (50%) ---------- */
+            Box(
                 modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
             ) {
-                // 라벨: 누적 산책 시간
-                Text(
-                    text = "함께 걸은 시간",
-                    style = MaterialTheme.walkItTypography.captionM,
-                    color = SemanticColor.textBorderPrimary, // color/text-border/primary
-                )
+                Column {
 
-                Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "함께 걸은 시간",
+                        style = MaterialTheme.walkItTypography.captionM,
+                        color = SemanticColor.textBorderPrimary
+                    )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (hours >= 100) {
-                        // 100시간 이상 → 시간만
-                        TimeValueSection(
-                            value = hours.toString(),
-                            unit = "시간",
-                        )
-                    } else {
-                        // 100시간 미만 → 시간 + 분
-                        TimeValueSection(
-                            value = hours.toString(),
-                            unit = "시간",
-                        )
+                    Spacer(Modifier.height(2.dp))
 
-                        Spacer(Modifier.width(cardHorizontalPadding))
-
-                        TimeValueSection(
-                            value = minutes.toString(),
-                            unit = "분",
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (hours >= 100) {
+                            TimeValueSection(
+                                value = hours.toString(),
+                                unit = "시간"
+                            )
+                        } else {
+                            TimeValueSection(
+                                value = hours.toString(),
+                                unit = "시간"
+                            )
+                            TimeValueSection(
+                                value = minutes.toString(),
+                                unit = "분"
+                            )
+                        }
                     }
                 }
-
             }
         }
     }
 }
+
 
 /**
  * 시간 요약 섹션 (라벨 + 값 + 단위)
  * 전체 카드의 50%를 차지하는 섹션
  */
 @Composable
-private fun RowScope.TimeSummarySection(
+private fun TimeSummarySection(
     label: String,
     value: String,
     unit: String,
 ) {
     Column(
-        modifier = Modifier.padding(end = 20.dp).weight(1f),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         // 라벨
         Text(
             text = label,
-            fontFamily = Pretendard,
-            fontSize = TypeScale.CaptionM, // 12sp
-            fontWeight = FontWeight.Normal, // Regular
-            lineHeight = (TypeScale.CaptionM.value * 1.3f).sp, // lineHeight 1.3
-            letterSpacing = (-0.12f).sp, // letterSpacing -0.12px
-            color = Color(0xFF191919), // color/text-border/primary
+            style = MaterialTheme.walkItTypography.bodyS.copy(
+                fontWeight = FontWeight.Normal
+            ),
+            color = SemanticColor.textBorderPrimary
         )
 
         // 값 + 단위
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 값
             Text(
                 text = value,
-                fontFamily = Pretendard,
-                fontSize = TypeScale.HeadingS, // 22sp
-                fontWeight = FontWeight.Medium, // Medium
-                lineHeight = (TypeScale.HeadingS.value * 1.5f).sp, // lineHeight 1.5
-                letterSpacing = (-0.22f).sp, // letterSpacing -0.22px
-                color = Color(0xFF191919), // color/text-border/primary
+                style = MaterialTheme.walkItTypography.headingS.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = SemanticColor.textBorderPrimary
             )
+
             Spacer(Modifier.width(4.dp))
 
-            // 단위
             Text(
                 text = unit,
                 fontFamily = Pretendard,
-                fontSize = TypeScale.BodyM, // 16sp
-                fontWeight = FontWeight.Normal, // Regular
-                lineHeight = (TypeScale.BodyM.value * 1.5f).sp, // lineHeight 1.5
-                letterSpacing = (-0.16f).sp, // letterSpacing -0.16px
-                color = Color(0xFF191919), // color/text-border/primary
+                fontSize = TypeScale.BodyM,
+                fontWeight = FontWeight.Normal,
+                lineHeight = (TypeScale.BodyM.value * 1.5f).sp,
+                letterSpacing = (-0.16f).sp,
+                color = Color(0xFF191919)
             )
         }
     }
 }
+
 
 /**
  * 시간 값 섹션 (값 + 단위만 표시 - AnnotatedString 사용)
  * 누적 산책 시간 영역 내에서 시간/분 각각 50%를 차지
  */
 @Composable
-private fun RowScope.TimeValueSection(
+private fun TimeValueSection(
     value: String,
     unit: String,
 ) {
@@ -208,20 +198,16 @@ private fun RowScope.TimeValueSection(
             append(value)
             withStyle(
                 SpanStyle(
-                    fontSize = MaterialTheme.walkItTypography.bodyS.fontSize,
-                    fontWeight = FontWeight.Normal,
-                    color = SemanticColor.textBorderPrimary
+                    fontSize = MaterialTheme.walkItTypography.bodyS.fontSize
                 )
-            ) {
-                append(" $unit")
-            }
+            ) { append(" $unit") }
         },
         style = MaterialTheme.walkItTypography.headingS.copy(
             fontWeight = FontWeight.Medium
-        ),
-        modifier = Modifier.weight(1f)
+        )
     )
 }
+
 
 
 

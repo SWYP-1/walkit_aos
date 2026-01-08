@@ -27,6 +27,7 @@ import swyp.team.walkit.domain.model.MissionType
 import swyp.team.walkit.domain.model.WeeklyMission
 import swyp.team.walkit.ui.home.components.clickableNoRipple
 import swyp.team.walkit.ui.mission.model.MissionCardState
+import swyp.team.walkit.ui.record.components.cardBorder
 import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
@@ -154,6 +155,7 @@ fun MissionCard(
         modifier = modifier
             .fillMaxWidth()
             .customShadow()
+            .cardBorder()
             .then(
                 if (isActive) {
                     Modifier.border(

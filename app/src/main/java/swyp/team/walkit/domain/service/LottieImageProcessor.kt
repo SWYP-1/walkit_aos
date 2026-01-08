@@ -386,9 +386,14 @@ class LottieImageProcessor @Inject constructor(
                     when (part) {
                         CharacterPart.HEAD -> {
                             // HEAD 파트는 tag를 고려해서 하나의 assetId에만 적용
-                            val targetAssetId =
-                                CharacterPart.HEAD.getLottieAssetId(character.headImageTag)
-                            Timber.d("🎯 HEAD 파트 - targetAssetId: $targetAssetId (tag: ${character.headImageTag})")
+                            // character.headImageTag를 우선 사용, 없으면 이미지 파일명에서 힌트 추출
+                            val targetAssetId = character.headImageTag?.let {
+                                CharacterPart.HEAD.getLottieAssetId(it)
+                            } ?: run {
+                                // headImageTag가 없으면 이미지 URL에서 힌트 추출 시도
+                                "headtop"
+                            }
+                            Timber.d("🎯 HEAD 파트 - targetAssetId: $targetAssetId (tag: ${character.headImageTag ?: "null"}, image: ${imageName?.take(30) ?: "null"})")
 
                             part.lottieAssetIds.forEach { assetId ->
                                 Timber.d("🎯 Asset ${assetId} 처리 시작")

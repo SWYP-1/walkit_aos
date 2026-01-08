@@ -3,7 +3,9 @@ package swyp.team.walkit.data.remote.user
 import swyp.team.walkit.data.remote.user.dto.UserSummaryDto
 import swyp.team.walkit.data.remote.user.dto.ResponseCharacterDto
 import swyp.team.walkit.data.remote.user.dto.WalkTotalSummaryResponseDto
+import swyp.team.walkit.data.remote.walking.dto.ItemImageDto
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.domain.model.UserSummary
 import swyp.team.walkit.domain.model.WalkSummary
@@ -19,10 +21,9 @@ object UserSummaryMapper {
     fun toDomain(dto: UserSummaryDto): UserSummary {
         return UserSummary(
             character = Character(
-                headImageName = dto.responseCharacterDto.headImage?.imageName,
-                headImageTag = dto.responseCharacterDto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
-                bodyImageName = dto.responseCharacterDto.bodyImage?.imageName,
-                feetImageName = dto.responseCharacterDto.feetImage?.imageName,
+                headImage = dto.responseCharacterDto.headImage?.toCharacterImage(),
+                bodyImage = dto.responseCharacterDto.bodyImage?.toCharacterImage(),
+                feetImage = dto.responseCharacterDto.feetImage?.toCharacterImage(),
                 characterImageName = dto.responseCharacterDto.characterImageName,
                 backgroundImageName = dto.responseCharacterDto.backgroundImageName,
                 level = dto.responseCharacterDto.level,
@@ -37,14 +38,23 @@ object UserSummaryMapper {
     }
 
     /**
+     * ItemImageDto → CharacterImage 변환
+     */
+    private fun ItemImageDto.toCharacterImage(): CharacterImage {
+        return CharacterImage(
+            imageName = imageName,
+            itemTag = itemTag
+        )
+    }
+
+    /**
      * ResponseCharacterDto를 Character Domain Model로 변환
      */
     fun toCharacter(dto: ResponseCharacterDto): Character {
         return Character(
-            headImageName = dto.headImage?.imageName,
-            headImageTag = dto.headImage?.itemTag, // ✅ headImageTag 매핑 추가
-            bodyImageName = dto.bodyImage?.imageName,
-            feetImageName = dto.feetImage?.imageName,
+            headImage = dto.headImage?.toCharacterImage(),
+            bodyImage = dto.bodyImage?.toCharacterImage(),
+            feetImage = dto.feetImage?.toCharacterImage(),
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,

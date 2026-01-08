@@ -25,7 +25,7 @@ sealed interface DressingRoomUiState {
         val character: Character? = null,
         val items: List<CosmeticItem> = emptyList(),
         val selectedItemId: Int? = null,
-        val selectedItemIdSet : LinkedHashSet<Int> = LinkedHashSet(),
+        val selectedItemIdSet: LinkedHashSet<Int> = linkedSetOf(),
         val currentPosition: String? = null,
         val myPoint : Int = 0,
         val processedLottieJson: String? = null,  // Lottie 미리보기 JSON

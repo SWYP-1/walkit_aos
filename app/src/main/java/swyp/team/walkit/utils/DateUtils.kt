@@ -211,6 +211,33 @@ object DateUtils {
         return Pair(startOfWeek, endOfToday)
     }
 
+    /**
+     * 주어진 타임스탬프의 날짜 시작 시간(00:00:00.000) 반환
+     *
+     * @param timestampMillis 밀리초 타임스탬프
+     * @return 해당 날짜의 시작 시간 타임스탬프 (00:00:00.000)
+     */
+    fun getStartOfDay(timestampMillis: Long): Long {
+        return Instant.ofEpochMilli(timestampMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    /**
+     * 주어진 타임스탬프의 날짜를 yyyy년 MM월 dd일 형식으로 포맷팅
+     *
+     * @param timestampMillis 밀리초 타임스탬프
+     * @return 포맷팅된 날짜 문자열
+     */
+    fun formatDate(timestampMillis: Long): String {
+        return Instant.ofEpochMilli(timestampMillis)
+            .atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일", Locale.KOREAN))
+    }
+
 
 }
 

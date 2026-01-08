@@ -152,8 +152,6 @@ fun PreWalkingEmotionSelectScreen(
             .background(SemanticColor.backgroundWhitePrimary),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-
-        AppHeader(title = "", showBackButton = true, onNavigateBack = onPrev)
         Column(modifier = modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp)) {
             SectionCard {
                 Column(

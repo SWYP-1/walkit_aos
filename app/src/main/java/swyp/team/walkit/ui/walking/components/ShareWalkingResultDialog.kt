@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -70,176 +75,189 @@ fun ShareWalkingResultDialog(
     Dialog(
         onDismissRequest = onDismiss
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .background(
-                    color = SemanticColor.backgroundWhitePrimary,
-                    shape = RoundedCornerShape(size = 12.dp)
-                )
-                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .fillMaxSize()
+                .widthIn(max = 360.dp)
+                .heightIn(max = 562.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "기록 공유하기",
-
-                    // body L/semibold
-                    style = MaterialTheme.walkItTypography.bodyL.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.textBorderPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "오늘의 산책 기록을 공유하시겠습니까?",
-
-                    // body S/regular
-                    style = MaterialTheme.walkItTypography.bodyS,
-                    color = SemanticColor.textBorderSecondary
-                )
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(312.dp)
+                    .background(
+                        color = SemanticColor.backgroundWhitePrimary,
+                        shape = RoundedCornerShape(size = 12.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
             ) {
-                // 세션 썸네일 이미지 (스냅샷 경로가 있으면 사용, 없으면 기본 이미지)
-                if (sessionThumbNailUri.isNotEmpty()) {
-                    // 파일 경로에서 이미지 로드
-                    val bitmap = remember(sessionThumbNailUri) {
-                        try {
-                            android.graphics.BitmapFactory.decodeFile(sessionThumbNailUri)
-                        } catch (t: Throwable) {
-                            Timber.e(t, "스냅샷 이미지 로드 실패: $sessionThumbNailUri")
-                            null
-                        }
-                    }
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "기록 공유하기",
 
-                    bitmap?.let {
-                        Image(
-                            bitmap = it.asImageBitmap(),
+                        // body L/semibold
+                        style = MaterialTheme.walkItTypography.bodyL.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = SemanticColor.textBorderPrimary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "오늘의 산책 기록을 공유하시겠습니까?",
+
+                        // body S/regular
+                        style = MaterialTheme.walkItTypography.bodyS,
+                        color = SemanticColor.textBorderSecondary
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    // 세션 썸네일 이미지 (스냅샷 경로가 있으면 사용, 없으면 기본 이미지)
+                    if (sessionThumbNailUri.isNotEmpty()) {
+                        // 파일 경로에서 이미지 로드
+                        val bitmap = remember(sessionThumbNailUri) {
+                            try {
+                                android.graphics.BitmapFactory.decodeFile(sessionThumbNailUri)
+                            } catch (t: Throwable) {
+                                Timber.e(t, "스냅샷 이미지 로드 실패: $sessionThumbNailUri")
+                                null
+                            }
+                        }
+
+                        bitmap?.let {
+                            Image(
+                                bitmap = it.asImageBitmap(),
+                                contentDescription = "session Thumbnail Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } ?: Image(
+                            painter = painterResource(R.drawable.bg_summer_cropped),
                             contentDescription = "session Thumbnail Image",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-                    } ?: Image(
-                        painter = painterResource(R.drawable.bg_summer_cropped),
-                        contentDescription = "session Thumbnail Image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                    } else {
+                        // 기본 배경 이미지
+                        Image(
+                            painter = painterResource(R.drawable.bg_summer_cropped),
+                            contentDescription = "session Thumbnail Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(bottom = 16.dp, start = 16.dp)
+                    ) {
+                        // 산책 전 감정 (String을 EmotionType으로 변환)
+                        EmotionCircleIcon(stringToEmotionType(preWalkEmotion), 32.dp)
+                        // 산책 후 감정 (String을 EmotionType으로 변환)
+                        EmotionCircleIcon(stringToEmotionType(postWalkEmotion), 32.dp)
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 16.dp, end = 16.dp),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            text = "$stepCount 걸음",
+                            style = MaterialTheme.walkItTypography.bodyL.copy(
+                                fontWeight = FontWeight.SemiBold,  // 600
+                                color = SemanticColor.textBorderPrimaryInverse,
+                            ),
+                            textAlign = TextAlign.Right
+                        )
+                        Text(
+                            text = formatDuration(
+                                duration,
+                                style = FormatUtils.DurationStyle.HOURS_MINUTES
+                            ),
+                            style = MaterialTheme.walkItTypography.bodyL.copy(
+                                fontWeight = FontWeight.SemiBold,  // 600
+                                color = SemanticColor.textBorderPrimaryInverse,
+                            ), textAlign = TextAlign.Right
+                        )
+                    }
+                    if (saveStatus == SaveStatus.LOADING) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // 저장 상태 표시
+                if (saveStatus == SaveStatus.SUCCESS) {
+                    InfoBanner(
+                        title = "이미지 저장이 완료되었습니다",
+                        backgroundColor = SemanticColor.backgroundDarkSecondary,
+                        borderColor = SemanticColor.backgroundDarkSecondary,
+                        textColor = SemanticColor.textBorderPrimaryInverse,
+                        iconTint = SemanticColor.textBorderPrimaryInverse,
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_info_check),
+                                contentDescription = "info warning",
+                                tint = SemanticColor.iconWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     )
-                } else {
-                    // 기본 배경 이미지
-                    Image(
-                        painter = painterResource(R.drawable.bg_summer_cropped),
-                        contentDescription = "session Thumbnail Image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                } else if (saveStatus == SaveStatus.FAILURE) {
+                    InfoBanner(
+                        title = "이미지 저장이 완료되었습니다",
+                        backgroundColor = SemanticColor.stateRedTertiary,
+                        textColor = SemanticColor.stateRedPrimary,
+                        borderColor = SemanticColor.stateRedSecondary,
+                        iconTint = SemanticColor.stateRedPrimary,
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_clear),
+                                contentDescription = "info warning",
+                                tint = SemanticColor.stateRedPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     )
                 }
+
+                Spacer(Modifier.height(12.dp))
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(bottom = 16.dp, start = 16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 산책 전 감정 (String을 EmotionType으로 변환)
-                    EmotionCircleIcon(stringToEmotionType(preWalkEmotion), 32.dp)
-                    // 산책 후 감정 (String을 EmotionType으로 변환)
-                    EmotionCircleIcon(stringToEmotionType(postWalkEmotion), 32.dp)
-                }
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 16.dp, end = 16.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = "$stepCount 걸음",
-                        style = MaterialTheme.walkItTypography.bodyL.copy(
-                            fontWeight = FontWeight.SemiBold,  // 600
-                            color = SemanticColor.textBorderPrimaryInverse,
-                        ),
-                        textAlign = TextAlign.Right
+                    CtaButton(
+                        text = "뒤로가기",
+                        variant = CtaButtonVariant.SECONDARY,
+                        onClick = onPrev,
+                        modifier = Modifier.weight(1f),
                     )
-                    Text(
-                        text = formatDuration(
-                            duration,
-                            style = FormatUtils.DurationStyle.HOURS_MINUTES
-                        ),
-                        style = MaterialTheme.walkItTypography.bodyL.copy(
-                            fontWeight = FontWeight.SemiBold,  // 600
-                            color = SemanticColor.textBorderPrimaryInverse,
-                        ), textAlign = TextAlign.Right
+
+                    CtaButton(
+                        text = "저장하기",
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                        enabled = saveStatus != SaveStatus.LOADING,
                     )
                 }
-                if (saveStatus == SaveStatus.LOADING) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CustomProgressIndicator(size = ProgressIndicatorSize.Medium)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // 저장 상태 표시
-            if(saveStatus == SaveStatus.SUCCESS){
-                InfoBanner(
-                    title = "이미지 저장이 완료되었습니다",
-                    backgroundColor = SemanticColor.backgroundDarkSecondary,
-                    borderColor = SemanticColor.backgroundDarkSecondary,
-                    textColor = SemanticColor.textBorderPrimaryInverse,
-                    iconTint = SemanticColor.textBorderPrimaryInverse,
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_info_check),
-                            contentDescription = "info warning",
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
-            }else if(saveStatus == SaveStatus.FAILURE){
-                InfoBanner(
-                    title = "이미지 저장이 완료되었습니다",
-                    backgroundColor = SemanticColor.stateRedTertiary,
-                    textColor = SemanticColor.stateRedPrimary,
-                    borderColor = SemanticColor.stateRedSecondary,
-                    iconTint = SemanticColor.stateRedPrimary,
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_action_clear),
-                            contentDescription = "info warning",
-                            tint = SemanticColor.stateRedPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CtaButton(
-                    text = "뒤로가기",
-                    variant = CtaButtonVariant.SECONDARY,
-                    onClick = onPrev,
-                    modifier = Modifier.weight(1f),
-                )
-
-                CtaButton(
-                    text = "저장하기",
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f),
-                    enabled = saveStatus != SaveStatus.LOADING,
-                )
             }
         }
     }

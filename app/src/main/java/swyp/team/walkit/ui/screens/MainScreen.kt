@@ -9,16 +9,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Icon
 import swyp.team.walkit.ui.components.BottomBarItem
 import swyp.team.walkit.ui.components.CustomBottomNavigation
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -33,9 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.exclude
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,10 +36,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.navigation.Screen
-import swyp.team.walkit.ui.charactershop.CharacterShopRoute
-import swyp.team.walkit.ui.dressroom.DressingRoomRoute
+import swyp.team.walkit.ui.character.charactershop.CharacterRoute
 import swyp.team.walkit.ui.home.HomeRoute
-import swyp.team.walkit.ui.home.HomeScreen
 import swyp.team.walkit.ui.home.LocationAgreementUiState
 import swyp.team.walkit.ui.home.LocationAgreementViewModel
 import swyp.team.walkit.ui.home.components.WalkingFloatingActionButton
@@ -254,7 +243,7 @@ fun MainScreen(
 
                 2 -> {
                     // 캐릭터 화면 (CharacterShop)
-                    CharacterShopRoute()
+                    CharacterRoute()
                 }
 
                 3 -> {

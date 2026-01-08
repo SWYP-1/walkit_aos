@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.LocationPoint
 import swyp.team.walkit.data.model.WalkingSession
+import swyp.team.walkit.utils.LocationConstants
 import swyp.team.walkit.data.repository.WalkingSessionRepository
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.Grade
@@ -339,31 +340,37 @@ class WalkingViewModel @Inject constructor(
 
                 // 현재 위치 가져오기 (캐시된 마지막 위치 우선 사용)
                 val currentLocation = locationManager.getCurrentLocationOrLast()
-                if (currentLocation != null) {
-                    val lat = currentLocation.latitude
-                    val lon = currentLocation.longitude
 
-                    Timber.d("현재 위치로 캐릭터 정보 조회: lat=$lat, lon=$lon")
-
-                    // 위치 기반 캐릭터 정보 API 호출
-                    characterRepository.getCharacterByLocation(lat, lon)
-                        .onSuccess { character ->
-                            _walkingCharacter.value = character
-                            Timber.d("산책용 캐릭터 정보 로드 성공: ${character.nickName}")
-
-                            // 캐릭터 정보가 있으면 Lottie JSON 생성
-                            generateWalkingCharacterLottie(character)
-
-                            // 이번 주 목표 초과 세션 개수 계산
-                            calculateCurrentWeekGoalChallengeCount()
-                        }
-                        .onError { exception, message ->
-                            Timber.e(exception, "산책용 캐릭터 정보 로드 실패: $message")
-                            // 실패 시 기본 캐릭터 정보는 null로 유지
-                        }
+                // 위치 정보를 가져올 수 없으면 서울 시청 좌표를 기본값으로 사용
+                val (lat, lon) = if (currentLocation != null) {
+                    val latitude = currentLocation.latitude
+                    val longitude = currentLocation.longitude
+                    Timber.d("현재 위치로 캐릭터 정보 조회: lat=$latitude, lon=$longitude")
+                    latitude to longitude
                 } else {
-                    Timber.w("현재 위치를 가져올 수 없어 캐릭터 정보 로드 건너뜀")
+                    // 서울 시청 좌표 (기본값)
+                    val defaultLat = LocationConstants.DEFAULT_LATITUDE
+                    val defaultLon = LocationConstants.DEFAULT_LONGITUDE
+                    Timber.d("현재 위치를 가져올 수 없어 서울 시청 좌표로 캐릭터 정보 조회: lat=$defaultLat, lon=$defaultLon")
+                    defaultLat to defaultLon
                 }
+
+                // 위치 기반 캐릭터 정보 API 호출 (항상 실행)
+                characterRepository.getCharacterByLocation(lat, lon)
+                    .onSuccess { character ->
+                        _walkingCharacter.value = character
+                        Timber.d("산책용 캐릭터 정보 로드 성공: ${character.nickName}")
+
+                        // 캐릭터 정보가 있으면 Lottie JSON 생성
+                        generateWalkingCharacterLottie(character)
+
+                        // 이번 주 목표 초과 세션 개수 계산
+                        calculateCurrentWeekGoalChallengeCount()
+                    }
+                    .onError { exception, message ->
+                        Timber.e(exception, "산책용 캐릭터 정보 로드 실패: $message")
+                        // 실패 시 기본 캐릭터 정보는 null로 유지
+                    }
             } catch (t: Throwable) {
                 Timber.e(t, "산책용 캐릭터 정보 로드 중 예외 발생")
             }
@@ -1274,6 +1281,97 @@ class WalkingViewModel @Inject constructor(
      */
     fun finishWalking() {
         _uiState.value = WalkingUiState.SessionSaved
+    }
+
+    /**
+     * 커스텀 데이터: 더미 WalkingSession 추가 (개발용)
+     * 오늘 날짜 이전으로만 추가 가능
+     */
+    fun addDummyWalkingSessionForDate(
+        dateMillis: Long,
+        stepCount: Int = 5000,
+        durationMillis: Long = 1800000L, // 30분
+        note: String = "더미 데이터"
+    ) {
+        viewModelScope.launch {
+            try {
+                val today = DateUtils.getStartOfDay(System.currentTimeMillis())
+                val targetDate = DateUtils.getStartOfDay(dateMillis)
+
+                if (targetDate >= today) {
+                    Timber.w("🚫 더미 세션은 오늘 날짜 이전으로만 추가 가능합니다")
+                    return@launch
+                }
+                val currentUserId = walkingSessionRepository.getCurrentUserId()
+
+                val dummySession = WalkingSession(
+                    id = "", // ID는 repository에서 자동 생성 (빈 문자열이면 UUID 생성)
+                    userId = currentUserId,
+                    startTime = targetDate + 9 * 60 * 60 * 1000L, // 오전 9시 시작
+                    endTime = targetDate + 9 * 60 * 60 * 1000L + durationMillis, // 시작시간 + 산책 시간
+                    stepCount = stepCount,
+                    locations = emptyList(), // 더미 데이터이므로 GPS 좌표 없음
+                    filteredLocations = null, // 필터링 데이터 없음
+                    smoothedLocations = null, // 스무딩 데이터 없음
+                    totalDistance = stepCount * 0.7f, // 걸음 수 기반 대략적 거리 계산 (70cm 보폭 가정)
+                    preWalkEmotion = emotionTypeToString(EmotionType.HAPPY), // 산책 전 감정 (String)
+                    postWalkEmotion = emotionTypeToString(EmotionType.CONTENT), // 산책 후 감정 (String)
+                    note = note,
+                    localImagePath = null, // 로컬 이미지 없음
+                    serverImageUrl = null, // 서버 이미지 없음
+                    createdDate = DateUtils.millisToIsoUtc(targetDate), // ISO 8601 형식의 날짜 (String)
+                    targetStepCount = 0, // 목표 걸음 수 (더미에서는 0)
+                    targetWalkCount = 0, // 목표 산책 횟수 (더미에서는 0)
+                )
+
+                walkingSessionRepository.saveSessionLocalOnly(dummySession)
+                Timber.d("✅ 더미 WalkingSession 추가 완료: ${DateUtils.formatDate(targetDate)} - $stepCount 걸음")
+            } catch (e: Exception) {
+                Timber.e(e, "❌ 더미 WalkingSession 추가 실패")
+            }
+        }
+    }
+
+    /**
+     * 커스텀 데이터: 여러 날짜에 걸쳐 더미 세션 일괄 추가 (개발용)
+     */
+    fun addDummyWalkingSessionsForWeek(
+        startDateMillis: Long,
+        daysCount: Int = 7,
+        baseStepCount: Int = 5000
+    ) {
+        viewModelScope.launch {
+            try {
+                val today = DateUtils.getStartOfDay(System.currentTimeMillis())
+                val startDate = DateUtils.getStartOfDay(startDateMillis)
+
+                if (startDate >= today) {
+                    Timber.w("🚫 더미 세션은 오늘 날짜 이전으로만 추가 가능합니다")
+                    return@launch
+                }
+
+                repeat(daysCount) { dayIndex ->
+                    val targetDate = startDate + (dayIndex * 24 * 60 * 60 * 1000L)
+                    if (targetDate >= today) return@repeat
+
+                    val stepCount = baseStepCount + (dayIndex * 500) // 날짜별로 걸음 수 증가
+                    val durationMillis = 1500000L + (dayIndex * 300000L) // 날짜별로 시간 증가
+
+                    addDummyWalkingSessionForDate(
+                        dateMillis = targetDate,
+                        stepCount = stepCount,
+                        durationMillis = durationMillis,
+                        note = "주간 더미 데이터 ${dayIndex + 1}일차"
+                    )
+
+                    delay(100) // 약간의 딜레이로 순차적 처리
+                }
+
+                Timber.d("✅ 주간 더미 WalkingSession 일괄 추가 완료: ${daysCount}일")
+            } catch (e: Exception) {
+                Timber.e(e, "❌ 주간 더미 WalkingSession 추가 실패")
+            }
+        }
     }
 }
 

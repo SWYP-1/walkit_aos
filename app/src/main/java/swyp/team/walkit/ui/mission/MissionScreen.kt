@@ -43,6 +43,7 @@ import swyp.team.walkit.ui.mission.component.PopularMissionCard
 import swyp.team.walkit.ui.mission.model.MissionCardState
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
+import swyp.team.walkit.ui.theme.walkItTypography
 
 
 @Composable
@@ -99,6 +100,7 @@ fun MissionScreen(
             contentDescription = "banner"
         )
 
+        Spacer(Modifier.height(12.dp))
 
         // 메인 콘텐츠
         LazyColumn(
@@ -108,7 +110,7 @@ fun MissionScreen(
         ) {
             // 카테고리별 미션 섹션
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column() {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -116,10 +118,25 @@ fun MissionScreen(
                     ) {
                         Text(
                             text = "오늘의 미션",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = SemanticColor.textBorderPrimary
                         )
                     }
+                    Spacer(Modifier.height(12.dp))
+                    Row {
+                        Text(
+                            text = "미션은 한 주에 최대 1개씩 수행할 수 있어요",
+
+                            // body S/regular
+                            style = MaterialTheme.walkItTypography.bodyS.copy(
+                                fontWeight = FontWeight.Normal
+                            ),
+                            color = SemanticColor.textBorderSecondary
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
 
                     // 필터 칩
                     Row(

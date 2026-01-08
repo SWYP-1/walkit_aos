@@ -43,6 +43,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.FollowStatus
 import timber.log.Timber
 import swyp.team.walkit.domain.model.FollowerWalkRecord
@@ -373,9 +374,9 @@ private fun FriendSearchDetailScreenContentSeedGradePreview() {
         FriendSearchDetailScreenContent(
             data = swyp.team.walkit.domain.model.UserSummary(
                 character = swyp.team.walkit.domain.model.Character(
-                    headImageName = "head_default",
-                    bodyImageName = "body_default",
-                    feetImageName = "feet_default",
+                    headImage = CharacterImage("head_default", "TOP"),
+                    bodyImage = CharacterImage("body_default", null),
+                    feetImage = CharacterImage("feet_default", null),
                     characterImageName = "character_default",
                     backgroundImageName = "background_forest",
                     level = 1,
@@ -401,9 +402,9 @@ private fun FriendSearchDetailScreenContentSproutGradePreview() {
         FriendSearchDetailScreenContent(
             data = swyp.team.walkit.domain.model.UserSummary(
                 character = swyp.team.walkit.domain.model.Character(
-                    headImageName = "head_sprout",
-                    bodyImageName = "body_sprout",
-                    feetImageName = "feet_sprout",
+                    headImage = CharacterImage("head_sprout", "DECOR"),
+                    bodyImage = CharacterImage("body_sprout", null),
+                    feetImage = CharacterImage("feet_sprout", null),
                     characterImageName = "character_sprout",
                     backgroundImageName = "background_mountain",
                     level = 15,
@@ -428,9 +429,9 @@ private fun FriendSearchDetailScreenContentTreeGradePreview() {
         FriendSearchDetailScreenContent(
             data = swyp.team.walkit.domain.model.UserSummary(
                 character = swyp.team.walkit.domain.model.Character(
-                    headImageName = "head_tree",
-                    bodyImageName = "body_tree",
-                    feetImageName = "feet_tree",
+                    headImage = CharacterImage("head_tree", "TOP"),
+                    bodyImage = CharacterImage("body_tree", null),
+                    feetImage = CharacterImage("feet_tree", null),
                     characterImageName = "character_tree",
                     backgroundImageName = "background_ocean",
                     level = 50,

@@ -57,7 +57,6 @@ fun HomeRoute(
     val profileUiState by viewModel.profileUiState.collectAsStateWithLifecycle()
     val missionUiState by viewModel.missionUiState.collectAsStateWithLifecycle()
     val walkingSessionDataState by viewModel.walkingSessionDataState.collectAsStateWithLifecycle()
-    val characterLottieState by viewModel.characterLottieState.collectAsStateWithLifecycle() // ✅ 캐릭터 Lottie 상태 추가
     val userState by userViewModel.userState.collectAsStateWithLifecycle()
 
     // 사용자 프로필 이미지 URL 추출
@@ -69,9 +68,9 @@ fun HomeRoute(
         else -> null
     }
 
-    // 캐릭터 Lottie 표시 초기화
+    // 홈 데이터 로드 (캐릭터 Lottie는 데이터 로드 완료 후 자동 호출)
     LaunchedEffect(Unit) {
-        viewModel.loadCharacterDisplay()
+        viewModel.loadHomeData()  // ✅ HomeScreen 진입 시마다 최신 데이터 로드
     }
 
     HomeScreen(
@@ -80,7 +79,6 @@ fun HomeRoute(
         profileUiState = profileUiState,
         missionUiState = missionUiState,
         walkingSessionDataState = walkingSessionDataState,
-        characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
         profileImageUrl = profileImageUrl,
         onClickWalk = onClickWalk,
         onClickAlarm = onClickAlarm,
@@ -105,7 +103,6 @@ private fun HomeScreenContent(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
-    characterLottieState: swyp.team.walkit.domain.model.LottieCharacterState?, // ✅ 캐릭터 Lottie 상태 추가
     profileImageUrl: String? = null,
     onClickMissionMore: () -> Unit,
     onClickAlarm: () -> Unit,
@@ -131,7 +128,6 @@ private fun HomeScreenContent(
         ProfileSection(
             goalState = goalState,
             uiState = profileUiState,
-            characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
             onTestClick = onTestClick, // 테스트용 클릭 핸들러
             modifier = Modifier.fillMaxWidth(),
             onRetry = onRetry
@@ -181,7 +177,6 @@ fun HomeScreen(
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
     walkingSessionDataState: DataState<WalkingSessionData>,
-    characterLottieState: swyp.team.walkit.domain.model.LottieCharacterState?, // ✅ 캐릭터 Lottie 상태 추가
     profileImageUrl: String? = null,
     onClickWalk: () -> Unit = {},
     onClickAlarm: () -> Unit = {},
@@ -198,7 +193,6 @@ fun HomeScreen(
         profileUiState = profileUiState,
         missionUiState = missionUiState,
         walkingSessionDataState = walkingSessionDataState,
-        characterLottieState = characterLottieState, // ✅ 캐릭터 Lottie 상태 전달
         profileImageUrl = profileImageUrl,
         onClickAlarm = onClickAlarm,
         onClickMission = onClickWalk,

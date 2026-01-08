@@ -7,7 +7,9 @@ import swyp.team.walkit.data.remote.home.dto.WalkResponseDto
 import swyp.team.walkit.data.remote.mission.dto.mission.WeeklyMissionDto
 import swyp.team.walkit.data.remote.mission.mapper.WeeklyMissionMapper
 import swyp.team.walkit.data.remote.walking.dto.CharacterDto
+import swyp.team.walkit.data.remote.walking.dto.ItemImageDto
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.domain.model.HomeData as DomainHomeData
 import swyp.team.walkit.domain.model.WalkRecord
@@ -37,14 +39,24 @@ object HomeMapper {
      */
     private fun CharacterDto.toDomain(): Character {
         return Character(
-            headImageName = headImage?.imageName,
-            bodyImageName = bodyImage?.imageName,
-            feetImageName = feetImage?.imageName,
+            headImage = headImage?.toCharacterImage(),
+            bodyImage = bodyImage?.toCharacterImage(),
+            feetImage = feetImage?.toCharacterImage(),
             characterImageName = characterImageName,
             backgroundImageName = backgroundImageName,
             level = level,
             grade = Grade.fromApiString(grade), // API String → Domain Grade 변환
             nickName = nickName ?: "게스트",
+        )
+    }
+
+    /**
+     * ItemImageDto → CharacterImage 변환
+     */
+    private fun ItemImageDto.toCharacterImage(): CharacterImage {
+        return CharacterImage(
+            imageName = imageName,
+            itemTag = itemTag
         )
     }
 

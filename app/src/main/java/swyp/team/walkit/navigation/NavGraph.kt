@@ -34,8 +34,6 @@ import swyp.team.walkit.ui.onboarding.OnboardingScreen
 import swyp.team.walkit.ui.alarm.AlarmScreen
 import swyp.team.walkit.ui.customtest.CustomTestRoute
 import swyp.team.walkit.ui.customtest.MapTestScreen
-import swyp.team.walkit.ui.charactershop.CharacterShopRoute
-import swyp.team.walkit.ui.dressroom.DressingRoomRoute
 import swyp.team.walkit.ui.friend.FriendSearchDetailRoute
 import swyp.team.walkit.ui.mypage.userInfo.UserInfoManagementRoute
 import swyp.team.walkit.ui.record.dailyrecord.DailyRecordRoute
@@ -329,11 +327,11 @@ fun NavGraph(
 //        }
 
         /* DressingRoom */
-        composable(Screen.DressingRoom.route) {
-            DressingRoomRoute(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
+//        composable(Screen.DressingRoom.route) {
+//            DressingRoomRoute(
+//                onNavigateBack = { navController.popBackStack() }
+//            )
+//        }
 
         /* User Info Management */
         composable(Screen.UserInfoManagement.route) {

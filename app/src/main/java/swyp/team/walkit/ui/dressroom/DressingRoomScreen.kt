@@ -3,8 +3,6 @@ package swyp.team.walkit.ui.dressroom
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -54,7 +52,7 @@ fun DressingRoomRoute(
     val wornItemsByPosition by viewModel.wornItemsByPosition.collectAsStateWithLifecycle()
 
     // UiState에서 선택 상태 가져오기
-    val selectedItemIds = (uiState as? DressingRoomUiState.Success)?.selectedItemIdSet ?: LinkedHashSet()
+    val selectedItemIds = LinkedHashSet<Int>()
 
     // 선택 상태 변경 로깅
     LaunchedEffect(selectedItemIds) {
@@ -149,6 +147,7 @@ fun DressingRoomScreen(
                         onShowCartDialog = onShowCartDialog,
                         showGradeInfoDialog = showGradeInfoDialog,
                         processedLottieJson = uiState.processedLottieJson,
+                        modifier = Modifier, // DressRoom에서는 기본 modifier 사용
                     ).also {
                         Timber.d("📤 CharacterAndBackground 전달 - processedLottieJson: ${uiState.processedLottieJson?.length ?: 0}자")
                     }
@@ -208,6 +207,11 @@ fun SuccessContent(
     onShowCartDialog: () -> Unit,
     showGradeInfoDialog: MutableState<Boolean>,
     processedLottieJson: String? = null,
+    modifier: Modifier = Modifier,
+    // 카테고리 필터 (CharacterShop에서만 사용)
+    selectedCategory: EquipSlot? = null,
+    onCategoryFilterChange: ((EquipSlot?) -> Unit)? = null,
+    showCategoryFilter: Boolean = false,
 ) {
     // 체크박스 상태는 ViewModel에서 관리됨
     val currentSeason = DateUtils.getCurrentSeason()
@@ -219,13 +223,13 @@ fun SuccessContent(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .fillMaxWidth()
             .background(seasionBackgroundColor)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 72.dp)
+                .fillMaxWidth()
             // CTA 버튼 높이만큼 패딩
         ) {
             // 캐릭터 영역
@@ -264,7 +268,10 @@ fun SuccessContent(
             // 체크박스 토글 가능한 헤더
             ItemHeader(
                 checked = uiState.showOwnedOnly,
-                onCheckedChange = { onToggleOwnedOnly() }
+                onCheckedChange = { onToggleOwnedOnly() },
+                selectedCategory = selectedCategory,
+                onCategoryFilterChange = onCategoryFilterChange,
+                showCategoryFilter = showCategoryFilter
             )
 
             if (uiState.items.isEmpty()) {
@@ -274,7 +281,8 @@ fun SuccessContent(
                     items = uiState.items,
                     selectedItemIds = selectedItemIds,
                     wornItemsByPosition = wornItemsByPosition,
-                    onItemClick = onItemClick
+                    onItemClick = onItemClick,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -313,32 +321,45 @@ fun SuccessContent(
  */
 @Composable
 private fun ItemGrid(
+    modifier : Modifier,
     items: List<CosmeticItem>,
     selectedItemIds: Set<Int>,
     wornItemsByPosition: Map<EquipSlot, WearState>,
     onItemClick: (Int) -> Unit,
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = Modifier
-            .fillMaxSize()
+    // LazyVerticalGrid 대신 Row + chunked() 방식으로 3열 그리드 구현
+    val rows = items.chunked(3) // 3열씩 그룹화
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(items) { item ->
-            val isSelected = selectedItemIds.contains(item.itemId)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowItems.forEach { item ->
+                    val isSelected = selectedItemIds.contains(item.itemId)
 
-            ItemCard(
-                itemImageUrl = item.imageName,
-                position = item.position, // EquipSlot 직접 전달
-                name = item.position.displayName,
-                point = item.point,
-                isMine = item.owned,
-                isSelected = isSelected,
-                onClick = { onItemClick(item.itemId) },
-                modifier = Modifier.fillMaxWidth()
-            )
+                    ItemCard(
+                        itemImageUrl = item.imageName,
+                        position = item.position, // EquipSlot 직접 전달
+                        name = item.position.displayName,
+                        point = item.point,
+                        isMine = item.owned,
+                        isSelected = isSelected,
+                        onClick = { onItemClick(item.itemId) },
+                        modifier = Modifier.weight(1f) // Row 내에서 균등 분배
+                    )
+                }
+                // 빈 칸 채우기 (3열 유지) - 아이템 개수가 3의 배수가 아닐 때
+                repeat(3 - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
@@ -381,7 +402,7 @@ fun PreviewDressingRoomFullSample() {
         val character = Character(
             nickName = "캐릭터 기본",
             grade = swyp.team.walkit.domain.model.Grade.SEED,
-            headImageName = null
+            headImage = null
         )
 
         val items = listOf(

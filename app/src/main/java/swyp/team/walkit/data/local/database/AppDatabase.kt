@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import swyp.team.walkit.data.local.dao.AppliedItemDao
 import swyp.team.walkit.data.local.dao.CharacterDao
 import swyp.team.walkit.data.local.dao.GoalDao
@@ -44,6 +46,11 @@ import swyp.team.walkit.data.local.entity.WalkingSessionEntity
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+
+    companion object {
+        const val DATABASE_NAME = "walking_database"
+
+    }
     abstract fun walkingSessionDao(): WalkingSessionDao
     abstract fun purchasedItemDao(): PurchasedItemDao
     abstract fun appliedItemDao(): AppliedItemDao
@@ -53,7 +60,4 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun goalDao(): GoalDao
     abstract fun notificationSettingsDao(): NotificationSettingsDao
 
-    companion object {
-        const val DATABASE_NAME = "walking_database"
-    }
 }

@@ -85,7 +85,8 @@ sealed interface ProfileUiState {
         val goal: Goal?,
         val weather: WeatherType?,
         val temperature: Double?,
-        val todaySteps: Int = 0
+        val todaySteps: Int = 0,
+        val processedLottieJson: String? = null // RecordScreen 방식으로 Lottie JSON 추가
     ) : ProfileUiState
 
     data class Error(val message: String) : ProfileUiState
@@ -132,6 +133,7 @@ class HomeViewModel @Inject constructor(
     private val missionCardStateMapper: MissionCardStateMapper,
     private val lottieImageProcessor: swyp.team.walkit.domain.service.LottieImageProcessor, // ✅ Lottie 이미지 프로세서 추가
     private val application: android.app.Application, // ✅ Application 추가
+    private val characterEventBus: swyp.team.walkit.core.CharacterEventBus, // ✅ 이벤트 버스 추가
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -141,11 +143,7 @@ class HomeViewModel @Inject constructor(
     private val _profileUiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
     val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
 
-    // 캐릭터 Lottie 상태 관리
-    private val _characterLottieState =
-        MutableStateFlow<swyp.team.walkit.domain.model.LottieCharacterState?>(null)
-    val characterLottieState: StateFlow<swyp.team.walkit.domain.model.LottieCharacterState?> =
-        _characterLottieState.asStateFlow()
+    // ✅ RecordScreen 방식으로 변경: 캐릭터 Lottie 상태 제거 (ProfileUiState에서 관리)
 
     // 캐릭터 Lottie 상태 캐시 (레벨/등급 변경 시 캐시 무효화를 위해 포함)
     // 본인 캐릭터만 관리하므로 단순 변수로 저장
@@ -155,11 +153,24 @@ class HomeViewModel @Inject constructor(
     // 테스트용 레벨/등급 순환 카운터
     private var testLevelCycleCount = 0
 
+    // 캐릭터 착용 상태 변경 감지용 버전 (캐시 무효화용)
+    private var characterVersion = 0
+
     /**
-     * 캐시 키 생성 (userId, level, grade를 포함)
+     * 캐시 키 생성 (userId, level, grade, 버전을 포함)
+     * 착용 상태 변경 시 버전 증가로 캐시 무효화
      */
     private fun createCharacterCacheKey(userId: Long, level: Int, grade: Grade): String {
-        return "${userId}_${level}_${grade.name}"
+        return "${userId}_${level}_${grade.name}_v${characterVersion}"
+    }
+
+    /**
+     * 캐릭터 착용 상태 변경 감지 (CharacterShop에서 호출용)
+     * 캐시 버전을 증가시켜 다음 캐시 키 생성 시 변경되도록 함
+     */
+    fun invalidateCharacterCache() {
+        characterVersion++
+        Timber.d("🏠 캐릭터 캐시 버전 증가: $characterVersion")
     }
 
     /**
@@ -170,25 +181,17 @@ class HomeViewModel @Inject constructor(
             try {
                 Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 시작")
 
-                // 현재 사용자 ID 가져오기
-                val userId = currentUser.value?.userId
-                if (userId == null) {
-                    Timber.w("🏠 HomeViewModel: 사용자 정보를 가져올 수 없음")
-                    _characterLottieState.value = null
-                    return@launch
-                }
-
-                // 캐릭터 정보 가져오기 (테스트용 UI 상태 우선 사용)
+                // 캐릭터 정보 가져오기 (ProfileUiState.Success의 character 우선 활용)
                 val character = when (val currentProfileState = _profileUiState.value) {
                     is ProfileUiState.Success -> {
-                        // 테스트용: UI 상태의 캐릭터 정보 우선 사용
-                        Timber.d("🏠 HomeViewModel: UI 상태의 캐릭터 정보 사용 - level=${currentProfileState.character.level}, grade=${currentProfileState.character.grade}")
+                        Timber.d("🏠 HomeViewModel: ProfileUiState의 캐릭터 정보 활용 - level=${currentProfileState.character.level}, grade=${currentProfileState.character.grade}")
                         currentProfileState.character
                     }
                     else -> {
-                        // 서버에서 캐릭터 정보 가져오기
-                        Timber.d("🏠 HomeViewModel: 서버에서 캐릭터 정보 가져오기")
-                        val characterResult = characterRepository.getCharacter(userId)
+                        Timber.d("🏠 HomeViewModel: ProfileUiState가 준비되지 않음 - 서버에서 캐릭터 정보 가져오기")
+                        // fallback: 서버에서 가져오기
+                        val location = getLocationForApi()
+                        val characterResult = characterRepository.getCharacterByLocation(location.latitude, location.longitude)
                         when (characterResult) {
                             is Result.Success -> characterResult.data
                             is Result.Error -> {
@@ -202,62 +205,42 @@ class HomeViewModel @Inject constructor(
 
                 if (character == null) {
                     Timber.w("🏠 HomeViewModel: 캐릭터 정보가 없음")
-                    _characterLottieState.value = null
                     return@launch
                 }
-
-                // 1️⃣ 캐시 키 생성 (level과 grade 포함)
-                val cacheKey = createCharacterCacheKey(userId, character.level, character.grade)
-
-                // 2️⃣ 캐시 확인 (레벨/등급이 포함된 키로 확인)
-                if (cachedCharacterKey == cacheKey && cachedCharacterLottieState != null) {
-                    Timber.d("🏠 HomeViewModel: 캐시 사용: cacheKey=$cacheKey")
-                    _characterLottieState.value = cachedCharacterLottieState
-                    return@launch
-                }
-
-                // 3️⃣ 캐시가 없거나 키가 변경되었으면 Lottie 상태 생성 및 캐시 저장
-                Timber.d("🏠 HomeViewModel: 캐시 없음 또는 키 변경, 새로 생성: cacheKey=$cacheKey, level=${character.level}, grade=${character.grade}")
-
                 // 캐릭터 등급에 따른 base Lottie JSON 로드
                 val baseJson = loadBaseLottieJson(character)
 
-                // Lottie 캐릭터 상태 생성
+                // Lottie 캐릭터 상태 생성 (서버 데이터 기반)
                 val lottieState = CharacterDisplayUtils.createLottieCharacterState(
                     character = character,
                     lottieImageProcessor = lottieImageProcessor,
                     baseLottieJson = baseJson.toString()
                 )
 
-                // 4️⃣ 캐시에 저장 (레벨/등급이 포함된 키로 저장)
-                cachedCharacterKey = cacheKey
-                cachedCharacterLottieState = lottieState
-                Timber.d("🏠 HomeViewModel: 캐시 저장: cacheKey=$cacheKey")
-
-                _characterLottieState.value = lottieState
+                  // ✅ RecordScreen 방식: ProfileUiState에 processedLottieJson 저장
+                if (_profileUiState.value is ProfileUiState.Success) {
+                    val currentProfileState = _profileUiState.value as ProfileUiState.Success
+                    _profileUiState.value = currentProfileState.copy(
+                        processedLottieJson = lottieState.modifiedJson
+                    )
+                    Timber.d("🏠 ProfileUiState에 processedLottieJson 업데이트: ${lottieState.modifiedJson?.length ?: 0}자")
+                }
                 Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 완료")
 
             } catch (t: Throwable) {
                 Timber.e(t, "🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 실패")
-                _characterLottieState.value = swyp.team.walkit.domain.model.LottieCharacterState(
-                    baseJson = "{}",
-                    modifiedJson = null,
-                    assets = emptyMap(),
-                    isLoading = false,
-                    error = t.message ?: "캐릭터 표시 준비 실패"
-                )
+                // ✅ RecordScreen 방식으로 변경: _characterLottieState 제거됨
+                // 에러 시 ProfileUiState에 processedLottieJson = null로 설정
+                if (_profileUiState.value is ProfileUiState.Success) {
+                    val currentProfileState = _profileUiState.value as ProfileUiState.Success
+                    _profileUiState.value = currentProfileState.copy(
+                        processedLottieJson = null
+                    )
+                }
             }
         }
     }
 
-    /**
-     * 캐릭터 Lottie 캐시 초기화 (레벨업 시 호출)
-     */
-    fun clearCharacterLottieCache() {
-        cachedCharacterKey = null
-        cachedCharacterLottieState = null
-        Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 캐시 초기화 완료")
-    }
 
     /**
      * 테스트용: ProfileUiState의 level과 grade를 순환시키는 함수
@@ -394,7 +377,23 @@ class HomeViewModel @Inject constructor(
     private val today = MutableStateFlow(LocalDate.now())
 
     init {
-        loadHomeData()
+        // loadHomeData()는 HomeScreen에서 직접 호출하도록 변경
+        // init에서 호출하면 ViewModel 생성 시점에 호출되어 비효율적
+
+        // 캐릭터 착용 상태 변경 이벤트 구독 (캐시 무효화용)
+        viewModelScope.launch {
+            characterEventBus.characterUpdated.collect {
+                Timber.d("🏠 캐릭터 착용 상태 변경 감지 - 캐시 무효화")
+                invalidateCharacterCache()
+                // 캐릭터 표시 재로딩 (ProfileUiState가 최신인 경우에만)
+                if (_profileUiState.value is ProfileUiState.Success) {
+                    Timber.d("🏠 캐시 무효화 후 캐릭터 표시 재로딩")
+                    loadCharacterDisplay()
+                } else {
+                    Timber.d("🏠 ProfileUiState가 준비되지 않음 - 캐시 버전만 증가")
+                }
+            }
+        }
 
         // Goal 데이터를 자동으로 동기화
         viewModelScope.launch {
@@ -433,13 +432,15 @@ class HomeViewModel @Inject constructor(
                                 Timber.d("🏠 프로필 닉네임 실시간 업데이트: ${currentState.nickname} -> ${user.nickname}")
                                 currentState.copy(nickname = user.nickname)
                             }
+
                             else -> currentState // Loading/Error 상태는 유지
                         }
                     }
                 } else {
                     Timber.d("🏠 로그아웃 상태 감지")
                     // 로그아웃 시 세션 데이터 초기화
-                    _walkingSessionDataState.value = DataState.Success(WalkingSessionData(emptyList(), null, null, emptyList()))
+                    _walkingSessionDataState.value =
+                        DataState.Success(WalkingSessionData(emptyList(), null, null, emptyList()))
                 }
             }
         }
@@ -555,8 +556,10 @@ class HomeViewModel @Inject constructor(
             try {
                 // 이번 주 범위 계산 (월요일~일요일)
                 val currentDate = today.value
-                val weekStart = currentDate.minusDays(currentDate.dayOfWeek.value - 1L).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                val weekEnd = currentDate.plusDays(8L - currentDate.dayOfWeek.value).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+                val weekStart = currentDate.minusDays(currentDate.dayOfWeek.value - 1L)
+                    .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val weekEnd = currentDate.plusDays(8L - currentDate.dayOfWeek.value)
+                    .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
                 Timber.d("🏠 이번 주 범위 (월~일): ${weekStart.formatTimestamp()} ~ ${weekEnd.formatTimestamp()}")
                 Timber.d("🏠 이번 주 범위 (raw): start=$weekStart, end=$weekEnd")
 
@@ -636,6 +639,10 @@ class HomeViewModel @Inject constructor(
             temperature = homeData.temperature
         )
         Timber.d("프로필 상태: Success")
+
+        // ✅ 캐릭터 정보 업데이트 후 Lottie 표시 자동 로드
+        Timber.d("🏠 캐릭터 정보 업데이트됨 - Lottie 표시 자동 로드")
+        loadCharacterDisplay()
     }
 
     /**
@@ -697,6 +704,7 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
     private fun loadSessionsWithHomeData(homeData: swyp.team.walkit.domain.model.HomeData) {
         viewModelScope.launch {
             // 목표 정보는 별도 StateFlow에서 가져옴 (flow로 관리)

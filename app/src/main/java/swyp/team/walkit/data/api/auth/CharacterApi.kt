@@ -10,13 +10,12 @@ import swyp.team.walkit.data.remote.walking.dto.CharacterDto
  */
 interface CharacterApi {
 
-
     /**
      * 위치 기반 캐릭터 정보 조회
      *
      * @param lat 위도
      * @param lon 경도
-     * @return 캐릭터 정보
+     * @return 캐릭터 정보 응답 (직접 CharacterDto 반환)
      */
     @GET("/characters/walks")
     suspend fun getCharacterByLocation(

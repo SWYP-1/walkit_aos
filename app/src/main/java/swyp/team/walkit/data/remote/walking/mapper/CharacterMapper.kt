@@ -4,6 +4,7 @@ import swyp.team.walkit.data.remote.walking.dto.CharacterDto
 import swyp.team.walkit.data.remote.walking.dto.Grade
 import swyp.team.walkit.data.remote.walking.dto.ItemImageDto
 import swyp.team.walkit.domain.model.Character
+import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.Grade as DomainGrade
 
 /**
@@ -16,10 +17,9 @@ object CharacterMapper {
      */
     fun toDomain(dto: CharacterDto): Character {
         return Character(
-            headImageName = dto.headImage?.imageName,
-            headImageTag = dto.headImage?.itemTag,  // HEAD 영역의 tag 정보
-            bodyImageName = dto.bodyImage?.imageName,
-            feetImageName = dto.feetImage?.imageName,
+            headImage = dto.headImage?.let { CharacterImage(it.imageName, it.itemTag) },
+            bodyImage = dto.bodyImage?.let { CharacterImage(it.imageName, it.itemTag) },
+            feetImage = dto.feetImage?.let { CharacterImage(it.imageName, it.itemTag) },
             characterImageName = dto.characterImageName,
             backgroundImageName = dto.backgroundImageName,
             level = dto.level,
@@ -33,9 +33,9 @@ object CharacterMapper {
      */
     fun toDto(domain: Character): CharacterDto {
         return CharacterDto(
-            headImage = domain.headImageName?.let { ItemImageDto(imageName = it, itemPosition = "HEAD", itemTag = domain.headImageTag) },
-            bodyImage = domain.bodyImageName?.let { ItemImageDto(imageName = it, itemPosition = "BODY", itemTag = null) },
-            feetImage = domain.feetImageName?.let { ItemImageDto(imageName = it, itemPosition = "FEET", itemTag = null) },
+            headImage = domain.headImage?.let { ItemImageDto(imageName = it.imageName, itemPosition = "HEAD", itemTag = it.itemTag) },
+            bodyImage = domain.bodyImage?.let { ItemImageDto(imageName = it.imageName, itemPosition = "BODY", itemTag = it.itemTag) },
+            feetImage = domain.feetImage?.let { ItemImageDto(imageName = it.imageName, itemPosition = "FEET", itemTag = it.itemTag) },
             characterImageName = domain.characterImageName,
             backgroundImageName = domain.backgroundImageName,
             level = domain.level,

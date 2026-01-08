@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -123,7 +125,7 @@ fun WeeklyRecordCard(
 
                 /* ---------- 하단 텍스트 영역 ---------- */
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp)
                 ) {
                     Text(
                         text = FormatUtils.formatDate(session.startTime),
@@ -142,26 +144,30 @@ fun WeeklyRecordCard(
                     ) {
 
                         /* 걸음 수 */
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.weight(1f),
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .wrapContentHeight(),
                         ) {
-                            Text(
-                                text = "%,d".format(session.stepCount),
-                                style = MaterialTheme.walkItTypography.bodyXL,
-                                color = SemanticColor.textBorderPrimary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "%,d".format(session.stepCount),
+                                    maxLines = 1,
+                                    style = MaterialTheme.walkItTypography.bodyL,
+                                    fontWeight = FontWeight.Medium
+                                )
 
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            Text(
-                                text = "걸음",
-                                style = MaterialTheme.walkItTypography.bodyS.copy(
+                                Text(
+                                    text = "걸음",
+                                    maxLines = 1,
+                                    style = MaterialTheme.walkItTypography.bodyS,
                                     fontWeight = FontWeight.Normal
-                                ),
-                                color = SemanticColor.textBorderPrimary
-                            )
+                                )
+                            }
                         }
 
 
@@ -184,7 +190,7 @@ fun WeeklyRecordCard(
 
                             Text(
                                 text = totalHours.toString(),
-                                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                style = MaterialTheme.walkItTypography.bodyL.copy(
                                     fontWeight = FontWeight.Medium
                                 ),
                                 color = SemanticColor.textBorderPrimary
@@ -198,7 +204,7 @@ fun WeeklyRecordCard(
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 text = totalMinutes.toString(),
-                                style = MaterialTheme.walkItTypography.bodyXL.copy(
+                                style = MaterialTheme.walkItTypography.bodyL.copy(
                                     fontWeight = FontWeight.Medium
                                 ),
                                 color = SemanticColor.textBorderPrimary
@@ -304,7 +310,7 @@ fun WeeklyRecordCardPreview() {
         id = "session456",
         startTime = System.currentTimeMillis() - 172800000, // 그저께
         endTime = System.currentTimeMillis(),
-        stepCount = 3100,
+        stepCount = 13100,
         totalDistance = 2500f,
         locations = listOf(
             LocationPoint(37.5665, 126.9780), // 서울 시청

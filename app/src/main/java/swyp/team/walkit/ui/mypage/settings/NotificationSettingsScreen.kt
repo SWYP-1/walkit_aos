@@ -151,20 +151,6 @@ fun NotificationSettingsScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
-            // 전체 알림을 끄면 나타나는 InfoBanner (3초 후 사라짐)
-            AnimatedVisibility(
-                visible = showNotificationDisabledBanner,
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
-                InfoBanner(
-                    title = "기기 알림을 켜주세요",
-                    description = "정보 알림을 받기 위해 기기 알림을 켜주세요"
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
             // 전체 알림 섹션 
             Row(
                 modifier = Modifier
@@ -173,7 +159,7 @@ fun NotificationSettingsScreen(
                         color = Grey2, // color/background/white-secondary
                         shape = RoundedCornerShape(8.dp), // radius/8px
                     )
-                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -206,7 +192,7 @@ fun NotificationSettingsScreen(
                     )
                 ) {
                     Text(
-                        text = "알림 설정",
+                        text = "앱 정보 알림",
                         style = MaterialTheme.walkItTypography.bodyL.copy(
                             fontWeight = FontWeight.SemiBold,
                         ),
@@ -240,16 +226,30 @@ fun NotificationSettingsScreen(
 
             SectionCard {
                 Column(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+                    Spacer(Modifier.height(12.dp))
                     ToggleMenuItem(
                         title = "마케팅 푸쉬 동의",
                         checked = uiState.marketingPushEnabled,
                         onCheckedChange = onMarketingPushEnabledChange,
                     )
+                    Spacer(Modifier.height(13.5.dp))
                 }
 
             }
+            Spacer(Modifier.weight(1f))
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // 전체 알림을 끄면 나타나는 InfoBanner (3초 후 사라짐)
+            AnimatedVisibility(
+                visible = showNotificationDisabledBanner,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                InfoBanner(
+                    title = "기기 알림을 켜주세요",
+                    description = "정보 알림을 받기 위해 기기 알림을 켜주세요"
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

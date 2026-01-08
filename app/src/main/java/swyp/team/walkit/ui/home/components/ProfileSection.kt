@@ -9,6 +9,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -41,9 +42,11 @@ import swyp.team.walkit.data.remote.home.dto.WeatherDto
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.ui.components.TestCharacterWithAnchor
 import swyp.team.walkit.ui.components.createCharacterParts
-import swyp.team.walkit.domain.model.LottieCharacterState
-import swyp.team.walkit.ui.components.LottieCharacterDisplay
 import swyp.team.walkit.ui.home.utils.WeatherType
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import swyp.team.walkit.utils.NumberUtils.formatNumber
 import kotlin.toString
 
@@ -54,7 +57,6 @@ import kotlin.toString
 fun ProfileSection(
     uiState: ProfileUiState,
     goalState: DataState<Goal>,
-    characterLottieState: LottieCharacterState?, // ✅ Lottie 캐릭터 상태 추가
     onTestClick: () -> Unit = {}, // 테스트용 클릭 핸들러
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -67,7 +69,7 @@ fun ProfileSection(
         when (uiState) {
             is ProfileUiState.Loading -> ProfileSkeleton()
             is ProfileUiState.Success -> ProfileContent(
-                uiState, goalState, characterLottieState, onTestClick
+                uiState, goalState, onTestClick
             )
 
             is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = onRetry)
@@ -82,7 +84,6 @@ fun ProfileSection(
 private fun ProfileContent(
     uiState: ProfileUiState.Success,
     goalState: DataState<Goal>,
-    characterLottieState: LottieCharacterState?,
     onTestClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -158,12 +159,23 @@ private fun ProfileContent(
         ) {
 //            val logicalSize = 130.dp
 //            val visualScale = 2f
-            LottieCharacterDisplay(
-                characterLottieState = characterLottieState,
-                modifier = Modifier
-                    .scale(0.86f)
-                    .clickable(onClick = onTestClick)
-            )
+
+            // ✅ RecordScreen 방식으로 변경: processedLottieJson 직접 사용
+            if (uiState is ProfileUiState.Success && uiState.processedLottieJson != null) {
+                val composition by rememberLottieComposition(
+                    LottieCompositionSpec.JsonString(uiState.processedLottieJson)
+                )
+
+                LottieAnimation(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .scale(0.86f)
+                        .clickable(onClick = onTestClick)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             HomeNameAndGoalContent(
                 nickName = uiState.nickname,
                 goal = uiState.goal ?: Goal.EMPTY,
@@ -365,8 +377,7 @@ private fun ProfileSectionLoadingPreview() {
     WalkItTheme {
         ProfileSection(
             uiState = ProfileUiState.Loading,
-            goalState = DataState.Loading,
-            characterLottieState = null
+            goalState = DataState.Loading
         )
     }
 }
@@ -377,23 +388,24 @@ private fun ProfileSectionSuccessPreview() {
     WalkItTheme {
         ProfileSection(
             uiState = ProfileUiState.Success(
-                nickname = "테스트사용자", character = Character(
+                nickname = "테스트사용자",                 character = Character(
                     nickName = "테스트사용자",
                     level = 5,
                     grade = Grade.TREE,
-                    headImageName = null,
-                    bodyImageName = null,
-                    feetImageName = null,
+                    headImage = null,
+                    bodyImage = null,
+                    feetImage = null,
                     characterImageName = "https://example.com/character.png",
                     backgroundImageName = "https://example.com/background.png"
                 ), walkProgressPercentage = "75", goal = Goal(
                     targetStepCount = 10000, targetWalkCount = 30
-                ), weather = WeatherType.SNOW, temperature = 12.4, todaySteps = 8500
+                ), weather = WeatherType.SNOW, temperature = 12.4, todaySteps = 8500,
+                processedLottieJson = null // Preview에서는 null
             ), goalState = DataState.Success(
                 Goal(
                     targetStepCount = 10000, targetWalkCount = 30
                 )
-            ), characterLottieState = null // Preview에서는 null로 설정
+            )
         )
     }
 }
@@ -404,8 +416,7 @@ private fun ProfileSectionErrorPreview() {
     WalkItTheme {
         ProfileSection(
             uiState = ProfileUiState.Error("서버 연결에 문제가 있습니다"),
-            goalState = DataState.Loading,
-            characterLottieState = null
+            goalState = DataState.Loading
         )
     }
 }
