@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +48,6 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.Season
-import team.swyp.sdu.ui.dressroom.component.DressingRoomHeader
 import timber.log.Timber
 
 /**
@@ -165,19 +166,6 @@ fun CharacterAndBackground(
     val slotConfigs = remember(character, wornItemsByPosition, cosmeticItems) {
         createSlotImageConfigs(character, wornItemsByPosition, cosmeticItems)
     }
-//    Timber.d("🎭 CharacterAndBackground 컴포넌트 렌더링")
-//    Timber.d("📄 processedLottieJson 길이: ${processedLottieJson?.length ?: 0}")
-//    Timber.d("🧷 wornItemsByPosition: $wornItemsByPosition")
-//
-//    // processedLottieJson이 null인지 아닌지, 그리고 어떤 내용인지 확인
-//    if (processedLottieJson.isNullOrEmpty()) {
-//        Timber.w("⚠️ processedLottieJson이 null 또는 비어있음 - 기본 Lottie 사용")
-//    } else {
-//        Timber.d("✅ processedLottieJson 존재 - 커스텀 Lottie 사용")
-//        // JSON이 너무 길어서 앞부분만 로깅
-//        val preview = processedLottieJson.take(200) + if (processedLottieJson.length > 200) "..." else ""
-//        Timber.d("📋 Lottie JSON 미리보기: $preview")
-//    }
     // 오늘 날짜의 계절 확인
     val backgroundRes =
         when (currentSeason) {
@@ -198,14 +186,14 @@ fun CharacterAndBackground(
         }
     )
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxSize()) {
         // 1️⃣ 배경
         Image(
             painter = painterResource(backgroundRes),
             contentDescription = "season background",
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f),
+                .height(440.dp), // 고정 높이로 설정하여 스크롤 가능하게 함
             contentScale = ContentScale.Crop,
         )
 
@@ -226,15 +214,16 @@ fun CharacterAndBackground(
         // 중앙에 캐릭터 Lottie 애니메이션 표시
         Box(
             modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = 72.dp),
+                .align(Alignment.Center),
             contentAlignment = Alignment.Center
         ) {
             if (processedComposition != null) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(290.dp).offset(y = -40.dp),
+                        .size(200.dp)
+                        .scale(0.86f)
+                        .offset(y = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     processedComposition?.let {

@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -187,7 +188,9 @@ fun FriendSearchDetailScreenContent(
 ) {
     var isMoreMenuExpanded by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .background(SemanticColor.backgroundWhiteSecondary)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -246,7 +249,10 @@ fun FriendSearchDetailScreenContent(
                         LottieAnimation(
                             composition = composition,
                             iterations = LottieConstants.IterateForever,
-                            modifier = Modifier .size(290.dp).offset(y = -10.dp),
+                            modifier = Modifier
+                                .size(200.dp)
+                                .scale(0.86f)
+                                .offset(y = 20.dp),
                         )
                     } ?: run {
                         // Lottie가 없을 경우 기존 AsyncImage 사용 (fallback)
@@ -319,30 +325,33 @@ fun FriendSearchDetailScreenContent(
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = buttonColor,
-                                    shape = RoundedCornerShape(size = 8.dp),
+                        if (followStatus != FollowStatus.ACCEPTED) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = buttonColor,
+                                        shape = RoundedCornerShape(size = 8.dp),
+                                    )
+                                    .clickable(enabled = isEnabled && !isFollowing) {
+                                        Timber.d("FriendSearchDetailScreenContent: follow button clicked, followStatus=$followStatus, isFollowing=$isFollowing")
+                                        onRequestFollow()
+                                    }
+                                    .padding(
+                                        horizontal = 16.dp,
+                                        vertical = 8.dp,
+                                    ),
+                            ) {
+                                Text(
+                                    text = if (isFollowing) "요청중..." else buttonText,
+                                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                    ),
+                                    color = if (isEnabled) SemanticColor.textBorderPrimaryInverse
+                                    else SemanticColor.textBorderPrimaryInverse,
                                 )
-                                .clickable(enabled = isEnabled && !isFollowing) {
-                                    Timber.d("FriendSearchDetailScreenContent: follow button clicked, followStatus=$followStatus, isFollowing=$isFollowing")
-                                    onRequestFollow()
-                                }
-                                .padding(
-                                    horizontal = 16.dp,
-                                    vertical = 8.dp,
-                                ),
-                        ) {
-                            Text(
-                                text = if (isFollowing) "요청중..." else buttonText,
-                                style = MaterialTheme.walkItTypography.bodyS.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                ),
-                                color = if (isEnabled) SemanticColor.textBorderPrimaryInverse
-                                else SemanticColor.textBorderPrimaryInverse,
-                            )
+                            }
                         }
+
                     }
                 }
 
@@ -353,7 +362,6 @@ fun FriendSearchDetailScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SemanticColor.backgroundWhitePrimary)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             WalkingSummaryCard(

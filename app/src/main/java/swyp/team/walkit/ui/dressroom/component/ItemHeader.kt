@@ -3,6 +3,7 @@ package swyp.team.walkit.ui.dressroom.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,11 +43,20 @@ fun ItemHeader(
         modifier = Modifier
             .background(
                 color = SemanticColor.backgroundWhitePrimary,
-                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
             )
-            .padding(top = 20.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .fillMaxWidth()
     ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(4.dp)
+                    .background(SemanticColor.backgroundWhiteQuaternary)
+            ) {
+
+            }
+        }
+        Spacer(Modifier.height(16.dp))
         // 헤더 타이틀과 토글
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -98,9 +108,9 @@ fun ItemHeader(
                         onClick = { onCategoryFilterChange(category) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isSelected) SemanticColor.backgroundGreenPrimary
-                                           else SemanticColor.backgroundWhitePrimary,
+                            else SemanticColor.backgroundWhitePrimary,
                             contentColor = if (isSelected) SemanticColor.stateGreenPrimary
-                                         else SemanticColor.textBorderPrimary
+                            else SemanticColor.textBorderPrimary
                         ),
                         shape = RoundedCornerShape(16.dp),
                         border = if (isSelected) androidx.compose.foundation.BorderStroke(

@@ -228,7 +228,7 @@ fun WeeklyRecordCard(
             emotionType = stringToEmotionType(session.postWalkEmotion),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .offset(x = (-12).dp, y = -58.dp)
+                .offset(x = (-12).dp, y = -55.dp)
         )
     }
 }

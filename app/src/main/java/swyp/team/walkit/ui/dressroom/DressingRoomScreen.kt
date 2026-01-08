@@ -3,6 +3,7 @@ package swyp.team.walkit.ui.dressroom
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -198,6 +199,7 @@ fun SuccessContent(
     cartItems: LinkedHashSet<CosmeticItem>,
     lottieImageProcessor: LottieImageProcessor?,
     isRefreshLoading: Boolean = false,
+    isWearLoading: Boolean = false, // ✅ 저장 로딩 상태 추가
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onQuestionClick: () -> Unit,
@@ -298,6 +300,7 @@ fun SuccessContent(
             CtaButton(
                 text = "저장하기",
                 onClick = onSaveItem,
+                enabled = !isWearLoading, // ✅ 저장 중에는 버튼 비활성화
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -320,46 +323,35 @@ fun SuccessContent(
  * Item Grid
  */
 @Composable
-private fun ItemGrid(
+fun ItemGrid(
     modifier : Modifier,
     items: List<CosmeticItem>,
     selectedItemIds: Set<Int>,
     wornItemsByPosition: Map<EquipSlot, WearState>,
     onItemClick: (Int) -> Unit,
 ) {
-    // LazyVerticalGrid 대신 Row + chunked() 방식으로 3열 그리드 구현
-    val rows = items.chunked(3) // 3열씩 그룹화
-
-    Column(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        rows.forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowItems.forEach { item ->
-                    val isSelected = selectedItemIds.contains(item.itemId)
+        items(items.size) { index ->
+            val item = items[index]
+            val isSelected = selectedItemIds.contains(item.itemId)
 
-                    ItemCard(
-                        itemImageUrl = item.imageName,
-                        position = item.position, // EquipSlot 직접 전달
-                        name = item.position.displayName,
-                        point = item.point,
-                        isMine = item.owned,
-                        isSelected = isSelected,
-                        onClick = { onItemClick(item.itemId) },
-                        modifier = Modifier.weight(1f) // Row 내에서 균등 분배
-                    )
-                }
-                // 빈 칸 채우기 (3열 유지) - 아이템 개수가 3의 배수가 아닐 때
-                repeat(3 - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+            ItemCard(
+                itemImageUrl = item.imageName,
+                position = item.position, // EquipSlot 직접 전달
+                name = item.position.displayName,
+                point = item.point,
+                isMine = item.owned,
+                isSelected = isSelected,
+                onClick = { onItemClick(item.itemId) },
+                modifier = Modifier.fillMaxWidth() // 각 아이템이 그리드 셀을 채우도록
+            )
         }
     }
 }

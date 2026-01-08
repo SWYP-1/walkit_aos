@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import swyp.team.walkit.ui.record.components.cardBorder
+import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.Pretendard
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.TypeScale
@@ -139,7 +141,6 @@ fun WalkingSummaryCard(
     rightUnit: SummaryUnit,
     rightValue: String = "", // rightUnit이 Step인 경우에만 사용
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
 ) {
     val cardHorizontalPadding = 20.dp
@@ -147,18 +148,8 @@ fun WalkingSummaryCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .shadow(
-                elevation = 10.dp,
-                shape = RoundedCornerShape(12.dp),
-                spotColor = Color(0x0F000000), // Shadow-1: rgba(0,0,0,0.06) with spread 7
-            ),
+            .customShadow()
+            .cardBorder(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFFFFFFFF), // color/background/whtie-primary

@@ -29,7 +29,6 @@ import swyp.team.walkit.ui.components.GradeBadge
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
-import team.swyp.sdu.ui.dressroom.component.DressingRoomHeader
 
 @Composable
 fun DressingRoomHeader(

@@ -7,34 +7,11 @@ import swyp.team.walkit.ui.character.charactershop.CharacterShopRoute
 import swyp.team.walkit.ui.character.component.CharacterCategorySection
 
 
-/**
- * 캐릭터 상점 탭 콘텐츠
- * LazyColumn의 item으로 사용되는 각 탭의 콘텐츠
- */
-@Composable
-private fun CharacterShopTabContent(
-    selectedTab: CharacterTabType,
-) {
-    when (selectedTab) {
-        CharacterTabType.Category -> {
-            // 캐릭터 카테고리 섹션 컴포넌트 사용
-            CharacterCategorySection()
-        }
-
-        CharacterTabType.Shop -> {
-            // CharacterShop Shop 탭 Route 사용
-            CharacterShopRoute()
-        }
-    }
-}
 
 /**
- * 캐릭터 상점 Screen - LazyColumn 기반 구조
+ * 캐릭터 상점 Screen
  *
- * 구조:
- * LazyColumn
- * ├── item: CharacterShopTabRow (탭 선택)
- * └── item: CharacterShopTabContent (선택된 탭의 콘텐츠)
+ * Shop 탭에서는 BottomSheetScaffold를 사용하므로 LazyColumn을 사용하지 않음
  */
 @Composable
 fun CharacterScreen(
@@ -42,19 +19,29 @@ fun CharacterScreen(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(modifier = modifier) {
-        // 탭 레이아웃 item
-        item {
-            CharacterShopTabRow(
-                selectedTabIndex = tabUiState.selectedTabIndex,
-                onTabSelected = onTabSelected,
-            )
+    when (CharacterTabType.entries[tabUiState.selectedTabIndex]) {
+        CharacterTabType.Category -> {
+            // Category 탭: 기존 LazyColumn 구조 유지
+            androidx.compose.foundation.lazy.LazyColumn(modifier = modifier) {
+                item {
+                    CharacterShopTabRow(
+                        selectedTabIndex = tabUiState.selectedTabIndex,
+                        onTabSelected = onTabSelected,
+                    )
+                }
+                item {
+                    CharacterCategorySection()
+                }
+            }
         }
 
-        // 탭 콘텐츠 item
-        item {
-            CharacterShopTabContent(
-                selectedTab = CharacterTabType.entries[tabUiState.selectedTabIndex],
+        CharacterTabType.Shop -> {
+            // Shop 탭: BottomSheetScaffold를 위해 전체 화면 사용
+            // 탭 row는 scaffold content 안에 포함
+            CharacterShopRoute(
+                modifier = modifier,
+                selectedTabIndex = tabUiState.selectedTabIndex,
+                onTabSelected = onTabSelected
             )
         }
     }

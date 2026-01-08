@@ -73,7 +73,8 @@ class CharacterShopViewModel @Inject constructor(
 
     // UI 미리보기 착용 상태 (실제 API 반영 전) - 핵심 관리 변수
     private val _wornItemsByPosition = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
-    val wornItemsByPosition: StateFlow<Map<EquipSlot, WearState>> = _wornItemsByPosition.asStateFlow()
+    val wornItemsByPosition: StateFlow<Map<EquipSlot, WearState>> =
+        _wornItemsByPosition.asStateFlow()
 
     // 서버에 반영된 실제 착용 상태
     private val _serverWornItems = MutableStateFlow<Map<EquipSlot, WearState>>(emptyMap())
@@ -104,6 +105,22 @@ class CharacterShopViewModel @Inject constructor(
     // 장바구니 다이얼로그 표시 상태
     private val _showCartDialog = MutableStateFlow(false)
     val showCartDialog: StateFlow<Boolean> = _showCartDialog.asStateFlow()
+
+    // Toast 메시지 상태
+    private val _toastMessage = MutableStateFlow<String?>(null)
+    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
+
+    /**
+     * Toast 메시지 표시
+     */
+    private fun showToast(message: String) {
+        _toastMessage.value = message
+        // 다음 프레임에서 자동으로 null로 리셋 (한 번만 표시)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(100)
+            _toastMessage.value = null
+        }
+    }
 
     // 이전 착용 상태 (diff 계산용)
     private var previousWornItems = mapOf<EquipSlot, WearState>()
@@ -209,7 +226,10 @@ class CharacterShopViewModel @Inject constructor(
                     }
 
                     is Result.Error -> {
-                        Timber.Forest.e(itemsResult.exception, "코스메틱 아이템 로드 실패: ${itemsResult.message}")
+                        Timber.Forest.e(
+                            itemsResult.exception,
+                            "코스메틱 아이템 로드 실패: ${itemsResult.message}"
+                        )
                         Timber.Forest.e("UI 상태를 Error로 설정: 코스메틱 아이템 로드 실패")
                         _uiState.value =
                             DressingRoomUiState.Error(itemsResult.message ?: "아이템 로드 실패")
@@ -668,7 +688,8 @@ class CharacterShopViewModel @Inject constructor(
                     // 장바구니 업데이트 (selectedItemIdSet 기반으로 자동 동기화)
                     val updatedCart = LinkedHashSet<CosmeticItem>()
                     currentSelectedIds.forEach { selectedId ->
-                        val selectedItem = currentState.items.find { it.itemId == selectedId && !it.owned }
+                        val selectedItem =
+                            currentState.items.find { it.itemId == selectedId && !it.owned }
                         if (selectedItem != null) {
                             updatedCart.add(selectedItem)
                         }
@@ -688,7 +709,8 @@ class CharacterShopViewModel @Inject constructor(
             if (selectedItemsInSameSlot.isNotEmpty()) {
                 // 선택된 아이템들 중 마지막 선택된 아이템을 대표로 착용 상태 설정
                 // (UI에서는 여러 개 선택 가능하지만, Lottie 미리보기는 마지막 선택된 것만 표시)
-                updatedWornItems[item.position] = WearState.Worn(selectedItemsInSameSlot.last().itemId)
+                updatedWornItems[item.position] =
+                    WearState.Worn(selectedItemsInSameSlot.last().itemId)
             } else {
                 // 선택된 아이템이 없으면 미착용 상태
                 updatedWornItems[item.position] = WearState.Unworn
@@ -701,7 +723,6 @@ class CharacterShopViewModel @Inject constructor(
             Timber.Forest.w("❌ UI 상태가 Success가 아님: ${currentState::class.simpleName}")
         }
     }
-
 
 
     /**
@@ -737,13 +758,21 @@ class CharacterShopViewModel @Inject constructor(
     /**
      * 아이템 필터링 적용 (보유 아이템 + 카테고리 필터)
      */
-    private fun applyFilters(): List<CosmeticItem> {
-        val currentUiState = _uiState.value
+    private fun applyFilters(stateForFiltering: DressingRoomUiState.Success? = null): List<CosmeticItem> {
+        val uiState = stateForFiltering ?: (_uiState.value as? DressingRoomUiState.Success)
+
+        // 선택된 아이템 ID들 (항상 표시되어야 함)
+        val selectedItemIds = selectedItemIdSet.value
 
         return allItems.filter { item ->
+            // ✅ 선택된 아이템은 필터링에서 제외 (항상 표시)
+            if (selectedItemIds.contains(item.itemId)) {
+                return@filter true
+            }
+
             // 보유 아이템 필터 적용
-            val ownedFilter = if (currentUiState is DressingRoomUiState.Success) {
-                !currentUiState.showOwnedOnly || item.owned
+            val ownedFilter = if (uiState != null) {
+                !uiState.showOwnedOnly || item.owned
             } else {
                 true
             }
@@ -761,12 +790,12 @@ class CharacterShopViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is DressingRoomUiState.Success) {
             val newShowOwnedOnly = !currentState.showOwnedOnly
-            val filteredItems = applyFilters()
 
-            _uiState.value = currentState.copy(
-                items = filteredItems,
-                showOwnedOnly = newShowOwnedOnly
-            )
+            // 새로운 showOwnedOnly 값으로 필터링하기 위해 임시 상태 생성
+            val tempState = currentState.copy(showOwnedOnly = newShowOwnedOnly)
+            val filteredItems = applyFilters(tempState)
+
+            _uiState.value = tempState.copy(items = filteredItems)
         }
     }
 
@@ -792,95 +821,94 @@ class CharacterShopViewModel @Inject constructor(
      * 다이얼로그에서 확인 버튼을 눌렀을 때 호출됨
      */
     fun performPurchase() {
+        // ✅ 구매 시작: 버튼 disabled
+        _isWearLoading.value = true
+
         viewModelScope.launch {
-            val items = cartItems.value.toList()
-            Timber.Forest.d("코스메틱 아이템 실제 구매 시작: ${items.size}개")
+            try {
+                val items = cartItems.value.toList()
+                Timber.Forest.d("코스메틱 아이템 실제 구매 시작: ${items.size}개")
 
-            val totalPrice = items.sumOf { it.point }
+                val totalPrice = items.sumOf { it.point }
 
-            when (val result = cosmeticItemRepository.purchaseItems(items, totalPrice)) {
-                is Result.Success -> {
-                    Timber.Forest.d("코스메틱 아이템 구매 성공")
+                when (val result = cosmeticItemRepository.purchaseItems(items, totalPrice)) {
+                    is Result.Success -> {
+                        Timber.Forest.d("코스메틱 아이템 구매 성공")
 
-                    // 구매 성공 시 장바구니에서 아이템 제거 및 UI 업데이트
-                    val currentCart = _cartItems.value
-                    val updatedCart = LinkedHashSet(currentCart.filterNot { cartItem ->
-                        items.any { purchasedItem -> purchasedItem.itemId == cartItem.itemId }
-                    })
+                        // 구매 성공 시 장바구니에서 아이템 제거 및 UI 업데이트
+                        val currentCart = _cartItems.value
+                        val updatedCart = LinkedHashSet(currentCart.filterNot { cartItem ->
+                            items.any { purchasedItem -> purchasedItem.itemId == cartItem.itemId }
+                        })
 
-                    _cartItems.value = updatedCart
+                        _cartItems.value = updatedCart
 
-                    // 구매 성공 시 _wornItemsByPosition에서도 제거 (선택 상태 정리)
-                    _wornItemsByPosition.update { currentWornItems ->
-                        val updatedWornItems = currentWornItems.toMutableMap()
-                        items.forEach { purchased ->
-                            val currentState = _uiState.value as? DressingRoomUiState.Success
-                            val item = currentState?.items?.find { it.itemId == purchased.itemId }
-                            if (item != null) {
-                                updatedWornItems[item.position] = WearState.Unworn
-                                Timber.Forest.d("🛒 구매 완료로 선택 해제: ${purchased.itemId} (${item.position})")
+                        // ❌ 구매 성공 시 착용 상태 유지 (제거하지 않음)
+                        // 사용자가 이미 착용하고 있던 아이템을 구매하더라도 착용 상태를 유지
+
+                        // UI 상태 업데이트 (아이템 소유 상태 변경)
+                        if (_uiState.value is DressingRoomUiState.Success) {
+                            val currentState = _uiState.value as DressingRoomUiState.Success
+
+                            // 구매된 아이템들의 owned 상태 업데이트 (서버와 동일하게)
+                            val updatedItems = allItems.map { item ->
+                                if (items.any { purchased -> purchased.itemId == item.itemId }) {
+                                    item.copy(owned = true)
+                                } else {
+                                    item
+                                }
                             }
-                        }
-                        updatedWornItems
-                    }
 
-                    // UI 상태 업데이트 (아이템 소유 상태 변경)
-                    if (_uiState.value is DressingRoomUiState.Success) {
-                        val currentState = _uiState.value as DressingRoomUiState.Success
+                            // allItems 업데이트 (필터링용)
+                            allItems = updatedItems
 
-                        // 구매된 아이템들의 owned 상태 업데이트 (서버와 동일하게)
-                        val updatedItems = allItems.map { item ->
-                            if (items.any { purchased -> purchased.itemId == item.itemId }) {
-                                item.copy(owned = true)
+                            // 포인트 정보 업데이트 및 필터링 재적용
+                            val currentPoints = currentState.myPoint - totalPrice
+                            val filteredItems = if (currentState.showOwnedOnly) {
+                                updatedItems.filter { it.owned }
                             } else {
-                                item
+                                updatedItems
                             }
+
+                            _uiState.value = currentState.copy(
+                                items = filteredItems,
+                                myPoint = currentPoints
+                            )
                         }
 
-                        // allItems 업데이트 (필터링용)
-                        allItems = updatedItems
+                        // 구매 성공 후 착용 상태 저장 (동기로 대기)
+                        Timber.Forest.d("구매 성공 - 착용 상태 저장 시작")
+                        saveWornItemsToServer()
 
-                        // 포인트 정보 업데이트 및 필터링 재적용
-                        val currentPoints = currentState.myPoint - totalPrice
-                        val filteredItems = if (currentState.showOwnedOnly) {
-                            updatedItems.filter { it.owned }
-                        } else {
-                            updatedItems
-                        }
-
-                        _uiState.value = currentState.copy(
-                            items = filteredItems,
-                            myPoint = currentPoints
-                        )
-                    }
-
-                    // 구매 성공 후 착용 상태 저장
-                    Timber.Forest.d("구매 성공 - 착용 상태 저장 시작")
-                    saveWornItemsToServer()
+                        // ✅ 구매 완료 Toast 표시
+                        showToast("아이템 구매가 완료되었습니다!")
 
                     // ✅ 장바구니 다이얼로그 닫기
                     dismissCartDialog()
 
-                    // 캐릭터 정보 백그라운드 동기화 (선택사항)
-                    viewModelScope.launch {
-                        refreshCharacterInfo()
-                    }
+                    // ❌ 캐릭터 정보 백그라운드 동기화 제거
+                    // 구매 완료 후 refreshCharacterInfo() 호출 시 이미 착용하고 있던 아이템 상태가 사라짐
+                    // 구매 작업에서는 로컬 상태만 업데이트하고 서버 동기화는 불필요
 
                     Timber.Forest.d("코스메틱 아이템 구매 완료 및 로컬 상태 업데이트")
+                    }
+
+                    is Result.Error -> {
+                        Timber.Forest.e(result.exception, "코스메틱 아이템 구매 실패")
+
+                        // 실패 시에도 다이얼로그 닫기
+                        dismissCartDialog()
+
+                        // TODO: 에러 처리 UI 표시 (Snackbar 등)
+                    }
+
+                    is Result.Loading -> {
+                        // Loading 상태 유지
+                    }
                 }
-
-                is Result.Error -> {
-                    Timber.Forest.e(result.exception, "코스메틱 아이템 구매 실패")
-
-                    // 실패 시에도 다이얼로그 닫기
-                    dismissCartDialog()
-
-                    // TODO: 에러 처리 UI 표시 (Snackbar 등)
-                }
-
-                is Result.Loading -> {
-                    // Loading 상태 유지
-                }
+            } finally {
+                // ✅ 모든 작업 완료: 버튼 enabled
+                _isWearLoading.value = false
             }
         }
     }
@@ -1006,6 +1034,7 @@ class CharacterShopViewModel @Inject constructor(
                             wearItemInternal(currentWearState.itemId, true)
                         }
                     }
+
                     WearState.Unworn, WearState.Default, null -> {
                         // 미착용 상태: 해당 슬롯의 이전 착용 아이템 해제
                         // _serverWornItems에 기록된 이전 착용 아이템이 있다면 해제
@@ -1042,8 +1071,10 @@ class CharacterShopViewModel @Inject constructor(
             }
 
             // 서버 상태와 UI 상태 동기화 완료
-
             Timber.Forest.d("착용 아이템 서버 저장 완료: ${saveTasks.size}개 슬롯")
+
+            // ✅ 저장 완료 Toast 표시
+            showToast("캐릭터 저장이 완료되었습니다!")
         } catch (t: Throwable) {
             Timber.Forest.e(t, "착용 아이템 서버 저장 실패")
             // TODO: 사용자에게 에러 표시
@@ -1178,9 +1209,13 @@ class CharacterShopViewModel @Inject constructor(
                                     Timber.Forest.d("캐릭터 정보 DB 저장 성공: userId=$userId")
                                 }
                                 .onError { exception, message ->
-                                    Timber.Forest.e(exception, "캐릭터 정보 DB 저장 실패: userId=$userId, $message")
+                                    Timber.Forest.e(
+                                        exception,
+                                        "캐릭터 정보 DB 저장 실패: userId=$userId, $message"
+                                    )
                                 }
                         }
+
                         else -> {
                             Timber.Forest.e("사용자 정보 조회 실패 - 캐릭터 정보 DB 저장 건너뜀")
                         }

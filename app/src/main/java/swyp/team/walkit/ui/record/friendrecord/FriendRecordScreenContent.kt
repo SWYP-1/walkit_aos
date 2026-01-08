@@ -288,7 +288,7 @@ private fun CharacterInfoSection(
                     .size(200.dp)
                     .scale(0.85f)
                     .align(Alignment.Center)
-                    .offset(y = 25.dp)
+                    .offset(y = 20.dp)
             )
         }
 

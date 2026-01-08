@@ -156,6 +156,14 @@ fun ShareWalkingResultDialog(
                         )
                     }
 
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 16.dp, start = 16.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Image(painterResource(R.drawable.logo_walkit), contentDescription = "logo")
+                    }
+
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,

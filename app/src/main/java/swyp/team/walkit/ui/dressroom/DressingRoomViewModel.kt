@@ -810,11 +810,6 @@ class DressingRoomViewModel @Inject constructor(
                     // ✅ 장바구니 다이얼로그 닫기
                     dismissCartDialog()
 
-                    // 캐릭터 정보 백그라운드 동기화 (선택사항)
-                    viewModelScope.launch {
-                        refreshCharacterInfo()
-                    }
-
                     Timber.d("코스메틱 아이템 구매 완료 및 로컬 상태 업데이트")
                 }
 

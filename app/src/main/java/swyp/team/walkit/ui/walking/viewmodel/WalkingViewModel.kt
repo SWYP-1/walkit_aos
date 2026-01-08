@@ -39,6 +39,7 @@ import swyp.team.walkit.domain.service.ActivityType
 import swyp.team.walkit.domain.service.LocationManager
 import swyp.team.walkit.domain.service.LottieImageProcessor
 import swyp.team.walkit.domain.service.MovementState
+import swyp.team.walkit.domain.service.filter.PathSmoother
 import swyp.team.walkit.utils.DateUtils
 import android.content.Context
 import android.location.Location
@@ -53,6 +54,7 @@ import org.json.JSONObject
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.core.onError
 import swyp.team.walkit.core.onSuccess
+import swyp.team.walkit.utils.loadLocationsFromJson
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -77,6 +79,7 @@ class WalkingViewModel @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val goalRepository: GoalRepository,
     private val lottieImageProcessor: LottieImageProcessor,
+    private val pathSmoother: PathSmoother, // ✅ 경로 스무딩을 위한 PathSmoother 추가
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -981,19 +984,50 @@ class WalkingViewModel @Inject constructor(
         val postEmotion = _postWalkingEmotion.value ?: preEmotion
 
         val endTime = System.currentTimeMillis()
-        val collectedLocations = _locations.value
+//        val collectedLocations = _locations.value
+        //TODO : 삭제
+        val collectedLocations = loadLocationsFromJson(context)
         val totalDistance = calculateTotalDistance(collectedLocations)
+
+        // ✅ 경로 스무딩 적용
+        val smoothedLocations = if (collectedLocations.size >= 3) {
+            try {
+                val latitudes = collectedLocations.map { it.latitude }
+                val longitudes = collectedLocations.map { it.longitude }
+
+                val (smoothedLats, smoothedLngs) = pathSmoother.smoothPath(latitudes, longitudes)
+
+                // 스무딩된 데이터를 LocationPoint로 변환
+                smoothedLats.zip(smoothedLngs).map { (lat, lng) ->
+                    LocationPoint(
+                        latitude = lat,
+                        longitude = lng,
+                        timestamp = endTime, // 스무딩된 포인트는 종료 시간으로 설정
+                        accuracy = null // 스무딩된 데이터는 정확도 정보 없음
+                    )
+                }.also { smoothedPoints ->
+                    Timber.d("✅ 경로 스무딩 적용: ${collectedLocations.size} → ${smoothedPoints.size} 포인트")
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "❌ 경로 스무딩 실패, 원본 데이터 사용")
+                null
+            }
+        } else {
+            Timber.d("ℹ️ 위치 데이터가 부족하여 스무딩 생략 (${collectedLocations.size} 포인트)")
+            null
+        }
 
         // 현재 사용자 ID 가져오기
         val currentUserId = walkingSessionRepository.getCurrentUserId()
-        Timber.d("createCompletedSession: currentUserId=$currentUserId")
+        Timber.d("createCompletedSession: currentUserId=$currentUserId, smoothedLocations=${smoothedLocations?.size ?: 0}")
 
         // 완료된 세션 생성 (note, localImagePath, serverImageUrl은 null, 나중에 업데이트됨)
         return WalkingSession(
             startTime = startTimeMillis,
             endTime = endTime,
             stepCount = lastStepCount,
-            locations = collectedLocations,
+            locations = smoothedLocations ?: collectedLocations, // 원본 위치 데이터
+            smoothedLocations = null, // ✅ 스무딩된 경로 데이터
             totalDistance = totalDistance,
             preWalkEmotion = preEmotion,
             postWalkEmotion = postEmotion, // 기본값은 preWalkEmotion과 동일

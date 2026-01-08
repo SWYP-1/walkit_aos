@@ -384,8 +384,8 @@ private fun WalkingResultScreenContent(
                                         val success = onCaptureSnapshot {
                                             try {
                                                 snapshotPath = if (emotionPhotoUri != null) {
-                                                    capturePhotoWithPathSnapshot(
-                                                        photoWithPathBoxCoordinates,
+                                                    captureMapViewSnapshot(
+                                                        mapViewRef!!,
                                                         context
                                                     )
                                                 } else {
