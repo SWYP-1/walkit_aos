@@ -36,7 +36,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.navigation.Screen
-import swyp.team.walkit.ui.character.charactershop.CharacterRoute
+import swyp.team.walkit.ui.character.charactershop.CharacterShopRoute
 import swyp.team.walkit.ui.home.HomeRoute
 import swyp.team.walkit.ui.home.LocationAgreementUiState
 import swyp.team.walkit.ui.home.LocationAgreementViewModel
@@ -243,7 +243,7 @@ fun MainScreen(
 
                 2 -> {
                     // 캐릭터 화면 (CharacterShop)
-                    CharacterRoute()
+                    CharacterShopRoute()
                 }
 
                 3 -> {

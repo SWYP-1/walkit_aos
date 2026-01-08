@@ -1027,7 +1027,6 @@ class WalkingViewModel @Inject constructor(
             endTime = endTime,
             stepCount = lastStepCount,
             locations = smoothedLocations ?: collectedLocations, // 원본 위치 데이터
-            smoothedLocations = null, // ✅ 스무딩된 경로 데이터
             totalDistance = totalDistance,
             preWalkEmotion = preEmotion,
             postWalkEmotion = postEmotion, // 기본값은 preWalkEmotion과 동일

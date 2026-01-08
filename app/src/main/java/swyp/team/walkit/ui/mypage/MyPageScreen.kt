@@ -255,7 +255,7 @@ fun MyPageScreen(
 
         // 캐릭터 수정 버튼
         item {
-            MyPageCharacterEditButton(onNavigateCharacterEdit = onNavigateCharacterEdit)
+            MyPageCharacterEditButton(onNavigateCharacterEdit = onNavigateUserInfoEdit)
             Spacer(Modifier.height(32.dp))
         }
 

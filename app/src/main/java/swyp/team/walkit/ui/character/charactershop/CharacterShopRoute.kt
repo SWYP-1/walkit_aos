@@ -33,8 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import swyp.team.walkit.ui.character.CharacterScreen
-import swyp.team.walkit.ui.character.CharacterShopTabRow
-import swyp.team.walkit.ui.character.CharacterTabViewModel
 import swyp.team.walkit.ui.components.BottomDialog
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.dressroom.DressingRoomUiState
@@ -50,8 +48,6 @@ import swyp.team.walkit.ui.dressroom.component.ItemCard
 @Composable
 fun CharacterShopRoute(
     modifier: Modifier = Modifier,
-    selectedTabIndex: Int = 1,
-    onTabSelected: (Int) -> Unit = {},
 ) {
     val viewModel: CharacterShopViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -246,12 +242,6 @@ fun CharacterShopScaffoldContent(
     androidx.compose.foundation.layout.Column(
         modifier = androidx.compose.ui.Modifier.fillMaxSize()
     ) {
-        // 탭 row (상단에 고정)
-        CharacterShopTabRow(
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-        )
-
         // 캐릭터 표시 영역 (스크롤 가능)
        Box(
             modifier = Modifier
@@ -310,22 +300,6 @@ fun CharacterShopScaffoldContent(
     }
 }
 
-/**
- * 캐릭터 상점 Route (전체 탭 구조 관리)
- */
-@Composable
-fun CharacterRoute(
-) {
-    val tabViewModel: CharacterTabViewModel = hiltViewModel()
-    val tabUiState by tabViewModel.uiState.collectAsStateWithLifecycle()
-
-    // 메인 탭의 content로 직접 표시
-    CharacterScreen(
-        tabUiState = tabUiState,
-        onTabSelected = tabViewModel::onTabSelected,
-        modifier = Modifier.fillMaxSize()
-    )
-}
 
 // CharacterShopSheetContent 함수는 sheetContent에서 직접 구현으로 대체되었습니다.
 

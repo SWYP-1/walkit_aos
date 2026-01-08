@@ -15,7 +15,7 @@ fun MyPageCharacterEditButton(
     modifier: Modifier = Modifier,
 ) {
     CtaButton(
-        text = "내 캐릭터 수정",
+        text = "내 정보 수정",
         onClick = onNavigateCharacterEdit,
         modifier = modifier.padding(horizontal = 50.dp)
     )
