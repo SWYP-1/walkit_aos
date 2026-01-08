@@ -22,6 +22,8 @@ import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +40,7 @@ import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.dressroom.DressingRoomUiState
 import swyp.team.walkit.ui.dressroom.component.CartDialog
 import swyp.team.walkit.ui.dressroom.component.CharacterAndBackground
+import swyp.team.walkit.ui.dressroom.component.CharacterGradeInfoDialog
 import swyp.team.walkit.ui.dressroom.component.ItemCard
 
 /**
@@ -61,6 +64,8 @@ fun CharacterShopRoute(
     val toastMessage by viewModel.toastMessage.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+
+    val showGradeInfoDialog = remember { mutableStateOf(false) }
 
     // 아이템 클릭 핸들러
     val onItemClick: (Int) -> Unit = { itemId ->
@@ -167,7 +172,7 @@ fun CharacterShopRoute(
                         }
                     }
                 },
-                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 sheetPeekHeight = peekHeight,
                 sheetDragHandle = null
             ) {
@@ -181,6 +186,9 @@ fun CharacterShopRoute(
                         CoroutineScope(Dispatchers.Main).launch {
                             viewModel.refreshCharacterInfo()
                         }
+                    },
+                    onClickQuestion = {
+                        showGradeInfoDialog.value = true
                     },
                     processedLottieJson = successState.processedLottieJson,
                     showCtaButton = false // CTA 버튼 숨기기
@@ -218,6 +226,12 @@ fun CharacterShopRoute(
                 )
             }
         }
+        // 캐릭터 등급 정보 다이얼로그
+        if (showGradeInfoDialog.value) {
+            CharacterGradeInfoDialog(
+                onDismiss = { showGradeInfoDialog.value = false }
+            )
+        }
     }
 }
 
@@ -232,6 +246,7 @@ fun CharacterShopScaffoldContent(
     isRefreshLoading: Boolean,
     isWearLoading: Boolean,
     onRefreshClick: () -> Unit,
+    onClickQuestion: () -> Unit,
     processedLottieJson: String?,
     showCtaButton: Boolean = true
 ) {
@@ -253,7 +268,7 @@ fun CharacterShopScaffoldContent(
                     lottieImageProcessor = lottieImageProcessor,
                     onBackClick = {}, // CharacterShop에서는 뒤로가기 불필요
                     onRefreshClick = onRefreshClick,
-                    onQuestionClick = {}, // CharacterShop에서는 사용하지 않음
+                    onQuestionClick = onClickQuestion, // CharacterShop에서는 사용하지 않음
                     processedLottieJson = processedLottieJson
                 )
             } else {

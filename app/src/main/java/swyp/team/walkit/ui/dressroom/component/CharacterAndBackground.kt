@@ -116,21 +116,24 @@ private fun createSlotImageConfigs(
                     // tags가 없으면 이미지 URL에서 힌트 추출
                     when {
                         imageUrl?.contains("decor", ignoreCase = true) == true ||
-                        imageUrl?.contains("earring", ignoreCase = true) == true ||
-                        imageUrl?.contains("accessory", ignoreCase = true) == true -> {
+                                imageUrl?.contains("earring", ignoreCase = true) == true ||
+                                imageUrl?.contains("accessory", ignoreCase = true) == true -> {
                             "headdecor"
                         }
+
                         imageUrl?.contains("top", ignoreCase = true) == true ||
-                        imageUrl?.contains("hat", ignoreCase = true) == true ||
-                        imageUrl?.contains("cap", ignoreCase = true) == true -> {
+                                imageUrl?.contains("hat", ignoreCase = true) == true ||
+                                imageUrl?.contains("cap", ignoreCase = true) == true -> {
                             "headtop"
                         }
+
                         else -> {
                             "headdecor" // 기본값으로 headdecor 사용
                         }
                     }
                 }
             }
+
             else -> {
                 SLOT_ASSET_MAPPING[slot] ?: slot.name.lowercase()
             }
@@ -201,12 +204,13 @@ fun CharacterAndBackground(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 36.dp) // System Bar 표준 높이 사용
+                .padding(top = 12.dp) // System Bar 표준 높이 사용
         ) {
             DressingRoomHeader(
                 grade = character.grade,
                 nickName = character.nickName,
                 onBack = onBackClick,
+                points = points,
                 onClickQuestion = onQuestionClick
             )
         }
@@ -244,52 +248,53 @@ fun CharacterAndBackground(
         }
 
         // 3️⃣ start / bottom 버튼
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(SemanticColor.backgroundDarkPrimary)
-                .clickable(onClick = onRefreshClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_action_refresh),
-                contentDescription = "refresh",
-                tint = SemanticColor.iconWhite
-            )
-        }
+//        Box(
+//            modifier = Modifier
+//                .align(Alignment.BottomStart)
+//                .padding(horizontal = 16.dp, vertical = 24.dp)
+//                .size(40.dp)
+//                .clip(CircleShape)
+//                .background(SemanticColor.backgroundDarkPrimary)
+//                .clickable(onClick = onRefreshClick),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            Icon(
+//                painter = painterResource(R.drawable.ic_action_refresh),
+//                contentDescription = "refresh",
+//                tint = SemanticColor.iconWhite
+//            )
+//        }
+
 
         // 4️⃣ end / bottom 포인트 박스
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .background(
-                    SemanticColor.stateYellowTertiary,
-                    shape = RoundedCornerShape(9.6.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "보유 포인트",
-                    style = MaterialTheme.walkItTypography.captionM.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.stateYellowPrimary
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "${points}P",
-                    style = MaterialTheme.walkItTypography.bodyXL.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = SemanticColor.stateYellowPrimary
-                )
-            }
-        }
+//        Box(
+//            modifier = Modifier
+//                .align(Alignment.BottomEnd)
+//                .padding(horizontal = 16.dp, vertical = 24.dp)
+//                .background(
+//                    SemanticColor.stateYellowTertiary,
+//                    shape = RoundedCornerShape(9.6.dp)
+//                )
+//                .padding(horizontal = 12.dp, vertical = 6.dp)
+//        ) {
+//            Row(verticalAlignment = Alignment.CenterVertically) {
+//                Text(
+//                    text = "보유 포인트",
+//                    style = MaterialTheme.walkItTypography.captionM.copy(
+//                        fontWeight = FontWeight.SemiBold
+//                    ),
+//                    color = SemanticColor.stateYellowPrimary
+//                )
+//                Spacer(Modifier.width(8.dp))
+//                Text(
+//                    text = "${points}P",
+//                    style = MaterialTheme.walkItTypography.bodyXL.copy(
+//                        fontWeight = FontWeight.SemiBold
+//                    ),
+//                    color = SemanticColor.stateYellowPrimary
+//                )
+//            }
+//        }
     }
 }
 

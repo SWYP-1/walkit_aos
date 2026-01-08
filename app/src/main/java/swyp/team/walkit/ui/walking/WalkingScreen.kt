@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
@@ -79,6 +81,9 @@ fun WalkingScreenRoute(
     val screenState by viewModel.walkingScreenState.collectAsStateWithLifecycle()
     val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
+
+    // 산책 종료 확인 다이얼로그 상태
+    val showFinishConfirmDialog = remember { mutableStateOf(false) }
 
     // 화면 진입 시 캐릭터 정보 로드 (최초 1회)
     val walkingCharacter by viewModel.walkingCharacter.collectAsStateWithLifecycle()
@@ -174,11 +179,19 @@ fun WalkingScreenRoute(
                     onPauseClick = viewModel::pauseWalking,
                     onResumeClick = viewModel::resumeWalking,
                     onFinishClick = {
-                        // 즉시 UI 상태를 SessionSaved로 변경하여 isFinish = true로 만듦
-                        viewModel.finishWalking()
-                        // 백그라운드에서 세션 저장 실행
-                        coroutineScope.launch {
-                            viewModel.stopWalking()
+                        // 산책 시간 확인 (1분 미만이면 경고 다이얼로그 표시)
+                        val walkingState = screenState.uiState as? WalkingUiState.Walking
+                        val durationInSeconds = (walkingState?.duration ?: 0L) / 1000
+
+                        if (durationInSeconds < 60) {
+                            // 1분 미만이면 확인 다이얼로그 표시
+                            showFinishConfirmDialog.value = true
+                        } else {
+                            // 1분 이상이면 바로 종료
+                            viewModel.finishWalking()
+                            coroutineScope.launch {
+                                viewModel.stopWalking()
+                            }
                         }
                     },
                     onNextClick = onNavigateToPostWalkingEmotion
@@ -250,7 +263,33 @@ fun WalkingScreenRoute(
             }
         )
     }
-}
+
+    // 산책 종료 확인 다이얼로그 (1분 미만 시)
+    if (showFinishConfirmDialog.value) {
+        WalkingWarningDialog(
+            title = "산책 기록이 저장되지 않아요!",
+            message = "1분 미만의 산책은 기록되지 않습니다.\n" +
+                    "정말로 산책을 끝내시겠습니까?",
+            cancelButtonText = "취소",
+            continueButtonText = "끝내기",
+            cancelButtonTextColor = SemanticColor.textBorderSecondary,
+            cancelButtonColor = SemanticColor.buttonPrimaryDisabled,
+            cancelButtonBorderColor = SemanticColor.buttonPrimaryDisabled,
+            onDismiss = { showFinishConfirmDialog.value = false },
+            onCancel = {
+                showFinishConfirmDialog.value = false
+                // 취소 - 아무것도 하지 않음
+            },
+            onContinue = {
+                showFinishConfirmDialog.value = false
+                // 산책 종료 (세션 저장하지 않음)
+                viewModel.finishWalking()
+                coroutineScope.launch {
+                    viewModel.stopWalking()
+                }
+            }
+        )
+    }
 
 @Composable
 private fun WalkingScreenContent(
@@ -364,7 +403,6 @@ private fun WalkingScreenContent(
             } else null
 
 
-
             /* ---------- Layout ---------- */
             layout(
                 width = constraints.maxWidth,
@@ -414,8 +452,8 @@ private fun WalkingScreenContent(
 
                 // 🔥 Goal 말풍선 (ActionRow 기준 위 40dp)
                 currentGoal?.let { goal ->
-                    val spacing = 34.dp.roundToPx()
-                    val minGoalY = 120.dp.roundToPx() // 너무 위로 못 가게 가드
+                    val spacing = 20.dp.roundToPx()
+                    val minGoalY = 100.dp.roundToPx() // 너무 위로 못 가게 가드
 
                     val goalY = maxOf(
                         minGoalY,
@@ -458,7 +496,9 @@ fun WalkitCharacter(
 
         LottieAnimation(
             composition = composition,
-            modifier = modifier.size(280.dp), // Lottie 크기 증가로 이미지와 크기 맞춤
+            modifier = modifier
+                .size(200.dp)
+                .scale(0.86f).offset(y = -15.dp), // Lottie 크기 증가로 이미지와 크기 맞춤
             iterations = Int.MAX_VALUE // 무한 반복
         )
     } else if (character != null) {

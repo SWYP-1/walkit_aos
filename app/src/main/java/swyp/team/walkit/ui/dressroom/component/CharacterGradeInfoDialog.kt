@@ -181,6 +181,7 @@ private fun CharacterGradeDescription(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     CharacterDesListItem(
+                        des = des,
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
                     )
@@ -203,7 +204,7 @@ private fun CharacterGradeDescription(
 
 
 @Composable
-fun CharacterDesListItem(modifier: Modifier = Modifier) {
+fun CharacterDesListItem(des : String,modifier: Modifier = Modifier) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "Lv.01",
@@ -216,7 +217,7 @@ fun CharacterDesListItem(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = "누적 주간 목표 1주 달성",
+            text = des,
 
             // caption M/regular
             style = MaterialTheme.walkItTypography.captionM,

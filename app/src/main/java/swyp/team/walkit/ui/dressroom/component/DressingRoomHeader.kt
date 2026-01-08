@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -34,25 +35,43 @@ import swyp.team.walkit.ui.theme.walkItTypography
 fun DressingRoomHeader(
     grade: swyp.team.walkit.domain.model.Grade,
     level: Int? = null,
+    points : Int,
     nickName: String,
     onBack: () -> Unit = {},
     onClickQuestion: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth().padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 뒤로가기 버튼 클릭 영역 확대
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.size(48.dp) // 최소 터치 영역 확보
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_backward),
-                contentDescription = "arrow back",
-                modifier = Modifier.size(24.dp) // 아이콘 크기
+            Box(
+                modifier = Modifier
+                    .size(20.dp) // ⭐ 가로 = 세로
+                    .background(
+                        SemanticColor.stateYellowTertiary,
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "P",
+                    style = MaterialTheme.walkItTypography.bodyS.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = SemanticColor.stateYellowPrimary
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = "$points", style = MaterialTheme.walkItTypography.bodyS.copy(
+                    fontWeight = FontWeight.Medium
+                ), color = SemanticColor.textBorderPrimary
             )
         }
 
@@ -64,16 +83,16 @@ fun DressingRoomHeader(
         ) {
 
             GradeBadge(grade = grade, level = level)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = nickName,
-                style = MaterialTheme.walkItTypography.headingS.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+//            Spacer(Modifier.width(8.dp))
+//            Text(
+//                text = nickName,
+//                style = MaterialTheme.walkItTypography.headingS.copy(
+//                    fontWeight = FontWeight.Medium
+//                ),
+//                color = SemanticColor.textBorderPrimary,
+//                maxLines = 1,
+//                overflow = TextOverflow.Ellipsis
+//            )
         }
 
         // 오른쪽 질문 아이콘
@@ -107,7 +126,8 @@ private fun DressingRoomHeaderSproutGradePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.SPROUT,
-            nickName = "성장중인사용자"
+            nickName = "성장중인사용자",
+            points = 12
         )
     }
 }
@@ -118,7 +138,8 @@ private fun DressingRoomHeaderTreeGradePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.TREE,
-            nickName = "완성된나무"
+            nickName = "완성된나무",
+            points = 1234
         )
     }
 }
@@ -129,7 +150,8 @@ private fun DressingRoomHeaderLongNickNamePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.SPROUT,
-            nickName = "매우긴닉네임을가진사용자가 이름이 더길어진다."
+            nickName = "매우긴닉네임을가진사용자가 이름이 더길어진다.",
+            points = 1245
         )
     }
 }

@@ -133,7 +133,7 @@ fun DailyRecordRoute(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             try {
                 viewModel.daySessions.collect { sessions ->
-                    daySessionsState.value = sessions
+                    daySessionsState.value = sessions.reversed()
                 }
             } catch (e: Throwable) {
                 // ExceptionInInitializerError 등 Error 타입도 처리

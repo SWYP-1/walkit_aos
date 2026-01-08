@@ -1,5 +1,6 @@
 package swyp.team.walkit.ui.dressroom.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -116,7 +117,10 @@ fun ItemHeader(
                         border = if (isSelected) androidx.compose.foundation.BorderStroke(
                             width = 1.dp,
                             color = SemanticColor.stateGreenPrimary
-                        ) else null,
+                        ) else BorderStroke(
+                            width = 1.dp,
+                            color = SemanticColor.textBorderTertiary
+                        ),
                         modifier = Modifier.weight(1f),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 12.dp,

@@ -984,9 +984,9 @@ class WalkingViewModel @Inject constructor(
         val postEmotion = _postWalkingEmotion.value ?: preEmotion
 
         val endTime = System.currentTimeMillis()
-//        val collectedLocations = _locations.value
-        //TODO : 삭제
-        val collectedLocations = loadLocationsFromJson(context)
+        val collectedLocations = _locations.value
+//        //TODO : 삭제
+//        val collectedLocations = loadLocationsFromJson(context)
         val totalDistance = calculateTotalDistance(collectedLocations)
 
         // ✅ 경로 스무딩 적용
