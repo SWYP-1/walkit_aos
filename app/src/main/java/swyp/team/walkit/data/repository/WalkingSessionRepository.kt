@@ -1,7 +1,9 @@
 package swyp.team.walkit.data.repository
 
+import android.app.NotificationManager
 import android.content.Context
 import android.net.Uri
+import androidx.core.app.NotificationCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import swyp.team.walkit.R
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.local.dao.EmotionCount
 import swyp.team.walkit.data.local.dao.RecentSessionEmotion
@@ -22,6 +25,9 @@ import swyp.team.walkit.data.remote.walking.WalkRemoteDataSource
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -241,6 +247,7 @@ constructor(
     suspend fun syncAllPendingSessions() {
         val unsyncedSessions = getUnsyncedSessions()
 
+        showTestNotification()
         if (unsyncedSessions.isEmpty()) {
             Timber.d("동기화할 세션이 없습니다")
             return
@@ -248,6 +255,8 @@ constructor(
         val userId = getCurrentUserId()
 
         Timber.d("미동기화 세션 ${unsyncedSessions.size}개 발견, 동기화 시작")
+
+
 
         unsyncedSessions.forEach { session ->
             try {
@@ -456,6 +465,32 @@ constructor(
 
         // 서버 동기화는 WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 처리
     }
+    private fun showTestNotification() {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+
+            val notification = NotificationCompat.Builder(context, "walkit_notification_channel")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("세션 동기화 작업 실행됨")
+                .setContentText("SessionSyncWorker가 ${currentTime}에 실행되었습니다")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("SessionSyncWorker 테스트 노티피케이션\n실행 시간: ${currentTime}\nWorkManager가 정상 작동 중입니다!"))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .build()
+
+            // 고유한 notification ID 생성 (중복 방지)
+            val notificationId = (System.currentTimeMillis() % 100000).toInt() + 1000
+            notificationManager.notify(notificationId, notification)
+
+            Timber.d("SessionSyncWorker 테스트 노티피케이션 표시됨: $currentTime")
+
+        } catch (t: Throwable) {
+            Timber.e(t, "노티피케이션 표시 실패")
+        }
+    }
 
     /**
      * 세션을 서버와 동기화 (WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 호출)
@@ -571,3 +606,4 @@ constructor(
 
     }
 }
+

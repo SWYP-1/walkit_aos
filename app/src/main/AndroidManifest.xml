@@ -67,6 +67,18 @@
             </intent-filter>
         </service>
 
+        <!-- WorkManager 초기화 비활성화 (수동 초기화 사용) -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <!-- FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -87,6 +99,30 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+                <!-- Kakao Login Redirect -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="kakao${KAKAO_APP_KEY}"
+                    android:host="oauth" />
+            </intent-filter>
+        </activity>
+
+        <!-- Kakao Auth Code Handler -->
+        <activity
+            android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="kakao${KAKAO_APP_KEY}"
+                    android:host="oauth" />
             </intent-filter>
         </activity>
 

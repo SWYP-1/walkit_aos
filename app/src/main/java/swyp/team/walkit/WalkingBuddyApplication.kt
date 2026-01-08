@@ -28,6 +28,8 @@ import swyp.team.walkit.domain.service.FcmTokenManager
 import swyp.team.walkit.worker.SessionSyncWorker
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.work.Configuration
+import androidx.work.WorkManager
 
 /**
  * 릴리즈 빌드용 Timber Tree - Crashlytics로 로그 전송
@@ -134,9 +136,18 @@ class WalkingBuddyApplication : Application() {
             }
         }
 
-        // 세션 동기화 WorkManager 초기화
+//        // WorkManager 초기화 (기본 설정으로 초기화)
+//        WorkManager.initialize(
+//            this,
+//            Configuration.Builder()
+//                .setMinimumLoggingLevel(if (BuildConfig.DEBUG) android.util.Log.DEBUG else android.util.Log.ERROR)
+//                .build()
+//        )
+//        Timber.d("WorkManager 초기화 완료")
+
+        // 세션 동기화 WorkManager 초기화 (WorkManager 초기화 완료 후 실행)
         // 앱 시작 시 주기적 동기화 작업 예약 (30분 간격)
-        SessionSyncWorker.schedulePeriodicSync(this, 30L)
+//        SessionSyncWorker.schedulePeriodicSync(this, 30L)
 
         Timber.d("WalkingBuddyApplication onCreate")
     }
@@ -177,4 +188,5 @@ class WalkingBuddyApplication : Application() {
     interface FcmEntryPoint {
         fun fcmTokenManager(): FcmTokenManager
     }
+
 }
