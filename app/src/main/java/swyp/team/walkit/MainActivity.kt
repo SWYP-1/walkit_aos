@@ -92,10 +92,12 @@ class MainActivity : ComponentActivity() {
         // 앱 시작 시 오래된 DataStore 데이터 정리 (강제종료 대응)
         cleanupStaleWalkingData()
 
-        enableEdgeToEdge()
+        // Edge-to-Edge 비활성화하여 시스템 바 색상 제어 가능하도록 함
+        // enableEdgeToEdge() // 제거하여 시스템 바 색상 제어 가능
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
 
+        // 시스템 바 색상 설정
         window.statusBarColor = getColor(R.color.white)
         window.navigationBarColor = getColor(R.color.white)
 

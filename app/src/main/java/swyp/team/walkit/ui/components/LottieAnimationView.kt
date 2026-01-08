@@ -37,7 +37,7 @@ import timber.log.Timber
  */
 @Composable
 fun LottieAnimationView(
-    animationResId: Int = R.raw.walking_avocado,
+    animationResId: Int = R.raw.seed,
     modifier: Modifier = Modifier,
     size: Dp = 200.dp,
     isPlaying: Boolean = true,

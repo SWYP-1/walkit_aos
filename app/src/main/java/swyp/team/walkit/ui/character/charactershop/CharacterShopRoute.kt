@@ -177,8 +177,6 @@ fun CharacterShopRoute(
                     lottieImageProcessor = viewModel.lottieImageProcessor,
                     isRefreshLoading = isRefreshLoading,
                     isWearLoading = isWearLoading,
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = onTabSelected,
                     onRefreshClick = {
                         CoroutineScope(Dispatchers.Main).launch {
                             viewModel.refreshCharacterInfo()
@@ -233,8 +231,6 @@ fun CharacterShopScaffoldContent(
     lottieImageProcessor: swyp.team.walkit.domain.service.LottieImageProcessor?,
     isRefreshLoading: Boolean,
     isWearLoading: Boolean,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
     onRefreshClick: () -> Unit,
     processedLottieJson: String?,
     showCtaButton: Boolean = true
