@@ -65,12 +65,12 @@ object DataStoreModule {
 
     @Provides
     @Singleton
-    @Named("location_agreement")
-    fun provideLocationAgreementPreferencesDataStore(
+    @Named("walking")
+    fun provideWalkingPreferencesDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> =
         PreferenceDataStoreFactory.create(
-            produceFile = { context.preferencesDataStoreFile("location_agreement_prefs") },
+            produceFile = { context.preferencesDataStoreFile("walking_prefs") },
         )
 }
 

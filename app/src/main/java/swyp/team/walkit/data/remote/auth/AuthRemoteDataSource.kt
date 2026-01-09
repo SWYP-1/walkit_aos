@@ -30,7 +30,7 @@ class AuthRemoteDataSource @Inject constructor(
             Result.Success(response)
         } catch (t: Throwable) {
             Timber.e(t, "카카오 로그인 실패")
-            Result.Error(t, "카카오 로그인에 실패했습니다: ${t.message}")
+            Result.Error(t, t.message)
         }
     }
 
@@ -48,7 +48,7 @@ class AuthRemoteDataSource @Inject constructor(
             Result.Success(response)
         } catch (t: Throwable) {
             Timber.e(t, "네이버 로그인 실패")
-            Result.Error(t, "네이버 로그인에 실패했습니다: ${t.message}")
+            Result.Error(t, t.message)
         }
     }
 }

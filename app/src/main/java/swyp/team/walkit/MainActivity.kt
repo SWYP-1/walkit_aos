@@ -18,9 +18,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -31,20 +28,17 @@ import kotlinx.coroutines.launch
 import swyp.team.walkit.domain.service.LocationTrackingService
 import swyp.team.walkit.navigation.NavGraph
 import swyp.team.walkit.navigation.Screen
+import swyp.team.walkit.data.local.datastore.WalkingDataStore
 import swyp.team.walkit.presentation.viewmodel.UserViewModel
 import swyp.team.walkit.ui.theme.WalkItTheme
 import timber.log.Timber
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // WalkingViewModel과 동일한 DataStore 키들
-    private object PreferencesKeys {
-        val IS_WALKING_ACTIVE = androidx.datastore.preferences.core.booleanPreferencesKey("is_walking_active")
-        val WALKING_START_TIME = longPreferencesKey("walking_start_time")
-    }
-
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "walking_prefs")
+    @Inject
+    lateinit var walkingDataStore: WalkingDataStore
 
     /**
      * 앱 시작 시 오래된 산책 데이터 정리 (강제종료 대응)
@@ -53,38 +47,79 @@ class MainActivity : ComponentActivity() {
     private fun cleanupStaleWalkingData() {
         lifecycleScope.launch {
             try {
-                val preferences = dataStore.data.firstOrNull()
-                val isWalkingActive = preferences?.get(PreferencesKeys.IS_WALKING_ACTIVE) ?: false
+                // 1. DataStore 정리 (기존 로직)
+                val isWalkingActive = walkingDataStore.getIsWalkingActive() ?: false
 
                 if (isWalkingActive) {
-                    val startTime = preferences.get(PreferencesKeys.WALKING_START_TIME) ?: 0L
+                    val startTime = walkingDataStore.getWalkingStartTime() ?: 0L
                     val currentTime = System.currentTimeMillis()
                     val hoursSinceStart = (currentTime - startTime) / (1000 * 60 * 60)
 
                     if (hoursSinceStart >= 2) {
-                        Timber.w("🏃 앱 시작 시 오래된 산책 데이터 발견 (${hoursSinceStart}시간 경과), 자동 정리")
-                        dataStore.edit { prefs ->
-                            prefs.remove(PreferencesKeys.IS_WALKING_ACTIVE)
-                            prefs.remove(PreferencesKeys.WALKING_START_TIME)
-                            // 다른 walking 관련 키들도 정리
-                            prefs.remove(longPreferencesKey("walking_step_count"))
-                            prefs.remove(longPreferencesKey("walking_duration"))
-                            prefs.remove(androidx.datastore.preferences.core.booleanPreferencesKey("walking_is_paused"))
-                            prefs.remove(androidx.datastore.preferences.core.stringPreferencesKey("pre_walking_emotion"))
-                            prefs.remove(androidx.datastore.preferences.core.stringPreferencesKey("post_walking_emotion"))
-                        }
-                        Timber.d("🏃 오래된 산책 데이터 정리 완료")
+                        Timber.w("🏃 앱 시작 시 오래된 산책 DataStore 데이터 발견 (${hoursSinceStart}시간 경과), 자동 정리")
+                        walkingDataStore.clearWalkingData()
+                        Timber.d("🏃 오래된 산책 DataStore 데이터 정리 완료")
                     } else {
-                        Timber.d("🏃 유효한 산책 데이터 발견 (${hoursSinceStart}시간 경과), 유지")
+                        Timber.d("🏃 유효한 산책 DataStore 데이터 발견 (${hoursSinceStart}시간 경과), 유지")
                     }
                 } else {
-                    Timber.d("🏃 산책 데이터 없음, 정리 불필요")
+                    Timber.d("🏃 산책 DataStore 데이터 없음, 정리 불필요")
                 }
+
+                // 2. DB의 오래된 미완료 세션 정리 추가
+                // TODO: walkingSessionRepository에 getAllSessions() 메소드 추가 후 구현
+                // try {
+                //     cleanupStaleSessionsFromDb()
+                // } catch (t: Throwable) {
+                //     Timber.e(t, "🏃 DB 세션 정리 실패")
+                // }
+
             } catch (t: Throwable) {
                 Timber.e(t, "🏃 오래된 산책 데이터 정리 실패")
             }
         }
     }
+
+    /**
+     * DB에서 오래된 미완료 세션을 정리
+     * - 2시간 이상 지난 세션은 삭제
+     * - 최근 24시간 내의 세션만 유지
+     *
+     * TODO: walkingSessionRepository에 getAllSessions() 메소드 추가 후 구현
+     */
+    // private suspend fun cleanupStaleSessionsFromDb() {
+    //     try {
+    //         val currentTime = System.currentTimeMillis()
+    //         val twentyFourHoursAgo = currentTime - (24 * 60 * 60 * 1000) // 24시간 전
+    //
+    //         // 최근 24시간 내의 모든 세션을 조회 (더미 세션 포함)
+    //         val recentSessions = walkingSessionRepository.getAllSessions()
+    //
+    //         var cleanedCount = 0
+    //         for (session in recentSessions) {
+    //             // endTime이 없거나(startTime과 같거나) 2시간 이상 지난 세션 삭제
+    //             val sessionEndTime = session.endTime.takeIf { it > session.startTime } ?: session.startTime
+    //             val hoursSinceEnd = (currentTime - sessionEndTime) / (1000 * 60 * 60)
+    //
+    //             if (hoursSinceEnd >= 2) {
+    //                 try {
+    //                     walkingSessionRepository.deleteSession(session.id)
+    //                     cleanedCount++
+    //                     Timber.d("🏃 오래된 DB 세션 삭제: ${session.id}, ${hoursSinceEnd}시간 경과")
+    //                 } catch (e: Throwable) {
+    //                     Timber.w(e, "🏃 세션 삭제 실패: ${session.id}")
+    //                 }
+    //             }
+    //         }
+    //
+    //         if (cleanedCount > 0) {
+    //             Timber.d("🏃 DB에서 ${cleanedCount}개의 오래된 세션 정리 완료")
+    //         }
+    //
+    //     } catch (t: Throwable) {
+    //         Timber.e(t, "🏃 DB 세션 정리 중 오류 발생")
+    //     }
+    // }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

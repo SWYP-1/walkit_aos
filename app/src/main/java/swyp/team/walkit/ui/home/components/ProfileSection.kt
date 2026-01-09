@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -103,45 +104,44 @@ private fun ProfileContent(
             )
         }
 
-        /* =====================================================
-         * 2. 상단 좌측 걸음 수
-         * ===================================================== */
         Row(
             modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = formatNumber(uiState.todaySteps),
-                style = MaterialTheme.walkItTypography.headingXL.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = SemanticColor.textBorderPrimary,
-                modifier = Modifier.alignBy { it[FirstBaseline] })
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "걸음",
-                style = MaterialTheme.walkItTypography.bodyM.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderPrimary,
-                modifier = Modifier.alignBy { it[FirstBaseline] })
-        }
+            // 좌측 걸음 수
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatNumber(uiState.todaySteps),
+                    style = MaterialTheme.walkItTypography.headingXL.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = SemanticColor.textBorderPrimary,
+                    modifier = Modifier.alignBy { it[FirstBaseline] }
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "걸음",
+                    style = MaterialTheme.walkItTypography.bodyM.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = SemanticColor.textBorderPrimary,
+                    modifier = Modifier.alignBy { it[FirstBaseline] }
+                )
+            }
 
-        /* =====================================================
-         * 3. 상단 우측 날씨
-         * ===================================================== */
-        uiState.weather?.let { weather ->
-            val weatherRes = resolveWeatherIconRes(weather)
-            val temperatureText = uiState.temperature?.toInt()?.toString() ?: "-"
+            // 우측 날씨
+            uiState.weather?.let { weather ->
+                val weatherRes = resolveWeatherIconRes(weather)
+                val temperatureText = uiState.temperature?.toInt()?.toString() ?: "-"
 
-            InfoBadge(
-                iconPainter = painterResource(weatherRes),
-                text = temperatureText,
-                modifier = Modifier
-                    .padding(vertical = 20.dp, horizontal = 16.dp)
-                    .align(Alignment.TopEnd)
-            )
+                InfoBadge(
+                    iconPainter = painterResource(weatherRes),
+                    text = temperatureText
+                )
+            }
         }
 
         /* =====================================================
@@ -176,6 +176,7 @@ private fun ProfileContent(
                 )
             }
             Spacer(Modifier.height(8.dp))
+            val heightPx = with(LocalDensity.current) { 140.dp.toPx() }
             HomeNameAndGoalContent(
                 nickName = uiState.nickname,
                 goal = uiState.goal ?: Goal.EMPTY,
@@ -184,7 +185,7 @@ private fun ProfileContent(
                 walkProgressPercentage = uiState.walkProgressPercentage,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(GradientUtils.fadeToDark())
+                    .background(GradientUtils.fadeToDark(endY = heightPx))
                     .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
             )
         }

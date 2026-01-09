@@ -183,7 +183,8 @@ fun WalkingScreenRoute(
                         val walkingState = screenState.uiState as? WalkingUiState.Walking
                         val durationInSeconds = (walkingState?.duration ?: 0L) / 1000
 
-                        if (durationInSeconds < 60) {
+                        // TODO : 삭제 60 으로 바꾸기
+                        if (durationInSeconds < 10) {
                             // 1분 미만이면 확인 다이얼로그 표시
                             showFinishConfirmDialog.value = true
                         } else {
@@ -272,8 +273,8 @@ fun WalkingScreenRoute(
                     "정말로 산책을 끝내시겠습니까?",
             cancelButtonText = "취소",
             continueButtonText = "끝내기",
-            cancelButtonTextColor = SemanticColor.textBorderSecondary,
-            cancelButtonColor = SemanticColor.buttonPrimaryDisabled,
+            cancelButtonTextColor = SemanticColor.textBorderPrimary,
+            cancelButtonColor = SemanticColor.backgroundWhitePrimary,
             cancelButtonBorderColor = SemanticColor.buttonPrimaryDisabled,
             onDismiss = { showFinishConfirmDialog.value = false },
             onCancel = {
@@ -283,13 +284,14 @@ fun WalkingScreenRoute(
             onContinue = {
                 showFinishConfirmDialog.value = false
                 // 산책 종료 (세션 저장하지 않음)
-                viewModel.finishWalking()
                 coroutineScope.launch {
-                    viewModel.stopWalking()
+                    viewModel.cancelWalking()
                 }
+                onNavigateBack()
             }
         )
     }
+}
 
 @Composable
 private fun WalkingScreenContent(

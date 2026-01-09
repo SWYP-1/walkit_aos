@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
+import swyp.team.walkit.ui.record.components.cardBorder
+import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.Grey3
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
@@ -30,6 +32,8 @@ fun HomeEmptySession(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier = modifier
             .background(Grey3, shape = RoundedCornerShape(16.dp))
+            .customShadow()
+            .cardBorder()
             .padding(vertical = 36.dp, horizontal = 28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally

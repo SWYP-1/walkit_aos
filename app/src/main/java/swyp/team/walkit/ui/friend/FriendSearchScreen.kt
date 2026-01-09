@@ -157,7 +157,7 @@ private fun SearchResultScreen(
 
         is SearchUiState.Error -> {
             // 에러 상태 - 전체 화면 표시
-            FriendSearchEmptyScreen()
+            FriendSearchEmptyScreen(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 27.dp))
         }
     }
 }

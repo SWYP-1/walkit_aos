@@ -24,7 +24,10 @@ import swyp.team.walkit.core.onError
 import swyp.team.walkit.core.onSuccess
 import swyp.team.walkit.data.local.datastore.AuthDataStore
 import swyp.team.walkit.data.local.datastore.OnboardingDataStore
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
 import swyp.team.walkit.data.remote.auth.AuthRemoteDataSource
+import swyp.team.walkit.data.remote.dto.ApiErrorResponse
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.data.remote.auth.TokenProvider
 import swyp.team.walkit.domain.service.FcmTokenManager
@@ -346,7 +349,9 @@ class LoginViewModel @Inject constructor(
 
             // 로그인 상태 초기화
             _isLoggedIn.value = false
+            _isLoginChecked.value = false  // ✅ 탈퇴 후 재가입 시 SplashScreen이 다시 체크하도록 초기화
             _uiState.value = LoginUiState.Idle
+            Timber.i("로그아웃 완료 - 모든 상태 초기화됨")
         }
     }
 
@@ -413,10 +418,15 @@ class LoginViewModel @Inject constructor(
                         checkUserStatusAfterLogin()
                     }
                     is Result.Error -> {
-                        _uiState.value = LoginUiState.Error(
-                            result.message ?: "서버 로그인에 실패했습니다",
-                        )
-                        Timber.e(result.exception, "서버 로그인 실패")
+                        // ✅ Repository 레이어에서 에러 메시지 파싱
+                        val errorMessage = parseErrorMessage(result.exception) 
+                            ?: result.message 
+                            ?: "서버 로그인에 실패했습니다"
+                        
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        _isLoggedIn.value = false
+                        _isLoginChecked.value = true  // ✅ 로그인 실패 시에도 SplashScreen이 진행할 수 있도록 설정
+                        Timber.e(result.exception, "서버 로그인 실패: $errorMessage")
                     }
                     Result.Loading -> {
                         // 이미 Loading 상태
@@ -424,6 +434,8 @@ class LoginViewModel @Inject constructor(
                 }
             } catch (t: Throwable) {
                 _uiState.value = LoginUiState.Error("로그인 처리 중 오류 발생: ${t.message}")
+                _isLoggedIn.value = false
+                _isLoginChecked.value = true  // ✅ 예외 발생 시에도 SplashScreen이 진행할 수 있도록 설정
                 Timber.e(t, "로그인 처리 실패")
             }
         }
@@ -468,6 +480,11 @@ class LoginViewModel @Inject constructor(
                 Timber.e(t, "로그인 직후 사용자 상태 확인 실패")
                 _isLoggedIn.value = false
                 _uiState.value = LoginUiState.Error("사용자 상태 확인 중 오류 발생")
+            } finally {
+                // ✅ 탈퇴 후 재가입 시 SplashScreen에서 멈추는 문제 해결
+                // isLoginChecked를 true로 설정하여 SplashScreen이 네비게이션을 실행할 수 있도록 함
+                _isLoginChecked.value = true
+                Timber.i("checkUserStatusAfterLogin() 완료 - isLoginChecked = true 설정")
             }
         }
     }
@@ -478,6 +495,43 @@ class LoginViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.value = LoginUiState.Idle
+    }
+
+    /**
+     * HttpException에서 에러 메시지 추출 및 변환
+     * ApiErrorResponse를 파싱하여 서버에서 전달한 메시지를 사용자 친화적인 메시지로 변환
+     * Repository 레이어에서 에러 처리
+     */
+    private fun parseErrorMessage(exception: Throwable?): String? {
+        if (exception !is HttpException) return null
+        
+        return try {
+            val errorBody = exception.response()?.errorBody()?.string()
+            if (errorBody != null) {
+                val json = Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                }
+                val apiError = json.decodeFromString<ApiErrorResponse>(errorBody)
+                
+                // ✅ ViewModel에서 에러 코드/이름에 따라 메시지 변환
+                when {
+                    // 탈퇴한 회원 (code: 1007, name: USER_DELETED)
+                    apiError.code == 1007 && apiError.name == "USER_DELETED" -> {
+                        "탈퇴한 회원입니다.\n6개월 후 재가입이 가능합니다."
+                    }
+                    // 다른 에러는 서버 메시지 사용 (필요시 추가 변환 가능)
+                    else -> {
+                        apiError.message ?: "로그인에 실패했습니다"
+                    }
+                }
+            } else {
+                null
+            }
+        } catch (t: Throwable) {
+            Timber.w(t, "ApiErrorResponse 파싱 실패")
+            null
+        }
     }
 }
 

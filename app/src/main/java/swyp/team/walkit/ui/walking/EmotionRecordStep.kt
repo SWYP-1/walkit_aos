@@ -10,6 +10,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,9 +49,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -357,6 +361,19 @@ private fun EmotionRecordStepScreenContent(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    // 에러 배너 표시 상태 관리
+    var showErrorBanner by remember { mutableStateOf(false) }
+
+    // canProceed가 false가 되면 에러 배너 표시
+    LaunchedEffect(canProceed) {
+        if (!canProceed) {
+            showErrorBanner = true
+            // 3초 후 자동으로 사라짐
+            delay(3000)
+            showErrorBanner = false
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -492,10 +509,10 @@ private fun EmotionRecordStepScreenContent(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                // 텍스트 입력 영역
+                var isFocused by remember { mutableStateOf(false) }
+
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     BasicTextField(
                         value = emotionText,
@@ -507,16 +524,30 @@ private fun EmotionRecordStepScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(138.dp)
+                            .onFocusChanged { focusState ->
+                                isFocused = focusState.isFocused
+                            }
                             .background(
-                                color = SemanticColor.backgroundWhiteTertiary,
-                                shape = RoundedCornerShape(8.dp),
+                                color = if (isFocused)
+                                    SemanticColor.backgroundWhitePrimary
+                                else
+                                    SemanticColor.backgroundWhiteSecondary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isFocused)
+                                    SemanticColor.textBorderPrimary
+                                else
+                                    SemanticColor.backgroundWhiteSecondary,
+                                shape = RoundedCornerShape(8.dp)
                             )
                             .padding(
                                 horizontal = 16.dp,
                                 vertical = 12.dp
                             ),
-                        textStyle = MaterialTheme.walkItTypography.captionM.copy(
-                            color = SemanticColor.textBorderSecondary,
+                        textStyle = MaterialTheme.walkItTypography.bodyS.copy(
+                            color = SemanticColor.textBorderPrimary,
                         ),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Default,
@@ -528,9 +559,8 @@ private fun EmotionRecordStepScreenContent(
                                     Text(
                                         text = "작성한 산책 일기의 내용은 나만 볼 수 있어요.",
                                         style = MaterialTheme.walkItTypography.captionM,
-                                        fontWeight = FontWeight.Normal,
                                         color = SemanticColor.textBorderSecondary.copy(alpha = 0.5f),
-                                        modifier = Modifier.align(Alignment.TopStart),
+                                        modifier = Modifier.align(Alignment.TopStart)
                                     )
                                 }
                                 innerTextField()
@@ -538,6 +568,7 @@ private fun EmotionRecordStepScreenContent(
                         },
                     )
                 }
+
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     // 글자 수 표시 (우측 하단)
@@ -554,8 +585,8 @@ private fun EmotionRecordStepScreenContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            //
-            if (!canProceed) {
+            // 에러 배너 표시 (3초 후 자동 사라짐)
+            if (showErrorBanner) {
                 InfoBanner(
                     title = "산책 중 사진이 아닙니다",
                     description = "산책 중 촬영한 사진을 업로드 해주세요",
@@ -571,14 +602,6 @@ private fun EmotionRecordStepScreenContent(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                )
-            } else {
-                InfoBanner(
-                    title = "산책 중 촬영한 사진만 업로드 가능합니다.",
-                    backgroundColor = SemanticColor.backgroundDarkSecondary,
-                    borderColor = SemanticColor.backgroundDarkSecondary,
-                    textColor = SemanticColor.textBorderPrimaryInverse,
-                    iconTint = SemanticColor.textBorderPrimaryInverse,
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))

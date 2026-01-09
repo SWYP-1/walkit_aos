@@ -143,10 +143,10 @@ fun MainScreen(
             icon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_nav_character),
-                    contentDescription = "캐릭터"
+                    contentDescription = "캐릭터샵"
                 )
             },
-            label = "캐릭터"
+            label = "캐릭터샵"
         ),
         BottomBarItem(
             route = "mypage",

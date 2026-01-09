@@ -117,16 +117,13 @@ fun HomeNameAndGoalContent(
 
         }
 
-        // 오늘 걸음 수 표시
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 진행률 바 추가
-        Spacer(modifier = Modifier.height(10.dp))
         WalkProgressBar(
             progressPercentage = walkProgressPercentage,
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 text = "${goal.targetWalkCount} 일 /${goal.targetStepCount} 걸음씩",

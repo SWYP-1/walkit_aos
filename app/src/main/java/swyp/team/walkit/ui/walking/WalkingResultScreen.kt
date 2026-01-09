@@ -333,7 +333,6 @@ private fun WalkingResultScreenContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // 진행 바 (1번째 칸 채워짐)
             item {
@@ -341,6 +340,9 @@ private fun WalkingResultScreenContent(
                     currentStep = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            item {
+                Spacer(Modifier.height(16.dp))
             }
 
             item {
@@ -384,8 +386,8 @@ private fun WalkingResultScreenContent(
                                         val success = onCaptureSnapshot {
                                             try {
                                                 snapshotPath = if (emotionPhotoUri != null) {
-                                                    captureMapViewSnapshot(
-                                                        mapViewRef!!,
+                                                    capturePhotoWithPathSnapshot(
+                                                        photoWithPathBoxCoordinates,
                                                         context
                                                     )
                                                 } else {
@@ -493,7 +495,7 @@ private fun WalkingResultScreenContent(
                                     .fillMaxSize()
                                     .padding(20.dp),
                                 pathColor = Color.White,
-                                startColor =  Color.White,
+                                startColor = Color.White,
                                 endColor = Color.White,
                             )
                         }

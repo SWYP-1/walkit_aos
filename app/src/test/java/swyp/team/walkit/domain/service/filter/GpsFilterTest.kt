@@ -1,4 +1,4 @@
-//package team.swyp.sdu.domain.service.filter
+//package swyp.team.walkit.domain.service.filter
 //
 //import org.junit.jupiter.api.Assertions.assertEquals
 //import org.junit.jupiter.api.Assertions.assertNotNull

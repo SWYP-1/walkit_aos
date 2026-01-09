@@ -1,4 +1,4 @@
-package team.swyp.sdu.ui.mission
+package swyp.team.walkit.ui.mission
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,8 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import team.swyp.sdu.data.dto.mission.WeeklyMissionData
-import team.swyp.sdu.presentation.viewmodel.MissionViewModel
+import swyp.team.walkit.data.dto.mission.WeeklyMissionData
+import swyp.team.walkit.presentation.viewmodel.MissionViewModel
 
 /**
  * 미션 화면

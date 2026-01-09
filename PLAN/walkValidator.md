@@ -4,7 +4,7 @@ WalkingViewModel에 규칙 기반 어뷰징 방지 시스템을 추가해주세�
 
 1. 새로운 데이터 클래스 추가
 data/model/ValidationResult.kt 파일을 생성하고 다음 클래스들을 추가해주세요:
-kotlinpackage team.swyp.sdu.data.model
+kotlinpackage swyp.team.walkit.data.model
 
 /**
  * 세션 검증 결과
@@ -104,10 +104,10 @@ kotlindata class WalkingSession(
 
 3. Validator 클래스 생성
 domain/validator/WalkingSessionValidator.kt 파일을 생성해주세요:
-kotlinpackage team.swyp.sdu.domain.validator
+kotlinpackage swyp.team.walkit.domain.validator
 
-import team.swyp.sdu.data.model.*
-import team.swyp.sdu.domain.service.ActivityType
+import swyp.team.walkit.data.model.*
+import swyp.team.walkit.domain.service.ActivityType
 import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.pow

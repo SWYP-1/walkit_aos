@@ -31,6 +31,8 @@ import swyp.team.walkit.ui.home.utils.getEmotionName
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.R
+import swyp.team.walkit.ui.record.components.cardBorder
+import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.walkItTypography
 
 /**
@@ -47,7 +49,7 @@ fun DominantEmotionCard(
     val textColor = getEmotionTextColor(emotionType)
 
     Card(
-        modifier = modifier,
+        modifier = modifier.customShadow().cardBorder(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor,

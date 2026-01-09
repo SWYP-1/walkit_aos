@@ -1196,7 +1196,7 @@ fun WalkingStatsCard(
             ) {
                 Text(
                     text = stepsLabel,
-                    style = MaterialTheme.walkItTypography.captionM,
+                    style = MaterialTheme.walkItTypography.bodyS,
                     color = Grey10,
                 )
 
@@ -1232,7 +1232,7 @@ fun WalkingStatsCard(
             ) {
                 Text(
                     text = durationLabel,
-                    style = MaterialTheme.walkItTypography.captionM,
+                    style = MaterialTheme.walkItTypography.bodyS,
                     color = Grey10,
                 )
                 Row(
