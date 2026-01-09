@@ -571,9 +571,6 @@ fun UserInfoManagementScreen(
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // 뒤로가기 버튼
-                        PreviousButton(onClick = ::handleNavigateBack, modifier = Modifier.weight(1f))
-
                         // 저장하기 버튼
                         // canSave 계산 - userInput 상태 변경 시 자동으로 recomposition
                         val canSave = hasChange &&  // 변경사항이 있어야 함

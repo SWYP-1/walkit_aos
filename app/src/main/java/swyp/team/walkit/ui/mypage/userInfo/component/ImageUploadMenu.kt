@@ -138,7 +138,7 @@ fun ImageUploadMenu(
                     },
                     text = {
                         Text(
-                            text = "이미지 삭제하기",
+                            text = "이미지 삭제",
                             style = MaterialTheme.walkItTypography.bodyM,
                         )
                     },

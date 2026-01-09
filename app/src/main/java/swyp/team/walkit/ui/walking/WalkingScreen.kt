@@ -184,7 +184,7 @@ fun WalkingScreenRoute(
                         val durationInSeconds = (walkingState?.duration ?: 0L) / 1000
 
                         // TODO : 삭제 60 으로 바꾸기
-                        if (durationInSeconds < 10) {
+                        if (durationInSeconds < 60) {
                             // 1분 미만이면 확인 다이얼로그 표시
                             showFinishConfirmDialog.value = true
                         } else {

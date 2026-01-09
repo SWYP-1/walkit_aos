@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -304,6 +305,18 @@ private fun WalkingResultScreenContent(
     // 지도 MapView 참조 (스냅샷 생성용)
     var mapViewRef by remember { mutableStateOf<com.kakao.vectormap.MapView?>(null) }
 
+    // MapView와 Box 위치 정보 준비 상태 추적
+    val isMapViewReady by remember(mapViewRef) { derivedStateOf { mapViewRef != null } }
+    val isBoxCoordinatesReady by remember(photoWithPathBoxCoordinates) { derivedStateOf { photoWithPathBoxCoordinates != null } }
+    // 사진이 있으면 Box 좌표만 필요, 없으면 MapView 필요
+    val isSnapshotReady by remember { derivedStateOf { 
+        if (emotionPhotoUri != null) {
+            isBoxCoordinatesReady
+        } else {
+            isMapViewReady
+        }
+    } }
+
     // 완료 팝업 표시 여부
     var showCompletionDialog by remember { mutableStateOf(false) }
 
@@ -377,57 +390,58 @@ private fun WalkingResultScreenContent(
                             color = SemanticColor.textBorderSecondary, // 기본 색
                         )
 
-                        IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    if (capturedSnapshotPath == null) {
-                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
-                                        var snapshotPath: String? = null
-                                        val success = onCaptureSnapshot {
-                                            try {
-                                                snapshotPath = if (emotionPhotoUri != null) {
-                                                    capturePhotoWithPathSnapshot(
-                                                        photoWithPathBoxCoordinates,
-                                                        context
-                                                    )
-                                                } else {
-                                                    if (mapViewRef != null) {
-                                                        captureMapViewSnapshot(
-                                                            mapViewRef!!,
-                                                            context
-                                                        )
-                                                    } else {
-                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
-                                                        null
-                                                    }
-                                                }
-                                                snapshotPath
-                                            } catch (t: Throwable) {
-                                                Timber.e(t, "공유용 스냅샷 생성 실패")
-                                                null
-                                            }
-                                        }
-
-                                        if (success && snapshotPath != null) {
-                                            capturedSnapshotPath = snapshotPath
-                                        } else {
-                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
-                                            return@launch
-                                        }
-                                    }
-
-                                    showShareDialog = true
-                                }
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_action_external),
-                                tint = SemanticColor.iconGrey,
-                                contentDescription = "external",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+//                        IconButton(
+//                            onClick = {
+//                                coroutineScope.launch {
+//                                    if (capturedSnapshotPath == null) {
+//                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+//                                        var snapshotPath: String? = null
+//                                        val success = onCaptureSnapshot {
+//                                            try {
+//                                                snapshotPath = if (emotionPhotoUri != null) {
+//                                                    captureMapViewSnapshot(
+//                                                        mapViewRef!!,
+//                                                        context
+//                                                    )
+//                                                } else {
+//                                                    if (mapViewRef != null) {
+//                                                        captureMapViewSnapshot(
+//                                                            mapViewRef!!,
+//                                                            context
+//                                                        )
+//                                                    } else {
+//                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+//                                                        null
+//                                                    }
+//                                                }
+//                                                snapshotPath
+//                                            } catch (t: Throwable) {
+//                                                Timber.e(t, "공유용 스냅샷 생성 실패")
+//                                                null
+//                                            }
+//                                        }
+//
+//                                        if (success && snapshotPath != null) {
+//                                            capturedSnapshotPath = snapshotPath
+//                                        } else {
+//                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+//                                            return@launch
+//                                        }
+//                                    }
+//
+//                                    showShareDialog = true
+//                                }
+//                            }
+//                        ) {
+//                            Icon(
+//                                painter = painterResource(R.drawable.ic_action_external),
+//                                tint = SemanticColor.iconGrey,
+//                                contentDescription = "external",
+//                                modifier = Modifier.size(24.dp)
+//                            )
+//                        }
                     }
+                    Spacer(Modifier.height(12.dp))
                 }
             }
 
@@ -512,6 +526,9 @@ private fun WalkingResultScreenContent(
                     }
                 }
             }
+            item {
+                Spacer(Modifier.height(16.dp))
+            }
 
             item {
                 WalkingStatsCard(
@@ -519,6 +536,9 @@ private fun WalkingResultScreenContent(
                     stepsLabel = "걸음 수",
                     durationLabel = "산책 시간"
                 )
+            }
+            item {
+                Spacer(Modifier.height(16.dp))
             }
 
             // 목표 진행률 카드
@@ -545,6 +565,7 @@ private fun WalkingResultScreenContent(
                     },
                 )
             }
+            item { Spacer(Modifier.height(16.dp)) }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -604,8 +625,8 @@ private fun WalkingResultScreenContent(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            enabled = snapshotState is SnapshotState.Idle ||
-                                    snapshotState is SnapshotState.Error,
+                            enabled = isSnapshotReady && (snapshotState is SnapshotState.Idle ||
+                                    snapshotState is SnapshotState.Error),
                             text = "저장하기"
                         )
                     }
