@@ -124,6 +124,12 @@
 
 # Hilt EntryPoint 보호
 -keep @dagger.hilt.EntryPoint interface swyp.team.walkit.** { *; }
+-keepclassmembers @dagger.hilt.EntryPoint interface swyp.team.walkit.** {
+    *;
+}
+
+# Application EntryPoint 보호 (Worker에서 사용)
+-keep @dagger.hilt.EntryPoint interface swyp.team.walkit.WalkingBuddyApplication$* { *; }
 
 # Hilt AndroidEntryPoint 보호
 -keep @dagger.hilt.android.AndroidEntryPoint class swyp.team.walkit.** { *; }
@@ -263,14 +269,33 @@
 -keep class androidx.work.** { *; }
 -dontwarn androidx.work.**
 
-# WorkManager Worker 보호
+# WorkManager Worker 보호 (릴리즈 빌드에서 Worker 클래스가 제대로 인식되도록)
 -keep class swyp.team.walkit.worker.** { *; }
 -keepclassmembers class swyp.team.walkit.worker.** {
     *;
 }
 
+# CoroutineWorker 보호 (doWork() 메소드가 난독화되지 않도록)
+-keep class swyp.team.walkit.worker.SessionSyncWorker extends androidx.work.CoroutineWorker {
+    <init>(android.content.Context, androidx.work.WorkerParameters);
+    suspend doWork();
+}
+
+# Worker 생성자 보호 (WorkManager가 Worker를 인스턴스화할 수 있도록)
+-keepclassmembers class swyp.team.walkit.worker.** extends androidx.work.Worker {
+    <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+
+-keepclassmembers class swyp.team.walkit.worker.** extends androidx.work.CoroutineWorker {
+    <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+
 # Hilt Worker 보호
 -keep @androidx.hilt.work.HiltWorker class swyp.team.walkit.** { *; }
+-keepclassmembers @androidx.hilt.work.HiltWorker class swyp.team.walkit.** {
+    <init>(...);
+}
+
 
 # ============================================
 # DataStore

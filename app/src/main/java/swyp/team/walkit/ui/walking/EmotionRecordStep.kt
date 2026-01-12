@@ -83,6 +83,8 @@ import swyp.team.walkit.ui.walking.viewmodel.WalkingViewModel
 import swyp.team.walkit.utils.launchCameraWithPermission
 import swyp.team.walkit.utils.CameraLaunchConfig
 import swyp.team.walkit.utils.handleCameraPermissionResult
+import swyp.team.walkit.utils.SetStatusBarConfig
+import swyp.team.walkit.utils.DefaultStatusBarConfig
 import java.util.Date
 
 /**
@@ -112,6 +114,9 @@ fun EmotionRecordStepRoute(
     onPrev: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // 기본 상태바 설정 적용 (상태창 영역 사용 안 함)
+//    SetStatusBarConfig(config = DefaultStatusBarConfig)
+    
     val emotionPhotoUri by viewModel.emotionPhotoUri.collectAsStateWithLifecycle()
     val emotionText by viewModel.emotionText.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -157,26 +162,46 @@ fun EmotionRecordStepRoute(
             val actualMimeType = try {
                 context.contentResolver.getType(cameraImageUri)
             } catch (t: Throwable) {
+                Timber.w(t, "MIME_TYPE 조회 실패")
                 null
             }
 
+            // MIME_TYPE으로 영상 파일 확인
             val isVideoFile = actualMimeType?.startsWith("video/") == true
+            
+            // 추가 검증: 파일 확장자 확인 (MIME_TYPE이 null인 경우 대비)
+            val isVideoByExtension = try {
+                val path = cameraImageUri.path
+                path?.let {
+                    val extension = it.substringAfterLast('.', "").lowercase()
+                    extension in listOf("mp4", "mov", "avi", "mkv", "3gp", "webm")
+                } ?: false
+            } catch (t: Throwable) {
+                false
+            }
 
-            if (isVideoFile) {
+            if (isVideoFile || isVideoByExtension) {
                 // ❌ 영상이 촬영된 경우: 사용자에게 알림 및 파일 정리
                 Timber.w("카메라에서 영상이 촬영되었습니다. 사진만 지원됩니다. MIME_TYPE: $actualMimeType")
 
                 // 영상 파일 삭제 (사용자에게 혼동 주지 않도록)
+                var deleteSuccess = false
                 try {
-                    context.contentResolver.delete(cameraImageUri, null, null)
-                    Timber.d("영상 파일 정리 완료")
+                    val deletedRows = context.contentResolver.delete(cameraImageUri, null, null)
+                    deleteSuccess = deletedRows > 0
+                    if (deleteSuccess) {
+                        Timber.d("영상 파일 정리 완료")
+                    } else {
+                        Timber.w("영상 파일 삭제 실패: 삭제된 행이 0개")
+                    }
                 } catch (t: Throwable) {
                     Timber.e(t, "영상 파일 정리 실패")
                 }
 
-                // TODO: 사용자에게 토스트 메시지 표시
-                // Toast.makeText(context, "사진 촬영만 지원됩니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-
+                // 사용자에게 스낵바로 알림 표시 (스낵바는 canProceed가 false일 때 자동 표시됨)
+                // 영상 파일이므로 URI를 null로 설정하여 canProceed를 true로 유지
+                // 대신 별도의 에러 상태를 표시할 수 있지만, 현재는 단순히 무시
+                
             } else {
                 // ✅ 사진이 정상적으로 촬영됨
                 Timber.d("사진 촬영 성공: MIME_TYPE = $actualMimeType")

@@ -52,12 +52,12 @@ fun MyPageSettingsSection(
             Spacer(Modifier.height(12.dp))
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(verticalPadding))
 
         // 추가 설정 섹션
         SectionCard {
             Text(
-                text = "목표",
+                text = "산책관리",
                 style = MaterialTheme.walkItTypography.bodyL.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
@@ -65,12 +65,11 @@ fun MyPageSettingsSection(
                 modifier = Modifier.padding(top = verticalPadding, start = horizontalPadding)
             )
             Spacer(Modifier.height(8.dp))
-            MenuItem("내 목표", onNavigateGoalManagement)
-            Spacer(Modifier.height(8.dp))
+            MenuItem("목표 관리", onNavigateGoalManagement)
+
             MenuItem("내 미션",onNavigateMission)
-//            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(verticalPadding))
 //            MenuItem("커스텀 테스트", onNavigateCustomTest)
-            Spacer(Modifier.height(12.dp))
         }
     }
 

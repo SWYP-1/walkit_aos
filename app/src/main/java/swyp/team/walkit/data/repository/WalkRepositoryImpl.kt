@@ -116,6 +116,26 @@ class WalkRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun getWalkList(): Result<List<WalkingSession>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val dtoResult = walkRemoteDataSource.getWalkList()
+                when (dtoResult) {
+                    is Result.Success -> {
+                        val walkingSessions = dtoResult.data
+                        Timber.d("산책 목록 조회 성공: ${walkingSessions.size}개")
+                        Result.Success(walkingSessions)
+                    }
+
+                    is Result.Error -> dtoResult
+                    Result.Loading -> Result.Loading
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "산책 목록 조회 실패")
+                Result.Error(t, t.message)
+            }
+        }
+
     override suspend fun updateWalkNote(walkId: Long, note: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {

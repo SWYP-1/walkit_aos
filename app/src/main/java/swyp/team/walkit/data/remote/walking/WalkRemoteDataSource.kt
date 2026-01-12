@@ -9,7 +9,6 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import swyp.team.walkit.data.api.follower.FollowerApi
 import swyp.team.walkit.data.api.walking.WalkApi
-import swyp.team.walkit.data.model.WalkingSession
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
@@ -29,6 +28,8 @@ import swyp.team.walkit.data.remote.walking.dto.UpdateWalkNoteRequest
 import swyp.team.walkit.data.remote.walking.dto.WalkingSessionRequest
 import swyp.team.walkit.data.remote.walking.dto.WalkSaveResponse
 import swyp.team.walkit.data.remote.walking.mapper.toWalkPoints
+import swyp.team.walkit.data.remote.home.dto.WalkResponseDto
+import swyp.team.walkit.data.model.WalkingSession
 import androidx.core.net.toUri
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
@@ -432,6 +433,53 @@ class WalkRemoteDataSource @Inject constructor(
             }
         } catch (t: Throwable) {
             Timber.e(t, "산책 노트 업데이트 실패: walkId=$walkId")
+            Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
+        }
+    }
+
+    /**
+     * 산책 목록 조회
+     *
+     * @return 산책 기록 목록
+     */
+    suspend fun getWalkList(): Result<List<WalkingSession>> {
+        return try {
+            val response = walkApi.getWalkList()
+
+            // WalkResponseDto를 WalkingSession으로 바로 변환
+            val walkingSessions = response.map { dto ->
+                WalkingSession(
+                    id = dto.id.toString(), // 서버 ID를 String으로 변환
+                    userId = 0L, // 서버 데이터이므로 기본값 설정
+                    preWalkEmotion = dto.preWalkEmotion,
+                    postWalkEmotion = dto.postWalkEmotion,
+                    note = dto.note,
+                    startTime = dto.startTime,
+                    endTime = dto.endTime,
+                    totalDistance = dto.totalDistance.toFloat(), // Double을 Float으로 변환
+                    stepCount = dto.stepCount,
+                    locations = dto.points.map { pointDto ->
+                        swyp.team.walkit.data.model.LocationPoint(
+                            latitude = pointDto.latitude,
+                            longitude = pointDto.longitude,
+                            timestamp = pointDto.timestampMillis,
+                            accuracy = null
+                        )
+                    },
+                    localImagePath = null, // 서버 데이터이므로 로컬 경로 없음
+                    serverImageUrl = dto.imageUrl,
+                    isSynced = true,
+                    createdDate = dto.createdDate.toString()
+                )
+            }
+
+            Timber.d("산책 목록 조회 성공: ${walkingSessions.size}개")
+            Result.Success(walkingSessions)
+        } catch (e: CancellationException) {
+            Timber.d("산책 목록 조회 취소됨 (Coroutine 취소)")
+            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "산책 목록 조회 실패")
             Result.Error(t, t.message ?: "네트워크 오류가 발생했습니다")
         }
     }

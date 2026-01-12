@@ -92,7 +92,8 @@ object WalkingSessionMapper {
                 serverImageUrl = entity.serverImageUrl,
                 createdDate = entity.createdDate,
                 targetStepCount = entity.targetStepCount,
-                targetWalkCount = entity.targetWalkCount
+                targetWalkCount = entity.targetWalkCount,
+                isSynced = entity.isSynced
             )
         } catch (e: Throwable) {
             // ExceptionInInitializerError 등 Error 타입도 처리
@@ -115,7 +116,8 @@ object WalkingSessionMapper {
                 serverImageUrl = entity.serverImageUrl,
                 createdDate = entity.createdDate,
                 targetStepCount = entity.targetStepCount,
-                targetWalkCount = entity.targetWalkCount
+                targetWalkCount = entity.targetWalkCount,
+                isSynced = entity.isSynced
             )
         }
     }

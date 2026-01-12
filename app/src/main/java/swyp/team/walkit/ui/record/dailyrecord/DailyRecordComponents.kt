@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,11 +35,13 @@ import coil.request.ImageRequest
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.LocationPoint
 import swyp.team.walkit.data.model.WalkingSession
-import swyp.team.walkit.ui.components.RouteThumbnail
+import swyp.team.walkit.ui.components.KakaoMapView
+import swyp.team.walkit.ui.walking.components.PathThumbnail
 import swyp.team.walkit.ui.theme.Grey4
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.DateUtils
+import timber.log.Timber
 import java.io.File
 
 /**
@@ -51,8 +54,12 @@ import java.io.File
 @Composable
 fun SessionThumbnailList(
     session: WalkingSession?,
-    onExternalClick: () -> Unit,
+    isSnapshotLoading: Boolean,
+    isDataLoading: Boolean = false, // 데이터 로딩 상태 추가
+    onExternalClick: (WalkingSession) -> Unit,
+    dateString: String,
     modifier: Modifier = Modifier,
+    thumbnailCoordinates: androidx.compose.runtime.MutableState<androidx.compose.ui.layout.LayoutCoordinates?>? = null,
 ) {
     Column(
         modifier
@@ -64,7 +71,7 @@ fun SessionThumbnailList(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "2025년 12월 15일 ",
+                text = dateString, // 한국어 형식으로 변환된 날짜 표시
                 // body L/medium
                 style = MaterialTheme.walkItTypography.bodyL.copy(
                     fontWeight = FontWeight.Medium
@@ -73,7 +80,8 @@ fun SessionThumbnailList(
             )
 
             IconButton(
-                onClick = onExternalClick,
+                onClick = { onExternalClick(session ?: return@IconButton) },
+                enabled = !isDataLoading, // 데이터 로딩 중에는 버튼 비활성화
                 modifier = Modifier
                     .size(24.dp)
             ) {
@@ -89,13 +97,16 @@ fun SessionThumbnailList(
         Spacer(Modifier.height(12.dp))
 
         if (session != null) {
+            Timber.d("🔗 [SessionThumbnailList] SessionThumbnailItem으로 좌표 상태 전달 - thumbnailCoordinates: ${thumbnailCoordinates != null}")
             SessionThumbnailItem(
                 session = session,
                 isSelected = true,
-                onClick = { onExternalClick() },
+                onClick = onExternalClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .aspectRatio(1f),
+                isSnapshotLoading = isSnapshotLoading,
+                thumbnailCoordinates = thumbnailCoordinates,
             )
         }
     }
@@ -113,8 +124,10 @@ fun SessionThumbnailList(
 fun SessionThumbnailItem(
     session: WalkingSession,
     isSelected: Boolean,
-    onClick: () -> Unit,
+    onClick: (WalkingSession) -> Unit,
     modifier: Modifier = Modifier,
+    isSnapshotLoading: Boolean = false,
+    thumbnailCoordinates: androidx.compose.runtime.MutableState<androidx.compose.ui.layout.LayoutCoordinates?>? = null,
 ) {
     val context = LocalContext.current
 
@@ -130,41 +143,93 @@ fun SessionThumbnailItem(
                 } else {
                     Modifier
                 }
-            ),
+            )
+            .onGloballyPositioned { coordinates ->
+                Timber.d("📍 [SessionThumbnailItem] onGloballyPositioned 호출됨")
+                // MutableState에 좌표 저장
+                thumbnailCoordinates?.value = coordinates
+                Timber.d("📍 [SessionThumbnailItem] 좌표 저장 완료 - size: ${coordinates.size}")
+            },
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // 이미지 URI 가져오기 (localImagePath -> serverImageUrl 순서)
-            val imageUri = session.getImageUri()
+            // 스냅샷 생성 로딩 오버레이
+            if (isSnapshotLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                }
+            }
 
-            if (imageUri != null) {
-                // 이미지가 있으면 이미지 표시
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(
-                            if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
-                                // 서버 URL인 경우
-                                imageUri
-                            } else {
-                                // 로컬 파일 경로인 경우
-                                File(imageUri)
-                            }
-                        )
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "산책 기록 썸네일",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.matchParentSize()
-                )
+            // 이미지 URI 가져오기 (localImagePath -> serverImageUrl 순서)
+            if (session.isSynced) {
+                // 서버 동기화된 세션은 실제 이미지 표시 시도
+                val imageUri = session.getImageUri()
+
+                if (imageUri != null) {
+                    // 이미지가 있으면 이미지 표시
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(
+                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
+                                    // 서버 URL인 경우
+                                    imageUri
+                                } else {
+                                    // 로컬 파일 경로인 경우
+                                    File(imageUri)
+                                }
+                            )
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "산책 기록 썸네일",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.matchParentSize()
+                    )
+                } else {
+                    // 이미지가 없어도 서버 동기화된 세션이므로 경로 썸네일 표시
+                    PathThumbnail(
+                        locations = session.locations,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             } else {
-                // 이미지가 없으면 경로 썸네일 표시
-                RouteThumbnail(
-                    locations = session.locations,
-                    modifier = Modifier.fillMaxSize(),
-                    height = 200.dp,
-                )
+                val imageUri = session.getImageUri()
+
+                if (imageUri != null) {
+                    // 이미지가 있으면 이미지 표시
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(
+                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
+                                    // 서버 URL인 경우
+                                    imageUri
+                                } else {
+                                    // 로컬 파일 경로인 경우
+                                    File(imageUri)
+                                }
+                            )
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "산책 기록 썸네일",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                    PathThumbnail(
+                        locations = session.locations,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    // 서버 동기화되지 않은 세션은 MapView로 경로 표시 (스냅샷용)
+                }
             }
         }
 

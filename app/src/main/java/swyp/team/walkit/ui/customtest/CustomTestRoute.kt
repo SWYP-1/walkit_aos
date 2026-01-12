@@ -15,8 +15,9 @@ fun CustomTestRoute(
     viewModel: CustomTestViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
     onStartOnboarding: () -> Unit = {},
-    onNavigateToMapTest: () -> Unit = {},
-    onNavigateToGalleryTest: () -> Unit = {},
+    onNavigateToZoomTest: () -> Unit = {},
+    onNavigateToRandomPath: () -> Unit = {},
+    onNavigateToLatLngBoundsTest : () -> Unit = {},
 ) {
     val onAddDummySessions: () -> Unit = {
         viewModel.addDummySessions()
@@ -27,7 +28,8 @@ fun CustomTestRoute(
         onNavigateBack = onNavigateBack,
         onStartOnboarding = onStartOnboarding,
         onAddDummySessions = onAddDummySessions,
-        onNavigateToMapTest = onNavigateToMapTest,
-        onNavigateToGalleryTest = onNavigateToGalleryTest,
+        onNavigateToZoomTest = onNavigateToZoomTest,
+        onNavigateToRandomPath = onNavigateToRandomPath,
+        onNavigateToLatLngBoundsTest = onNavigateToLatLngBoundsTest,
     )
 }

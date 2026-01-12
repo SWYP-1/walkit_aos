@@ -1,5 +1,6 @@
 package swyp.team.walkit.ui.home
 
+import android.util.Log.e
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import swyp.team.walkit.core.DataState
 import swyp.team.walkit.core.Result
@@ -41,8 +43,9 @@ import swyp.team.walkit.domain.repository.GoalRepository
 import swyp.team.walkit.domain.repository.MissionRepository
 import swyp.team.walkit.domain.repository.HomeRepository
 import swyp.team.walkit.domain.repository.UserRepository
-import swyp.team.walkit.worker.SessionSyncWorker
+import swyp.team.walkit.domain.repository.WalkRepository
 import swyp.team.walkit.domain.service.LocationManager
+import swyp.team.walkit.data.local.entity.SyncState
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.WeeklyMission
 import swyp.team.walkit.domain.model.WalkRecord
@@ -128,6 +131,7 @@ class HomeViewModel @Inject constructor(
     private val goalRepository: GoalRepository,
     private val missionRepository: MissionRepository,
     private val homeRepository: HomeRepository,
+    private val walkRepository: WalkRepository,
     private val userRepository: UserRepository,
     private val locationManager: LocationManager,
     private val missionCardStateMapper: MissionCardStateMapper,
@@ -143,7 +147,6 @@ class HomeViewModel @Inject constructor(
     private val _profileUiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
     val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
 
-    // ✅ RecordScreen 방식으로 변경: 캐릭터 Lottie 상태 제거 (ProfileUiState에서 관리)
 
     // 캐릭터 Lottie 상태 캐시 (레벨/등급 변경 시 캐시 무효화를 위해 포함)
     // 본인 캐릭터만 관리하므로 단순 변수로 저장
@@ -170,7 +173,6 @@ class HomeViewModel @Inject constructor(
      */
     fun invalidateCharacterCache() {
         characterVersion++
-        Timber.d("🏠 캐릭터 캐시 버전 증가: $characterVersion")
     }
 
     /**
@@ -179,23 +181,22 @@ class HomeViewModel @Inject constructor(
     fun loadCharacterDisplay() {
         viewModelScope.launch {
             try {
-                Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 시작")
-
                 // 캐릭터 정보 가져오기 (ProfileUiState.Success의 character 우선 활용)
                 val character = when (val currentProfileState = _profileUiState.value) {
                     is ProfileUiState.Success -> {
-                        Timber.d("🏠 HomeViewModel: ProfileUiState의 캐릭터 정보 활용 - level=${currentProfileState.character.level}, grade=${currentProfileState.character.grade}")
                         currentProfileState.character
                     }
                     else -> {
-                        Timber.d("🏠 HomeViewModel: ProfileUiState가 준비되지 않음 - 서버에서 캐릭터 정보 가져오기")
                         // fallback: 서버에서 가져오기
                         val location = getLocationForApi()
-                        val characterResult = characterRepository.getCharacterByLocation(location.latitude, location.longitude)
+                        val characterResult = characterRepository.getCharacterByLocation(
+                            location.latitude,
+                            location.longitude
+                        )
                         when (characterResult) {
                             is Result.Success -> characterResult.data
                             is Result.Error -> {
-                                Timber.w("🏠 HomeViewModel: 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
+                                Timber.w("🏠 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
                                 null
                             }
                             Result.Loading -> null
@@ -204,9 +205,10 @@ class HomeViewModel @Inject constructor(
                 }
 
                 if (character == null) {
-                    Timber.w("🏠 HomeViewModel: 캐릭터 정보가 없음")
+                    Timber.w("🏠 캐릭터 정보가 없음")
                     return@launch
                 }
+
                 // 캐릭터 등급에 따른 base Lottie JSON 로드
                 val baseJson = loadBaseLottieJson(character)
 
@@ -217,19 +219,16 @@ class HomeViewModel @Inject constructor(
                     baseLottieJson = baseJson.toString()
                 )
 
-                  // ✅ RecordScreen 방식: ProfileUiState에 processedLottieJson 저장
+                // ✅ RecordScreen 방식: ProfileUiState에 processedLottieJson 저장
                 if (_profileUiState.value is ProfileUiState.Success) {
                     val currentProfileState = _profileUiState.value as ProfileUiState.Success
                     _profileUiState.value = currentProfileState.copy(
                         processedLottieJson = lottieState.modifiedJson
                     )
-                    Timber.d("🏠 ProfileUiState에 processedLottieJson 업데이트: ${lottieState.modifiedJson?.length ?: 0}자")
                 }
-                Timber.d("🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 완료")
 
             } catch (t: Throwable) {
-                Timber.e(t, "🏠 HomeViewModel: 캐릭터 Lottie 상태 로드 실패")
-                // ✅ RecordScreen 방식으로 변경: _characterLottieState 제거됨
+                Timber.e(t, "🏠 캐릭터 Lottie 로드 실패")
                 // 에러 시 ProfileUiState에 processedLottieJson = null로 설정
                 if (_profileUiState.value is ProfileUiState.Success) {
                     val currentProfileState = _profileUiState.value as ProfileUiState.Success
@@ -294,27 +293,19 @@ class HomeViewModel @Inject constructor(
                 Grade.TREE -> R.raw.tree
             }
 
-            Timber.d("🎭 HomeViewModel.loadBaseLottieJson: grade=${character.grade}, resourceId=$resourceId")
-
             try {
-                Timber.d("📂 HomeViewModel: Lottie 파일 로드 시도")
                 val inputStream = application.resources.openRawResource(resourceId)
                 val jsonString = inputStream.bufferedReader().use { it.readText() }
 
-                Timber.d("📄 HomeViewModel: JSON 문자열 길이: ${jsonString.length}")
-
                 if (jsonString.isEmpty()) {
-                    Timber.e("❌ HomeViewModel: JSON 문자열이 비어있음!")
+                    Timber.e("🏠 Lottie JSON이 비어있음 - grade: ${character.grade}")
                     return@withContext JSONObject()
                 }
 
-                val jsonObject = JSONObject(jsonString)
-                Timber.d("✅ HomeViewModel: JSONObject 생성 성공, 키 개수: ${jsonObject.length()}")
-
-                jsonObject
+                JSONObject(jsonString)
 
             } catch (t: Throwable) {
-                Timber.e(t, "❌ HomeViewModel: Lottie 파일 로드 실패")
+                Timber.e(t, "🏠 Lottie 파일 로드 실패 - grade: ${character.grade}")
                 JSONObject() // 실패 시 빈 JSON 반환
             }
         }
@@ -383,14 +374,10 @@ class HomeViewModel @Inject constructor(
         // 캐릭터 착용 상태 변경 이벤트 구독 (캐시 무효화용)
         viewModelScope.launch {
             characterEventBus.characterUpdated.collect {
-                Timber.d("🏠 캐릭터 착용 상태 변경 감지 - 캐시 무효화")
                 invalidateCharacterCache()
                 // 캐릭터 표시 재로딩 (ProfileUiState가 최신인 경우에만)
                 if (_profileUiState.value is ProfileUiState.Success) {
-                    Timber.d("🏠 캐시 무효화 후 캐릭터 표시 재로딩")
                     loadCharacterDisplay()
-                } else {
-                    Timber.d("🏠 ProfileUiState가 준비되지 않음 - 캐시 버전만 증가")
                 }
             }
         }
@@ -498,6 +485,13 @@ class HomeViewModel @Inject constructor(
 
                     Timber.d("API 응답 데이터 확인 - weeklyMission: ${homeData.weeklyMission}")
                     Timber.d("API 응답 데이터 확인 - character: ${homeData.character}")
+                    Timber.d("API 응답 데이터 확인 - 이번 주 세션 수: ${homeData.walkRecords.size}")
+
+                    // 🔥 새로운 로직: 이번 주 세션 데이터를 즉시 Room에 저장
+                    saveThisWeekSessionsToRoom(homeData.walkRecords)
+
+                    // ✅ homeData.walkRecords를 사용해서 walkingSessionDataState 즉시 업데이트
+                    updateWalkingSessionDataFromHomeData(homeData)
 
                     // Home API에서 받은 Character 정보를 Room에 저장
                     val userId = currentUser.value?.userId
@@ -519,8 +513,10 @@ class HomeViewModel @Inject constructor(
                         updateProfileSection(homeData)
                         updateMissionSection(homeData)
 
-                        // 기존 로직 유지 (세션 정보 등)
-                        loadSessionsWithHomeData(homeData)
+                        // 🔄 백그라운드에서 전체 세션 동기화 시작 (워커 대신 직접 호출)
+                        launchFullSessionSyncInBackground()
+
+                        Timber.d("🏠 Home API 완료 - 이번 주 세션 즉시 저장 + 백그라운드 전체 sync 시작")
                     }
                 }
 
@@ -563,17 +559,8 @@ class HomeViewModel @Inject constructor(
                 Timber.d("🏠 이번 주 범위 (월~일): ${weekStart.formatTimestamp()} ~ ${weekEnd.formatTimestamp()}")
                 Timber.d("🏠 이번 주 범위 (raw): start=$weekStart, end=$weekEnd")
 
-                // 🚀 최적화: DB 쿼리로 이번 주 우세 감정 계산 (suspend 함수)
-                val dominantEmotionData =
-                    walkingSessionRepository.getDominantEmotionInPeriod(weekStart, weekEnd)
-
-                val dominantEmotion = dominantEmotionData?.emotion // String으로 직접 사용
-
-                val dominantEmotionCount = dominantEmotionData?.count ?: 0
-
-                Timber.d("🏠 [dominantEmotion] DB 쿼리로 계산된 우세 감정: $dominantEmotion (카운트: $dominantEmotionCount)")
-
                 // 🚀 최적화: 여러 Flow를 combine으로 결합
+                var isFirstEmission = true // 첫 번째 emission인지 추적
                 combine(
                     walkingSessionRepository.getRecentSessionsForEmotions(),
                     walkingSessionRepository.getSessionsBetween(weekStart, weekEnd)
@@ -581,8 +568,16 @@ class HomeViewModel @Inject constructor(
                     // 이번 주 세션 수 로깅 추가
                     Timber.d("🏠 [thisWeekSessions] 이번 주 세션 수: ${thisWeekSessions.size}")
                     thisWeekSessions.forEachIndexed { index, session ->
-                        Timber.d("🏠 [thisWeekSessions] 세션 ${index + 1}: 시작시간=${session.startTime.formatTimestamp()}, 걸음=${session.stepCount}")
+                        Timber.d("🏠 [thisWeekSessions] 세션 ${index + 1}: 시작시간=${session.startTime.formatTimestamp()}, 걸음=${session.stepCount}, 감정=${session.postWalkEmotion}")
                     }
+
+                    // ✅ Room에 이번주 세션 데이터가 없어도 homeAPI 호출하지 않음
+                    // (이미 HomeScreen에서 loadHomeData()가 호출되어 있으므로)
+                    isFirstEmission = false
+
+                    // ✅ thisWeekSessions에서 직접 dominantEmotion 계산 (userId 필터링된 데이터 사용)
+                    val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(thisWeekSessions)
+                    Timber.d("🏠 [dominantEmotion] 계산된 우세 감정: $dominantEmotion (카운트: ${dominantEmotionCount ?: 0})")
 
                     // recentEmotions 추출 과정 로깅 (최적화된 데이터 사용)
                     Timber.d("🏠 [recentEmotions] 최적화된 쿼리로 조회된 최근 세션 수: ${recentSessionEmotions.size}")
@@ -608,7 +603,10 @@ class HomeViewModel @Inject constructor(
                     _walkingSessionDataState.value = DataState.Error(e.message ?: "세션을 불러오지 못했습니다.")
                     return@catch
                 }.collect { walkingSessionData ->
-                    _walkingSessionDataState.value = DataState.Success(walkingSessionData)
+                    // null이면 스킵 (homeAPI 호출 중)
+                    if (walkingSessionData != null) {
+                        _walkingSessionDataState.value = DataState.Success(walkingSessionData)
+                    }
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "세션 로드 중 오류")
@@ -641,7 +639,6 @@ class HomeViewModel @Inject constructor(
         Timber.d("프로필 상태: Success")
 
         // ✅ 캐릭터 정보 업데이트 후 Lottie 표시 자동 로드
-        Timber.d("🏠 캐릭터 정보 업데이트됨 - Lottie 표시 자동 로드")
         loadCharacterDisplay()
     }
 
@@ -727,11 +724,6 @@ class HomeViewModel @Inject constructor(
                 val recentEmotions = sortedSessions.map { it.postWalkEmotion }
                 Timber.d("🏠 [loadSessionsWithHomeData] 최종 추출된 감정들: $recentEmotions")
                 val dominantEmotion = findDominantEmotion(thisWeekSessions)
-
-                // 주간 미션
-                val missions = homeData.weeklyMission?.let {
-                    listOf(it)
-                } ?: emptyList()
 
                 _uiState.value = HomeUiState.Success(
                     character = homeData.character,
@@ -858,15 +850,15 @@ class HomeViewModel @Inject constructor(
      * UI에서 즉시 동기화를 원할 때 호출 (예: 설정 화면의 동기화 버튼)
      */
     fun triggerManualSessionSync(context: android.content.Context) {
-        viewModelScope.launch {
-            try {
-                Timber.d("수동 세션 동기화 시작")
-                SessionSyncWorker.scheduleOneTimeSync(context)
-                Timber.d("수동 세션 동기화 작업 예약됨")
-            } catch (t: Throwable) {
-                Timber.e(t, "수동 세션 동기화 예약 실패")
-            }
-        }
+//        viewModelScope.launch {
+//            try {
+//                Timber.d("수동 세션 동기화 시작")
+//                SessionSyncWorker.scheduleOneTimeSync(context)
+//                Timber.d("수동 세션 동기화 작업 예약됨")
+//            } catch (t: Throwable) {
+//                Timber.e(t, "수동 세션 동기화 예약 실패")
+//            }
+//        }
     }
 
     /**
@@ -963,7 +955,175 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 백그라운드에서 전체 세션 동기화 실행
+     * 워커 대신 ViewModel에서 직접 호출
+     */
+    private fun launchFullSessionSyncInBackground() {
+        viewModelScope.launch(Dispatchers.IO) {
+            Timber.i("🔄 [FullSessionSync] START")
+
+            try {
+                val result = walkRepository.getWalkList()
+
+                when (result) {
+                    is Result.Loading -> {
+                        Timber.d("🔄 [FullSessionSync] Loading")
+                    }
+
+                    is Result.Error -> {
+                        Timber.e(
+                            "❌ [FullSessionSync] FAILED - message=${result.message}"
+                        )
+                    }
+
+                    is Result.Success<*> -> {
+                        val sessions = result.data as List<WalkingSession>
+
+                        Timber.i(
+                            "✅ [FullSessionSync] SUCCESS - sessionCount=${sessions.size}"
+                        )
+
+                        sessions.forEach { session ->
+                            Timber.d(
+                                "📥 [FullSessionSync] SAVE sessionId=${session.id}"
+                            )
+
+                            // walkingSessionRepository.saveSessionLocalOnly(
+                            //     session = session,
+                            //     syncState = SyncState.SYNCED
+                            // )
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                Timber.e(
+                    t,
+                    "💥 [FullSessionSync] EXCEPTION"
+                )
+            } finally {
+                Timber.i("🏁 [FullSessionSync] END")
+            }
+        }
+    }
+
+    /**
+     * homeData.walkRecords를 사용해서 walkingSessionDataState 즉시 업데이트
+     * Room에 데이터가 없을 때 API 데이터를 바로 사용하기 위함
+     */
+    private suspend fun updateWalkingSessionDataFromHomeData(homeData: swyp.team.walkit.domain.model.HomeData) {
+        try {
+            val walkRecords = homeData.walkRecords
+            Timber.d("🏠 [updateWalkingSessionDataFromHomeData] API에서 받은 이번 주 세션 수: ${walkRecords.size}")
+
+            // WalkRecord를 WalkingSession으로 변환
+            val sessionsThisWeek = walkRecords.map { walkRecord ->
+                convertWalkRecordToWalkingSession(walkRecord)
+            }
+
+            Timber.d("🏠 [updateWalkingSessionDataFromHomeData] 변환된 세션 수: ${sessionsThisWeek.size}")
+
+            // dominantEmotion 계산
+            val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(sessionsThisWeek)
+            Timber.d("🏠 [updateWalkingSessionDataFromHomeData] 우세 감정: $dominantEmotion (카운트: ${dominantEmotionCount ?: 0})")
+
+            // recentEmotions 추출 (최근 7개 세션)
+            val sortedSessions = sessionsThisWeek.sortedByDescending { it.startTime }.take(7)
+            val recentEmotions = sortedSessions.map { it.postWalkEmotion }
+            Timber.d("🏠 [updateWalkingSessionDataFromHomeData] 최근 감정들: $recentEmotions")
+
+            // walkingSessionDataState 업데이트
+            _walkingSessionDataState.value = DataState.Success(
+                WalkingSessionData(
+                    sessionsThisWeek = sessionsThisWeek,
+                    dominantEmotion = dominantEmotion,
+                    dominantEmotionCount = dominantEmotionCount,
+                    recentEmotions = recentEmotions
+                )
+            )
+
+            Timber.d("🏠 [updateWalkingSessionDataFromHomeData] walkingSessionDataState 업데이트 완료")
+        } catch (t: Throwable) {
+            Timber.e(t, "🏠 [updateWalkingSessionDataFromHomeData] 오류 발생")
+            _walkingSessionDataState.value = DataState.Error(t.message ?: "세션 데이터 업데이트 중 오류가 발생했습니다.")
+        }
+    }
+
+    /**
+     * 이번 주 세션 데이터를 Room에 즉시 저장
+     * Room이 비어있는 경우에만 저장하거나 upsert 처리
+     */
+    private suspend fun saveThisWeekSessionsToRoom(walkRecords: List<WalkRecord>) {
+        if (walkRecords.isEmpty()) {
+            Timber.d("🏠 이번 주 서버 세션 데이터가 존재하지않음 - 저장 생략")
+            return
+        }
+
+        try {
+            Timber.d("🏠 이번 주 세션 ${walkRecords.size}개 Room 저장 시작")
+
+            // 이번 주 범위 계산
+            val (weekStart, weekEnd) = weekRange(today.value)
+
+            // Room에 이미 저장된 이번 주 세션 확인
+            val existingSessions = walkingSessionRepository.getSessionsBetween(weekStart, weekEnd)
+                .firstOrNull() ?: emptyList()
+
+            Timber.d("🏠 Room 기존 세션 수: ${existingSessions.size}, API 세션 수: ${walkRecords.size}")
+
+            if (existingSessions.isEmpty()) {
+                // Room이 비어있으면 즉시 저장
+                Timber.d("🏠 Room이 비어있음 - 이번 주 세션 즉시 저장")
+                walkRecords.forEach { walkRecord ->
+                    try {
+                        val walkingSession = convertWalkRecordToWalkingSession(walkRecord)
+                        walkingSessionRepository.saveSessionLocalOnly(
+                            session = walkingSession,
+                            syncState = SyncState.SYNCED
+                        )
+                        Timber.d("💾 이번 주 세션 저장 완료: ID=${walkingSession.id}")
+                    } catch (e: Exception) {
+                        Timber.w(e, "❌ 이번 주 세션 저장 실패: ID=${walkRecord.id}")
+                    }
+                }
+            } else {
+                // Room에 데이터가 있으면 upsert 또는 생략
+                Timber.d("🏠 Room에 데이터 존재 - 생략")
+            }
+
+            Timber.d("🏠 이번 주 세션 Room 저장 완료")
+
+        } catch (t: Throwable) {
+            Timber.e(t, "🏠 이번 주 세션 Room 저장 중 오류")
+        }
+    }
+    /**
+     * WalkRecord를 WalkingSession으로 변환
+     */
+    private fun convertWalkRecordToWalkingSession(walkRecord: WalkRecord): WalkingSession {
+        return WalkingSession(
+            userId = currentUser.value?.userId ?: -1L, // 현재 사용자 ID 설정
+            startTime = walkRecord.startTime,
+            endTime = walkRecord.endTime,
+            stepCount = walkRecord.stepCount,
+            locations = walkRecord.points.map { point ->
+                LocationPoint(
+                    latitude = point.latitude,
+                    longitude = point.longitude,
+                    timestamp = point.timestamp
+                )
+            },
+            totalDistance = walkRecord.totalDistance.toFloat(),
+            preWalkEmotion = walkRecord.preWalkEmotion,
+            postWalkEmotion = walkRecord.postWalkEmotion,
+            note = walkRecord.note,
+            serverImageUrl = walkRecord.imageUrl,
+            createdDate = walkRecord.createdDate.toString()
+        )
+    }
 }
+
+
 
 /**
  * Long 타입 timestamp를 읽기 쉬운 날짜 형식으로 변환

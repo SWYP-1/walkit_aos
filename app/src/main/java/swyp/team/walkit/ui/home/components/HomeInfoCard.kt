@@ -126,7 +126,7 @@ fun HomeNameAndGoalContent(
         Spacer(modifier = Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                text = "${goal.targetWalkCount} 일 /${goal.targetStepCount} 걸음씩",
+                text = "${goal.targetWalkCount} 일 / ${goal.targetStepCount} 걸음씩",
 
                 // body M/medium
                 style = MaterialTheme.walkItTypography.bodyM.copy(

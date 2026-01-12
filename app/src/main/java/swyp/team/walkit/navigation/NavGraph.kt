@@ -33,7 +33,8 @@ import swyp.team.walkit.ui.mypage.settings.NotificationSettingsRoute
 import swyp.team.walkit.ui.onboarding.OnboardingScreen
 import swyp.team.walkit.ui.alarm.AlarmScreen
 import swyp.team.walkit.ui.customtest.CustomTestRoute
-import swyp.team.walkit.ui.customtest.MapTestScreen
+import swyp.team.walkit.ui.customtest.RandomPathTestScreen
+import swyp.team.walkit.ui.customtest.LatLngBoundsTestScreen
 import swyp.team.walkit.ui.friend.FriendSearchDetailRoute
 import swyp.team.walkit.ui.mypage.userInfo.UserInfoManagementRoute
 import swyp.team.walkit.ui.record.dailyrecord.DailyRecordRoute
@@ -76,7 +77,9 @@ sealed class Screen(val route: String) {
     data object NotificationSettings : Screen("notification_settings")
     data object Alarm : Screen("alarm")
     data object CustomTest : Screen("custom_test")
-    data object MapTest : Screen("map_test")
+    data object ZoomTest : Screen("zoom_test")
+    data object RandomPathTest : Screen("random_path_test")
+    data object LatLngBoundsTest : Screen("latlng_bounds_test")
 
     data object DailyRecord : Screen("daily_record/{dateString}") {
         fun createRoute(dateString: String): String {
@@ -286,26 +289,39 @@ fun NavGraph(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = { navController.popBackStack() },
                     onStartOnboarding = { navController.navigate(Screen.Onboarding.route) },
-                    onNavigateToMapTest = {
-                        navController.navigate(Screen.MapTest.route)
+                    onNavigateToZoomTest = {
+                        navController.navigate(Screen.ZoomTest.route)
                     },
-                    onNavigateToGalleryTest = {
-                        // TODO: 갤러리 사진 + 경로 테스트 화면으로 이동
-                        Timber.d("갤러리 사진 + 경로 테스트 이동")
+                    onNavigateToRandomPath = {
+                        navController.navigate(Screen.RandomPathTest.route)
+                    },
+                    onNavigateToLatLngBoundsTest = {
+                        navController.navigate(Screen.LatLngBoundsTest.route)
                     },
                 )
             }
         }
 
-        /* Map Test */
-        composable(Screen.MapTest.route) {
+        /* Random Path Test */
+        composable(Screen.RandomPathTest.route) {
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
-                MapTestScreen(
+                RandomPathTestScreen(
                     modifier = Modifier.padding(paddingValues),
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
         }
+
+        /* LatLngBounds Test */
+        composable(Screen.LatLngBoundsTest.route) {
+            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
+                LatLngBoundsTestScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+        }
+
 
         /* MyPage */
 //        composable(Screen.MyPage.route) {

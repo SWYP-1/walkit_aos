@@ -180,7 +180,13 @@ fun ShareWalkingResultDialog(
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = 16.dp, end = 16.dp),
+                            .padding(8.dp)
+                            .background(
+                                SemanticColor.backgroundDarkSecondary.copy(
+                                    alpha = 0.3f
+                                ), shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(8.dp),
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(

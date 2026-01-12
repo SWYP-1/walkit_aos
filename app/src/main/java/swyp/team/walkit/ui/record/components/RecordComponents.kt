@@ -27,8 +27,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
@@ -49,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -876,9 +873,9 @@ private fun calculateMonthlyStatsForRecord(
  */
 private fun getEmotionKoreanName(emotionType: swyp.team.walkit.data.model.EmotionType?): String =
     when (emotionType) {
-        swyp.team.walkit.data.model.EmotionType.HAPPY -> "기쁨"
-        swyp.team.walkit.data.model.EmotionType.JOYFUL -> "즐거움"
-        swyp.team.walkit.data.model.EmotionType.CONTENT -> "행복함"
+        swyp.team.walkit.data.model.EmotionType.JOYFUL -> "기쁨"
+        swyp.team.walkit.data.model.EmotionType.DELIGHTED -> "즐거움"
+        swyp.team.walkit.data.model.EmotionType.HAPPY -> "행복함"
         swyp.team.walkit.data.model.EmotionType.DEPRESSED -> "우울함"
         swyp.team.walkit.data.model.EmotionType.TIRED -> "지침"
         swyp.team.walkit.data.model.EmotionType.IRRITATED -> "짜증남"
@@ -1071,15 +1068,16 @@ fun WalkingDiaryCard(
                 }
             }
 
+
         }
     }
 }
 
 fun getCircleEmotionIcon(emotion: EmotionType): Int {
     return when (emotion) {
-        EmotionType.HAPPY -> R.drawable.ic_circle_happy
         EmotionType.JOYFUL -> R.drawable.ic_circle_joyful
-        EmotionType.CONTENT -> R.drawable.ic_circle_content
+        EmotionType.DELIGHTED -> R.drawable.ic_circle_delighted
+        EmotionType.HAPPY -> R.drawable.ic_circle_happy
         EmotionType.DEPRESSED -> R.drawable.ic_circle_depressed
         EmotionType.TIRED -> R.drawable.ic_circle_tired
         EmotionType.IRRITATED -> R.drawable.ic_circle_anxious
@@ -1201,6 +1199,7 @@ fun WalkingStatsCard(
                 )
 
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

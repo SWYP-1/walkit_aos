@@ -10,26 +10,21 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.ui.platform.LocalContext
-import android.app.Activity
 import com.kakao.vectormap.graphics.gl.GLSurfaceView
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import com.kakao.vectormap.route.RouteLineManager
-import com.kakao.vectormap.route.RouteLineLayer
 import com.kakao.vectormap.route.RouteLineSegment
 import com.kakao.vectormap.route.RouteLineOptions
 import com.kakao.vectormap.route.RouteLineStyle
 import com.kakao.vectormap.route.RouteLineStyles
 import com.kakao.vectormap.route.RouteLineStylesSet
+import com.kakao.vectormap.LatLngBounds
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,8 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import swyp.team.walkit.ui.components.CustomProgressIndicator
-import swyp.team.walkit.ui.components.ProgressIndicatorSize
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
@@ -63,7 +56,6 @@ import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.presentation.viewmodel.KakaoMapUiState
 import swyp.team.walkit.presentation.viewmodel.MapRenderState
 import swyp.team.walkit.ui.theme.SemanticColor
-import swyp.team.walkit.ui.theme.White
 import timber.log.Timber
 
 /**
@@ -91,6 +83,8 @@ fun KakaoMapView(
     modifier: Modifier = Modifier,
     viewModel: KakaoMapViewModel = hiltViewModel(),
     onMapViewReady: ((MapView?) -> Unit)? = null,
+    updateTrigger: Int = 0, // 강제 업데이트 트리거
+    latLngBoundsPaddingPx: Int = 64, // LatLngBounds 패딩 (픽셀)
 ) {
     val context = LocalContext.current
     val localDensity = LocalDensity.current
@@ -119,7 +113,7 @@ fun KakaoMapView(
     LaunchedEffect(mapViewSize) {
         mapViewSize?.let { size ->
             if (size.width > 0 && size.height > 0) {
-                viewModel.setMapViewSize(size.width, size.height)
+                viewModel.setMapViewSize(size.width, size.height,localDensity)
                 Timber.d("MapView 크기 측정 완료: ${size.width}x${size.height}")
             }
         }
@@ -127,7 +121,7 @@ fun KakaoMapView(
 
     // ViewModel에 locations 전달 (크기가 측정되면 자동으로 재계산됨)
     LaunchedEffect(locations) {
-        viewModel.setLocations(locations)
+        viewModel.setLocations(locations,localDensity)
     }
 
     // 렌더링 상태에 따라 작업 수행
@@ -151,14 +145,15 @@ fun KakaoMapView(
             else -> {}
         }
     }
-    val strokePx = with(LocalDensity.current) { 4.dp.toPx() }
+    val strokePx = with(localDensity) { 4.dp.toPx() }
+    val latLngBoundsPaddingPxFloat = latLngBoundsPaddingPx.toFloat()
 
     // UI 상태 변경 시 지도 업데이트
-    LaunchedEffect(uiState, kakaoMapInstance, mapViewRef) {
+    LaunchedEffect(uiState, kakaoMapInstance, mapViewRef, updateTrigger) {
         val map = kakaoMapInstance
         val mapView = mapViewRef
         if (map != null && mapView != null && mapStarted) {
-            updateMapFromState(map, mapView, uiState, viewModel, context, strokePx)
+            updateMapFromState(map, mapView, uiState, viewModel, context, latLngBoundsPaddingPxFloat, strokePx)
         }
     }
 
@@ -196,13 +191,10 @@ fun KakaoMapView(
 
                 if (!mapStarted) {
                     mapStarted = true
-                    initializeMapView(mapView, viewModel, uiState, context, strokePx) { kakaoMap ->
+                    initializeMapView(mapView, viewModel, uiState, context, strokePx, latLngBoundsPaddingPxFloat) { kakaoMap ->
                         kakaoMapInstance = kakaoMap
                     }
                 }
-
-                // MapView 참조 업데이트
-                onMapViewReady?.invoke(mapView)
             },
         )
 
@@ -231,6 +223,7 @@ private fun initializeMapView(
     uiState: KakaoMapUiState,
     context: Context,
     strokePx: Float,
+    latLngBoundsPaddingPx : Float,
     onMapReady: (KakaoMap) -> Unit,
 ) {
     mapView.start(
@@ -248,7 +241,7 @@ private fun initializeMapView(
                 Timber.d("KakaoMap ready")
                 setupCameraListener(kakaoMap, viewModel)
                 onMapReady(kakaoMap)
-                updateMapFromState(kakaoMap, mapView, uiState, viewModel, context, strokePx)
+                updateMapFromState(kakaoMap, mapView, uiState, viewModel, context, latLngBoundsPaddingPx,strokePx)
             }
         },
     )
@@ -281,27 +274,29 @@ private fun updateMapFromState(
     uiState: KakaoMapUiState,
     viewModel: KakaoMapViewModel,
     context: Context,
+    latLngBoundsPaddingPx : Float,
     strokePx: Float,  // ← 파라미터로 받
 ) {
     when (uiState) {
         is KakaoMapUiState.Ready -> {
-            // 이미 카메라 이동 중이거나 경로 그리기 중이면 중복 호출 방지
+            // 이미 경로 그리기 중이면 중복 호출 방지 (카메라 이동은 허용)
             val currentRenderState = viewModel.renderState.value
-            if (currentRenderState != MapRenderState.Idle &&
-                currentRenderState != MapRenderState.Complete
-            ) {
-                Timber.d("이미 렌더링 진행 중: $currentRenderState - 업데이트 스킵")
+            if (currentRenderState == MapRenderState.DrawingPath) {
+                Timber.d("경로 그리기 진행 중: $currentRenderState - 업데이트 스킵")
                 return
             }
 
             try {
-                // 카메라 이동 시작
+                // 카메라 이동 시작 (MovingCamera 상태에서도 허용)
                 viewModel.startCameraMove()
-                moveCameraToPath(kakaoMap, uiState.cameraSettings)
+                moveCameraToPathWithLatLngBounds(kakaoMap, uiState.locations, latLngBoundsPaddingPx.toInt())
 
-                // 경로 그리기
-                if (uiState.shouldDrawPath) {
+                // 경로 그리기 또는 제거
+                if (uiState.shouldDrawPath && currentRenderState == MapRenderState.Idle) {
                     drawPath(kakaoMap, uiState.locations, viewModel, context, mapView, strokePx)
+                } else if (!uiState.shouldDrawPath) {
+                    // 경로 제거
+                    clearPath(kakaoMap)
                 }
             } catch (t: Throwable) {
                 Timber.e(t, "지도 업데이트 실패")
@@ -335,6 +330,74 @@ suspend fun captureMapViewSnapshot(
 
     continuation.invokeOnCancellation {
         Timber.d("MapView 스냅샷 생성 취소됨")
+    }
+}
+
+/**
+ * 썸네일용 MapView PixelCopy 캡처 (DailyRecordScreen용)
+ * MapView의 실제 화면 좌표를 고려해서 PixelCopy 수행
+ */
+suspend fun captureMapViewSnapshotForThumbnail(
+    context: android.content.Context,
+    mapView: com.kakao.vectormap.MapView,
+): String? {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+        Timber.w("PixelCopy는 Android 8.0 이상에서만 사용 가능")
+        return null
+    }
+
+    val activity = context as? android.app.Activity
+    if (activity == null) {
+        Timber.w("Activity를 찾을 수 없습니다")
+        return null
+    }
+
+    // MapView의 크기 가져오기
+    val width = mapView.width
+    val height = mapView.height
+
+    if (width <= 0 || height <= 0) {
+        Timber.w("MapView 크기가 0입니다: ${width}x${height}")
+        return null
+    }
+
+    val bitmap = android.graphics.Bitmap.createBitmap(
+        width,
+        height,
+        android.graphics.Bitmap.Config.ARGB_8888
+    )
+
+    // MapView의 bounds를 window 좌표로 변환하기 위해 뷰의 위치 정보 필요
+    val location = IntArray(2)
+    mapView.getLocationInWindow(location)
+    val left = location[0]
+    val top = location[1]
+
+    val rect = android.graphics.Rect(left, top, left + width, top + height)
+    val window = activity.window
+
+    return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        android.view.PixelCopy.request(
+            window,
+            rect,
+            bitmap,
+            { copyResult ->
+                if (copyResult == android.view.PixelCopy.SUCCESS) {
+                    Timber.d("썸네일 MapView PixelCopy 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
+                    val savedPath = saveSnapshotToFile(context, bitmap)
+                    Timber.d("썸네일 스냅샷 파일 저장: $savedPath")
+                    continuation.resume(savedPath) {}
+                } else {
+                    Timber.e("썸네일 MapView PixelCopy 실패: $copyResult")
+                    continuation.resume(null) {}
+                }
+            },
+            android.os.Handler(android.os.Looper.getMainLooper())
+        )
+
+        continuation.invokeOnCancellation {
+            Timber.d("썸네일 PixelCopy 요청 취소됨")
+        }
     }
 }
 
@@ -534,6 +597,21 @@ private fun saveSnapshotToFile(
 }
 
 /**
+ * 기존 경로 제거
+ */
+private fun clearPath(kakaoMap: KakaoMap) {
+    try {
+        val routeLineManager = kakaoMap.routeLineManager ?: return
+
+        // 모든 라인 레이어 제거
+        routeLineManager.layer.removeAll()
+        Timber.d("기존 경로 라인 모두 제거됨")
+    } catch (t: Throwable) {
+        Timber.e(t, "경로 제거 실패")
+    }
+}
+
+/**
  * 경로 그리기
  */
 private fun drawPath(
@@ -563,6 +641,10 @@ private fun drawPath(
                 viewModel.onPathDrawComplete()
                 return
             }
+
+        // ✅ 새로운 경로를 그리기 전에 기존 경로 모두 제거
+        routeLineManager.layer.removeAll()
+        Timber.d("새 경로 그리기 전 기존 경로 모두 제거")
 
         val (outlineOptions, mainOptions) = createRouteLineOptions(locations, context, strokePx)
 
@@ -659,6 +741,44 @@ private fun createRouteLineOptions(
 
 /**
  * 카메라 이동
+ */
+/**
+ * LatLngBounds를 사용해서 경로에 맞춰 카메라 이동 (테두리에 걸리지 않음 보장)
+ */
+private fun moveCameraToPathWithLatLngBounds(
+    kakaoMap: KakaoMap,
+    locations: List<LocationPoint>,
+    paddingPx: Int = 64,
+) {
+    try {
+        if (locations.isEmpty()) {
+            Timber.d("경로 포인트가 없어 카메라 이동 스킵")
+            return
+        }
+
+        // LatLngBounds 생성
+        val boundsBuilder = LatLngBounds.Builder()
+        locations.forEach { location ->
+            boundsBuilder.include(LatLng.from(location.latitude, location.longitude))
+        }
+        val bounds = boundsBuilder.build()
+
+        // LatLngBounds를 사용한 카메라 업데이트 (패딩 적용)
+        val cameraUpdate = CameraUpdateFactory.fitMapPoints(bounds, paddingPx)
+
+        kakaoMap.moveCamera(cameraUpdate)
+        Timber.d("LatLngBounds 카메라 이동: 포인트 ${locations.size}개, 패딩 ${paddingPx}px")
+
+    } catch (t: Throwable) {
+        Timber.e(t, "LatLngBounds 카메라 이동 실패: ${t.message}")
+        // 실패 시 기존 방식으로 폴백
+        Timber.d("기존 방식으로 폴백 시도")
+        // TODO: cameraSettings를 받아서 폴백 구현 필요
+    }
+}
+
+/**
+ * 기존 방식의 카메라 이동 (LatLngBounds 실패 시 폴백용)
  */
 private fun moveCameraToPath(
     kakaoMap: KakaoMap,

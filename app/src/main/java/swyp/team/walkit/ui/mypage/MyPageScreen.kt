@@ -1,17 +1,21 @@
 package swyp.team.walkit.ui.mypage
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.HorizontalDivider
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,7 +52,6 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 
 
-
 @Composable
 fun MyPageRoute(
     viewModel: MyPageViewModel = hiltViewModel(),
@@ -62,6 +65,7 @@ fun MyPageRoute(
     onNavigateCustomTest: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val withdrawState by viewModel.withdrawState.collectAsStateWithLifecycle()
@@ -84,6 +88,7 @@ fun MyPageRoute(
                 // "탈퇴 완료" 토스트 메시지 표시
                 Toast.makeText(context, "탈퇴가 완료되었습니다.", Toast.LENGTH_SHORT).show()
             }
+
             is WithdrawState.Error -> {
                 Timber.e("사용자 탈퇴 실패: ${(withdrawState as WithdrawState.Error).message}")
                 // 사용자에게 탈퇴 실패 알림 표시
@@ -91,6 +96,7 @@ fun MyPageRoute(
                 // 상태 초기화
                 viewModel.resetWithdrawState()
             }
+
             else -> {
                 // Loading, Idle 상태는 별도 처리 없음
             }
@@ -98,6 +104,7 @@ fun MyPageRoute(
     }
 
     MyPageScreen(
+        modifier = modifier,
         uiState = uiState,
         onNavigateCharacterEdit = onNavigateCharacterEdit,
         onNavigateUserInfoEdit = onNavigateUserInfoEdit,
@@ -108,17 +115,26 @@ fun MyPageRoute(
         onNavigateCustomTest = onNavigateCustomTest,
         onServiceTermsClick = {
             // 서비스 이용 약관 링크 (onboarding과 동일)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+            )
             context.startActivity(intent)
         },
         onPrivacyPolicyClick = {
             // 개인정보처리방침 링크 (onboarding과 동일)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5")
+            )
             context.startActivity(intent)
         },
         onMarketingConsentClick = {
             // 마케팅 수신 동의 링크 (onboarding과 동일)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9802cb0e2c7f58ec65ec1"))
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.notion.so/2d59b82980b9802cb0e2c7f58ec65ec1")
+            )
             context.startActivity(intent)
         },
         onContactClick = {
@@ -170,6 +186,7 @@ fun MyPageRoute(
         )
     }
 }
+
 /**
  * 마이 페이지 Screen
  *
@@ -206,116 +223,129 @@ fun MyPageScreen(
     onWithdraw: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SemanticColor.backgroundWhitePrimary),
-        contentPadding = PaddingValues(bottom = 32.dp) // 하단 여유 공간
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary)
     ) {
-        // 헤더
-        item {
-            AppHeader(
-                title = "마이 페이지",
-                showBackButton = false,
-                onNavigateBack = { },
-            )
-        }
+        val screenHeight = maxHeight
 
-        // 사용자 정보
-        item {
-            when (val userState = uiState.userInfo) {
-                is DataState.Loading -> {
-                    MyPageUserInfo(
-                        nickname = "",
-                        grade = null,
-                        consecutiveDays = 0
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = screenHeight) // ⭐ 핵심: 최소 높이를 화면 높이로 설정
+                ) {
+                    // 1️⃣ 일반 콘텐츠
+                    AppHeader(
+                        title = "마이 페이지",
+                        showBackButton = false,
+                        onNavigateBack = { },
                     )
-                }
-                is DataState.Success -> {
-                    val consecutiveDays = when (val consecutiveState = uiState.consecutiveDays) {
-                        is DataState.Success -> consecutiveState.data
-                        else -> 0
+
+
+                    when (val userState = uiState.userInfo) {
+                        is DataState.Loading -> {
+                            MyPageUserInfo(
+                                nickname = "",
+                                grade = null,
+                                consecutiveDays = 0
+                            )
+                        }
+
+                        is DataState.Success -> {
+                            val consecutiveDays =
+                                when (val consecutiveState = uiState.consecutiveDays) {
+                                    is DataState.Success -> consecutiveState.data
+                                    else -> 0
+                                }
+                            MyPageUserInfo(
+                                nickname = userState.data.nickname,
+                                profileImageUrl = userState.data.profileImageUrl,
+                                grade = userState.data.grade,
+                                consecutiveDays = consecutiveDays,
+                            )
+                        }
+
+                        is DataState.Error -> {
+                            MyPageUserInfo(
+                                nickname = "게스트",
+                                grade = null,
+                                consecutiveDays = 0
+                            )
+                        }
                     }
-                    MyPageUserInfo(
-                        nickname = userState.data.nickname,
-                        profileImageUrl = userState.data.profileImageUrl,
-                        grade = userState.data.grade,
-                        consecutiveDays = consecutiveDays,
-                    )
-                }
-                is DataState.Error -> {
-                    MyPageUserInfo(
-                        nickname = "게스트",
-                        grade = null,
-                        consecutiveDays = 0
-                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    MyPageCharacterEditButton(onNavigateCharacterEdit = onNavigateUserInfoEdit)
+                    Spacer(Modifier.height(32.dp))
+
+                    HorizontalDivider(thickness = 10.dp, color = Grey3)
+                    Spacer(Modifier.height(32.dp))
+
+                    Column(Modifier.padding(horizontal = 16.dp)) {
+                        // 통계
+                        when (val statsState = uiState.stats) {
+                            is DataState.Loading -> {
+                                MyPageStatsSection(
+                                    leftValue = 0,
+                                    rightValue = 0L
+                                )
+                            }
+
+                            is DataState.Success -> {
+                                MyPageStatsSection(
+                                    leftValue = statsState.data.totalStepCount,
+                                    rightValue = statsState.data.totalWalkingTime
+                                )
+                            }
+
+                            is DataState.Error -> {
+                                MyPageStatsSection(
+                                    leftValue = 0,
+                                    rightValue = 0L
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(32.dp))
+
+                        // 설정 메뉴
+                        MyPageSettingsSection(
+                            onNavigateNotificationSetting = onNavigateNotificationSetting,
+                            onNavigateUserInfoEdit = onNavigateUserInfoEdit,
+                            onNavigateGoalManagement = onNavigateGoalManagement,
+                            onNavigateMission = onNavigateMission,
+                            onNavigateCustomTest = onNavigateCustomTest
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f)) // ⭐ 남은 공간 모두 채우기
+
+                    }
+                    Column(
+                        modifier = Modifier
+                            .background(SemanticColor.backgroundWhitePrimary),
+                    ) {
+                        Spacer(Modifier.height(32.dp))
+                        MyPageAccountActions(
+                            onLogout = onLogout,
+                            onWithdraw = onWithdraw,
+                        )
+                        Spacer(Modifier.height(30.dp))
+                        ServiceInfoFooter(
+                            onTermsClick = onServiceTermsClick,
+                            onPrivacyClick = onPrivacyPolicyClick,
+                            onMarketingClick = onMarketingConsentClick,
+                            onContactClick = onContactClick,
+                            onCsChannelClick = onCsChannelClick,
+                        )
+                    }
                 }
             }
-        }
+            item {
 
-        // 캐릭터 수정 버튼
-        item {
-            MyPageCharacterEditButton(onNavigateCharacterEdit = onNavigateUserInfoEdit)
-            Spacer(Modifier.height(32.dp))
-        }
-
-        // 구분선
-        item {
-            HorizontalDivider(thickness = 10.dp, color = Grey3)
-        }
-
-        // 통계 & 설정 & 계정 액션
-        item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 32.dp)) {
-                // 통계
-                when (val statsState = uiState.stats) {
-                    is DataState.Loading -> {
-                        MyPageStatsSection(
-                            totalStepCount = 0,
-                            totalWalkingTime = 0L
-                        )
-                    }
-                    is DataState.Success -> {
-                        MyPageStatsSection(
-                            totalStepCount = statsState.data.totalStepCount,
-                            totalWalkingTime = statsState.data.totalWalkingTime
-                        )
-                    }
-                    is DataState.Error -> {
-                        MyPageStatsSection(
-                            totalStepCount = 0,
-                            totalWalkingTime = 0L
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(32.dp))
-
-                // 설정 메뉴
-                MyPageSettingsSection(
-                    onNavigateNotificationSetting = onNavigateNotificationSetting,
-                    onNavigateUserInfoEdit = onNavigateUserInfoEdit,
-                    onNavigateGoalManagement = onNavigateGoalManagement,
-                    onNavigateMission = onNavigateMission,
-                    onNavigateCustomTest = onNavigateCustomTest
-                )
-
-                Spacer(Modifier.height(32.dp))
-
-                // 계정 액션
-                MyPageAccountActions(
-                    onLogout = onLogout,
-                    onWithdraw = onWithdraw,
-                )
-
-                Spacer(Modifier.weight(1f))
-                ServiceInfoFooter(
-                    onTermsClick = onServiceTermsClick,
-                    onPrivacyClick = onPrivacyPolicyClick,
-                    onMarketingClick = onMarketingConsentClick,
-                    onContactClick = onContactClick,
-                    onCsChannelClick = onCsChannelClick,
-                )
             }
         }
     }

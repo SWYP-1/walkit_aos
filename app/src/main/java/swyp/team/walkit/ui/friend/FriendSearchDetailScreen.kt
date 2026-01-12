@@ -55,6 +55,7 @@ import swyp.team.walkit.ui.components.GradeBadge
 import swyp.team.walkit.ui.components.ProgressIndicatorSize
 import swyp.team.walkit.ui.components.SummaryUnit
 import swyp.team.walkit.ui.components.WalkingSummaryCard
+import swyp.team.walkit.ui.mypage.component.MyPageStatsSection
 import swyp.team.walkit.ui.record.friendrecord.component.FriendRecordMoreMenu
 import swyp.team.walkit.ui.theme.GradientUtils
 import swyp.team.walkit.ui.theme.SemanticColor
@@ -364,12 +365,12 @@ fun FriendSearchDetailScreenContent(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            WalkingSummaryCard(
+            MyPageStatsSection(
                 leftLabel = "누적 산책 횟수",
-                leftValue = data.walkSummary.totalWalkCount.toString(),
-                leftUnit = SummaryUnit.Step("회"),
+                leftValue = data.walkSummary.totalWalkCount,
+                leftUnit = "회",
                 rightLabel = "누적 산책 시간",
-                rightUnit = SummaryUnit.Time(data.walkSummary.totalWalkTimeMillis),
+                rightValue = data.walkSummary.totalWalkTimeMillis
             )
         }
     }

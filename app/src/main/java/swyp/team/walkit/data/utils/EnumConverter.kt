@@ -20,7 +20,7 @@ object EnumConverter {
      * @return EmotionType의 en 문자열
      */
     fun fromEmotionType(value: EmotionType?): String =
-        value?.name ?: EmotionType.CONTENT.name
+        value?.name ?: EmotionType.DELIGHTED.name
 
     /**
      * String을 EmotionType으로 안전하게 변환 (name 값으로 매칭)
@@ -30,16 +30,16 @@ object EnumConverter {
      * 2. 유효하지 않은 enum 값인 경우
      * 3. null인 경우
      *
-     * 이 경우 기본값(CONTENT)을 반환합니다.
+     * 이 경우 기본값(DELIGHTED)을 반환합니다.
      *
      * @param value 변환할 문자열 (name 값)
-     * @return 변환된 EmotionType (실패 시 CONTENT)
+     * @return 변환된 EmotionType (실패 시 DELIGHTED)
      */
     fun toEmotionType(value: String?): EmotionType =
         try {
             if (value.isNullOrBlank()) {
                 Timber.w("빈 문자열을 EmotionType으로 변환 시도, 기본값(CONTENT) 사용")
-                EmotionType.CONTENT
+                EmotionType.DELIGHTED
             } else {
                 EmotionType.valueOf(value.uppercase())
             }
@@ -57,7 +57,7 @@ object EnumConverter {
                     Timber.e(e, "EmotionType 변환 실패 (기타 Throwable): '$value', 타입=${e.javaClass.simpleName}, 기본값(CONTENT) 사용")
                 }
             }
-            EmotionType.CONTENT
+            EmotionType.DELIGHTED
         }
 
     /**

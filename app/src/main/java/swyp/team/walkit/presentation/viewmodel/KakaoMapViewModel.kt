@@ -1,6 +1,8 @@
 package swyp.team.walkit.presentation.viewmodel
 
 import android.graphics.Bitmap
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,9 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import swyp.team.walkit.data.model.LocationPoint
-import swyp.team.walkit.utils.LocationTestData
-import swyp.team.walkit.utils.WalkingTestData.generateRandomCityWalk
-import swyp.team.walkit.utils.WalkingTestData.generateRandomCityWalkPoints
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -25,6 +24,9 @@ class KakaoMapViewModel
 constructor() : ViewModel() {
     private val _uiState = MutableStateFlow<KakaoMapUiState>(KakaoMapUiState.Initial)
     val uiState: StateFlow<KakaoMapUiState> = _uiState.asStateFlow()
+
+    // 강제 업데이트용 카운터
+    private var updateCounter = 0
 
     private val _snapshotState = MutableStateFlow<Bitmap?>(null)
     val snapshotState: StateFlow<Bitmap?> = _snapshotState.asStateFlow()
@@ -45,7 +47,8 @@ constructor() : ViewModel() {
      * MapView 화면 크기 설정
      * 크기가 변경되면 현재 경로에 대해 카메라 설정을 재계산합니다.
      */
-    fun setMapViewSize(width: Int, height: Int) {
+    fun setMapViewSize(width: Int, height: Int, localDensity: Density) {
+
         if (width > 0 && height > 0 && (mapViewWidth != width || mapViewHeight != height)) {
             mapViewWidth = width
             mapViewHeight = height
@@ -58,7 +61,8 @@ constructor() : ViewModel() {
                         val cameraSettings = calculateCameraSettings(
                             currentLocations,
                             mapViewWidth,
-                            mapViewHeight
+                            mapViewHeight,
+                            localDensity
                         )
 
                         // UI 상태 업데이트 (카메라 설정만 변경)
@@ -78,9 +82,49 @@ constructor() : ViewModel() {
     }
 
     /**
+     * 경로 초기화 (모든 경로 라인 제거)
+     */
+    fun clearPaths() {
+        // 현재 UI 상태에서 경로를 비활성화
+        val currentUiState = _uiState.value
+        if (currentUiState is KakaoMapUiState.Ready) {
+            _uiState.value = currentUiState.copy(shouldDrawPath = false)
+            Timber.d("경로 초기화 완료")
+        }
+    }
+
+    /**
+     * 줌 레벨 수동 설정 (ZoomLevelTestScreen용)
+     */
+    fun setZoomLevel(zoomLevel: Int) {
+        val coercedZoomLevel = zoomLevel.coerceIn(8, 18)
+
+        // 현재 UI 상태가 Ready인 경우 카메라 설정 업데이트
+        val currentUiState = _uiState.value
+        if (currentUiState is KakaoMapUiState.Ready) {
+            val updatedCameraSettings = currentUiState.cameraSettings.copy(zoomLevel = coercedZoomLevel)
+            _uiState.value = currentUiState.copy(cameraSettings = updatedCameraSettings)
+
+            Timber.d("줌 레벨 수동 설정: $coercedZoomLevel")
+        }
+    }
+
+    /**
+     * 카메라 업데이트 강제 실행 (줌 레벨 변경용)
+     */
+    fun forceUpdateCamera() {
+        val currentUiState = _uiState.value
+        if (currentUiState is KakaoMapUiState.Ready) {
+            // UI 상태를 새로운 객체로 설정해서 updateMapFromState가 트리거되도록 함
+            _uiState.value = currentUiState.copy() // copy()로 새로운 객체 생성
+            Timber.d("카메라 업데이트 강제 실행")
+        }
+    }
+
+    /**
      * 경로 설정 및 지도 업데이트 요청
      */
-    fun setLocations(locations: List<LocationPoint>) {
+    fun setLocations(locations: List<LocationPoint>,localDensity : Density) {
         viewModelScope.launch {
             try {
                 // locations 변경 감지
@@ -105,7 +149,8 @@ constructor() : ViewModel() {
                 val cameraSettings = calculateCameraSettings(
                     locationsToUse,
                     mapViewWidth,
-                    mapViewHeight
+                    mapViewHeight,
+                    localDensity
                 )
 
                 // UI 상태 업데이트
@@ -147,56 +192,51 @@ constructor() : ViewModel() {
     private fun calculateCameraSettings(
         locations: List<LocationPoint>,
         mapViewWidth: Int = 0,
-        mapViewHeight: Int = 0
+        mapViewHeight: Int = 0,
+        localDensity: Density,
+        paddingDp: Int = 32 // 패딩 파라미터 추가 (기본값 32dp)
     ): CameraSettings {
         if (locations.isEmpty()) {
-            // 기본 서울 위치
             return CameraSettings(
                 centerLat = 37.5665,
                 centerLon = 126.9780,
-                zoomLevel = 15,
+                zoomLevel = 12
             )
         }
 
-        // 경계 계산
-        var minLat = locations[0].latitude
-        var maxLat = locations[0].latitude
-        var minLon = locations[0].longitude
-        var maxLon = locations[0].longitude
-
-        locations.forEach { location ->
-            minLat = minOf(minLat, location.latitude)
-            maxLat = maxOf(maxLat, location.latitude)
-            minLon = minOf(minLon, location.longitude)
-            maxLon = maxOf(maxLon, location.longitude)
+        if (locations.size == 1) {
+            return CameraSettings(
+                centerLat = locations[0].latitude,
+                centerLon = locations[0].longitude,
+                zoomLevel = 16
+            )
         }
 
-        // 중앙 좌표 계산
-        val centerLat = (minLat + maxLat) / 2
-        val centerLon = (minLon + maxLon) / 2
+        // 위도/경도 범위 계산
+        val latitudes = locations.map { it.latitude }
+        val longitudes = locations.map { it.longitude }
 
-        // 경계 범위 계산
+        val minLat = latitudes.minOrNull() ?: 0.0
+        val maxLat = latitudes.maxOrNull() ?: 0.0
+        val minLon = longitudes.minOrNull() ?: 0.0
+        val maxLon = longitudes.maxOrNull() ?: 0.0
+
         val latRange = maxLat - minLat
         val lonRange = maxLon - minLon
 
-        // 패딩 추가 (경로가 화면 가장자리에 붙지 않도록 여유 공간 추가)
-        // 경로가 잘리지 않도록 충분한 여유 공간 확보 (더 보수적으로 설정)
-        val paddingFactor = 2.0 // 기존 1.5에서 증가하여 더 넓은 여유 공간 확보
-        val paddedLatRange = latRange * paddingFactor
-        val paddedLonRange = lonRange * paddingFactor
+        // 중심점 계산
+        val centerLat = (minLat + maxLat) / 2
+        val centerLon = (minLon + maxLon) / 2
 
-        // 줌 레벨 계산 (실제 화면 크기 고려)
+        // 줌 레벨 계산
         val zoomLevel = calculateZoomLevel(
-            latRange = paddedLatRange,
-            lonRange = paddedLonRange,
+            latRange = latRange,
+            lonRange = lonRange,
             centerLat = centerLat,
             mapViewWidth = mapViewWidth,
             mapViewHeight = mapViewHeight,
-        )
-
-        Timber.d(
-            "카메라 설정 계산: 경계 범위 (lat: $latRange, lon: $lonRange), " +
-                    "패딩 적용 후 (lat: $paddedLatRange, lon: $paddedLonRange), 줌 레벨: $zoomLevel"
+            localDensity = localDensity,
+            paddingDp = paddingDp
         )
 
         return CameraSettings(
@@ -206,99 +246,86 @@ constructor() : ViewModel() {
             minLat = minLat,
             maxLat = maxLat,
             minLon = minLon,
-            maxLon = maxLon,
+            maxLon = maxLon
         )
     }
 
-    /**
-     * 경계 범위를 기반으로 적절한 줌 레벨 계산
-     * 위도와 경도 범위를 고려하여 경로가 화면에 잘 보이도록 줌 레벨을 결정합니다.
-     *
-     * @param latRange 위도 범위 (도 단위)
-     * @param lonRange 경도 범위 (도 단위)
-     * @param centerLat 중심 위도 (경도 변환 계산용)
-     * @param mapViewWidth MapView 너비 (픽셀, 0이면 기본값 사용)
-     * @param mapViewHeight MapView 높이 (픽셀, 0이면 기본값 사용)
-     */
     private fun calculateZoomLevel(
         latRange: Double,
         lonRange: Double,
         centerLat: Double,
         mapViewWidth: Int = 0,
         mapViewHeight: Int = 0,
+        localDensity: Density,
+        paddingDp: Int = 32 // 패딩 파라미터 추가 (기본값 32dp)
     ): Int {
-        // 위도 1도 ≈ 111km
-        // 경도 1도 ≈ 111km * cos(위도)
+        // 패딩 값 (dp를 px로 변환) - 경로가 테두리에 걸리지 않도록
+        val paddingPx = with(localDensity) { paddingDp.dp.toPx() }.toInt()
+
+        // 패딩을 고려한 실제 사용 가능한 화면 크기
+        val usableWidth = (mapViewWidth - paddingPx * 2).coerceAtLeast(1)
+        val usableHeight = (mapViewHeight - paddingPx * 2).coerceAtLeast(1)
+
         val latDegreeToKm = 111.0
         val lonDegreeToKm = 111.0 * kotlin.math.cos(kotlin.math.PI * centerLat / 180.0)
 
-        // 경계 범위를 km로 변환
         val latRangeKm = latRange * latDegreeToKm
         val lonRangeKm = lonRange * lonDegreeToKm
 
-        // 실제 화면 크기를 기반으로 화면 비율 계산
-        val screenAspectRatio = if (mapViewWidth > 0 && mapViewHeight > 0) {
-            mapViewWidth.toDouble() / mapViewHeight.toDouble()
+        val screenAspectRatio = if (usableWidth > 0 && usableHeight > 0) {
+            usableWidth.toDouble() / usableHeight.toDouble()
         } else {
-            // 화면 크기가 아직 측정되지 않았으면 기본값 사용 (16:9 비율)
             1.78
         }
 
-        // 화면 비율을 고려하여 각 축의 필요한 범위 계산
-        // 가로가 더 넓으면 경도 범위를 더 크게 고려해야 하고,
-        // 세로가 더 넓으면 위도 범위를 더 크게 고려해야 함
-        val adjustedLatRangeKm = if (screenAspectRatio < 1.0) {
-            // 세로가 더 긴 경우 (세로 모드 등)
-            latRangeKm / screenAspectRatio
+        val routeAspectRatio = if (latRangeKm > 0 && lonRangeKm > 0) {
+            lonRangeKm / latRangeKm
         } else {
-            latRangeKm
+            screenAspectRatio
         }
 
-        val adjustedLonRangeKm = if (screenAspectRatio > 1.0) {
-            // 가로가 더 긴 경우 (가로 모드 등)
-            lonRangeKm * screenAspectRatio
+        // 어느 방향이 제약 조건인지 판단
+        val maxRangeKm = if (routeAspectRatio > screenAspectRatio) {
+            // 경로가 더 가로로 넓음 -> 경도가 꽉 차도록
+            lonRangeKm / screenAspectRatio
         } else {
-            lonRangeKm
+            // 경로가 더 세로로 길음 -> 위도가 꽉 차도록
+            latRangeKm * screenAspectRatio
         }
 
-        // 위도와 경도 범위 중 더 큰 값을 기준으로 줌 레벨 계산
-        // 더 보수적으로 계산하여 경로가 잘리지 않도록 함
-        val maxRangeKm = maxOf(adjustedLatRangeKm, adjustedLonRangeKm)
+        // 더 보수적인 패딩 적용 (약 25-30% 여유 공간)
+        val paddingFactor = 1.25
+        val adjustedMaxRangeKm = maxRangeKm * paddingFactor
 
         Timber.d(
-            "줌 레벨 계산: 화면 크기=${mapViewWidth}x${mapViewHeight}, " +
+            "줌 레벨 계산: " +
+                    "원본 화면=${mapViewWidth}x${mapViewHeight}, " +
+                    "패딩=${paddingPx}px, " +
+                    "사용 가능 화면=${usableWidth}x${usableHeight}, " +
                     "화면 비율=$screenAspectRatio, " +
+                    "경로 비율=$routeAspectRatio, " +
                     "위도 범위=${latRangeKm}km, 경도 범위=${lonRangeKm}km, " +
-                    "조정된 위도 범위=${adjustedLatRangeKm}km, 조정된 경도 범위=${adjustedLonRangeKm}km, " +
-                    "최대 범위=${maxRangeKm}km"
+                    "최대 범위=${maxRangeKm}km, " +
+                    "패딩 적용 후=${adjustedMaxRangeKm}km"
         )
 
-        // 줌 레벨 계산 공식 (카카오맵 기준)
-        // 줌 레벨 1: 약 200km
-        // 줌 레벨 2: 약 100km
-        // 줌 레벨 3: 약 50km
-        // ... (각 줌 레벨마다 약 2배씩 확대)
-        // 줌 레벨 n: 약 200 / (2^(n-1)) km
-
-        // 줌 레벨 계산 (더 보수적으로 - 한 단계 더 줌아웃하여 경로가 잘리지 않도록)
-        // 각 범위의 상한값을 사용하여 더 넓은 범위를 보여주도록 함
+        // 줌 레벨 계산 (더 보수적으로 - 경로가 테두리에 걸리지 않도록)
         val zoomLevel = when {
-            maxRangeKm <= 0.0 -> 18 // 단일 포인트
-            maxRangeKm <= 0.1 -> 17 // 약 100m (기존 18 -> 17로 한 단계 줌아웃)
-            maxRangeKm <= 0.5 -> 16 // 약 500m (기존 17 -> 16)
-            maxRangeKm <= 1.0 -> 15 // 약 1km (기존 16 -> 15)
-            maxRangeKm <= 2.0 -> 14 // 약 2km (기존 15 -> 14)
-            maxRangeKm <= 5.0 -> 13 // 약 5km (기존 14 -> 13)
-            maxRangeKm <= 10.0 -> 12 // 약 10km (기존 13 -> 12)
-            maxRangeKm <= 20.0 -> 11 // 약 20km (기존 12 -> 11)
-            maxRangeKm <= 50.0 -> 10 // 약 50km (기존 11 -> 10)
-            maxRangeKm <= 100.0 -> 9 // 약 100km (기존 10 -> 9)
-            maxRangeKm <= 200.0 -> 8 // 약 200km (기존 9 -> 8)
-            else -> 8 // 그 이상
-        }
+            adjustedMaxRangeKm <= 0.0 -> 17  // 더 축소
+            adjustedMaxRangeKm <= 0.1 -> 17   // 약 100m
+            adjustedMaxRangeKm <= 0.5 -> 16   // 약 500m
+            adjustedMaxRangeKm <= 1.0 -> 15   // 약 1km
+            adjustedMaxRangeKm <= 2.0 -> 14   // 약 2km
+            adjustedMaxRangeKm <= 5.0 -> 13   // 약 5km
+            adjustedMaxRangeKm <= 10.0 -> 12  // 약 10km
+            adjustedMaxRangeKm <= 20.0 -> 11  // 약 20km
+            adjustedMaxRangeKm <= 50.0 -> 10  // 약 50km
+            adjustedMaxRangeKm <= 100.0 -> 9  // 약 100km
+            adjustedMaxRangeKm <= 200.0 -> 8  // 약 200km
+            else -> 7  // 더 축소
+        }.coerceIn(7, 18)
 
-        // 최소/최대 줌 레벨 제한
-        return zoomLevel.coerceIn(8, 18)
+        return zoomLevel
     }
 
     /**

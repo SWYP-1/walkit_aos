@@ -205,6 +205,7 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.work.hilt)
+    ksp(libs.androidx.work.hilt.compiler)
 
     // KMP Date Time Picker
     implementation("network.chaintech:kmp-date-time-picker:1.1.1")
@@ -227,6 +228,9 @@ dependencies {
 
     // Coroutines Test
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // Architecture Components Test (InstantTaskExecutorRule용)
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
 
     // Android Test
     androidTestImplementation(libs.androidx.junit)

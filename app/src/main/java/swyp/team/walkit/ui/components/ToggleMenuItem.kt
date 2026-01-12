@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import swyp.team.walkit.ui.theme.GreenPrimary
 import swyp.team.walkit.ui.theme.Grey10
 import swyp.team.walkit.ui.theme.Grey3
+import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 
@@ -60,7 +61,7 @@ fun ToggleMenuItem(
             style = MaterialTheme.walkItTypography.bodyS.copy(
                 fontWeight = FontWeight.Normal,
             ),
-            color = Grey10,
+            color = SemanticColor.textBorderPrimary,
         )
 
         // 오른쪽: 토글 스위치

@@ -59,11 +59,28 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.ui.walking.components.ShareWalkingResultDialog
 import swyp.team.walkit.ui.walking.components.SaveStatus
+import swyp.team.walkit.ui.components.captureMapViewSnapshot
+import android.graphics.Bitmap
+import android.graphics.Rect
+import android.os.Handler
+import android.os.Looper
+import android.view.PixelCopy
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import swyp.team.walkit.ui.components.KakaoMapView
+import swyp.team.walkit.ui.walking.viewmodel.WalkingResultViewModel
 import swyp.team.walkit.utils.downloadImage
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.core.graphics.createBitmap
 
 
 /**
@@ -129,11 +146,12 @@ fun DailyRecordRoute(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
+    // TODO: 개발용 순서 거꾸로
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             try {
                 viewModel.daySessions.collect { sessions ->
-                    daySessionsState.value = sessions.reversed()
+                    daySessionsState.value = sessions
                 }
             } catch (e: Throwable) {
                 // ExceptionInInitializerError 등 Error 타입도 처리
@@ -212,6 +230,7 @@ fun DailyRecordRoute(
         onDeleteClick = { localId -> viewModel.deleteSessionNote(localId) },
         onUpdateNote = { localId, note -> viewModel.updateSessionNote(localId, note) },
         onNavigateBack = onNavigateBack,
+        dateString = dateString,
     )
 }
 
@@ -236,17 +255,65 @@ fun DailyRecordScreen(
     onUpdateNote: (String, String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onNavigateBack: () -> Unit = {},
+    dateString: String? = null,
 ) {
     var selectedSessionIndex by remember(sessionsForDate, isLoading) {
-        mutableIntStateOf(if (!isLoading && sessionsForDate.isNotEmpty()) 0 else -1)
+        val index = if (!isLoading && sessionsForDate.isNotEmpty()) 0 else -1
+        Timber.d("🎯 selectedSessionIndex 설정: isLoading=$isLoading, sessionsForDate.size=${sessionsForDate.size}, index=$index")
+        mutableIntStateOf(index)
     }
     val selectedSession = remember(selectedSessionIndex, sessionsForDate, isLoading) {
-        if (isLoading) null else sessionsForDate.getOrNull(selectedSessionIndex)
+        val session = if (isLoading) null else sessionsForDate.getOrNull(selectedSessionIndex)
+        Timber.d("🎯 selectedSession 설정: isLoading=$isLoading, selectedSessionIndex=$selectedSessionIndex, sessionsForDate.size=${sessionsForDate.size}, session=${session?.id}")
+        session
     }
     // 고유 팝업 표시 여부
     var showShareDialog by remember { mutableStateOf(false) }
     // 이미지 저장 상태
     var saveStatus by remember { mutableStateOf(SaveStatus.IDLE) }
+
+    // 스냅샷 생성을 위한 상태들
+    var snapshotUri by remember { mutableStateOf<String?>(null) }
+    var isGeneratingSnapshot by remember { mutableStateOf(false) }
+
+    // 스냅샷 생성 로딩 상태
+    var isSnapshotLoading by remember { mutableStateOf(false) }
+
+    // 썸네일 좌표 상태 (SessionThumbnailItem에서 직접 업데이트)
+    val thumbnailCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    
+    // thumbnailCoordinatesState 변경을 thumbnailCoordinates에 동기화
+    var thumbnailCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    LaunchedEffect(thumbnailCoordinatesState.value) {
+        thumbnailCoordinates = thumbnailCoordinatesState.value
+        if (thumbnailCoordinatesState.value != null) {
+            Timber.d("📸 [DailyRecordScreen] 썸네일 좌표 동기화됨 - size: ${thumbnailCoordinatesState.value?.size}")
+        }
+    }
+
+
+    // 날짜 문자열을 한국어 형식으로 변환
+    val formattedDateString = remember(dateString) {
+        dateString?.let { dateStr ->
+            try {
+                // "2026-01-10" 형식을 LocalDate로 파싱
+                val date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+                // 한국어 형식으로 포맷팅 (예: "2026년 1월 10일")
+                val koreanFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN)
+                date.format(koreanFormatter)
+            } catch (e: Exception) {
+                Timber.e(e, "날짜 변환 실패: $dateStr")
+                dateStr // 변환 실패 시 원본 반환
+            }
+        } ?: "2025년 12월 25일" // 기본값
+    }
+
+    // MapView 참조 (스냅샷 생성용)
+    var mapViewRef by remember { mutableStateOf<com.kakao.vectormap.MapView?>(null) }
+
+    // MapView를 위한 ViewModel (WalkingResultScreen에서 사용하는 것과 동일)
+    val mapViewModel: WalkingResultViewModel = hiltViewModel()
 
     val scope = rememberCoroutineScope()
 
@@ -265,6 +332,71 @@ fun DailyRecordScreen(
     LaunchedEffect(isEditing) {
         if (isEditing) {
             focusRequester.requestFocus()
+        }
+    }
+
+    // 공유하기 버튼 클릭 시 스냅샷 생성 및 다이얼로그 표시
+    val onShareClick: (WalkingSession) -> Unit = remember {
+        { session ->
+            Timber.d("🖱️ 공유하기 버튼 클릭됨 - session: $session")
+            scope.launch {
+                // ✅ 스냅샷 생성 및 다이얼로그 표시 로직
+                if (!session.isSynced && snapshotUri == null) {
+                    isSnapshotLoading = true
+                    try {
+                        Timber.d("공유하기: isSynced가 false이므로 스냅샷 생성 시작")
+                        // ✅ SessionThumbnailItem 영역만 캡쳐
+                        val coordinates = thumbnailCoordinates
+                        Timber.d("📸 [onShareClick] 썸네일 스냅샷 좌표 정보 - coordinates: $coordinates, isNull: ${coordinates == null}")
+
+                        if (coordinates != null) {
+                            val bounds = coordinates.boundsInWindow()
+                            val size = coordinates.size
+                            Timber.d("📸 썸네일 좌표 상세 - size: $size, bounds: $bounds")
+
+                            snapshotUri = captureDailyRecordSnapshot(
+                                coordinates = coordinates,
+                                context = context
+                            )
+                            Timber.d("공유하기: SessionThumbnailItem 스냅샷 생성 완료: $snapshotUri")
+                        } else {
+                            Timber.w("공유하기: SessionThumbnailItem 좌표 정보가 없습니다")
+                            Timber.w("공유하기: 썸네일 좌표가 설정되지 않았습니다. UI 재렌더링을 기다려주세요.")
+
+                            // 좌표가 설정될 때까지 잠시 대기 후 재시도
+                            Timber.d("공유하기: 썸네일 좌표 설정 대기 시작...")
+                            kotlinx.coroutines.delay(300) // 0.3초 대기
+
+                            val retryCoordinates = thumbnailCoordinates
+                            if (retryCoordinates != null) {
+                                Timber.d("공유하기: 재시도 성공 - 썸네일 좌표를 얻었습니다")
+                                snapshotUri = captureDailyRecordSnapshot(
+                                    coordinates = retryCoordinates,
+                                    context = context
+                                )
+                                Timber.d("공유하기: 재시도 SessionThumbnailItem 스냅샷 생성 완료: $snapshotUri")
+                            } else {
+                                Timber.e("공유하기: 재시도 실패 - 썸네일 좌표가 여전히 없습니다")
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "썸네일 캡쳐를 위한 좌표를 가져올 수 없습니다. 다시 시도해주세요.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Timber.e(t, "공유하기: 스냅샷 생성 실패")
+                    } finally {
+                        isSnapshotLoading = false
+                    }
+                } else {
+                    Timber.d("공유하기: isSynced가 true이므로 저장된 이미지 사용")
+                }
+
+                // 다이얼로그 표시
+                showShareDialog = true
+                Timber.d("✅ 공유 다이얼로그 표시 설정됨 - session: $session")
+            }
         }
     }
 
@@ -297,20 +429,36 @@ fun DailyRecordScreen(
             )
 
             when {
-                selectedSession != null ->  DailyRecordContent(
-                    sessionsForDate = sessionsForDate,
-                    selectedSessionIndex = selectedSessionIndex,
-                    selectedSession = selectedSession,
-                    editedNote = editedNote,
-                    onNoteChange = { editedNote = it },
-                    onSessionSelected = { selectedSessionIndex = it },
-                    onDeleteClick = onDeleteClick,
-                    isEditing = isEditing,
-                    setEditing = { isEditing = it },
-                    onExternalClick = { showShareDialog = true },
-                    focusRequester = focusRequester
-                ) // 선택된 세션 있으면 항상 보여줌
-                else -> LoadingSessionContent()
+                selectedSession != null -> {
+                    Timber.d("🎨 UI 렌더링 - selectedSession: $selectedSession, index: $selectedSessionIndex")
+                    Timber.d("🎨 UI 렌더링 - session.id: ${selectedSession.id}, stepCount: ${selectedSession.stepCount}")
+                    DailyRecordContent(
+                        sessionsForDate = sessionsForDate,
+                        selectedSessionIndex = selectedSessionIndex,
+                        selectedSession = selectedSession,
+                        editedNote = editedNote,
+                        onNoteChange = { editedNote = it },
+                        onSessionSelected = { selectedSessionIndex = it },
+                        onDeleteClick = onDeleteClick,
+                        isEditing = isEditing,
+                        setEditing = { isEditing = it },
+                        onExternalClick = {
+                            selectedSession?.let { session ->
+                                onShareClick(session)
+                            }
+                        },
+                        thumbnailCoordinatesState = thumbnailCoordinatesState,
+                        isSnapshotLoading = isSnapshotLoading,
+                        formattedDateString = formattedDateString,
+                        focusRequester = focusRequester
+                    ) // 선택된 세션 있으면 항상 보여줌
+                }
+
+                else -> {
+                    Timber.d("🎨 UI 렌더링 - selectedSession is null, showing LoadingSessionContent")
+                    Timber.d("🎨 UI 렌더링 - isLoading: $isLoading, sessionsForDate.size: ${sessionsForDate.size}, selectedSessionIndex: $selectedSessionIndex")
+                    LoadingSessionContent()
+                }
             }
         }
 
@@ -332,34 +480,57 @@ fun DailyRecordScreen(
                 onDismiss = { showConfirmDialog = false }
             )
         }
-        if (showShareDialog && selectedSession != null) {
-            ShareWalkingResultDialog(
-                stepCount = selectedSession.stepCount.toString(),
-                duration = selectedSession.duration,
-                sessionThumbNailUri = selectedSession.getImageUri() ?: "",
-                preWalkEmotion = selectedSession.preWalkEmotion,
-                postWalkEmotion = selectedSession.postWalkEmotion,
-                saveStatus = saveStatus,
-                onDismiss = { showShareDialog = false },
-                onPrev = { showShareDialog = false },
-                onSave = {
-                    scope.launch {
-                        try {
-                            saveStatus = SaveStatus.LOADING
-                            downloadImage(
-                                context = context,
-                                path = selectedSession.getImageUri() ?: "",
-                                fileName = "walking_result_${selectedSession.id}.png"
-                            )
-                            saveStatus = SaveStatus.SUCCESS
-                            Timber.d("이미지 저장 성공")
-                        } catch (t: Throwable) {
-                            saveStatus = SaveStatus.FAILURE
-                            Timber.e(t, "이미지 저장 실패")
+        // ✅ 다이얼로그 표시 (WalkingSession을 직접 파라미터로 받음)
+        if (showShareDialog) {
+            Timber.d("🎉 공유 다이얼로그 표시 시작")
+            // 다이얼로그에서 사용할 세션 (onShareClick에서 전달받은 세션)
+            val dialogSession = selectedSession // 현재 선택된 세션 사용
+
+            if (dialogSession != null) {
+                // ✅ 이미지 URI 결정 로직 개선
+                val imageUri = if (dialogSession.isSynced) {
+                    // isSynced가 true: 저장된 이미지 사용 (localImagePath 우선, 없으면 serverImageUrl)
+                    dialogSession.getImageUri()
+                } else {
+                    // isSynced가 false: 방금 생성한 스냅샷 사용
+                    snapshotUri
+                }
+
+                ShareWalkingResultDialog(
+                    stepCount = dialogSession.stepCount.toString(),
+                    duration = dialogSession.duration,
+                    sessionThumbNailUri = imageUri ?: "",
+                    preWalkEmotion = dialogSession.preWalkEmotion,
+                    postWalkEmotion = dialogSession.postWalkEmotion,
+                    saveStatus = saveStatus,
+                    onDismiss = {
+                        showShareDialog = false
+                        snapshotUri = null // 다이얼로그 닫을 때 초기화
+                    },
+                    onPrev = {
+                        showShareDialog = false
+                    },
+                    onSave = {
+                        scope.launch {
+                            try {
+                                saveStatus = SaveStatus.LOADING
+                                val imagePath = imageUri ?: ""
+
+                                downloadImage(
+                                    context = context,
+                                    path = imagePath,
+                                    fileName = "walking_result_${dialogSession.id}.png"
+                                )
+                                saveStatus = SaveStatus.SUCCESS
+                                Timber.d("이미지 저장 성공")
+                            } catch (t: Throwable) {
+                                saveStatus = SaveStatus.FAILURE
+                                Timber.e(t, "이미지 저장 실패")
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }
@@ -367,6 +538,7 @@ fun DailyRecordScreen(
 @Composable
 fun DailyRecordContent(
     sessionsForDate: List<WalkingSession>,
+    formattedDateString: String,
     selectedSessionIndex: Int,
     selectedSession: WalkingSession,
     editedNote: String,
@@ -374,8 +546,10 @@ fun DailyRecordContent(
     onSessionSelected: (Int) -> Unit,
     onDeleteClick: (String) -> Unit,
     isEditing: Boolean,
+    isSnapshotLoading: Boolean,
     setEditing: (Boolean) -> Unit,
-    onExternalClick: () -> Unit,
+    thumbnailCoordinatesState: androidx.compose.runtime.MutableState<LayoutCoordinates?>,
+    onExternalClick: (WalkingSession) -> Unit,
     focusRequester: FocusRequester? = null,
 ) {
     Column(
@@ -408,6 +582,9 @@ fun DailyRecordContent(
                 session = selectedSession,
                 onExternalClick = onExternalClick,
                 modifier = Modifier.fillMaxWidth(),
+                isSnapshotLoading = isSnapshotLoading,
+                dateString = formattedDateString,
+                thumbnailCoordinates = thumbnailCoordinatesState
             )
         }
 
@@ -484,6 +661,111 @@ fun SessionDailyTab(
                 )
             }
         }
+    }
+}
+
+/**
+ * DailyRecord 전체 화면 PixelCopy 캡처 (사진 + 경로 방식)
+ */
+private suspend fun captureDailyRecordSnapshot(
+    coordinates: LayoutCoordinates?,
+    context: android.content.Context,
+): String? {
+    if (coordinates == null) {
+        Timber.w("DailyRecord Box 위치 정보가 없습니다")
+        return null
+    }
+
+    val width = coordinates.size.width.toInt()
+    val height = coordinates.size.height.toInt()
+
+    if (width <= 0 || height <= 0) {
+        Timber.w("Box 크기가 0입니다: ${width}x${height}")
+        return null
+    }
+
+    val activity = context as? android.app.Activity
+    if (activity == null) {
+        Timber.w("Activity를 찾을 수 없습니다")
+        return null
+    }
+
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+        Timber.w("PixelCopy는 Android 8.0 이상에서만 사용 가능")
+        return null
+    }
+
+    val boundsInWindow = coordinates.boundsInWindow()
+    val window = activity.window
+
+    Timber.d("📸 PixelCopy 캡쳐 영역 - width: $width, height: $height")
+    Timber.d("📸 PixelCopy bounds - left: ${boundsInWindow.left}, top: ${boundsInWindow.top}, right: ${boundsInWindow.right}, bottom: ${boundsInWindow.bottom}")
+
+    val bitmap = createBitmap(
+        width,
+        height
+    )
+
+    val rect = android.graphics.Rect(
+        boundsInWindow.left.toInt(),
+        boundsInWindow.top.toInt(),
+        boundsInWindow.right.toInt(),
+        boundsInWindow.bottom.toInt()
+    )
+
+    Timber.d("📸 PixelCopy Rect - ${rect.left}, ${rect.top}, ${rect.right}, ${rect.bottom} (크기: ${rect.width()}x${rect.height()})")
+
+    // PixelCopy의 콜백을 suspend 함수로 변환
+    return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        android.view.PixelCopy.request(
+            window,
+            rect,
+            bitmap,
+            { copyResult ->
+                if (copyResult == android.view.PixelCopy.SUCCESS) {
+                    Timber.d("DailyRecord PixelCopy 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
+                    val savedPath = saveDailyRecordSnapshotToFile(context, bitmap)
+                    Timber.d("DailyRecord 스냅샷 파일 저장: $savedPath")
+                    continuation.resume(savedPath) {}
+                } else {
+                    Timber.e("DailyRecord PixelCopy 실패: $copyResult")
+                    continuation.resume(null) {}
+                }
+            },
+            android.os.Handler(android.os.Looper.getMainLooper())
+        )
+
+        // 코루틴이 취소되면 PixelCopy 요청도 취소할 수 있도록 설정
+        continuation.invokeOnCancellation {
+            Timber.d("DailyRecord PixelCopy 요청 취소됨")
+        }
+    }
+}
+
+/**
+ * DailyRecord 스냅샷을 파일로 저장
+ */
+private fun saveDailyRecordSnapshotToFile(
+    context: android.content.Context,
+    bitmap: android.graphics.Bitmap,
+): String? {
+    return try {
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "daily_record_snapshot_${timestamp}.png"
+
+        val fileDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        val file = File(fileDir, fileName)
+
+        FileOutputStream(file).use { out ->
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        }
+
+        val absolutePath = file.absolutePath
+        Timber.d("DailyRecord 스냅샷 파일 저장 완료: $absolutePath")
+        absolutePath
+    } catch (t: Throwable) {
+        Timber.e(t, "DailyRecord 스냅샷 파일 저장 실패: ${t.message}")
+        null
     }
 }
 
@@ -588,7 +870,8 @@ fun DailyRecordScreenWithSessionsPreview() {
             isLoading = false,
             onNavigateBack = {},
             onUpdateNote = { _, _ -> },
-            onDeleteClick = {}
+            onDeleteClick = {},
+            dateString = "2025년 1월 10일 금요일"
         )
     }
 }
@@ -605,7 +888,8 @@ fun DailyRecordScreenLoadingPreview() {
             isLoading = true,
             onNavigateBack = {},
             onUpdateNote = { _, _ -> },
-            onDeleteClick = {}
+            onDeleteClick = {},
+            dateString = "2025년 1월 10일 금요일"
         )
     }
 }
@@ -622,7 +906,8 @@ fun DailyRecordScreenEmptyPreview() {
             isLoading = false,
             onNavigateBack = {},
             onUpdateNote = { _, _ -> },
-            onDeleteClick = {}
+            onDeleteClick = {},
+            dateString = "2025년 1월 10일 금요일"
         )
     }
 }

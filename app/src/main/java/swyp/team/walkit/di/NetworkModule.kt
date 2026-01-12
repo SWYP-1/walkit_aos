@@ -12,10 +12,13 @@ import swyp.team.walkit.data.remote.auth.TokenProvider
 import swyp.team.walkit.data.remote.auth.TokenProviderImpl
 import swyp.team.walkit.data.remote.interceptor.AuthInterceptor
 import swyp.team.walkit.data.remote.interceptor.TokenAuthenticator
+import swyp.team.walkit.core.AuthEventBus
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import android.content.Context
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -70,8 +73,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideTokenAuthenticator(
+        @ApplicationContext context: Context,
         tokenProvider: TokenProvider,
-    ): TokenAuthenticator = TokenAuthenticator(tokenProvider)
+        authEventBus: AuthEventBus,
+    ): TokenAuthenticator = TokenAuthenticator(context, tokenProvider, authEventBus)
 
     @Provides
     @Singleton

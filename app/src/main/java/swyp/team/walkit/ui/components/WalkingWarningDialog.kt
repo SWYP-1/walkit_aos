@@ -161,7 +161,7 @@ fun WalkingWarningDialog(
                             .height(47.dp)
                             .border(
                                 width = 1.dp,
-                                color = SemanticColor.textBorderPrimary,
+                                color = cancelButtonBorderColor,
                                 shape = RoundedCornerShape(8.dp),
                             )
                             .background(

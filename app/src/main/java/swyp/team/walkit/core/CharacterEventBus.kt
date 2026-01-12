@@ -23,3 +23,5 @@ class CharacterEventBus @Inject constructor() {
         _characterUpdated.emit(Unit)
     }
 }
+
+

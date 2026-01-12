@@ -8,7 +8,9 @@ import retrofit2.http.DELETE
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.GET
 import retrofit2.http.Path
+import swyp.team.walkit.data.remote.home.dto.WalkResponseDto
 import swyp.team.walkit.data.remote.walking.dto.UpdateWalkNoteRequest
 import swyp.team.walkit.data.remote.walking.dto.WalkSaveResponse
 
@@ -16,6 +18,14 @@ import swyp.team.walkit.data.remote.walking.dto.WalkSaveResponse
  * 산책 관련 API
  */
 interface WalkApi {
+
+    /**
+     * 산책 목록 조회
+     *
+     * @return 산책 기록 목록
+     */
+    @GET("/walk/list")
+    suspend fun getWalkList(): List<WalkResponseDto>
 
     /**
      * 산책 데이터 저장 (이미지 포함)

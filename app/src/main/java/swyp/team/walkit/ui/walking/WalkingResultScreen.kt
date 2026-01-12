@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +56,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import swyp.team.walkit.ui.components.CustomProgressIndicator
@@ -135,36 +139,205 @@ private suspend fun capturePhotoWithPathSnapshot(
     }
 
     val boundsInWindow = coordinates.boundsInWindow()
+    val boundsInRoot = coordinates.boundsInRoot()
     val window = activity.window
 
+    Timber.d("📸 캡쳐 좌표 계산 시작")
+    Timber.d("📸 boundsInWindow: $boundsInWindow")
+    Timber.d("📸 boundsInRoot: $boundsInRoot")
+
+    // 상태바 높이 계산 (Window 내 Content 영역 시작 위치)
+    val statusBarHeight =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val windowInsets = window.decorView.rootWindowInsets
+            windowInsets?.getInsets(android.view.WindowInsets.Type.statusBars())?.top ?: 0
+        } else {
+            @Suppress("DEPRECATION")
+            val resourceId =
+                context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resourceId > 0) {
+                context.resources.getDimensionPixelSize(resourceId)
+            } else {
+                0
+            }
+        }
+
+    // 네비게이션바 높이 계산
+    val navigationBarHeight =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val windowInsets = window.decorView.rootWindowInsets
+            windowInsets?.getInsets(android.view.WindowInsets.Type.navigationBars())?.bottom ?: 0
+        } else {
+            0
+        }
+
+    Timber.d("📸 시스템 UI 높이 - 상태바: $statusBarHeight, 네비게이션바: $navigationBarHeight")
+
+    // boundsInRoot를 사용하여 스크롤 위치에 영향받지 않는 좌표 계산
+    // boundsInRoot는 Root 레이아웃 기준 절대 좌표이므로 더 정확함
+    val actualTop = boundsInRoot.top.toInt()
+    val actualLeft = boundsInRoot.left.toInt()
+    val actualRight = boundsInRoot.right.toInt()
+    val actualBottom = boundsInRoot.bottom.toInt()
+
+    Timber.d("📸 Root 기준 좌표 - left: $actualLeft, top: $actualTop, right: $actualRight, bottom: $actualBottom")
+    Timber.d("📸 크기 - width: $width, height: $height")
+
+    // Window 기준 좌표도 로깅 (비교용)
+    Timber.d("📸 Window 기준 좌표 - left: ${boundsInWindow.left.toInt()}, top: ${boundsInWindow.top.toInt()}, right: ${boundsInWindow.right.toInt()}, bottom: ${boundsInWindow.bottom.toInt()}")
+
+    // Bitmap 크기는 coordinates.size를 사용 (실제 뷰 크기)
     val bitmap = android.graphics.Bitmap.createBitmap(
         width,
         height,
         android.graphics.Bitmap.Config.ARGB_8888
     )
 
+    Timber.d("📸 Bitmap 생성 - width: $width, height: $height")
+
+    // PixelCopy는 Window 기준 좌표를 사용하므로 boundsInWindow 사용
+    // 하지만 boundsInWindow가 잘못된 값을 반환할 수 있으므로 boundsInRoot와 비교하여 검증
+    var windowTop = boundsInWindow.top.toInt()
+    var windowLeft = boundsInWindow.left.toInt()
+    var windowRight = boundsInWindow.right.toInt()
+    var windowBottom = boundsInWindow.bottom.toInt()
+
+    // Root와 Window 좌표 차이 계산 (좌표 계산 오류 확인)
+    val scrollOffsetY = actualTop - windowTop
+    val scrollOffsetX = actualLeft - windowLeft
+
+    Timber.d("📸 좌표 차이 분석 - Y: $scrollOffsetY, X: $scrollOffsetX")
+
+    // ⚠️ 핵심: boundsInWindow가 비정상적인 값을 반환하는 경우 감지
+    // 1. 음수 좌표: 좌표 계산 오류 가능성
+    // 2. 상태바 높이보다 작은 top 값: Edge-to-edge 모드에서 좌표 계산 오류 가능성
+    // 3. boundsInRoot와 boundsInWindow의 차이가 비정상적으로 큰 경우: 좌표 계산 오류
+
+    val windowWidth = window.decorView.width
+    val windowHeight = window.decorView.height
+
+    // 비정상적인 좌표 값 감지
+    val hasNegativeCoordinates = windowTop < 0 || windowLeft < 0
+    val hasInvalidTop = windowTop < -statusBarHeight // 상태바 높이보다 더 위로 나간 경우
+    val hasInvalidBounds = windowRight > windowWidth || windowBottom > windowHeight
+    val hasLargeOffset =
+        kotlin.math.abs(scrollOffsetY) > windowHeight / 2 || kotlin.math.abs(scrollOffsetX) > windowWidth / 2
+
+    // 좌표 계산 오류로 판단되는 경우
+    val isCoordinateError = hasInvalidTop || hasLargeOffset
+
+    if (hasNegativeCoordinates) {
+        Timber.w("⚠️ 음수 좌표 감지 - top: $windowTop, left: $windowLeft")
+        Timber.w("⚠️ boundsInRoot: top=$actualTop, left=$actualLeft")
+        Timber.w("⚠️ 상태바 높이: $statusBarHeight")
+    }
+
+    if (isCoordinateError) {
+        Timber.w("⚠️ 좌표 계산 오류로 판단됨!")
+        Timber.w("⚠️ boundsInWindow가 잘못된 값을 반환했을 가능성이 높습니다")
+        Timber.w("⚠️ boundsInRoot를 기준으로 좌표를 재계산합니다")
+
+        // boundsInRoot를 기준으로 좌표 재계산
+        // boundsInRoot는 Root 레이아웃 기준 절대 좌표이므로 더 정확함
+        windowTop = actualTop.coerceAtLeast(0)
+        windowLeft = actualLeft.coerceAtLeast(0)
+        windowRight = actualRight.coerceAtMost(windowWidth)
+        windowBottom = actualBottom.coerceAtMost(windowHeight)
+
+        Timber.d("📸 boundsInRoot 기준으로 좌표 재계산 완료")
+        Timber.d("📸 재계산된 좌표 - top: $windowTop, left: $windowLeft, right: $windowRight, bottom: $windowBottom")
+    }
+
+    // Window 기준 좌표 사용 (PixelCopy는 Window 기준)
     val rect = android.graphics.Rect(
-        boundsInWindow.left.toInt(),
-        boundsInWindow.top.toInt(),
-        boundsInWindow.right.toInt(),
-        boundsInWindow.bottom.toInt()
+        windowLeft,
+        windowTop,
+        windowRight,
+        windowBottom
     )
+
+    Timber.d("📸 최종 Rect (Window 기준) - ${rect.left}, ${rect.top}, ${rect.right}, ${rect.bottom}")
+    Timber.d("📸 Window 크기 - width: $windowWidth, height: $windowHeight")
+
+    // 좌표 유효성 검증
+    if (rect.top < 0 || rect.left < 0 || rect.right > windowWidth || rect.bottom > windowHeight) {
+        Timber.w("⚠️ 좌표가 Window 범위를 벗어남 - rect: $rect, window: ${windowWidth}x${windowHeight}")
+        if (rect.top < 0) {
+            Timber.w("⚠️ 상단 좌표가 음수입니다 (${rect.top}) - 상태바 높이: $statusBarHeight")
+        }
+    }
+
+    // ⚠️ 중요: PixelCopy는 Window 내 보이는 부분만 캡쳐할 수 있습니다
+    // 따라서 Window 범위 내로 좌표를 조정하되, Bitmap 크기는 뷰의 실제 크기로 유지합니다
+
+    // Window 범위 내로 좌표 조정
+    var adjustedRect = android.graphics.Rect(
+        rect.left.coerceAtLeast(0),
+        rect.top.coerceAtLeast(0),
+        rect.right.coerceAtMost(windowWidth),
+        rect.bottom.coerceAtMost(windowHeight)
+    )
+
+    // 조정된 Rect 크기 확인
+    val adjustedWidth = adjustedRect.width()
+    val adjustedHeight = adjustedRect.height()
+
+    Timber.d("📸 조정된 Rect - $adjustedRect (크기: ${adjustedWidth}x${adjustedHeight})")
+    Timber.d("📸 뷰 실제 크기 - width: $width, height: $height")
+
+    // 조정된 Rect 크기가 뷰의 실제 크기와 다른 경우 확인
+    if (adjustedWidth != width || adjustedHeight != height) {
+        Timber.w("⚠️ 조정된 Rect 크기(${adjustedWidth}x${adjustedHeight})와 뷰 실제 크기(${width}x${height})가 불일치")
+        Timber.w("⚠️ PixelCopy는 Window 내 보이는 부분만 캡쳐하므로, 일부가 잘릴 수 있습니다")
+    }
+
+    if (adjustedRect != rect) {
+        Timber.d("📸 좌표 조정됨 - 원본: $rect, 조정: $adjustedRect")
+    }
+
+    val finalRect = adjustedRect
 
     // PixelCopy의 콜백을 suspend 함수로 변환
     // suspendCancellableCoroutine은 취소 가능한 코루틴으로, suspendCoroutine보다 권장됨
     return suspendCancellableCoroutine { continuation ->
         android.view.PixelCopy.request(
             window,
-            rect,
+            finalRect,
             bitmap,
             { copyResult ->
                 if (copyResult == android.view.PixelCopy.SUCCESS) {
-                    Timber.d("사진+경로 PixelCopy 스냅샷 생성 완료: ${bitmap.width}x${bitmap.height}")
-                    val savedPath = saveSnapshotToFile(context, bitmap)
-                    Timber.d("사진+경로 스냅샷 파일 저장: $savedPath")
-                    continuation.resume(savedPath) {}
+                    Timber.d("✅ 사진+경로 PixelCopy 스냅샷 생성 완료")
+                    Timber.d("📸 Bitmap 크기 - width: ${bitmap.width}, height: ${bitmap.height}")
+                    Timber.d("📸 Rect 크기 - width: ${finalRect.width()}, height: ${finalRect.height()}")
+
+                    // Bitmap 크기와 Rect 크기가 일치하는지 확인
+                    if (bitmap.width != finalRect.width() || bitmap.height != finalRect.height()) {
+                        Timber.w("⚠️ Bitmap 크기(${bitmap.width}x${bitmap.height})와 Rect 크기(${finalRect.width()}x${finalRect.height()})가 불일치")
+                        Timber.w("⚠️ Bitmap을 Rect 크기에 맞춰 크롭합니다")
+
+                        // Bitmap을 Rect 크기에 맞춰 크롭 (중앙 기준)
+                        val cropX = (bitmap.width - finalRect.width()) / 2
+                        val cropY = (bitmap.height - finalRect.height()) / 2
+                        val croppedBitmap = android.graphics.Bitmap.createBitmap(
+                            bitmap,
+                            cropX.coerceAtLeast(0),
+                            cropY.coerceAtLeast(0),
+                            finalRect.width().coerceAtMost(bitmap.width),
+                            finalRect.height().coerceAtMost(bitmap.height)
+                        )
+
+                        bitmap.recycle() // 원본 bitmap 메모리 해제
+                        val savedPath = saveSnapshotToFile(context, croppedBitmap)
+                        Timber.d("✅ 크롭된 스냅샷 파일 저장: $savedPath")
+                        continuation.resume(savedPath) {}
+                    } else {
+                        val savedPath = saveSnapshotToFile(context, bitmap)
+                        Timber.d("✅ 사진+경로 스냅샷 파일 저장: $savedPath")
+                        continuation.resume(savedPath) {}
+                    }
                 } else {
-                    Timber.e("사진+경로 PixelCopy 실패: $copyResult")
+                    Timber.e("❌ 사진+경로 PixelCopy 실패: $copyResult")
+                    Timber.e("❌ Rect: $finalRect, Bitmap: ${bitmap.width}x${bitmap.height}")
                     continuation.resume(null) {}
                 }
             },
@@ -309,13 +482,15 @@ private fun WalkingResultScreenContent(
     val isMapViewReady by remember(mapViewRef) { derivedStateOf { mapViewRef != null } }
     val isBoxCoordinatesReady by remember(photoWithPathBoxCoordinates) { derivedStateOf { photoWithPathBoxCoordinates != null } }
     // 사진이 있으면 Box 좌표만 필요, 없으면 MapView 필요
-    val isSnapshotReady by remember { derivedStateOf { 
-        if (emotionPhotoUri != null) {
-            isBoxCoordinatesReady
-        } else {
-            isMapViewReady
+    val isSnapshotReady by remember {
+        derivedStateOf {
+            if (emotionPhotoUri != null) {
+                isBoxCoordinatesReady
+            } else {
+                isMapViewReady
+            }
         }
-    } }
+    }
 
     // 완료 팝업 표시 여부
     var showCompletionDialog by remember { mutableStateOf(false) }
@@ -342,8 +517,12 @@ private fun WalkingResultScreenContent(
         }
     }
 
+    // LazyColumn 스크롤 상태 관리
+    val lazyListState = rememberLazyListState()
+
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
+            state = lazyListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
         ) {
@@ -553,6 +732,9 @@ private fun WalkingResultScreenContent(
                 }
             }
             item {
+                Spacer(Modifier.height(16.dp))
+            }
+            item {
                 WalkingDiaryCard(
                     session = currentSession,
                     note = editedNote,
@@ -582,12 +764,35 @@ private fun WalkingResultScreenContent(
                         CtaButton(
                             onClick = {
                                 coroutineScope.launch {
-                                    // 수정된 노트 저장 (editedNote가 원본과 다른 경우에만)
+                                    // 1. 스크롤을 맨 위로 올림 (뷰가 Window 내에 완전히 보이도록 보장)
+                                    Timber.d("📸 저장하기 클릭 - 스크롤을 맨 위로 이동 시작")
+                                    try {
+                                        lazyListState.animateScrollToItem(0)
+
+                                        // 스크롤 애니메이션 완료 대기
+                                        // 스크롤이 진행 중이면 완료될 때까지 대기
+                                        var retryCount = 0
+                                        while (lazyListState.isScrollInProgress && retryCount < 50) {
+                                            kotlinx.coroutines.delay(50)
+                                            retryCount++
+                                        }
+
+                                        // 추가 안정화 시간 (레이아웃 재계산 대기)
+                                        kotlinx.coroutines.delay(100)
+
+                                        Timber.d("📸 스크롤 완료 - 현재 스크롤 위치: ${lazyListState.firstVisibleItemIndex}")
+                                        Timber.d("📸 캡쳐 시작")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "스크롤 이동 실패")
+                                        // 스크롤 실패해도 캡쳐는 진행
+                                    }
+
+                                    // 2. 수정된 노트 저장 (editedNote가 원본과 다른 경우에만)
                                     if (editedNote != currentSession.note.orEmpty()) {
                                         onUpdateNote(currentSession.id, editedNote)
                                     }
 
-                                    // 스냅샷 생성 및 저장
+                                    // 3. 스냅샷 생성 및 저장
                                     var snapshotPath: String? = null
                                     val success = onCaptureSnapshot {
                                         try {
@@ -617,7 +822,7 @@ private fun WalkingResultScreenContent(
                                         }
                                     }
 
-                                    // 스냅샷 저장 완료 후 서버 동기화 시작
+                                    // 4. 스냅샷 저장 완료 후 서버 동기화 시작
                                     if (success && snapshotPath != null) {
                                         capturedSnapshotPath = snapshotPath
                                         onSyncSessionToServer()

@@ -196,7 +196,7 @@ fun NotificationSettingsScreen(
                         style = MaterialTheme.walkItTypography.bodyL.copy(
                             fontWeight = FontWeight.SemiBold,
                         ),
-                        color = Grey10,
+                        color = SemanticColor.textBorderPrimary,
                     )
                     Spacer(Modifier.height(8.dp))
                     ToggleMenuItem(

@@ -11,9 +11,9 @@ import kotlinx.serialization.Serializable
  */
 enum class EmotionType(val value: Int) {
     // 긍정 감정
-    HAPPY(5),        // 기쁘다
-    JOYFUL(4),       // 즐겁다
-    CONTENT(3),      // 행복하다
+    JOYFUL(5),       // 기쁘다
+    DELIGHTED(4),    // 즐겁다
+    HAPPY(3),        // 행복하다
 
     // 부정 감정
     DEPRESSED(2),    // 우울하다

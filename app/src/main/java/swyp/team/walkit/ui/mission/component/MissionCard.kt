@@ -155,7 +155,6 @@ fun MissionCard(
         modifier = modifier
             .fillMaxWidth()
             .customShadow()
-            .cardBorder()
             .then(
                 if (isActive) {
                     Modifier.border(
@@ -164,7 +163,7 @@ fun MissionCard(
                         shape = RoundedCornerShape(12.dp)
                     )
                 } else {
-                    Modifier
+                    Modifier.cardBorder()
                 }
             ),
         shape = RoundedCornerShape(16.dp),

@@ -113,7 +113,6 @@ fun MyPageUserInfo(
                     .clip(CircleShape) // 원형으로 자르기
             )
         }
-        Spacer(Modifier.height(24.dp))
     }
 }
 

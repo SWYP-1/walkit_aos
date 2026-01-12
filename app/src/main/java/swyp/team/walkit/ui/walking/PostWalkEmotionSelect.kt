@@ -52,6 +52,8 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.ui.walking.components.WalkingProgressBar
+import swyp.team.walkit.utils.SetStatusBarConfig
+import swyp.team.walkit.utils.DefaultStatusBarConfig
 import timber.log.Timber
 
 /**
@@ -65,6 +67,9 @@ fun PostWalkingEmotionSelectRoute(
     onClose: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // 기본 상태바 설정 적용 (상태창 영역 사용 안 함)
+//    SetStatusBarConfig(config = DefaultStatusBarConfig)
+    
     // ViewModel 인스턴스 확인 로그 및 초기화
     LaunchedEffect(Unit) {
         Timber.d("🚶 PostWalkingEmotionSelectRoute - 진입: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
@@ -115,7 +120,7 @@ private fun PostWalkingEmotionSelectScreen(
     var isDeleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary)) {
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -157,7 +162,7 @@ private fun PostWalkingEmotionSelectScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 40.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = 32.dp, top = 46.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {

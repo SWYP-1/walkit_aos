@@ -204,6 +204,10 @@ class WalkingViewModel @Inject constructor(
     private val _isSessionSaved = MutableStateFlow(false)
     val isSessionSaved: StateFlow<Boolean> = _isSessionSaved.asStateFlow()
 
+    // Worker 동기화 상태 추적
+    private val _workerSyncStatus = MutableStateFlow<WorkerSyncStatus>(WorkerSyncStatus.Idle)
+    val workerSyncStatus = _workerSyncStatus.asStateFlow()
+
     /**
      * 감정 기록 사진 URI 설정
      */
@@ -963,9 +967,9 @@ class WalkingViewModel @Inject constructor(
         val postEmotion = _postWalkingEmotion.value ?: preEmotion
 
         val endTime = System.currentTimeMillis()
-        val collectedLocations = _locations.value
+//        val collectedLocations = _locations.value
 //        //TODO : 삭제
-//        val collectedLocations = loadLocationsFromJson(context)
+        val collectedLocations = loadLocationsFromJson(context)
         val totalDistance = calculateTotalDistance(collectedLocations)
 
         // ✅ 경로 스무딩 적용
@@ -1275,7 +1279,7 @@ class WalkingViewModel @Inject constructor(
      * 총 이동 거리 계산 (미터)
      * LocationPoint 리스트를 기반으로 GPS 거리를 계산합니다.
      */
-    private fun calculateTotalDistance(locations: List<LocationPoint>): Float {
+     fun calculateTotalDistance(locations: List<LocationPoint>): Float {
         if (locations.size < 2) {
             return 0f
         }
@@ -1340,7 +1344,7 @@ class WalkingViewModel @Inject constructor(
                     smoothedLocations = null, // 스무딩 데이터 없음
                     totalDistance = stepCount * 0.7f, // 걸음 수 기반 대략적 거리 계산 (70cm 보폭 가정)
                     preWalkEmotion = emotionTypeToString(EmotionType.HAPPY), // 산책 전 감정 (String)
-                    postWalkEmotion = emotionTypeToString(EmotionType.CONTENT), // 산책 후 감정 (String)
+                    postWalkEmotion = emotionTypeToString(EmotionType.DELIGHTED), // 산책 후 감정 (String)
                     note = note,
                     localImagePath = null, // 로컬 이미지 없음
                     serverImageUrl = null, // 서버 이미지 없음
@@ -1353,6 +1357,76 @@ class WalkingViewModel @Inject constructor(
                 Timber.d("✅ 더미 WalkingSession 추가 완료: ${DateUtils.formatDate(targetDate)} - $stepCount 걸음")
             } catch (e: Exception) {
                 Timber.e(e, "❌ 더미 WalkingSession 추가 실패")
+            }
+        }
+    }
+
+    /**
+     * SessionSyncWorker 테스트 실행 (개발용)
+     */
+    fun testSessionSyncWorker() {
+        viewModelScope.launch {
+            try {
+                Timber.d("🔄 SessionSyncWorker 테스트 시작")
+                _workerSyncStatus.value = WorkerSyncStatus.Running
+
+                // WorkManager 상태 확인
+                val workManager = androidx.work.WorkManager.getInstance(context)
+                Timber.d("✅ WorkManager 인스턴스 획득 성공")
+
+                // Worker 스케줄링 (Application Context 사용)
+                val appContext = context.applicationContext
+//                val workRequest = swyp.team.walkit.worker.SessionSyncWorker.scheduleTestSync(appContext)
+                Timber.d("✅ SessionSyncWorker 스케줄링 완료 - Context 타입: ${appContext.javaClass.simpleName}")
+
+                // Worker 상태 모니터링 (5초 후)
+                kotlinx.coroutines.delay(5000)
+                val workInfos = workManager.getWorkInfosForUniqueWork("session_sync_test").get()
+                if (workInfos.isNotEmpty()) {
+                    val workInfo = workInfos[0]
+                    Timber.d("📊 Worker 상태: ${workInfo.state}, ID: ${workInfo.id}")
+                    when (workInfo.state) {
+                        androidx.work.WorkInfo.State.ENQUEUED -> {
+                            Timber.d("📋 Worker가 대기열에 있음")
+                            _workerSyncStatus.value = WorkerSyncStatus.Error("Worker가 대기열에 있지만 실행되지 않음")
+                        }
+                        androidx.work.WorkInfo.State.RUNNING -> {
+                            Timber.d("🏃 Worker가 실행 중")
+                            _workerSyncStatus.value = WorkerSyncStatus.Running
+                        }
+                        androidx.work.WorkInfo.State.SUCCEEDED -> {
+                            Timber.d("✅ Worker가 성공")
+                            _workerSyncStatus.value = WorkerSyncStatus.Success
+                        }
+                        androidx.work.WorkInfo.State.FAILED -> {
+                            Timber.d("❌ Worker가 실패")
+                            _workerSyncStatus.value = WorkerSyncStatus.Error("Worker 실행 실패")
+                        }
+                        androidx.work.WorkInfo.State.CANCELLED -> {
+                            Timber.d("🚫 Worker가 취소됨")
+                            _workerSyncStatus.value = WorkerSyncStatus.Error("Worker가 취소됨")
+                        }
+                        else -> {
+                            Timber.d("❓ Worker 상태: ${workInfo.state}")
+                            _workerSyncStatus.value = WorkerSyncStatus.Error("알 수 없는 상태: ${workInfo.state}")
+                        }
+                    }
+                } else {
+                    Timber.w("⚠️ Worker 정보를 찾을 수 없음")
+                    _workerSyncStatus.value = WorkerSyncStatus.Error("Worker 정보를 찾을 수 없음")
+                }
+
+            } catch (t: Throwable) {
+                Timber.e(t, "❌ SessionSyncWorker 테스트 실행 실패: ${t.message}")
+                _workerSyncStatus.value = WorkerSyncStatus.Error("테스트 실행 실패: ${t.message}")
+
+                // WorkManager 초기화 상태 확인
+                try {
+                    val workManager = androidx.work.WorkManager.getInstance(context)
+                    Timber.d("✅ WorkManager 인스턴스 획득 성공 (에러 상황에서도)")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ WorkManager 초기화 실패: ${e.message}")
+                }
             }
         }
     }
@@ -1423,6 +1497,16 @@ sealed class SnapshotState {
     data object Syncing : SnapshotState()
     data object Complete : SnapshotState()
     data class Error(val message: String) : SnapshotState()
+}
+
+/**
+ * Worker 동기화 상태
+ */
+sealed class WorkerSyncStatus {
+    data object Idle : WorkerSyncStatus()
+    data object Running : WorkerSyncStatus()
+    data object Success : WorkerSyncStatus()
+    data class Error(val message: String) : WorkerSyncStatus()
 }
 
 /**

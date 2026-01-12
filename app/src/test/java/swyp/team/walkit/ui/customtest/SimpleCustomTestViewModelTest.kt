@@ -68,3 +68,5 @@ class SimpleCustomTestViewModelTest {
         assertTrue("일차 정보가 포함되어야 함", expectedNote.contains("일차"))
     }
 }
+
+

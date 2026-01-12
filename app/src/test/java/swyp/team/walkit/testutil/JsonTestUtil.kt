@@ -90,3 +90,5 @@ object JsonTestUtil {
         return "✅ 위치 데이터 검증 통과 (${locations.size}개)"
     }
 }
+
+

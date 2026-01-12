@@ -1,6 +1,8 @@
 package swyp.team.walkit.ui.dressroom
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -297,15 +299,37 @@ fun SuccessContent(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
-            CtaButton(
-                text = "저장하기",
-                onClick = onSaveItem,
-                enabled = !isWearLoading, // ✅ 저장 중에는 버튼 비활성화
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                iconResId = R.drawable.ic_arrow_forward
-            )
+            Row(Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .size(48.dp)
+                        .border(1.dp, color = SemanticColor.stateGreenPrimary, shape = RoundedCornerShape(8.dp))
+                        .background(
+                            color = SemanticColor.backgroundWhitePrimary,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable(onClick = onRefreshClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_action_refresh),
+                        contentDescription = "refresh",
+                        tint = SemanticColor.stateGreenPrimary
+                    )
+                }
+
+                CtaButton(
+                    text = "저장하기",
+                    onClick = onSaveItem,
+                    enabled = !isWearLoading, // ✅ 저장 중에는 버튼 비활성화
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    iconResId = R.drawable.ic_arrow_forward
+                )
+            }
+
         }
 
         // 캐릭터 등급 정보 다이얼로그
@@ -324,7 +348,7 @@ fun SuccessContent(
  */
 @Composable
 fun ItemGrid(
-    modifier : Modifier,
+    modifier: Modifier,
     items: List<CosmeticItem>,
     selectedItemIds: Set<Int>,
     wornItemsByPosition: Map<EquipSlot, WearState>,

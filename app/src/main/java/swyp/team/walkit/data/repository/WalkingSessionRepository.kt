@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -131,9 +132,9 @@ constructor(
                     flowOf(emptyList())
                 } else {
                     walkingSessionDao
-                        .getSessionsBetweenForUser(userId, startMillis, endMillis)
+                        .getSyncedSessionsBetweenForUser(userId, startMillis, endMillis)
                         .map { entities ->
-                            Timber.d("📅 Repository - getSessionsBetweenForUser 결과: ${entities.size}개 엔티티")
+                            Timber.d("📅 Repository - getSyncedSessionsBetweenForUser 결과: ${entities.size}개 엔티티")
                             // mapper에서 이미 모든 예외를 처리하므로 안전하게 매핑 가능
                             val sessions = entities.map { entity -> WalkingSessionMapper.toDomain(entity) }
                             Timber.d("📅 Repository - 매핑 완료: ${sessions.size}개 세션")
@@ -233,6 +234,13 @@ constructor(
     }
 
     /**
+     * 세션 동기화 상태 업데이트
+     */
+    suspend fun updateSessionSyncState(sessionId: String, syncState: SyncState) {
+        walkingSessionDao.updateSyncState(sessionId, syncState)
+    }
+
+    /**
      * 동기화된 세션 조회 (SYNCED 상태)
      */
     suspend fun getSyncedSessions(): List<WalkingSession> {
@@ -245,11 +253,12 @@ constructor(
      * 미동기화 세션 모두 동기화 (WorkManager에서 호출)
      */
     suspend fun syncAllPendingSessions() {
+        Timber.d("🔍 미동기화 세션 조회 시작")
         val unsyncedSessions = getUnsyncedSessions()
+        Timber.d("📊 미동기화 세션 수: ${unsyncedSessions.size}")
 
-        showTestNotification()
         if (unsyncedSessions.isEmpty()) {
-            Timber.d("동기화할 세션이 없습니다")
+            Timber.d("ℹ️ 동기화할 세션이 없습니다")
             return
         }
         val userId = getCurrentUserId()
@@ -257,14 +266,34 @@ constructor(
         Timber.d("미동기화 세션 ${unsyncedSessions.size}개 발견, 동기화 시작")
 
 
-
         unsyncedSessions.forEach { session ->
             try {
                 // 동기화 상태를 SYNCING으로 변경
                 walkingSessionDao.updateSyncState(session.id, SyncState.SYNCING)
 
-                // 서버 동기화 시도 (이미지 URI는 null로 전달)
-                syncToServer(session, userId,null)
+                // 서버 동기화 시도 (세션의 이미지 URI도 함께 전달)
+                val imageUri = session.localImagePath?.let { imagePath ->
+                    try {
+                        val file = File(imagePath)
+                        if (file.exists()) {
+                            // FileProvider를 사용하여 URI 생성 (Android 7.0+ 호환)
+                            // FileProvider는 AndroidManifest.xml에 선언되어 있어야 함
+                            val authority = "${context.packageName}.fileprovider"
+                            androidx.core.content.FileProvider.getUriForFile(
+                                context,
+                                authority,
+                                file
+                            )
+                        } else {
+                            Timber.w("이미지 파일이 존재하지 않음: $imagePath")
+                            null
+                        }
+                    } catch (t: Throwable) {
+                        Timber.e(t, "이미지 URI 변환 실패: $imagePath")
+                        null
+                    }
+                }
+                syncToServer(session, userId, imageUri)
 
                 // 성공 시 SYNCED로 변경
                 walkingSessionDao.updateSyncState(session.id, SyncState.SYNCED)
@@ -465,32 +494,6 @@ constructor(
 
         // 서버 동기화는 WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 처리
     }
-    private fun showTestNotification() {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-
-            val notification = NotificationCompat.Builder(context, "walkit_notification_channel")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("세션 동기화 작업 실행됨")
-                .setContentText("SessionSyncWorker가 ${currentTime}에 실행되었습니다")
-                .setStyle(NotificationCompat.BigTextStyle()
-                    .bigText("SessionSyncWorker 테스트 노티피케이션\n실행 시간: ${currentTime}\nWorkManager가 정상 작동 중입니다!"))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .build()
-
-            // 고유한 notification ID 생성 (중복 방지)
-            val notificationId = (System.currentTimeMillis() % 100000).toInt() + 1000
-            notificationManager.notify(notificationId, notification)
-
-            Timber.d("SessionSyncWorker 테스트 노티피케이션 표시됨: $currentTime")
-
-        } catch (t: Throwable) {
-            Timber.e(t, "노티피케이션 표시 실패")
-        }
-    }
 
     /**
      * 세션을 서버와 동기화 (WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 호출)
@@ -548,6 +551,21 @@ constructor(
             // 서버 동기화 시도 (imageUri를 String으로 변환하여 전달)
             val imageUriString = imageUri?.toString()
             Timber.d("서버 동기화: imageUriString=$imageUriString")
+
+            // 데이터 검증
+            if (session.startTime >= session.endTime) {
+                Timber.e("❌ 시간 검증 실패: startTime(${session.startTime}) >= endTime(${session.endTime})")
+            }
+            if (session.stepCount < 0) {
+                Timber.e("❌ 걸음 수 검증 실패: stepCount(${session.stepCount}) < 0")
+            }
+            if (session.totalDistance < 0) {
+                Timber.e("❌ 거리 검증 실패: totalDistance(${session.totalDistance}) < 0")
+            }
+            if (session.locations.isEmpty()) {
+                Timber.e("❌ 위치 데이터 검증 실패: locations is empty")
+            }
+
             val result = walkRemoteDataSource.saveWalk(session, imageUriString)
 
             when (result) {
@@ -562,7 +580,7 @@ constructor(
                     walkingSessionDao.update(updatedEntity)
 
                     // 동기화 성공
-                    walkingSessionDao.updateSyncState(localId, SyncState.SYNCED)
+                    walkingSessionDao.markSessionAsSynced(localId)
                     Timber.d("서버 동기화 성공: localId=$localId, serverImageUrl=$serverImageUrl")
                 }
 

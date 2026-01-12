@@ -58,7 +58,6 @@ import kotlin.toString
 fun ProfileSection(
     uiState: ProfileUiState,
     goalState: DataState<Goal>,
-    onTestClick: () -> Unit = {}, // 테스트용 클릭 핸들러
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -70,7 +69,7 @@ fun ProfileSection(
         when (uiState) {
             is ProfileUiState.Loading -> ProfileSkeleton()
             is ProfileUiState.Success -> ProfileContent(
-                uiState, goalState, onTestClick
+                uiState, goalState
             )
 
             is ProfileUiState.Error -> ProfileError(message = uiState.message, onRetry = onRetry)
@@ -85,7 +84,6 @@ fun ProfileSection(
 private fun ProfileContent(
     uiState: ProfileUiState.Success,
     goalState: DataState<Goal>,
-    onTestClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -157,10 +155,7 @@ private fun ProfileContent(
             modifier = Modifier.align(Alignment.BottomCenter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-//            val logicalSize = 130.dp
-//            val visualScale = 2f
 
-            // ✅ RecordScreen 방식으로 변경: processedLottieJson 직접 사용
             if (uiState is ProfileUiState.Success && uiState.processedLottieJson != null) {
                 val composition by rememberLottieComposition(
                     LottieCompositionSpec.JsonString(uiState.processedLottieJson)
@@ -172,7 +167,6 @@ private fun ProfileContent(
                     modifier = Modifier
                         .size(200.dp)
                         .scale(0.86f)
-                        .clickable(onClick = onTestClick)
                 )
             }
             Spacer(Modifier.height(8.dp))

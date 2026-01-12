@@ -29,7 +29,6 @@ object CharacterDisplayUtils {
     ): LottieCharacterState {
         return try {
             if (character == null) {
-                Timber.d("캐릭터 정보가 없어 기본 상태 반환")
                 return LottieCharacterState(
                     baseJson = baseLottieJson,
                     modifiedJson = null,
@@ -37,8 +36,6 @@ object CharacterDisplayUtils {
                     isLoading = false
                 )
             }
-
-            Timber.d("캐릭터 Lottie 상태 생성 시작: level=${character.level}")
 
             // 캐릭터의 장착된 아이템 정보를 이용하여 Lottie JSON 수정
             val baseJsonObject = JSONObject(baseLottieJson)

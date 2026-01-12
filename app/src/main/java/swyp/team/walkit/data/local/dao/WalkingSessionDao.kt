@@ -57,18 +57,20 @@ interface WalkingSessionDao {
     /**
      * 최근 7개 세션 조회 (최적화된 쿼리)
      * recentEmotions 계산용으로 startTime과 postWalkEmotion만 필요
+     * SYNCED 상태인 세션만 조회 (동기화 완료된 세션만 표시)
      */
-    @Query("SELECT startTime, postWalkEmotion FROM walking_sessions WHERE userId = :userId ORDER BY startTime DESC LIMIT 7")
+    @Query("SELECT startTime, postWalkEmotion FROM walking_sessions WHERE userId = :userId AND syncState = 'SYNCED' ORDER BY startTime DESC LIMIT 7")
     fun getRecentSessionsForEmotions(userId: Long): Flow<List<RecentSessionEmotion>>
 
     /**
      * 기간 내 감정별 카운트 통계 조회 (DB 레벨 최적화)
      * dominantEmotion 계산용
+     * SYNCED 상태인 세션만 조회 (동기화 완료된 세션만 통계에 포함)
      */
     @Query("""
         SELECT postWalkEmotion as emotion, COUNT(*) as count
         FROM walking_sessions
-        WHERE userId = :userId AND startTime BETWEEN :startTime AND :endTime
+        WHERE userId = :userId AND startTime BETWEEN :startTime AND :endTime AND syncState = 'SYNCED'
         GROUP BY postWalkEmotion
         ORDER BY count DESC
         LIMIT 1
@@ -86,6 +88,23 @@ interface WalkingSessionDao {
         """,
     )
     fun getSessionsBetweenForUser(
+        userId: Long,
+        startMillis: Long,
+        endMillis: Long,
+    ): Flow<List<WalkingSessionEntity>>
+
+    /**
+     * 기간 내 동기화된 세션만 조회 (SyncState.SYNCED)
+     */
+    @Query(
+        """
+        SELECT * FROM walking_sessions
+        WHERE userId = :userId AND startTime BETWEEN :startMillis AND :endMillis
+        AND syncState = 'SYNCED'
+        ORDER BY startTime DESC
+        """,
+    )
+    fun getSyncedSessionsBetweenForUser(
         userId: Long,
         startMillis: Long,
         endMillis: Long,
@@ -129,7 +148,7 @@ interface WalkingSessionDao {
     @Query("SELECT * FROM walking_sessions WHERE syncState IN ('PENDING', 'FAILED') ORDER BY startTime ASC")
     suspend fun getUnsyncedSessions(): List<WalkingSessionEntity>
 
-    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND syncState IN ('PENDING', 'SYNCING')")
+    @Query("SELECT * FROM walking_sessions WHERE userId = :userId AND syncState IN ('PENDING', 'SYNCING','FAILED')")
     suspend fun getUnsyncedSessionsForUser(userId: Long): List<WalkingSessionEntity>
 
     /**
@@ -151,11 +170,20 @@ interface WalkingSessionDao {
     )
 
     /**
+     * 세션 동기화 완료 처리
+     * syncState를 SYNCED로, isSynced를 true로 설정
+     */
+    @Query("UPDATE walking_sessions SET syncState = 'SYNCED', isSynced = 1 WHERE id = :id")
+    suspend fun markSessionAsSynced(
+        id: String,
+    )
+
+    /**
      * 동기화 상태 업데이트 (기존 호환성을 위한 메서드, deprecated)
      * @deprecated SyncState를 직접 사용하는 updateSyncState를 사용하세요
      */
     @Deprecated("Use updateSyncState instead", ReplaceWith("updateSyncState(id, if (isSynced) SyncState.SYNCED else SyncState.PENDING)"))
-    @Query("UPDATE walking_sessions SET syncState = CASE WHEN :isSynced = 1 THEN 'SYNCED' ELSE 'PENDING' END WHERE id = :id")
+    @Query("UPDATE walking_sessions SET syncState = CASE WHEN :isSynced = 1 THEN 'SYNCED' ELSE 'PENDING' END, isSynced = :isSynced WHERE id = :id")
     suspend fun updateSyncStatus(
         id: String,
         isSynced: Boolean,

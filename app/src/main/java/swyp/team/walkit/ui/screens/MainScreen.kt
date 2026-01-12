@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Icon
@@ -44,6 +45,8 @@ import swyp.team.walkit.ui.home.components.WalkingFloatingActionButton
 import swyp.team.walkit.ui.home.components.LocationAgreementDialog
 import swyp.team.walkit.ui.mypage.MyPageRoute
 import swyp.team.walkit.ui.record.RecordRoute
+import swyp.team.walkit.utils.SetStatusBarConfig
+import swyp.team.walkit.utils.DefaultStatusBarConfig
 
 /**
  * 메인 탭 화면: 각 피처 화면 호출만 담당
@@ -62,6 +65,9 @@ fun MainScreen(
     // 위치 동의 ViewModel
     val locationViewModel: LocationAgreementViewModel = hiltViewModel()
     val locationUiState by locationViewModel.uiState.collectAsStateWithLifecycle()
+
+    // // 상태바 설정: MainScreen은 시스템 바 패딩을 사용하므로 DefaultStatusBarConfig 적용
+    // SetStatusBarConfig(config = DefaultStatusBarConfig)
 
     // 위치 권한 요청 Launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -106,7 +112,7 @@ fun MainScreen(
         } else {
             selectedTabIndex
         }
-
+    
     // Route 기반 selected route 결정
     val selectedRoute = when (currentTabIndex) {
         0 -> "home"
@@ -163,7 +169,6 @@ fun MainScreen(
     Scaffold(
         modifier = modifier
             .fillMaxSize(),
-        contentWindowInsets = WindowInsets.systemBars, // 시스템 바 고려 (바텀 네비게이션은 Scaffold가 자동 처리)
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (currentTabIndex == 0) {
@@ -190,6 +195,7 @@ fun MainScreen(
             }
         },
         bottomBar = {
+            // 바텀 네비게이션 바는 항상 표시 (캐릭터 샵에서도 유지)
             CustomBottomNavigation(
                 items = bottomNavItems,
                 selectedRoute = selectedRoute,
@@ -223,7 +229,7 @@ fun MainScreen(
                     },
                     onNavigateToRecord = {
                         selectedTabIndex = 1
-                    }
+                    },
                 )
 
                 1 -> RecordRoute(

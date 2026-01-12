@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -189,7 +192,11 @@ fun CharacterAndBackground(
         }
     )
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+    )
+    {
         // 1️⃣ 배경
         Image(
             painter = painterResource(backgroundRes),
@@ -204,7 +211,7 @@ fun CharacterAndBackground(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp) // System Bar 표준 높이 사용
+//                .windowInsetsPadding(WindowInsets.statusBars) // 상태바 영역만 패딩 적용// 캐릭터 영역의 고정 높이
         ) {
             DressingRoomHeader(
                 grade = character.grade,

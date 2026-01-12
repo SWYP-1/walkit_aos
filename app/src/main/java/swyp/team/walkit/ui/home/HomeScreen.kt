@@ -52,7 +52,6 @@ fun HomeRoute(
     val viewModel: HomeViewModel = hiltViewModel()
     val userViewModel: UserViewModel = hiltViewModel()
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val goalState by viewModel.goalUiState.collectAsStateWithLifecycle()
     val profileUiState by viewModel.profileUiState.collectAsStateWithLifecycle()
     val missionUiState by viewModel.missionUiState.collectAsStateWithLifecycle()
@@ -74,7 +73,6 @@ fun HomeRoute(
     }
 
     HomeScreen(
-        uiState = uiState,
         goalState = goalState,
         profileUiState = profileUiState,
         missionUiState = missionUiState,
@@ -85,7 +83,6 @@ fun HomeRoute(
         onRewardClick = { missionId ->
             viewModel.requestWeeklyMissionReward(missionId)
         },
-        onTestClick = { viewModel.cycleCharacterLevelAndGradeForTest() },
         onClickMissionMore = onClickMissionMore,
         onNavigateToRecord = onNavigateToRecord,
         modifier = modifier,
@@ -98,7 +95,6 @@ fun HomeRoute(
  */
 @Composable
 private fun HomeScreenContent(
-    uiState: HomeUiState,
     goalState: DataState<Goal>,
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
@@ -111,7 +107,6 @@ private fun HomeScreenContent(
     onRewardClick: (Long) -> Unit,
     onRetry: () -> Unit,
     onNavigateToRecord : () -> Unit,
-    onTestClick : () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -128,7 +123,6 @@ private fun HomeScreenContent(
         ProfileSection(
             goalState = goalState,
             uiState = profileUiState,
-            onTestClick = onTestClick, // 테스트용 클릭 핸들러
             modifier = Modifier.fillMaxWidth(),
             onRetry = onRetry
         )
@@ -172,7 +166,6 @@ private fun HomeScreenContent(
  */
 @Composable
 fun HomeScreen(
-    uiState: HomeUiState,
     goalState: DataState<Goal>,
     profileUiState: ProfileUiState,
     missionUiState: MissionUiState,
@@ -184,11 +177,9 @@ fun HomeScreen(
     onClickMissionMore: () -> Unit = {},
     onNavigateToRecord : () -> Unit = {},
     onRetry: () -> Unit = {},
-    onTestClick : () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     HomeScreenContent(
-        uiState = uiState,
         goalState = goalState,
         profileUiState = profileUiState,
         missionUiState = missionUiState,
@@ -201,7 +192,6 @@ fun HomeScreen(
         onRetry = onRetry,
         onNavigateToRecord = onNavigateToRecord,
         onClickWalk = onClickWalk,
-        onTestClick = onTestClick,
         modifier = modifier,
     )
 }

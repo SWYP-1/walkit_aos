@@ -88,3 +88,5 @@ inline fun <reified T> loadCustomData(fileName: String): List<T> {
     return json.decodeFromString<List<T>>(jsonString)
 }
 ```
+
+

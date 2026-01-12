@@ -31,6 +31,7 @@ import swyp.team.walkit.navigation.Screen
 import swyp.team.walkit.data.local.datastore.WalkingDataStore
 import swyp.team.walkit.presentation.viewmodel.UserViewModel
 import swyp.team.walkit.ui.theme.WalkItTheme
+import swyp.team.walkit.core.AuthEventBus
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -39,6 +40,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var walkingDataStore: WalkingDataStore
+
+    @Inject
+    lateinit var authEventBus: AuthEventBus
 
     /**
      * 앱 시작 시 오래된 산책 데이터 정리 (강제종료 대응)
@@ -130,7 +134,7 @@ class MainActivity : ComponentActivity() {
         // Edge-to-Edge 비활성화하여 시스템 바 색상 제어 가능하도록 함
         // enableEdgeToEdge() // 제거하여 시스템 바 색상 제어 가능
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+//        WindowCompat.setDecorFitsSystemWindows(window, true)
 
         // 시스템 바 색상 설정
         window.statusBarColor = getColor(R.color.white)
@@ -183,6 +187,21 @@ class MainActivity : ComponentActivity() {
 //                        if (currentRoute == Screen.Walking.route) {
 //                            navController.popBackStack(Screen.Main.route, false)
 //                        }
+                    }
+                }
+
+                // 401 응답 시 로그인 화면으로 이동 처리
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    authEventBus.requireLogin.collect {
+                        Timber.w("401 응답 감지 - 로그인 화면으로 이동")
+                        // 토큰 삭제
+                        lifecycleScope.launch {
+                            userViewModel.logout()
+                        }
+                        // 로그인 화면으로 이동
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true } // 모든 백스택 제거
+                        }
                     }
                 }
 

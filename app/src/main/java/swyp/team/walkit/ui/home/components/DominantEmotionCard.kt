@@ -116,9 +116,9 @@ fun DominantEmotionCard(
 @Composable
 private fun getEmotionBackgroundColor(emotionType: EmotionType?): androidx.compose.ui.graphics.Color {
     return when (emotionType) {
-        EmotionType.HAPPY -> SemanticColor.stateYellowSecondary      // 기쁨 -> yellowSecondary
-        EmotionType.JOYFUL -> SemanticColor.stateGreenSecondary      // 즐거움 -> greenSecondary
-        EmotionType.CONTENT -> SemanticColor.statePinkSecondary      // 행복 -> pinkSecondary
+        EmotionType.JOYFUL -> SemanticColor.stateYellowSecondary      // 기쁨 -> yellowSecondary
+        EmotionType.DELIGHTED -> SemanticColor.stateGreenSecondary      // 즐거움 -> greenSecondary
+        EmotionType.HAPPY -> SemanticColor.statePinkSecondary      // 행복 -> pinkSecondary
         EmotionType.DEPRESSED -> SemanticColor.stateBlueSecondary   // 우울 -> blueSecondary
         EmotionType.TIRED -> SemanticColor.statePurpleSecondary      // 지침 -> purpleSecondary
         EmotionType.IRRITATED -> SemanticColor.stateRedPrimary        // 짜증남 -> redPrimary
@@ -133,9 +133,9 @@ private fun getEmotionBackgroundColor(emotionType: EmotionType?): androidx.compo
 @Composable
 private fun getEmotionTextColor(emotionType: EmotionType?): androidx.compose.ui.graphics.Color {
     return when (emotionType) {
-        EmotionType.HAPPY -> SemanticColor.stateYellowTertiaryInverse  // 기쁨 -> yellowTertiaryInverse
-        EmotionType.JOYFUL -> SemanticColor.stateGreenTertiary          // 즐거움 -> greenPrimary (배경이 Secondary이므로 Primary 사용)
-        EmotionType.CONTENT -> SemanticColor.statePinkPrimary           // 행복 -> pinkPrimary
+        EmotionType.JOYFUL -> SemanticColor.stateYellowTertiaryInverse  // 기쁨 -> yellowTertiaryInverse
+        EmotionType.DELIGHTED -> SemanticColor.stateGreenTertiary          // 즐거움 -> greenPrimary (배경이 Secondary이므로 Primary 사용)
+        EmotionType.HAPPY -> SemanticColor.statePinkPrimary           // 행복 -> pinkPrimary
         EmotionType.DEPRESSED -> SemanticColor.stateBluePrimary         // 우울 -> bluePrimary
         EmotionType.TIRED -> SemanticColor.statePurplePrimary            // 지침 -> purplePrimary
         EmotionType.IRRITATED -> SemanticColor.stateRedTertiary           // 짜증남 -> redTertiary
@@ -185,12 +185,12 @@ private fun DominantEmotionCardJoyfulPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "행복함 (CONTENT)")
+@Preview(showBackground = true, name = "행복함 (DELIGHTED)")
 @Composable
 private fun DominantEmotionCardContentPreview() {
     WalkItTheme {
         DominantEmotionCard(
-            emotionType = EmotionType.CONTENT,
+            emotionType = EmotionType.DELIGHTED,
             modifier = Modifier.padding(16.dp),
         )
     }

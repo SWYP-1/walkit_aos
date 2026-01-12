@@ -55,9 +55,9 @@ fun EmotionGrid(
     onEmotionToggle: (EmotionType) -> Unit,
 ) {
     val positiveEmotions = listOf(
-        EmotionType.HAPPY to "기쁨",
-        EmotionType.JOYFUL to "즐거움",
-        EmotionType.CONTENT to "행복함",
+        EmotionType.JOYFUL to "기쁨",
+        EmotionType.DEPRESSED to "즐거움",
+        EmotionType.HAPPY to "행복함",
     )
 
     val negativeEmotions = listOf(
@@ -134,9 +134,9 @@ fun EmotionButton(
         MaterialTheme.colorScheme.primaryContainer
     } else {
         when (emotionType) {
-            EmotionType.HAPPY,
             EmotionType.JOYFUL,
-            EmotionType.CONTENT,
+            EmotionType.DELIGHTED,
+            EmotionType.HAPPY,
             -> MaterialTheme.colorScheme.surfaceVariant
 
             else -> Color(0xFFB3E5FC)

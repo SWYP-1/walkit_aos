@@ -1,7 +1,6 @@
 package swyp.team.walkit.ui.walking.utils
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.EmotionType
 import swyp.team.walkit.ui.components.EmotionOption
@@ -18,9 +17,9 @@ import swyp.team.walkit.ui.theme.SemanticColor
  * UI 데이터가 아닌 순수 enum 리스트만 포함합니다.
  */
 val EMOTION_TYPE_ORDER = listOf(
-    EmotionType.HAPPY,
     EmotionType.JOYFUL,
-    EmotionType.CONTENT,
+    EmotionType.DELIGHTED,
+    EmotionType.HAPPY,
     EmotionType.DEPRESSED,
     EmotionType.TIRED,
     EmotionType.IRRITATED
@@ -37,24 +36,24 @@ val EMOTION_TYPE_ORDER = listOf(
 @Composable
 fun emotionTypeToOption(emotionType: EmotionType): EmotionOption {
     return when (emotionType) {
-        EmotionType.HAPPY -> EmotionOption(
-            imageResId = R.drawable.ic_circle_happy,
+        EmotionType.JOYFUL -> EmotionOption(
+            imageResId = R.drawable.ic_circle_joyful,
             label = "기쁘다",
             boxColor = SemanticColor.stateYellowTertiary,
             textColor = SemanticColor.stateYellowPrimary,
             value = emotionType.value
         )
 
-        EmotionType.JOYFUL -> EmotionOption(
-            imageResId = R.drawable.ic_circle_joyful,
+        EmotionType.DELIGHTED -> EmotionOption(
+            imageResId = R.drawable.ic_circle_delighted,
             label = "즐겁다",
             boxColor = SemanticColor.stateGreenTertiary,
             textColor = SemanticColor.stateGreenPrimary,
             value = emotionType.value
         )
 
-        EmotionType.CONTENT -> EmotionOption(
-            imageResId = R.drawable.ic_circle_content,
+        EmotionType.HAPPY -> EmotionOption(
+            imageResId = R.drawable.ic_circle_happy,
             label = "행복하다",
             boxColor = SemanticColor.statePinkTertiary,
             textColor = SemanticColor.statePinkPrimary,
@@ -125,7 +124,7 @@ fun emotionToValue(emotionType: EmotionType): Int {
  * @return EmotionType
  */
 fun valueToEmotionType(value: Int): EmotionType {
-    return EmotionType.entries.find { it.value == value } ?: EmotionType.CONTENT
+    return EmotionType.entries.find { it.value == value } ?: EmotionType.DELIGHTED
 }
 
 /**
@@ -154,12 +153,12 @@ fun findSelectedEmotionIndex(
 fun stringToEmotionType(emotionString: String?): EmotionType {
     return try {
         if (emotionString.isNullOrBlank()) {
-            EmotionType.CONTENT
+            EmotionType.DELIGHTED
         } else {
             EmotionType.valueOf(emotionString.uppercase())
         }
     } catch (e: Throwable) {
-        EmotionType.CONTENT // 기본값
+        EmotionType.DELIGHTED // 기본값
     }
 }
 
@@ -192,9 +191,9 @@ fun stringToEmotionTypeOrNull(emotionString: String?): EmotionType? {
  */
 fun emotionTypeToString(emotionType: EmotionType): String {
     return when (emotionType) {
-        EmotionType.HAPPY -> "HAPPY"
         EmotionType.JOYFUL -> "JOYFUL"
-        EmotionType.CONTENT -> "CONTENT"
+        EmotionType.DELIGHTED -> "DELIGHTED"
+        EmotionType.HAPPY -> "HAPPY"
         EmotionType.DEPRESSED -> "DEPRESSED"
         EmotionType.TIRED -> "TIRED"
         EmotionType.IRRITATED -> "IRRITATED"

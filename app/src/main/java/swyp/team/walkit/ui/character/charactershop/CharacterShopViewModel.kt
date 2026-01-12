@@ -106,19 +106,24 @@ class CharacterShopViewModel @Inject constructor(
     private val _showCartDialog = MutableStateFlow(false)
     val showCartDialog: StateFlow<Boolean> = _showCartDialog.asStateFlow()
 
-    // Toast 메시지 상태
-    private val _toastMessage = MutableStateFlow<String?>(null)
-    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
+    // InfoBanner 메시지 상태
+    data class InfoBannerMessage(
+        val title: String,
+        val description: String? = null
+    )
+
+    private val _infoBannerMessage = MutableStateFlow<InfoBannerMessage?>(null)
+    val infoBannerMessage: StateFlow<InfoBannerMessage?> = _infoBannerMessage.asStateFlow()
 
     /**
-     * Toast 메시지 표시
+     * InfoBanner 메시지 표시
      */
-    private fun showToast(message: String) {
-        _toastMessage.value = message
+    private fun showInfoBanner(title: String, description: String? = null) {
+        _infoBannerMessage.value = InfoBannerMessage(title, description)
         // 다음 프레임에서 자동으로 null로 리셋 (한 번만 표시)
         viewModelScope.launch {
-            kotlinx.coroutines.delay(100)
-            _toastMessage.value = null
+            kotlinx.coroutines.delay(3000)
+            _infoBannerMessage.value = null
         }
     }
 
@@ -880,17 +885,20 @@ class CharacterShopViewModel @Inject constructor(
                         Timber.Forest.d("구매 성공 - 착용 상태 저장 시작")
                         saveWornItemsToServer()
 
-                        // ✅ 구매 완료 Toast 표시
-                        showToast("아이템 구매가 완료되었습니다!")
+                        // ✅ 구매 완료 InfoBanner 표시
+                        showInfoBanner(
+                            title = "아이템 구매가 완료되었습니다",
+                            description = "보유한 아이템만 보기에서 확인하실 수 있습니다"
+                        )
 
-                    // ✅ 장바구니 다이얼로그 닫기
-                    dismissCartDialog()
+                        // ✅ 장바구니 다이얼로그 닫기
+                        dismissCartDialog()
 
-                    // ❌ 캐릭터 정보 백그라운드 동기화 제거
-                    // 구매 완료 후 refreshCharacterInfo() 호출 시 이미 착용하고 있던 아이템 상태가 사라짐
-                    // 구매 작업에서는 로컬 상태만 업데이트하고 서버 동기화는 불필요
+                        // ❌ 캐릭터 정보 백그라운드 동기화 제거
+                        // 구매 완료 후 refreshCharacterInfo() 호출 시 이미 착용하고 있던 아이템 상태가 사라짐
+                        // 구매 작업에서는 로컬 상태만 업데이트하고 서버 동기화는 불필요
 
-                    Timber.Forest.d("코스메틱 아이템 구매 완료 및 로컬 상태 업데이트")
+                        Timber.Forest.d("코스메틱 아이템 구매 완료 및 로컬 상태 업데이트")
                     }
 
                     is Result.Error -> {
@@ -1073,8 +1081,11 @@ class CharacterShopViewModel @Inject constructor(
             // 서버 상태와 UI 상태 동기화 완료
             Timber.Forest.d("착용 아이템 서버 저장 완료: ${saveTasks.size}개 슬롯")
 
-            // ✅ 저장 완료 Toast 표시
-            showToast("캐릭터 저장이 완료되었습니다!")
+            // ✅ 저장 완료 InfoBanner 표시
+            showInfoBanner(
+                title = "저장되었습니다",
+                description = null
+            )
         } catch (t: Throwable) {
             Timber.Forest.e(t, "착용 아이템 서버 저장 실패")
             // TODO: 사용자에게 에러 표시
@@ -1170,75 +1181,10 @@ class CharacterShopViewModel @Inject constructor(
 
     /**
      * 캐릭터 정보 새로고침 (착용 상태 변경 후 최신 정보 반영)
+     * 선택 상태 및 장바구니 초기화 후 서버의 최신 worn 정보로 재설정
      */
     suspend fun refreshCharacterInfo() {
-        try {
-            Timber.Forest.d("캐릭터 정보 refresh 시작")
-            _isRefreshLoading.value = true
 
-            // 최신 캐릭터 정보 로드 (항상 API 호출)
-            when (val result = characterRepository.getCharacterFromApi()) {
-                is Result.Success -> {
-                    val updatedCharacter = result.data
-                    Timber.Forest.d(
-                        "캐릭터 정보 refresh 성공: ${updatedCharacter.nickName} : body ${updatedCharacter.bodyImageName},head ${updatedCharacter.headImageName}"
-                    )
-
-                    // ✅ 새로운 캐릭터로 Lottie JSON 재생성
-                    val updatedLottieJson = loadBaseLottieJson(updatedCharacter)
-                    Timber.Forest.d("캐릭터 Lottie JSON 재생성 완료: ${updatedLottieJson?.toString()?.length ?: 0} chars")
-
-                    // UI 상태 업데이트 (캐릭터 정보와 Lottie JSON 모두 교체)
-                    if (_uiState.value is DressingRoomUiState.Success) {
-                        val currentState = _uiState.value as DressingRoomUiState.Success
-                        _uiState.value = currentState.copy(
-                            character = updatedCharacter,
-                            processedLottieJson = updatedLottieJson?.toString()
-                        )
-                        Timber.Forest.d("캐릭터 정보 및 Lottie JSON UI 업데이트 완료")
-                    }
-
-                    // DB에도 최신 정보 저장 (향후 빠른 로드를 위해)
-                    // userId를 얻어서 저장
-                    val userResult = userRepository.getUser()
-                    when (userResult) {
-                        is Result.Success -> {
-                            val userId = userResult.data.userId
-                            characterRepository.saveCharacter(userId, updatedCharacter)
-                                .onSuccess {
-                                    Timber.Forest.d("캐릭터 정보 DB 저장 성공: userId=$userId")
-                                }
-                                .onError { exception, message ->
-                                    Timber.Forest.e(
-                                        exception,
-                                        "캐릭터 정보 DB 저장 실패: userId=$userId, $message"
-                                    )
-                                }
-                        }
-
-                        else -> {
-                            Timber.Forest.e("사용자 정보 조회 실패 - 캐릭터 정보 DB 저장 건너뜀")
-                        }
-                    }
-                }
-
-                is Result.Error -> {
-                    Timber.Forest.e(result.exception, "캐릭터 정보 refresh 실패")
-                    // 에러 시에도 계속 진행 (기존 캐릭터 정보 유지)
-                }
-
-                Result.Loading -> {
-                    // 로딩 상태 무시
-                }
-            }
-
-        } catch (t: Throwable) {
-            Timber.Forest.e(t, "캐릭터 정보 refresh 중 예외 발생")
-        } finally {
-            // 로딩 상태 해제
-            _isRefreshLoading.value = false
-            Timber.Forest.d("캐릭터 정보 refresh 완료")
-        }
     }
 
     /**

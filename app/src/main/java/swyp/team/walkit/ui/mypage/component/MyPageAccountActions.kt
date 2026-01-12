@@ -38,7 +38,6 @@ fun MyPageAccountActions(
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp)
     ) {
         ActionTextButton(
             text = "로그아웃",

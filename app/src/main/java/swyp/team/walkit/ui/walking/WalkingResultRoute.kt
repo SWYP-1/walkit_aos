@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import timber.log.Timber
@@ -48,6 +49,9 @@ fun WalkingResultRoute(
     val snapshotState by viewModel.snapshotState.collectAsStateWithLifecycle()
     val goalState by goalViewModel.goalState.collectAsStateWithLifecycle()
 
+    val localDenSity = LocalDensity.current
+
+
     // 목표 데이터 명시적 로드
     LaunchedEffect(Unit) {
         Timber.d("🎯 WalkingResultRoute: 목표 데이터 로드 시작")
@@ -60,7 +64,7 @@ fun WalkingResultRoute(
     // 산책 완료 다이얼로그 표시 상태
     var showWalkingCompleteDialog by remember { mutableStateOf(false) }
 
-    // 저장 중일 때만 로딩 표시
+//     저장 중일 때만 로딩 표시
 //    if (uiState is WalkingUiState.SavingSession) {
 //        Box(
 //            modifier = modifier.fillMaxSize(),
@@ -99,24 +103,8 @@ fun WalkingResultRoute(
         LaunchedEffect(session, emotionPhotoUri) {
             val currentSession = session
             if (currentSession != null && currentSession.locations.isNotEmpty() && emotionPhotoUri == null) {
-                mapViewModel.setLocations(currentSession.locations)
+                mapViewModel.setLocations(currentSession.locations,localDenSity)
             }
-        }
-
-        // ViewModel 정보 로깅 (디버깅용)
-        LaunchedEffect(viewModel, emotionPhotoUri, session) {
-            Timber.d("🚶 WalkingResultRoute ViewModel 상태:")
-            Timber.d("session id : ${session?.id}")
-            Timber.d("session note : ${session?.note}")
-            Timber.d("session pre emo : ${session?.preWalkEmotion}")
-            Timber.d("session post emo : ${session?.postWalkEmotion}")
-            Timber.d("session localImagePath : ${session?.localImagePath}")
-            Timber.d("session locations : ${session?.locations}")
-            Timber.d("session stepCount : ${session?.stepCount}")
-            Timber.d("  📸 emotionPhotoUri: $emotionPhotoUri")
-            Timber.d("  📍 session.locations: ${session?.locations?.size ?: 0}개")
-            Timber.d("  🎯 emotionText: ${viewModel.emotionText.value}")
-            Timber.d("  📊 uiState: ${viewModel.uiState.value}")
         }
 
         // Goal 데이터 추출 및 ViewModel에 설정
@@ -125,13 +113,6 @@ fun WalkingResultRoute(
             else -> null
         }
 
-        // Goal 상태 로깅 (디버깅용)
-        LaunchedEffect(goalState, goal) {
-            Timber.d("🎯 WalkingResultRoute Goal 상태:")
-            Timber.d("  📊 goalState: $goalState")
-            Timber.d("  🎯 goal: $goal")
-            Timber.d("  📈 targetStepCount: ${goal?.targetStepCount}")
-        }
 
         // WalkingViewModel에 현재 goal 설정 (targetStepCount 저장용)
         LaunchedEffect(goal) {

@@ -1,6 +1,7 @@
 package swyp.team.walkit.ui.login
 
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.ActivityResult
@@ -49,6 +50,7 @@ sealed class LoginUiState {
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
+    private val application: Application,
     private val authRemoteDataSource: AuthRemoteDataSource,
     private val authDataStore: AuthDataStore,
     private val onboardingDataStore: OnboardingDataStore,
@@ -459,6 +461,11 @@ class LoginViewModel @Inject constructor(
                         _isLoggedIn.value = true
                         _uiState.value = LoginUiState.Idle
                         Timber.i("로그인 완료 - 닉네임 있음: ${user.nickname}")
+
+                        // 서버 데이터 동기화 WorkManager 즉시 실행
+//                        swyp.team.walkit.worker.SessionSyncScheduler.runSyncOnly(application)
+                        Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
+
                         onNavigateToMain?.invoke()
                     } else {
                         // 닉네임이 없으면: 약관 동의 → 온보딩

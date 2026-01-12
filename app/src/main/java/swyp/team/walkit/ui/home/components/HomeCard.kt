@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,10 +36,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -55,8 +51,6 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.FormatUtils
-import swyp.team.walkit.utils.WalkingTestData.generateRandomCityWalk
-import swyp.team.walkit.utils.WalkingTestData.generateRandomCityWalkPoints
 import java.io.File
 
 @Composable
@@ -127,6 +121,7 @@ fun WeeklyRecordCard(
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp)
                 ) {
+
                     Text(
                         text = FormatUtils.formatDate(session.startTime),
                         style = MaterialTheme.walkItTypography.captionM.copy(
@@ -239,9 +234,9 @@ fun EmotionCircle(emotionType: EmotionType,modifier: Modifier) {
 
 
     val drawable = when (emotionType) {
-        HAPPY -> R.drawable.ic_circle_happy
         JOYFUL -> R.drawable.ic_circle_joyful
-        CONTENT -> R.drawable.ic_circle_content
+        DELIGHTED -> R.drawable.ic_circle_delighted
+        HAPPY -> R.drawable.ic_circle_happy
         DEPRESSED -> R.drawable.ic_circle_depressed
         TIRED -> R.drawable.ic_circle_tired
         IRRITATED -> R.drawable.ic_circle_anxious

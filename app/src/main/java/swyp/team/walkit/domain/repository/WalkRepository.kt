@@ -53,6 +53,13 @@ interface WalkRepository {
     suspend fun unlikeWalk(walkId: Long): Result<Unit>
 
     /**
+     * 산책 목록 조회
+     *
+     * @return 산책 기록 목록
+     */
+    suspend fun getWalkList(): Result<List<WalkingSession>>
+
+    /**
      * 산책 노트 업데이트
      *
      * @param walkId 산책 ID
