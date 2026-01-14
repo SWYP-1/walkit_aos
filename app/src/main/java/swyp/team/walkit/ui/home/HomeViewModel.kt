@@ -42,6 +42,8 @@ import swyp.team.walkit.domain.repository.CharacterRepository
 import swyp.team.walkit.domain.repository.GoalRepository
 import swyp.team.walkit.domain.repository.MissionRepository
 import swyp.team.walkit.domain.repository.HomeRepository
+import swyp.team.walkit.data.remote.interceptor.AuthExpiredException
+import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.domain.repository.WalkRepository
 import swyp.team.walkit.domain.service.LocationManager
@@ -138,6 +140,7 @@ class HomeViewModel @Inject constructor(
     private val lottieImageProcessor: swyp.team.walkit.domain.service.LottieImageProcessor, // ✅ Lottie 이미지 프로세서 추가
     private val application: android.app.Application, // ✅ Application 추가
     private val characterEventBus: swyp.team.walkit.core.CharacterEventBus, // ✅ 이벤트 버스 추가
+    private val authEventBus: AuthEventBus, // ✅ 인증 이벤트 버스 추가
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -186,6 +189,7 @@ class HomeViewModel @Inject constructor(
                     is ProfileUiState.Success -> {
                         currentProfileState.character
                     }
+
                     else -> {
                         // fallback: 서버에서 가져오기
                         val location = getLocationForApi()
@@ -199,6 +203,7 @@ class HomeViewModel @Inject constructor(
                                 Timber.w("🏠 캐릭터 정보를 찾을 수 없음: ${characterResult.message}")
                                 null
                             }
+
                             Result.Loading -> null
                         }
                     }
@@ -371,6 +376,17 @@ class HomeViewModel @Inject constructor(
         // loadHomeData()는 HomeScreen에서 직접 호출하도록 변경
         // init에서 호출하면 ViewModel 생성 시점에 호출되어 비효율적
 
+        // todayStepsFlow 변경 시 ProfileUiState의 todaySteps도 자동 업데이트
+        viewModelScope.launch {
+            todayStepsFlow.collect { todaySteps ->
+                val currentState = _profileUiState.value
+                if (currentState is ProfileUiState.Success) {
+                    _profileUiState.value = currentState.copy(todaySteps = todaySteps)
+                    Timber.d("💾 ProfileUiState todaySteps 업데이트: $todaySteps")
+                }
+            }
+        }
+
         // 캐릭터 착용 상태 변경 이벤트 구독 (캐시 무효화용)
         viewModelScope.launch {
             characterEventBus.characterUpdated.collect {
@@ -487,21 +503,35 @@ class HomeViewModel @Inject constructor(
                     Timber.d("API 응답 데이터 확인 - character: ${homeData.character}")
                     Timber.d("API 응답 데이터 확인 - 이번 주 세션 수: ${homeData.walkRecords.size}")
 
-                    // 🔥 새로운 로직: 이번 주 세션 데이터를 즉시 Room에 저장
-                    saveThisWeekSessionsToRoom(homeData.walkRecords)
+                    // 🔄 Home API 데이터 처리 (세션 데이터는 로컬 DB Flow로 자동 업데이트)
+                    val currentUserId = currentUser.value?.userId ?: return@launch
 
-                    // ✅ homeData.walkRecords를 사용해서 walkingSessionDataState 즉시 업데이트
-                    updateWalkingSessionDataFromHomeData(homeData)
+                    // 캐릭터, 날씨 등 다른 데이터는 Home API에서 가져와서 저장
+                    homeData.character.nickName?.let { nickname ->
+                        userRepository.refreshUser()
+                            .onError { exception, message ->
+                                Timber.w(exception, "사용자 정보 저장 실패: $message")
+                            }
 
+                        // ✅ Home API에서 가져온 캐릭터 정보를 DB에 저장 (마이페이지 캐릭터 레벨 표시용)
+                        try {
+                            characterRepository.saveCharacter(currentUserId, homeData.character)
+                            Timber.d("🏠 캐릭터 정보 DB 저장 성공: userId=$currentUserId, grade=${homeData.character.grade}")
+                        } catch (e: Throwable) {
+                            Timber.w(e, "🏠 캐릭터 정보 DB 저장 실패 (무시)")
+                        }
+                    }
+
+                    // 🔍 로컬 Room 상태 확인 (전체 동기화 실행 여부 결정)
+                    val hasExistingSessions =
+                        walkingSessionRepository.hasAnySessionsForUser(currentUserId)
+                    val shouldRunFullSync = !hasExistingSessions
                     // Home API에서 받은 Character 정보를 Room에 저장
+                    if (shouldRunFullSync) {
+                        saveThisWeekSessionsToRoom(walkRecords = homeData.walkRecords)
+                    }
                     val userId = currentUser.value?.userId
                     homeData.character.nickName?.let { nickname ->
-                        if (userId != null) {
-                            characterRepository.saveCharacter(userId, homeData.character)
-                                .onError { exception, message ->
-                                    Timber.w(exception, "캐릭터 정보 저장 실패: $message")
-                                }
-                        }
 
                         // ✅ Home API 호출 후 User 정보를 Room에 저장 (마이페이지 닉네임 표시용)
                         userRepository.refreshUser()
@@ -509,14 +539,27 @@ class HomeViewModel @Inject constructor(
                                 Timber.w(exception, "사용자 정보 저장 실패: $message")
                             }
 
+                        // ✅ Home API에서 가져온 캐릭터 정보를 DB에 저장 (마이페이지 캐릭터 레벨 표시용)
+                        try {
+                            if (userId != null) {
+                                characterRepository.saveCharacter(userId, homeData.character)
+                                Timber.d("🏠 캐릭터 정보 DB 저장 성공: userId=$userId, grade=${homeData.character.grade}")
+                            }
+                        } catch (e: Throwable) {
+                            Timber.w(e, "🏠 캐릭터 정보 DB 저장 실패 (무시)")
+                        }
+
                         // Section별 UiState 업데이트
                         updateProfileSection(homeData)
                         updateMissionSection(homeData)
 
-                        // 🔄 백그라운드에서 전체 세션 동기화 시작 (워커 대신 직접 호출)
-                        launchFullSessionSyncInBackground()
-
-                        Timber.d("🏠 Home API 완료 - 이번 주 세션 즉시 저장 + 백그라운드 전체 sync 시작")
+                        // 🔄 세션 저장 전에 확인한 상태에 따라 전체 세션 동기화 실행
+                        if (shouldRunFullSync) {
+                            Timber.d("🏠 로컬 Room이 비어있었음 - 전체 세션 동기화 시작")
+                            launchFullSessionSyncInBackground()
+                        } else {
+                            Timber.d("🏠 로컬 Room에 이미 데이터 존재 - 전체 동기화 스킵")
+                        }
                     }
                 }
 
@@ -524,14 +567,28 @@ class HomeViewModel @Inject constructor(
                     val totalElapsedTime = System.currentTimeMillis() - totalStartTime
                     Timber.tag(TAG_PERFORMANCE)
                         .w("Home 데이터 로드 실패 (전체): ${totalElapsedTime}ms (위치: ${locationElapsedTime}ms, API: ${apiElapsedTime}ms)")
-                    Timber.w("홈 API 호출 실패 - 서버 문제로 판단하여 Error 상태 유지")
 
-                    // Home API가 모든 데이터를 담당하므로 실패 시 서버 문제로 간주
-                    // fallback 로직 제거 - 일관성 없는 데이터로 Success 표시하지 않음
-                    _profileUiState.value =
-                        ProfileUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
-                    _missionUiState.value =
-                        MissionUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
+                    // 토큰 만료 에러인지 확인
+                    if (homeResult.exception is AuthExpiredException) {
+                        Timber.w("토큰 만료로 인한 홈 데이터 로드 실패 - 로그인 필요")
+                        _profileUiState.value =
+                            ProfileUiState.Error("로그인이 필요합니다.\n다시 로그인해주세요.")
+                        _missionUiState.value =
+                            MissionUiState.Error("로그인이 필요합니다.\n다시 로그인해주세요.")
+
+                        // 로그인 화면으로 이동하는 이벤트 발생
+                        viewModelScope.launch {
+                            authEventBus.notifyRequireLogin()
+                        }
+                    } else {
+                        Timber.w("홈 API 호출 실패 - 서버 문제로 판단하여 Error 상태 유지")
+                        // Home API가 모든 데이터를 담당하므로 실패 시 서버 문제로 간주
+                        // fallback 로직 제거 - 일관성 없는 데이터로 Success 표시하지 않음
+                        _profileUiState.value =
+                            ProfileUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
+                        _missionUiState.value =
+                            MissionUiState.Error("서버 연결에 문제가 있습니다.\n잠시 후 다시 시도해주세요.")
+                    }
 
                     // 기존 세션 로드 로직도 호출하지 않음 (API 기반이므로)
                 }
@@ -567,16 +624,11 @@ class HomeViewModel @Inject constructor(
                 ) { recentSessionEmotions, thisWeekSessions ->
                     // 이번 주 세션 수 로깅 추가
                     Timber.d("🏠 [thisWeekSessions] 이번 주 세션 수: ${thisWeekSessions.size}")
-                    thisWeekSessions.forEachIndexed { index, session ->
-                        Timber.d("🏠 [thisWeekSessions] 세션 ${index + 1}: 시작시간=${session.startTime.formatTimestamp()}, 걸음=${session.stepCount}, 감정=${session.postWalkEmotion}")
-                    }
-
-                    // ✅ Room에 이번주 세션 데이터가 없어도 homeAPI 호출하지 않음
-                    // (이미 HomeScreen에서 loadHomeData()가 호출되어 있으므로)
-                    isFirstEmission = false
 
                     // ✅ thisWeekSessions에서 직접 dominantEmotion 계산 (userId 필터링된 데이터 사용)
-                    val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(thisWeekSessions)
+                    val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(
+                        thisWeekSessions
+                    )
                     Timber.d("🏠 [dominantEmotion] 계산된 우세 감정: $dominantEmotion (카운트: ${dominantEmotionCount ?: 0})")
 
                     // recentEmotions 추출 과정 로깅 (최적화된 데이터 사용)
@@ -606,6 +658,8 @@ class HomeViewModel @Inject constructor(
                     // null이면 스킵 (homeAPI 호출 중)
                     if (walkingSessionData != null) {
                         _walkingSessionDataState.value = DataState.Success(walkingSessionData)
+                        // walkingSessionDataState 업데이트 시 ProfileUiState의 todaySteps도 업데이트
+                        updateTodayStepsInProfileState()
                     }
                 }
             } catch (t: Throwable) {
@@ -636,10 +690,38 @@ class HomeViewModel @Inject constructor(
             todaySteps = todayStepsFlow.value,
             temperature = homeData.temperature
         )
-        Timber.d("프로필 상태: Success")
+        Timber.d("프로필 상태: Success, todaySteps: ${todayStepsFlow.value}")
 
         // ✅ 캐릭터 정보 업데이트 후 Lottie 표시 자동 로드
         loadCharacterDisplay()
+    }
+
+    /**
+     * ProfileUiState의 todaySteps를 todayStepsFlow 값으로 업데이트
+     */
+    private fun updateTodayStepsInProfileState() {
+        val currentState = _profileUiState.value
+        if (currentState is ProfileUiState.Success) {
+            val updatedSteps = todayStepsFlow.value
+            _profileUiState.value = currentState.copy(todaySteps = updatedSteps)
+            Timber.d("💾 ProfileUiState todaySteps 업데이트: $updatedSteps")
+        }
+    }
+
+    /**
+     * walkingSessionDataState가 업데이트될 때 ProfileUiState의 todaySteps도 업데이트
+     */
+    init {
+        // todayStepsFlow 변경 시 ProfileUiState 업데이트
+        viewModelScope.launch {
+            todayStepsFlow.collect { todaySteps ->
+                val currentState = _profileUiState.value
+                if (currentState is ProfileUiState.Success) {
+                    _profileUiState.value = currentState.copy(todaySteps = todaySteps)
+                    Timber.d("💾 ProfileUiState todaySteps 업데이트: $todaySteps")
+                }
+            }
+        }
     }
 
     /**
@@ -984,15 +1066,35 @@ class HomeViewModel @Inject constructor(
                             "✅ [FullSessionSync] SUCCESS - sessionCount=${sessions.size}"
                         )
 
-                        sessions.forEach { session ->
-                            Timber.d(
-                                "📥 [FullSessionSync] SAVE sessionId=${session.id}"
-                            )
+                        Timber.i(
+                            "✅ [FullSessionSync] SUCCESS - myUserId =${currentUser.value?.userId},"
+                        )
 
-                            // walkingSessionRepository.saveSessionLocalOnly(
-                            //     session = session,
-                            //     syncState = SyncState.SYNCED
-                            // )
+                        // 현재 사용자 ID로 모든 세션의 userId 변경
+                        val currentUserId = currentUser.value?.userId ?: return@launch
+                        val sessionsWithCorrectUserId = sessions.map { session ->
+                            session.copy(userId = currentUserId)
+                        }
+
+                        Timber.i("🔄 [FullSessionSync] 세션 userId 업데이트 완료 - 변환된 세션 수: ${sessionsWithCorrectUserId.size}")
+
+
+                        sessionsWithCorrectUserId.forEach { session ->
+                            val serverId = session.id // 서버 세션은 이미 serverId를 id로 가지고 있음
+
+                            Timber.d(
+                                "📥 [FullSessionSync] 세션 처리: id=${session.id}, serverId=${session.serverId} " +
+                                        "userId=${session.userId}, 날짜=${session.startTime.formatTimestamp()}, 걸음수=${session.stepCount}"
+                            )
+                            val sessionToSave = if (session.serverId == null) {
+                                session.copy(serverId = serverId)
+                            } else {
+                                session
+                            }
+                            walkingSessionRepository.saveSessionLocalOnly(
+                                session = sessionToSave,
+                                syncState = SyncState.SYNCED
+                            )
                         }
                     }
                 }
@@ -1011,7 +1113,7 @@ class HomeViewModel @Inject constructor(
      * homeData.walkRecords를 사용해서 walkingSessionDataState 즉시 업데이트
      * Room에 데이터가 없을 때 API 데이터를 바로 사용하기 위함
      */
-    private suspend fun updateWalkingSessionDataFromHomeData(homeData: swyp.team.walkit.domain.model.HomeData) {
+    private fun updateWalkingSessionDataFromHomeData(homeData: swyp.team.walkit.domain.model.HomeData) {
         try {
             val walkRecords = homeData.walkRecords
             Timber.d("🏠 [updateWalkingSessionDataFromHomeData] API에서 받은 이번 주 세션 수: ${walkRecords.size}")
@@ -1024,7 +1126,9 @@ class HomeViewModel @Inject constructor(
             Timber.d("🏠 [updateWalkingSessionDataFromHomeData] 변환된 세션 수: ${sessionsThisWeek.size}")
 
             // dominantEmotion 계산
-            val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(sessionsThisWeek)
+            val (dominantEmotion, dominantEmotionCount) = findDominantEmotionWithCount(
+                sessionsThisWeek
+            )
             Timber.d("🏠 [updateWalkingSessionDataFromHomeData] 우세 감정: $dominantEmotion (카운트: ${dominantEmotionCount ?: 0})")
 
             // recentEmotions 추출 (최근 7개 세션)
@@ -1045,7 +1149,8 @@ class HomeViewModel @Inject constructor(
             Timber.d("🏠 [updateWalkingSessionDataFromHomeData] walkingSessionDataState 업데이트 완료")
         } catch (t: Throwable) {
             Timber.e(t, "🏠 [updateWalkingSessionDataFromHomeData] 오류 발생")
-            _walkingSessionDataState.value = DataState.Error(t.message ?: "세션 데이터 업데이트 중 오류가 발생했습니다.")
+            _walkingSessionDataState.value =
+                DataState.Error(t.message ?: "세션 데이터 업데이트 중 오류가 발생했습니다.")
         }
     }
 
@@ -1069,19 +1174,39 @@ class HomeViewModel @Inject constructor(
             val existingSessions = walkingSessionRepository.getSessionsBetween(weekStart, weekEnd)
                 .firstOrNull() ?: emptyList()
 
+            Timber.d("🏠 이번 주 범위 확인: weekStart=$weekStart, weekEnd=$weekEnd")
             Timber.d("🏠 Room 기존 세션 수: ${existingSessions.size}, API 세션 수: ${walkRecords.size}")
+            if (existingSessions.isNotEmpty()) {
+                existingSessions.forEach { session ->
+                    Timber.d("🏠 기존 세션: id=${session.id}, serverId=${session.serverId}, userId=${session.userId}, startTime=${session.startTime}, 걸음수=${session.stepCount}")
+                }
+            }
+
+            // serverId로 이미 저장된 세션들 확인 (중복 저장 방지)
+            val existingServerIds = existingSessions.mapNotNull { it.serverId }.toSet()
+            Timber.d("🏠 기존 서버 ID들: $existingServerIds")
 
             if (existingSessions.isEmpty()) {
                 // Room이 비어있으면 즉시 저장
                 Timber.d("🏠 Room이 비어있음 - 이번 주 세션 즉시 저장")
                 walkRecords.forEach { walkRecord ->
                     try {
-                        val walkingSession = convertWalkRecordToWalkingSession(walkRecord)
+                        val serverId = walkRecord.id.toString()
+
+                        // 이미 같은 serverId로 저장된 세션이 있는지 확인
+                        if (existingServerIds.contains(serverId)) {
+                            Timber.d("🏠 [HOME_API] 이미 저장된 세션 건너뜀: serverId=$serverId")
+                            return@forEach
+                        }
+
+                        val walkingSession = convertWalkRecordToWalkingSession(walkRecord).copy(
+                            serverId = serverId,
+                        )
                         walkingSessionRepository.saveSessionLocalOnly(
                             session = walkingSession,
                             syncState = SyncState.SYNCED
                         )
-                        Timber.d("💾 이번 주 세션 저장 완료: ID=${walkingSession.id}")
+                        Timber.d("🏠 [HOME_API] 세션 저장 완료: ID=${walkingSession.id}, serverId=${walkingSession.serverId}, userId=${walkingSession.userId}, startTime=${walkingSession.startTime}, 걸음수=${walkingSession.stepCount}")
                     } catch (e: Exception) {
                         Timber.w(e, "❌ 이번 주 세션 저장 실패: ID=${walkRecord.id}")
                     }
@@ -1097,11 +1222,13 @@ class HomeViewModel @Inject constructor(
             Timber.e(t, "🏠 이번 주 세션 Room 저장 중 오류")
         }
     }
+
     /**
      * WalkRecord를 WalkingSession으로 변환
      */
     private fun convertWalkRecordToWalkingSession(walkRecord: WalkRecord): WalkingSession {
         return WalkingSession(
+            id = walkRecord.id.toString(), // 서버 id를 String으로 변환하여 중복 방지
             userId = currentUser.value?.userId ?: -1L, // 현재 사용자 ID 설정
             startTime = walkRecord.startTime,
             endTime = walkRecord.endTime,
@@ -1122,7 +1249,6 @@ class HomeViewModel @Inject constructor(
         )
     }
 }
-
 
 
 /**

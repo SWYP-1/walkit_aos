@@ -1,6 +1,8 @@
 package swyp.team.walkit.data.remote.interceptor
 
 import kotlinx.coroutines.runBlocking
+
+
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -9,6 +11,7 @@ import okhttp3.Response
 import org.json.JSONObject
 import swyp.team.walkit.data.remote.auth.TokenProvider
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +20,12 @@ import javax.inject.Singleton
  * 
  * 주의: runBlocking을 사용하지 않고 TokenProvider의 캐시된 토큰 사용
  */
+
+/**
+ * 인증 만료 예외 - 토큰이 만료되어 로그인 페이지로 리다이렉트되는 경우
+ */
+class AuthExpiredException(message: String) : IOException(message)
+
 @Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenProvider: TokenProvider,
@@ -62,6 +71,15 @@ class AuthInterceptor @Inject constructor(
         if (isAuthFailure) {
             Timber.e("AuthInterceptor - 인증 실패 감지! 코드: ${response.code}, Location: ${response.header("Location")}")
 
+            // 302 리다이렉트의 경우 토큰 갱신 시도하지 않고 바로 실패 처리
+            if (response.code == 302) {
+                Timber.e("AuthInterceptor - 302 리다이렉트 감지, 토큰 만료로 간주")
+                runBlocking { tokenProvider.clearTokens() }
+                response.close()
+                // 302 리다이렉트는 로그인 페이지로의 리다이렉트이므로 특정 예외 타입으로 구분
+                throw AuthExpiredException("Authentication expired: redirect to login page")
+            }
+
             // 동시성 제어: 한 번에 하나의 토큰 갱신만 수행
             synchronized(lock) {
                 if (!isRefreshing) {
@@ -82,8 +100,8 @@ class AuthInterceptor @Inject constructor(
                         } else {
                             Timber.e("AuthInterceptor - 토큰 갱신 실패")
                             response.close()
-                            // TODO: 로그인 화면으로 이동하는 이벤트 발생 필요
-                            return response
+                            // 리프레시 토큰도 실패했으므로 인증 만료로 간주
+                            throw AuthExpiredException("Token refresh failed: authentication expired")
                         }
                     } finally {
                         isRefreshing = false
@@ -101,6 +119,9 @@ class AuthInterceptor @Inject constructor(
                             .build()
                         response.close()
                         return chain.proceed(retryRequest)
+                    } else {
+                        // 토큰이 없는 경우 response를 닫지 않고 반환
+                        return response
                     }
                 }
             }
