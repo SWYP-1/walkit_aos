@@ -22,8 +22,8 @@ android {
         applicationId = "swyp.team.walkit"
         minSdk = 27
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.1"
+        versionCode = 5
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
