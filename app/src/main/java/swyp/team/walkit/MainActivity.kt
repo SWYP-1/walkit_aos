@@ -70,60 +70,11 @@ class MainActivity : ComponentActivity() {
                     Timber.d("🏃 산책 DataStore 데이터 없음, 정리 불필요")
                 }
 
-                // 2. DB의 오래된 미완료 세션 정리 추가
-                // TODO: walkingSessionRepository에 getAllSessions() 메소드 추가 후 구현
-                // try {
-                //     cleanupStaleSessionsFromDb()
-                // } catch (t: Throwable) {
-                //     Timber.e(t, "🏃 DB 세션 정리 실패")
-                // }
-
             } catch (t: Throwable) {
                 Timber.e(t, "🏃 오래된 산책 데이터 정리 실패")
             }
         }
     }
-
-    /**
-     * DB에서 오래된 미완료 세션을 정리
-     * - 2시간 이상 지난 세션은 삭제
-     * - 최근 24시간 내의 세션만 유지
-     *
-     * TODO: walkingSessionRepository에 getAllSessions() 메소드 추가 후 구현
-     */
-    // private suspend fun cleanupStaleSessionsFromDb() {
-    //     try {
-    //         val currentTime = System.currentTimeMillis()
-    //         val twentyFourHoursAgo = currentTime - (24 * 60 * 60 * 1000) // 24시간 전
-    //
-    //         // 최근 24시간 내의 모든 세션을 조회 (더미 세션 포함)
-    //         val recentSessions = walkingSessionRepository.getAllSessions()
-    //
-    //         var cleanedCount = 0
-    //         for (session in recentSessions) {
-    //             // endTime이 없거나(startTime과 같거나) 2시간 이상 지난 세션 삭제
-    //             val sessionEndTime = session.endTime.takeIf { it > session.startTime } ?: session.startTime
-    //             val hoursSinceEnd = (currentTime - sessionEndTime) / (1000 * 60 * 60)
-    //
-    //             if (hoursSinceEnd >= 2) {
-    //                 try {
-    //                     walkingSessionRepository.deleteSession(session.id)
-    //                     cleanedCount++
-    //                     Timber.d("🏃 오래된 DB 세션 삭제: ${session.id}, ${hoursSinceEnd}시간 경과")
-    //                 } catch (e: Throwable) {
-    //                     Timber.w(e, "🏃 세션 삭제 실패: ${session.id}")
-    //                 }
-    //             }
-    //         }
-    //
-    //         if (cleanedCount > 0) {
-    //             Timber.d("🏃 DB에서 ${cleanedCount}개의 오래된 세션 정리 완료")
-    //         }
-    //
-    //     } catch (t: Throwable) {
-    //         Timber.e(t, "🏃 DB 세션 정리 중 오류 발생")
-    //     }
-    // }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,7 +85,7 @@ class MainActivity : ComponentActivity() {
         // Edge-to-Edge 비활성화하여 시스템 바 색상 제어 가능하도록 함
         // enableEdgeToEdge() // 제거하여 시스템 바 색상 제어 가능
 
-//        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // 시스템 바 색상 설정
         window.statusBarColor = getColor(R.color.white)
@@ -149,6 +100,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }
+
 
         setContent {
             WalkItTheme {

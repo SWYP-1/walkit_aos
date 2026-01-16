@@ -1,7 +1,7 @@
 package swyp.team.walkit.domain.service.filter
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.Assert
+import org.junit.Assert.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
@@ -28,8 +28,8 @@ class KalmanFilterTest {
 
         // Then
         assertNotNull(result)
-        assertEquals(lat, result.first, 0.0001)
-        assertEquals(lng, result.second, 0.0001)
+        Assert.assertEquals(lat, result.first, 0.0001)
+        Assert.assertEquals(lng, result.second, 0.0001)
     }
 
     @Test
@@ -132,8 +132,8 @@ class KalmanFilterTest {
 
         // Then - 새로운 데이터 입력 시 첫 데이터처럼 동작
         val newResult = filter.filter(37.5645, 126.9790, 10f, timestamp + 2000)
-        assertEquals(37.5645, newResult.first, 0.0001)
-        assertEquals(126.9790, newResult.second, 0.0001)
+        Assert.assertEquals(37.5645, newResult.first, 0.0001)
+        Assert.assertEquals(126.9790, newResult.second, 0.0001)
     }
 
     @Test

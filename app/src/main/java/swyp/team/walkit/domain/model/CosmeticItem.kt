@@ -2,9 +2,9 @@ package swyp.team.walkit.domain.model
 
 
 enum class EquipSlot(val value: String, val displayName: String) {
-    HEAD("HEAD", "머리"),
-    BODY("BODY", "상의"),
-    FEET("FEET", "하의")
+    HEAD("HEAD", "헤어"),
+    BODY("BODY", "목도리"),
+    FEET("FEET", "신발")
 }
 
 data class CosmeticItem(

@@ -33,26 +33,34 @@ import swyp.team.walkit.ui.theme.walkItTypography
 
 @Composable
 fun DressingRoomHeader(
-    grade: swyp.team.walkit.domain.model.Grade,
+    grade: Grade,
     level: Int? = null,
-    points : Int,
-    nickName: String,
-    onBack: () -> Unit = {},
+    points: Int,
     onClickQuestion: () -> Unit = {},
 ) {
-    Row(
+    Box(
         modifier = Modifier
-            .fillMaxWidth().padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        // 뒤로가기 버튼 클릭 영역 확대
+
+        /** 🔹 중앙: 절대 중앙 고정 */
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            GradeBadge(grade = grade, level = level)
+        }
+
+        /** 🔹 왼쪽: 포인트 (내용 커져도 중앙 영향 없음) */
+        Row(
+            modifier = Modifier.align(Alignment.CenterStart),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(20.dp) // ⭐ 가로 = 세로
+                    .size(20.dp)
                     .background(
                         SemanticColor.stateYellowTertiary,
                         CircleShape
@@ -69,56 +77,33 @@ fun DressingRoomHeader(
             }
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "$points", style = MaterialTheme.walkItTypography.bodyS.copy(
+                text = "$points",
+                style = MaterialTheme.walkItTypography.bodyS.copy(
                     fontWeight = FontWeight.Medium
-                ), color = SemanticColor.textBorderPrimary
+                ),
+                color = SemanticColor.textBorderPrimary
             )
         }
 
-        // 닉네임 + 등급
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.weight(1f) // 남는 공간 채우기
+        /** 🔹 오른쪽: 질문 아이콘 */
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(20.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onClickQuestion)
+                .background(SemanticColor.iconBlack),
+            contentAlignment = Alignment.Center
         ) {
-
-            GradeBadge(grade = grade, level = level)
-//            Spacer(Modifier.width(8.dp))
-//            Text(
-//                text = nickName,
-//                style = MaterialTheme.walkItTypography.headingS.copy(
-//                    fontWeight = FontWeight.Medium
-//                ),
-//                color = SemanticColor.textBorderPrimary,
-//                maxLines = 1,
-//                overflow = TextOverflow.Ellipsis
-//            )
+            Icon(
+                painter = painterResource(R.drawable.ic_info_question),
+                contentDescription = "info",
+                tint = SemanticColor.iconWhite
+            )
         }
-
-        // 오른쪽 질문 아이콘
-
-        IconButton(
-            onClick = onClickQuestion,
-            modifier = Modifier.size(48.dp) // 최소 터치 영역 확보
-        ){
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onClickQuestion)
-                    .background(SemanticColor.iconBlack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_info_question),
-                    contentDescription = "info",
-                    tint = SemanticColor.iconWhite
-                )
-            }
-        }
-
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
@@ -126,7 +111,6 @@ private fun DressingRoomHeaderSproutGradePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.SPROUT,
-            nickName = "성장중인사용자",
             points = 12
         )
     }
@@ -138,7 +122,6 @@ private fun DressingRoomHeaderTreeGradePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.TREE,
-            nickName = "완성된나무",
             points = 1234
         )
     }
@@ -150,7 +133,6 @@ private fun DressingRoomHeaderLongNickNamePreview() {
     WalkItTheme {
         DressingRoomHeader(
             grade = Grade.SPROUT,
-            nickName = "매우긴닉네임을가진사용자가 이름이 더길어진다.",
             points = 1245
         )
     }

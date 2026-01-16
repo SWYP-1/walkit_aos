@@ -8,6 +8,7 @@ import swyp.team.walkit.domain.model.Grade
 data class UserInfoData(
     val nickname: String,
     val profileImageUrl: String? = null,
-    val grade: Grade?
+    val grade: Grade?,
+    val level: Int? = null
 )
 

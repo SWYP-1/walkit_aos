@@ -22,7 +22,7 @@ android {
         applicationId = "swyp.team.walkit"
         minSdk = 27
         targetSdk = 36
-        versionCode = 3
+        versionCode = 4
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -134,6 +134,7 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.ui)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 

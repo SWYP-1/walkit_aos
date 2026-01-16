@@ -223,8 +223,7 @@ private fun TimePart(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically, // baseline 정렬
-        horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = modifier.fillMaxWidth()
+        modifier = Modifier
     ) {
         // 숫자
         Text(
@@ -236,7 +235,7 @@ private fun TimePart(
             letterSpacing = (-0.22f).sp, // letterSpacing -0.22px
             color = Color(0xFF191919), // color/text-border/primary
         )
-
+        Spacer(Modifier.width(4.dp))
         // 단위 ("시간", "분")
         Text(
             text = unitText,
@@ -307,6 +306,7 @@ fun RowScope.SummarySection(
                 timeParts.hours?.let { (number, unitText) ->
                     TimePart(number = number, unitText = unitText, modifier = Modifier.weight(1f))
                 }
+                Spacer(Modifier.width(8.dp))
                 // 분 부분 (숫자 + "분")
                 timeParts.minutes?.let { (number, unitText) ->
                     TimePart(number = number, unitText = unitText, modifier = Modifier.weight(1f))

@@ -31,7 +31,19 @@ fun LikeButton(
     modifier: Modifier = Modifier,
 ) {
 
+    // 아이콘 선택: count에 따라 다름
     val likeDrawable = if (state.count == 0) R.drawable.ic_action_plus else R.drawable.ic_heart
+
+    // 상태 일관성 보장
+    val effectiveState = when {
+        // count가 0일 때는 무조건 plus 아이콘 (isLiked 강제 false)
+        state.count == 0 -> state.copy(isLiked = false)
+        // isLiked가 false인데 count가 1이면 취소된 상태로 간주 (count 0으로 강제)
+        state.count == 1 && !state.isLiked -> state.copy(count = 0, isLiked = false)
+        // 그 외는 그대로
+        else -> state
+    }
+
     Row(
         modifier = modifier
             .background(SemanticColor.stateYellowTertiary, shape = RoundedCornerShape(size = 16.dp))
@@ -43,20 +55,20 @@ fun LikeButton(
         Icon(
             painter = painterResource(likeDrawable),
             contentDescription = "Like",
-            tint = if (state.isLiked)
+            tint = if (effectiveState.isLiked)
                 SemanticColor.stateRedPrimary
             else
                 SemanticColor.iconGrey,
             modifier = Modifier.size(16.dp)
         )
 
-        if (state.count > 0) {
+        if (effectiveState.count > 0) {
             Text(
-                text = state.count.toString(),
+                text = effectiveState.count.toString(),
                 style = MaterialTheme.walkItTypography.captionM.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
-                color = if (state.isLiked)
+                color = if (effectiveState.isLiked)
                     SemanticColor.stateRedPrimary
                 else
                     SemanticColor.textBorderSecondary,

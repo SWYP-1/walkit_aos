@@ -82,18 +82,20 @@ constructor(
         viewModelScope.launch {
             userRepository.userFlow.collect { user ->
                 if (user != null) {
-                    // 캐릭터 등급 정보 로드 (API 호출 없이 DB만 조회)
+                    // 캐릭터 등급 정보 로드 (DB 우선 - 홈화면에서 저장된 최신 데이터 사용)
                     var grade: Grade? = null
+                    var characterLevel: Int? = null
                     try {
                         val character = characterRepository.getCharacterFromDb(user.userId)
                         if (character != null) {
                             grade = character.grade
-                            Timber.d("캐릭터 등급 로드 성공: ${user.userId} - $grade")
+                            characterLevel = character.level
+                            Timber.d("캐릭터 등급 로드 성공: ${user.userId} - grade=$grade, level=$characterLevel")
                         } else {
                             Timber.d("DB에 캐릭터 정보 없음: ${user.userId}")
                         }
                     } catch (t: Throwable) {
-                        Timber.w(t, "캐릭터 등급 로드 중 예외 발생")
+                        Timber.w(t, "캐릭터 등급 로드 실패: ${t.message}")
                     }
 
                     // UI 상태 업데이트
@@ -103,7 +105,8 @@ constructor(
                                 UserInfoData(
                                     nickname = user.nickname,
                                     profileImageUrl = user.imageName,
-                                    grade = grade
+                                    grade = grade,
+                                    level = characterLevel
                                 )
                             )
                         )

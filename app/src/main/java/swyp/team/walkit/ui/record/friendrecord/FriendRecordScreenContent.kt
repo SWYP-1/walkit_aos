@@ -242,7 +242,6 @@ private fun FriendRecordContent(
         LikeButton(
             state = likeState,
             onToggleLike = onLikeClick,
-            modifier = Modifier.padding(horizontal = 20.dp),
         )
     }
 }

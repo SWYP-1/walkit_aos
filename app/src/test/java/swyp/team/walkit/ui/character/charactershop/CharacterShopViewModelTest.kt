@@ -10,9 +10,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.assertEquals
+import org.junit.Assert
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -101,8 +101,8 @@ class CharacterShopViewModelTest {
         val filteredItems = currentState.items
 
         // HEAD 아이템만 필터링되어야 함
-        assertEquals(2, filteredItems.size)
-        assertTrue(filteredItems.all { it.position == EquipSlot.HEAD })
+        Assert.assertEquals(2, filteredItems.size)
+        Assert.assertTrue("필터링된 아이템이 모두 HEAD 위치여야 함", filteredItems.all { it.position == EquipSlot.HEAD })
     }
 
     @Test
@@ -126,10 +126,10 @@ class CharacterShopViewModelTest {
         val filteredItems = currentState.items
 
         // 보유한 HEAD 아이템만 표시되어야 함
-        assertEquals(1, filteredItems.size)
-        assertEquals(1, filteredItems[0].itemId)
-        assertEquals(EquipSlot.HEAD, filteredItems[0].position)
-        assertTrue(filteredItems[0].owned)
+        Assert.assertEquals(1, filteredItems.size)
+        Assert.assertEquals(1, filteredItems[0].itemId)
+        Assert.assertEquals(EquipSlot.HEAD, filteredItems[0].position)
+        Assert.assertTrue("필터링된 첫 번째 아이템이 보유 상태여야 함", filteredItems[0].owned)
     }
 
     @Test
@@ -150,7 +150,7 @@ class CharacterShopViewModelTest {
         val currentState = viewModel.uiState.value as DressingRoomUiState.Success
         val filteredItems = currentState.items
 
-        assertEquals(3, filteredItems.size)
+        Assert.assertEquals(3, filteredItems.size)
     }
 
     @Test
@@ -171,9 +171,9 @@ class CharacterShopViewModelTest {
         val currentState = viewModel.uiState.value as DressingRoomUiState.Success
         val filteredItems = currentState.items
 
-        assertTrue(currentState.showOwnedOnly)
-        assertEquals(2, filteredItems.size) // 보유 아이템만
-        assertTrue(filteredItems.all { it.owned })
+        Assert.assertTrue("보유 아이템만 표시 모드여야 함", currentState.showOwnedOnly)
+        Assert.assertEquals(2, filteredItems.size) // 보유 아이템만
+        Assert.assertTrue("필터링된 아이템들이 모두 보유 상태여야 함", filteredItems.all { it.owned })
     }
 
     @Test
@@ -183,7 +183,7 @@ class CharacterShopViewModelTest {
 
         // Then
         val selectedCategory = viewModel.selectedCategory.first()
-        assertEquals(EquipSlot.BODY, selectedCategory)
+        Assert.assertEquals(EquipSlot.BODY, selectedCategory)
     }
 
     // 헬퍼 함수들

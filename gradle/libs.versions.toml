@@ -37,6 +37,7 @@ material3 = "1.5.0-alpha06"
 work = "2.9.0"
 hiltWork = "1.2.0"
 foundation = "1.10.0"
+ui = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -132,6 +133,7 @@ androidx-work-hilt = { group = "androidx.hilt", name = "hilt-work", version.ref 
 # 🔥 Hilt + WorkManager 전용
 androidx-work-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -206,9 +206,9 @@ interface WalkingSessionDao {
                 WHEN stepCount < 0 THEN 0        -- 음수 걸음수는 제외
                 ELSE stepCount
             END
-        ), 0) FROM walking_sessions
+        ), 0) FROM walking_sessions WHERE userId = :userId
     """)
-    fun getTotalStepCount(): Flow<Int>
+    fun getTotalStepCount(userId: Long): Flow<Int>
 
     /**
      * 총 이동거리 집계 (Flow로 실시간 업데이트, 미터 단위)
@@ -227,7 +227,13 @@ interface WalkingSessionDao {
                 WHEN (endTime - startTime) < 0 THEN 0         -- 음수 시간은 제외
                 ELSE (endTime - startTime)
             END
-        ), 0) FROM walking_sessions
+        ), 0) FROM walking_sessions WHERE userId = :userId
     """)
-    fun getTotalDuration(): Flow<Long>
+    fun getTotalDuration(userId: Long): Flow<Long>
+
+    /**
+     * 특정 사용자의 세션이 하나라도 존재하는지 확인 (효율적 조회용)
+     */
+    @Query("SELECT COUNT(*) > 0 FROM walking_sessions WHERE userId = :userId")
+    suspend fun hasAnySessionsForUser(userId: Long): Boolean
 }

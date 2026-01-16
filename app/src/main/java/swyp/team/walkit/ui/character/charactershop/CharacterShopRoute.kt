@@ -1,8 +1,13 @@
 package swyp.team.walkit.ui.character.charactershop
 
+import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,14 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
@@ -30,13 +38,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import swyp.team.walkit.ui.character.CharacterScreen
 import swyp.team.walkit.ui.components.BottomDialog
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.dressroom.DressingRoomUiState
@@ -49,8 +55,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.delay
@@ -79,6 +88,10 @@ fun CharacterShopRoute(
 
     val context = LocalContext.current
 
+    // 화면 진입 시마다 포인트 갱신 (보상 받기 등으로 포인트가 변경되었을 수 있음)
+    LaunchedEffect(Unit) {
+        viewModel.refreshPoint()
+    }
     val showGradeInfoDialog = remember { mutableStateOf(false) }
 
     // InfoBanner 표시 상태 관리
@@ -100,16 +113,16 @@ fun CharacterShopRoute(
             showInfoBanner = false
         }
     }
-
+    val onRefreshClick = viewModel::refreshCharacterInfo
     // 화면 높이 계산
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val peekHeight = screenHeight * 0.4f
     val maxSheetHeight = screenHeight * 0.8f
+    val scope = rememberCoroutineScope()
 
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
-            initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = true
+            initialValue = SheetValue.PartiallyExpanded, skipHiddenState = true
         )
     )
 
@@ -118,8 +131,7 @@ fun CharacterShopRoute(
 
         // MainScreen의 padding을 무시하고 상태바 영역만 직접 처리
         androidx.compose.foundation.layout.Box(
-            modifier = modifier
-                .fillMaxSize()
+            modifier = modifier.fillMaxSize()
 
         ) {
             // 바텀 시트 (캐릭터 표시 + 그리드)
@@ -260,13 +272,12 @@ fun CharacterShopRoute(
                                 tint = iconTint,
                                 modifier = Modifier.size(24.dp)
                             )
-                        }
-                    )
+                        })
                 }
             }
 
             // CTA 버튼 (가장 위에 배치, 바텀 시트 위로 표시)
-            androidx.compose.material3.Surface(
+            Surface(
                 shadowElevation = 4.dp,
                 color = swyp.team.walkit.ui.theme.SemanticColor.backgroundWhitePrimary,
                 modifier = androidx.compose.ui.Modifier
@@ -274,15 +285,53 @@ fun CharacterShopRoute(
                     .align(androidx.compose.ui.Alignment.BottomCenter)
                     .zIndex(1f) // 가장 위에 표시
             ) {
-                swyp.team.walkit.ui.components.CtaButton(
-                    text = "저장하기",
-                    onClick = { viewModel.saveItems() },
-                    enabled = !isWearLoading,
-                    modifier = androidx.compose.ui.Modifier
+                Row(
+                    Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    iconResId = swyp.team.walkit.R.drawable.ic_arrow_forward
-                )
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center, modifier = Modifier
+                            .border(
+                                width = 1.dp,
+                                color = SemanticColor.textBorderGreenPrimary,
+                                shape = RoundedCornerShape(size = 8.dp)
+                            )
+                            .width(48.dp)
+                            .height(46.dp)
+                            .background(
+                                color = SemanticColor.backgroundWhitePrimary,
+                                shape = RoundedCornerShape(size = 8.dp)
+                            )
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 10.dp
+                            )
+                            .clickable(onClick = {
+                                scope.launch {
+                                    viewModel.refreshCharacterInfo()
+                                }
+                            })
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_action_refresh),
+                            contentDescription = "refresh",
+                            tint = SemanticColor.stateGreenPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(9.dp))
+                    CtaButton(
+                        text = "저장하기",
+                        onClick = { viewModel.saveItems() },
+                        enabled = !isWearLoading,
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                    )
+                }
+
             }
         }
 
@@ -292,15 +341,13 @@ fun CharacterShopRoute(
                     cartItems = cartItems.toList(),
                     myPoints = (uiState as? DressingRoomUiState.Success)?.myPoint ?: 0,
                     onDismiss = viewModel::dismissCartDialog,
-                    onPurchase = { viewModel.performPurchase() }
-                )
+                    onPurchase = { viewModel.performPurchase() })
             }
         }
         // 캐릭터 등급 정보 다이얼로그
         if (showGradeInfoDialog.value) {
             CharacterGradeInfoDialog(
-                onDismiss = { showGradeInfoDialog.value = false }
-            )
+                onDismiss = { showGradeInfoDialog.value = false })
         }
     }
 }
@@ -320,9 +367,8 @@ fun CharacterShopScaffoldContent(
     processedLottieJson: String?,
     showCtaButton: Boolean = true
 ) {
-   Column(
-        modifier = Modifier
-            .fillMaxSize()
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
         // 캐릭터 표시 영역 (스크롤 가능)
         Box(

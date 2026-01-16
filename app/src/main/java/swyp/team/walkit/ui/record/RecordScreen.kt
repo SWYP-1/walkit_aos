@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
@@ -108,8 +109,8 @@ fun RecordRoute(
         weekSessions = weekSessions,
         monthMissionsCompleted = monthMissionsCompleted,
         onMonthChanged = { calendarViewModel.setDate(it.atDay(1)) },
-        onStartOnboarding = onStartOnboarding,
-        onBlockUser = { nickName -> recordViewModel.blockSelectedFriend(nickName) }
+        onBlockUser = { nickName -> recordViewModel.blockSelectedFriend(nickName) },
+        onSetDate = { today -> calendarViewModel.setDate(today) }
     )
 }
 
@@ -133,11 +134,20 @@ private fun RecordScreenContent(
     weekSessions: List<swyp.team.walkit.data.model.WalkingSession>,
     monthMissionsCompleted: List<String>,
     onMonthChanged: (java.time.YearMonth) -> Unit,
-    onStartOnboarding: () -> Unit,
-    onBlockUser: (String) -> Unit
+    onSetDate: (LocalDate) -> Unit,
+    onBlockUser: (String) -> Unit,
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     val tabs = RecordTabType.values()
+
+    // 탭 변경 시 currentDate 리셋 (데이터 일관성 유지)
+    LaunchedEffect(tabIndex) {
+        // 모든 탭에서 현재 날짜로 리셋하여 데이터 표시 일관성 확보
+        val today = LocalDate.now()
+//        calendarViewModel.setDate(today)
+        onSetDate(today)
+        Timber.d("📅 RecordScreen 탭 변경: ${tabs[tabIndex].name} → currentDate 리셋: $today")
+    }
 
     // 스크롤 상태
     val scrollState = rememberScrollState()
@@ -236,10 +246,11 @@ private fun RecordScreenContent(
                         onMonthChanged = onMonthChanged
                     )
 
+
                     // 최소 높이 확보 (스크롤 가능하도록)
                     Spacer(Modifier.height(50.dp))
                 }
-            }else {
+            } else {
                 // 친구 선택 시 하단 전체 화면 영역 (스크롤 영역 밖)
                 FriendRecordScreen(
                     nickname = recordUiState.selectedFriendNickname,

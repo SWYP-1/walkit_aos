@@ -1183,8 +1183,112 @@ class CharacterShopViewModel @Inject constructor(
      * 캐릭터 정보 새로고침 (착용 상태 변경 후 최신 정보 반영)
      * 선택 상태 및 장바구니 초기화 후 서버의 최신 worn 정보로 재설정
      */
+    /**
+     * 포인트만 갱신 (보상 받기 등으로 포인트가 변경되었을 때 호출)
+     */
+    fun refreshPoint() {
+        viewModelScope.launch {
+            try {
+                val pointResult = pointRepository.getUserPoint()
+                when (pointResult) {
+                    is Result.Success -> {
+                        val updatedPoint = pointResult.data
+                        val currentState = _uiState.value
+                        if (currentState is DressingRoomUiState.Success) {
+                            _uiState.value = currentState.copy(myPoint = updatedPoint)
+                            Timber.Forest.d("💎 포인트 갱신 완료: $updatedPoint")
+                        }
+                    }
+                    is Result.Error -> {
+                        Timber.Forest.w(pointResult.exception, "포인트 갱신 실패: ${pointResult.message}")
+                    }
+                    Result.Loading -> {
+                        Timber.Forest.d("포인트 갱신 중...")
+                    }
+                }
+            } catch (t: Throwable) {
+                Timber.Forest.e(t, "포인트 갱신 중 예외 발생")
+            }
+        }
+    }
+    
     suspend fun refreshCharacterInfo() {
+        try {
+            Timber.Forest.d("캐릭터 정보 refresh 시작")
+            _isRefreshLoading.value = true
 
+            // ✅ refresh 시 장바구니 상태도 초기화 (loadDressingRoom과 동일)
+            _cartItems.value = LinkedHashSet()
+            _showCartDialog.value = false
+            Timber.Forest.d("장바구니 상태 초기화 완료")
+
+            // 최신 캐릭터 정보 로드 (항상 API 호출)
+            when (val result = characterRepository.getCharacterFromApi()) {
+                is Result.Success -> {
+                    val updatedCharacter = result.data
+                    Timber.Forest.d(
+                        "캐릭터 정보 refresh 성공: ${updatedCharacter.nickName} : body ${updatedCharacter.bodyImageName},head ${updatedCharacter.headImageName},feet ${updatedCharacter.feetImageName}"
+                    )
+
+                    // ✅ 캐릭터샵 처음 들어갔을 때처럼 worn 상태 기반으로 착용 상태 설정
+                    // UI 상태에서 아이템 리스트 가져와서 worn=true인 아이템들로 착용 상태 설정
+                    val currentItems = if (_uiState.value is DressingRoomUiState.Success) {
+                        (_uiState.value as DressingRoomUiState.Success).items
+                    } else emptyList()
+
+                    val wornItemsMap = mutableMapOf<EquipSlot, WearState>()
+
+                    // 아이템에서 worn=true인 것들을 찾아서 착용 상태로 설정 (loadDressingRoom과 동일한 로직)
+                    currentItems.filter { it.worn }.forEach { item ->
+                        wornItemsMap[item.position] = WearState.Worn(item.itemId)
+                    }
+
+                    // 설정되지 않은 슬롯들은 Default로 설정
+                    EquipSlot.values().forEach { slot ->
+                        if (!wornItemsMap.containsKey(slot)) {
+                            wornItemsMap[slot] = WearState.Default
+                        }
+                    }
+
+                    // 서버 착용 상태 업데이트
+                    _serverWornItems.value = wornItemsMap
+                    Timber.Forest.d("장착 아이템 상태 동기화 완료: ${wornItemsMap.size}개 슬롯")
+
+                    // ✅ refresh 시 선택 상태 초기화 (캐릭터샵 처음 들어갔을 때처럼)
+                    // 미리보기 착용 상태를 서버 착용 상태로 설정하되, 선택된 아이템들은 모두 해제
+                    val initialWornItems = wornItemsMap.toMutableMap()
+                    _wornItemsByPosition.value = initialWornItems
+                    Timber.Forest.d("미리보기 착용 상태 초기화 완료: 선택 상태 모두 해제됨")
+
+                    // ✅ 로띠 캐릭터 상태도 업데이트 (시각적 상태 동기화)
+                    updateLottiePreview()
+                    Timber.Forest.d("로띠 캐릭터 상태 업데이트 완료")
+
+                    // UI 상태의 캐릭터 정보도 업데이트
+                    if (_uiState.value is DressingRoomUiState.Success) {
+                        val currentState = _uiState.value as DressingRoomUiState.Success
+                        _uiState.value = currentState.copy(character = updatedCharacter)
+                        Timber.Forest.d("UI 상태 캐릭터 정보 업데이트 완료")
+                    }
+                }
+                is Result.Error -> {
+                    Timber.Forest.e(result.exception, "캐릭터 정보 refresh 실패: ${result.message}")
+                    // 에러 발생 시 사용자에게 알림
+                    showInfoBanner("캐릭터 정보 갱신 실패", "잠시 후 다시 시도해주세요")
+                }
+                Result.Loading -> {
+                    Timber.Forest.d("캐릭터 정보 refresh 로딩 중")
+                }
+            }
+
+            _isRefreshLoading.value = false
+            Timber.Forest.d("캐릭터 정보 refresh 완료")
+
+        } catch (t: Throwable) {
+            Timber.Forest.e(t, "캐릭터 정보 refresh 중 예외 발생")
+            _isRefreshLoading.value = false
+            showInfoBanner("캐릭터 정보 갱신 실패", "잠시 후 다시 시도해주세요")
+        }
     }
 
     /**

@@ -187,7 +187,7 @@ private fun GoalStepEmptyPreview() {
     WalkItTheme {
         GoalStep(
             uiState = OnboardingUiState(
-                nicknameState = NicknameState("홍길동"),
+                nicknameState = NicknameState(filteredValue = "홍길동"),
                 goalCount = 1,
                 stepTarget = 1000,
             ),

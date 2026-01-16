@@ -1,6 +1,13 @@
 package swyp.team.walkit.ui.walking.viewmodel
 
+import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.lifecycle.SavedStateHandle
+import io.mockk.MockKAnnotations
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -8,22 +15,23 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.assertEquals
+import org.junit.Assert
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import io.mockk.MockKAnnotations
-import io.mockk.coEvery
-import io.mockk.mockk
 import swyp.team.walkit.core.Result
+import swyp.team.walkit.data.local.datastore.WalkingDataStore
 import swyp.team.walkit.data.model.LocationPoint
-import swyp.team.walkit.domain.contract.WalkingRawEvent
+import swyp.team.walkit.data.repository.WalkingSessionRepository
 import swyp.team.walkit.domain.contract.WalkingTrackingContract
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.domain.repository.CharacterRepository
+import swyp.team.walkit.domain.repository.GoalRepository
 import swyp.team.walkit.domain.service.LocationManager
+import swyp.team.walkit.domain.service.LottieImageProcessor
+import swyp.team.walkit.domain.service.filter.PathSmoother
 import swyp.team.walkit.utils.LocationConstants
 
 @ExperimentalCoroutinesApi
@@ -34,9 +42,17 @@ class WalkingViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private lateinit var mockCharacterRepository: CharacterRepository
-    private lateinit var mockLocationManager: LocationManager
+    // Mock 의존성들
     private lateinit var mockWalkingTrackingContract: WalkingTrackingContract
+    private lateinit var mockWalkingSessionRepository: WalkingSessionRepository
+    private lateinit var mockLocationManager: LocationManager
+    private lateinit var mockCharacterRepository: CharacterRepository
+    private lateinit var mockGoalRepository: GoalRepository
+    private lateinit var mockLottieImageProcessor: LottieImageProcessor
+    private lateinit var mockPathSmoother: PathSmoother
+    private lateinit var mockWalkingDataStore: WalkingDataStore
+    private lateinit var mockContext: Context
+    private lateinit var mockSavedStateHandle: SavedStateHandle
 
     private lateinit var viewModel: WalkingViewModel
 
@@ -45,15 +61,64 @@ class WalkingViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
 
-        mockCharacterRepository = mockk()
-        mockLocationManager = mockk()
+        // 모든 의존성 모킹
         mockWalkingTrackingContract = mockk()
+        mockWalkingSessionRepository = mockk()
+        mockLocationManager = mockk()
+        mockCharacterRepository = mockk()
+        mockGoalRepository = mockk()
+        mockLottieImageProcessor = mockk()
+        mockPathSmoother = mockk()
+        mockWalkingDataStore = mockk()
+        mockContext = mockk()
+        mockSavedStateHandle = mockk()
+
+        // 기본 모킹 설정
+        setupDefaultMocks()
 
         viewModel = WalkingViewModel(
-            characterRepository = mockCharacterRepository,
+            tracking = mockWalkingTrackingContract,
+            walkingSessionRepository = mockWalkingSessionRepository,
             locationManager = mockLocationManager,
-            walkingTrackingContract = mockWalkingTrackingContract
+            characterRepository = mockCharacterRepository,
+            goalRepository = mockGoalRepository,
+            lottieImageProcessor = mockLottieImageProcessor,
+            pathSmoother = mockPathSmoother,
+            walkingDataStore = mockWalkingDataStore,
+            context = mockContext,
+            savedStateHandle = mockSavedStateHandle
         )
+    }
+
+    private fun setupDefaultMocks() {
+        // 기본적인 Flow 모킹
+        every { mockWalkingDataStore.isWalkingActive } returns kotlinx.coroutines.flow.flowOf(false)
+        every { mockWalkingDataStore.walkingStartTime } returns kotlinx.coroutines.flow.flowOf(null)
+        every { mockWalkingDataStore.walkingStepCount } returns kotlinx.coroutines.flow.flowOf(null)
+        every { mockWalkingDataStore.walkingDuration } returns kotlinx.coroutines.flow.flowOf(null)
+        every { mockWalkingDataStore.walkingIsPaused } returns kotlinx.coroutines.flow.flowOf(null)
+        every { mockWalkingDataStore.preWalkingEmotion } returns kotlinx.coroutines.flow.flowOf(null)
+        every { mockWalkingDataStore.postWalkingEmotion } returns kotlinx.coroutines.flow.flowOf(
+            null
+        )
+
+        // 기본적인 suspend 함수 모킹
+        coEvery { mockWalkingDataStore.getIsWalkingActive() } returns null
+        coEvery { mockWalkingDataStore.getWalkingStartTime() } returns null
+        coEvery { mockWalkingDataStore.getWalkingStepCount() } returns null
+        coEvery { mockWalkingDataStore.getWalkingDuration() } returns null
+        coEvery { mockWalkingDataStore.getWalkingIsPaused() } returns null
+        coEvery { mockWalkingDataStore.getPreWalkingEmotion() } returns null
+        coEvery { mockWalkingDataStore.getPostWalkingEmotion() } returns null
+
+        // Repository 모킹
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                any(),
+                any()
+            )
+        } returns Result.Success(createMockCharacter())
+        coEvery { mockGoalRepository.getGoal() } returns Result.Success(mockk())
     }
 
     @After
@@ -65,21 +130,25 @@ class WalkingViewModelTest {
     fun `GPS 위치를 가져올 수 없을 때 서울 시청 좌표를 기본값으로 사용한다`() = runTest {
         // Given
         val mockCharacter = createMockCharacter()
-        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns(null)
-        `when`(mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,
-            LocationConstants.DEFAULT_LONGITUDE
-        )).thenReturn(Result.Success(mockCharacter))
+        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns null
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,
+                LocationConstants.DEFAULT_LONGITUDE
+            )
+        } returns Result.Success(mockCharacter)
 
         // When
         viewModel.loadWalkingCharacter()
 
         // Then
-        io.mockk.verify { mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,  // 37.5665
-            LocationConstants.DEFAULT_LONGITUDE  // 126.9780
-        )
-        assertEquals(mockCharacter, viewModel.walkingCharacter.value)
+        coVerify {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,  // 37.5665
+                LocationConstants.DEFAULT_LONGITUDE  // 126.9780
+            )
+        }
+        Assert.assertEquals(mockCharacter, viewModel.walkingCharacter.value)
     }
 
     @Test
@@ -92,34 +161,43 @@ class WalkingViewModelTest {
         )
         val mockCharacter = createMockCharacter()
 
-        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns(mockLocation)
-        `when`(mockCharacterRepository.getCharacterByLocation(
-            mockLocation.latitude,
-            mockLocation.longitude
-        )).thenReturn(Result.Success(mockCharacter))
+        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns mockLocation
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                mockLocation.latitude,
+                mockLocation.longitude
+            )
+        } returns Result.Success(mockCharacter)
 
         // When
         viewModel.loadWalkingCharacter()
 
         // Then
-        io.mockk.verify { mockCharacterRepository.getCharacterByLocation(
-            mockLocation.latitude,
-            mockLocation.longitude
-        )
-        io.mockk.verify { mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,
-            LocationConstants.DEFAULT_LONGITUDE
-        ) // 서울 시청 좌표는 호출되지 않아야 함
+        coVerify {
+            mockCharacterRepository.getCharacterByLocation(
+                mockLocation.latitude,
+                mockLocation.longitude
+            )
+        }
+        coVerify(exactly = 0) {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,
+                LocationConstants.DEFAULT_LONGITUDE
+            )
+        }
+        Assert.assertEquals(mockCharacter, viewModel.walkingCharacter.value)
     }
 
     @Test
     fun `캐릭터 정보 조회 실패 시 walkingCharacter가 null로 유지된다`() = runTest {
         // Given
-        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns(null)
-        `when`(mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,
-            LocationConstants.DEFAULT_LONGITUDE
-        )).thenReturn(Result.Error(Exception("API Error"), "캐릭터 조회 실패"))
+        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns null
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,
+                LocationConstants.DEFAULT_LONGITUDE
+            )
+        } returns Result.Error(Exception("API Error"), "캐릭터 조회 실패")
 
         // When
         viewModel.loadWalkingCharacter()
@@ -137,39 +215,46 @@ class WalkingViewModelTest {
             timestamp = System.currentTimeMillis()
         )
 
-        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns(mockLocation)
-        `when`(mockCharacterRepository.getCharacterByLocation(
-            mockLocation.latitude,
-            mockLocation.longitude
-        )).thenReturn(Result.Error(Exception("GPS 위치 실패"), "GPS 위치로 조회 실패"))
+        coEvery { mockLocationManager.getCurrentLocationOrLast() } returns mockLocation
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                mockLocation.latitude,
+                mockLocation.longitude
+            )
+        } returns Result.Error(Exception("GPS 위치 실패"), "GPS 위치로 조회 실패")
 
-        `when`(mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,
-            LocationConstants.DEFAULT_LONGITUDE
-        )).thenReturn(Result.Success(createMockCharacter()))
+        coEvery {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,
+                LocationConstants.DEFAULT_LONGITUDE
+            )
+        } returns Result.Success(createMockCharacter())
 
         // When
         viewModel.loadWalkingCharacter()
 
         // Then - GPS 위치로 먼저 시도한 후 기본 위치로 성공
-        io.mockk.verify { mockCharacterRepository.getCharacterByLocation(
-            mockLocation.latitude,
-            mockLocation.longitude
-        )
-        io.mockk.verify { mockCharacterRepository.getCharacterByLocation(
-            LocationConstants.DEFAULT_LATITUDE,
-            LocationConstants.DEFAULT_LONGITUDE
-        )
-        assertEquals("테스트캐릭터", viewModel.walkingCharacter.value?.nickName)
+        coVerify {
+            mockCharacterRepository.getCharacterByLocation(
+                mockLocation.latitude,
+                mockLocation.longitude
+            )
+        }
+        coVerify {
+            mockCharacterRepository.getCharacterByLocation(
+                LocationConstants.DEFAULT_LATITUDE,
+                LocationConstants.DEFAULT_LONGITUDE
+            )
+        }
+        Assert.assertEquals("테스트캐릭터", viewModel.walkingCharacter.value?.nickName)
     }
 
     @Test
     fun `기본 위치 좌표가 서울 시청 좌표와 일치한다`() {
         // Given & When & Then
-        assertEquals(37.5665, LocationConstants.DEFAULT_LATITUDE, 0.0001)
-        assertEquals(126.9780, LocationConstants.DEFAULT_LONGITUDE, 0.0001)
+        Assert.assertEquals(37.5665, LocationConstants.DEFAULT_LATITUDE, 0.0001)
+        Assert.assertEquals(126.9780, LocationConstants.DEFAULT_LONGITUDE, 0.0001)
     }
-
     // 헬퍼 함수
     private fun createMockCharacter(): Character {
         return Character(
@@ -183,7 +268,4 @@ class WalkingViewModelTest {
             feetImage = null
         )
     }
-
-    // Mockito 헬퍼 함수들
-    private fun <T> any(): T = org.mockito.kotlin.any()
 }

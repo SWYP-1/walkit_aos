@@ -382,6 +382,7 @@ fun formatWeekLabel(date: LocalDate): String {
     val targetMonth = currentWeekStart.month
     val targetYear = currentWeekStart.year
 
+
     // 해당 월의 모든 월요일 찾기
     val firstDayOfMonth = LocalDate.of(targetYear, targetMonth, 1)
     val lastDayOfMonth = firstDayOfMonth.plusMonths(1).minusDays(1)

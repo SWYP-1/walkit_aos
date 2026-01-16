@@ -125,16 +125,23 @@ constructor() : ViewModel() {
      * 경로 설정 및 지도 업데이트 요청
      */
     fun setLocations(locations: List<LocationPoint>,localDensity : Density) {
+        Timber.d("📍 KakaoMapViewModel.setLocations 호출 - ${locations.size}개 포인트")
         viewModelScope.launch {
             try {
-                // locations 변경 감지
-                val locationsChanged =
-                    previousLocations.size != locations.size ||
-                            previousLocations.firstOrNull()?.latitude != locations.firstOrNull()?.latitude ||
-                            previousLocations.lastOrNull()?.latitude != locations.lastOrNull()?.latitude
+                // locations 변경 감지 - 더 강력한 검증
+                val locationsChanged = previousLocations.size != locations.size ||
+                    previousLocations.isEmpty() ||
+                    currentLocations.isEmpty() ||
+                    previousLocations.firstOrNull()?.latitude != locations.firstOrNull()?.latitude ||
+                    previousLocations.lastOrNull()?.latitude != locations.lastOrNull()?.latitude
 
-                if (!locationsChanged && currentLocations.isNotEmpty()) {
-                    return@launch // 변경사항 없음
+                Timber.d("📍 locationsChanged=$locationsChanged, previous=${previousLocations.size}, current=${locations.size}, firstLat=${locations.firstOrNull()?.latitude}")
+
+                // 항상 처음 호출 때는 처리 (currentLocations이 비어있을 때)
+                val shouldProcess = locationsChanged || currentLocations.isEmpty()
+                if (!shouldProcess) {
+                    Timber.d("📍 변경사항 없음 - 리턴")
+                    return@launch
                 }
 
                 // 사용할 경로 데이터 결정
@@ -142,8 +149,11 @@ constructor() : ViewModel() {
                 currentLocations = locationsToUse
                 previousLocations = locations.toList()
 
+                Timber.d("📍 사용할 위치 데이터: ${locationsToUse.size}개 포인트")
+
                 // 새로운 경로 설정 시 렌더링 상태 초기화
                 _renderState.value = MapRenderState.Idle
+                Timber.d("📍 renderState를 Idle로 초기화")
 
                 // 카메라 설정 계산 (화면 크기 고려)
                 val cameraSettings = calculateCameraSettings(
@@ -153,6 +163,8 @@ constructor() : ViewModel() {
                     localDensity
                 )
 
+                Timber.d("📍 카메라 설정 계산 완료: center=(${cameraSettings.centerLat}, ${cameraSettings.centerLon}), zoom=${cameraSettings.zoomLevel}")
+
                 // UI 상태 업데이트
                 _uiState.value = KakaoMapUiState.Ready(
                     locations = locationsToUse,
@@ -160,7 +172,7 @@ constructor() : ViewModel() {
                     shouldDrawPath = locationsToUse.size >= 2,
                 )
 
-                Timber.d("경로 설정 완료: ${locationsToUse.size}개 포인트")
+                Timber.d("✅ 경로 설정 완료: ${locationsToUse.size}개 포인트, shouldDrawPath=${locationsToUse.size >= 2}")
             } catch (t: Throwable) {
                 Timber.e(t, "경로 설정 실패")
                 _uiState.value = KakaoMapUiState.Error(t.message ?: "알 수 없는 오류가 발생했습니다")
@@ -348,8 +360,12 @@ constructor() : ViewModel() {
      * 경로 그리기 완료
      */
     fun onPathDrawComplete() {
+        Timber.d("🔄 onPathDrawComplete 호출 - 현재 상태: ${_renderState.value}")
         if (_renderState.value == MapRenderState.DrawingPath) {
             _renderState.value = MapRenderState.Complete
+            Timber.d("✅ renderState를 Complete로 변경")
+        } else {
+            Timber.w("⚠️ onPathDrawComplete: 현재 상태가 DrawingPath가 아님 - ${_renderState.value}")
         }
     }
 

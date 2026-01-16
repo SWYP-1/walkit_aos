@@ -83,7 +83,6 @@ fun KakaoMapView(
     modifier: Modifier = Modifier,
     viewModel: KakaoMapViewModel = hiltViewModel(),
     onMapViewReady: ((MapView?) -> Unit)? = null,
-    updateTrigger: Int = 0, // 강제 업데이트 트리거
     latLngBoundsPaddingPx: Int = 64, // LatLngBounds 패딩 (픽셀)
 ) {
     val context = LocalContext.current
@@ -113,7 +112,7 @@ fun KakaoMapView(
     LaunchedEffect(mapViewSize) {
         mapViewSize?.let { size ->
             if (size.width > 0 && size.height > 0) {
-                viewModel.setMapViewSize(size.width, size.height,localDensity)
+                viewModel.setMapViewSize(size.width, size.height, localDensity)
                 Timber.d("MapView 크기 측정 완료: ${size.width}x${size.height}")
             }
         }
@@ -121,7 +120,7 @@ fun KakaoMapView(
 
     // ViewModel에 locations 전달 (크기가 측정되면 자동으로 재계산됨)
     LaunchedEffect(locations) {
-        viewModel.setLocations(locations,localDensity)
+        viewModel.setLocations(locations, localDensity)
     }
 
     // 렌더링 상태에 따라 작업 수행
@@ -145,15 +144,22 @@ fun KakaoMapView(
             else -> {}
         }
     }
-    val strokePx = with(localDensity) { 4.dp.toPx() }
-    val latLngBoundsPaddingPxFloat = latLngBoundsPaddingPx.toFloat()
+    val strokePx = with(LocalDensity.current) { 4.dp.toPx() }
 
     // UI 상태 변경 시 지도 업데이트
-    LaunchedEffect(uiState, kakaoMapInstance, mapViewRef, updateTrigger) {
+    LaunchedEffect(uiState, kakaoMapInstance, mapViewRef) {
         val map = kakaoMapInstance
         val mapView = mapViewRef
         if (map != null && mapView != null && mapStarted) {
-            updateMapFromState(map, mapView, uiState, viewModel, context, latLngBoundsPaddingPxFloat, strokePx)
+            updateMapFromState(
+                map,
+                mapView,
+                uiState,
+                viewModel,
+                context,
+                latLngBoundsPaddingPx.toFloat(),
+                strokePx
+            )
         }
     }
 
@@ -191,10 +197,20 @@ fun KakaoMapView(
 
                 if (!mapStarted) {
                     mapStarted = true
-                    initializeMapView(mapView, viewModel, uiState, context, strokePx, latLngBoundsPaddingPxFloat) { kakaoMap ->
+                    initializeMapView(
+                        mapView,
+                        viewModel,
+                        uiState,
+                        context,
+                        strokePx,
+                        latLngBoundsPaddingPx.toFloat()
+                    ) { kakaoMap ->
                         kakaoMapInstance = kakaoMap
                     }
                 }
+
+                // MapView 참조 업데이트
+                onMapViewReady?.invoke(mapView)
             },
         )
 
@@ -223,7 +239,7 @@ private fun initializeMapView(
     uiState: KakaoMapUiState,
     context: Context,
     strokePx: Float,
-    latLngBoundsPaddingPx : Float,
+    latLngBoundsPaddingPx: Float,
     onMapReady: (KakaoMap) -> Unit,
 ) {
     mapView.start(
@@ -241,7 +257,15 @@ private fun initializeMapView(
                 Timber.d("KakaoMap ready")
                 setupCameraListener(kakaoMap, viewModel)
                 onMapReady(kakaoMap)
-                updateMapFromState(kakaoMap, mapView, uiState, viewModel, context, latLngBoundsPaddingPx,strokePx)
+                updateMapFromState(
+                    kakaoMap,
+                    mapView,
+                    uiState,
+                    viewModel,
+                    context,
+                    latLngBoundsPaddingPx,
+                    strokePx
+                )
             }
         },
     )
@@ -274,7 +298,7 @@ private fun updateMapFromState(
     uiState: KakaoMapUiState,
     viewModel: KakaoMapViewModel,
     context: Context,
-    latLngBoundsPaddingPx : Float,
+    latLngBoundsPaddingPx: Float,
     strokePx: Float,  // ← 파라미터로 받
 ) {
     when (uiState) {
@@ -287,9 +311,13 @@ private fun updateMapFromState(
             }
 
             try {
-                // 카메라 이동 시작 (MovingCamera 상태에서도 허용)
+                // 카메라 이동 시작
                 viewModel.startCameraMove()
-                moveCameraToPathWithLatLngBounds(kakaoMap, uiState.locations, latLngBoundsPaddingPx.toInt())
+                moveCameraToPathWithLatLngBounds(
+                    kakaoMap,
+                    uiState.locations,
+                    latLngBoundsPaddingPx.toInt()
+                )
 
                 // 경로 그리기 또는 제거
                 if (uiState.shouldDrawPath && currentRenderState == MapRenderState.Idle) {

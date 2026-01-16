@@ -62,7 +62,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import swyp.team.walkit.ui.components.CustomProgressIndicator
 import swyp.team.walkit.ui.components.KakaoMapView
 import swyp.team.walkit.ui.components.ProgressIndicatorSize
-import swyp.team.walkit.ui.components.captureMapViewSnapshot
 import androidx.hilt.navigation.compose.hiltViewModel
 import timber.log.Timber
 import swyp.team.walkit.data.model.EmotionType
@@ -87,6 +86,7 @@ import swyp.team.walkit.ui.components.CtaButtonVariant
 import swyp.team.walkit.ui.components.PreviousButton
 import swyp.team.walkit.ui.components.SummaryUnit
 import swyp.team.walkit.ui.components.WalkingSummaryCard
+import swyp.team.walkit.ui.components.captureMapViewSnapshot
 import swyp.team.walkit.ui.record.components.WalkingDiaryCard
 import swyp.team.walkit.ui.record.components.WalkingStatsCard
 import swyp.team.walkit.ui.theme.SemanticColor
@@ -311,7 +311,7 @@ private suspend fun capturePhotoWithPathSnapshot(
                     Timber.d("📸 Rect 크기 - width: ${finalRect.width()}, height: ${finalRect.height()}")
 
                     // Bitmap 크기와 Rect 크기가 일치하는지 확인
-                    if (bitmap.width != finalRect.width() || bitmap.height != finalRect.height()) {
+                    val finalBitmap = if (bitmap.width != finalRect.width() || bitmap.height != finalRect.height()) {
                         Timber.w("⚠️ Bitmap 크기(${bitmap.width}x${bitmap.height})와 Rect 크기(${finalRect.width()}x${finalRect.height()})가 불일치")
                         Timber.w("⚠️ Bitmap을 Rect 크기에 맞춰 크롭합니다")
 
@@ -327,14 +327,20 @@ private suspend fun capturePhotoWithPathSnapshot(
                         )
 
                         bitmap.recycle() // 원본 bitmap 메모리 해제
-                        val savedPath = saveSnapshotToFile(context, croppedBitmap)
-                        Timber.d("✅ 크롭된 스냅샷 파일 저장: $savedPath")
-                        continuation.resume(savedPath) {}
+                        // 하드웨어 비트맵을 소프트웨어 비트맵으로 복사하여 호환성 문제 해결
+                        croppedBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
+                            croppedBitmap.recycle()
+                        }
                     } else {
-                        val savedPath = saveSnapshotToFile(context, bitmap)
-                        Timber.d("✅ 사진+경로 스냅샷 파일 저장: $savedPath")
-                        continuation.resume(savedPath) {}
+                        // 하드웨어 비트맵을 소프트웨어 비트맵으로 복사하여 호환성 문제 해결
+                        bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
+                            bitmap.recycle()
+                        }
                     }
+
+                    val savedPath = saveSnapshotToFile(context, finalBitmap)
+                    Timber.d("✅ 스냅샷 파일 저장: $savedPath")
+                    continuation.resume(savedPath) {}
                 } else {
                     Timber.e("❌ 사진+경로 PixelCopy 실패: $copyResult")
                     Timber.e("❌ Rect: $finalRect, Bitmap: ${bitmap.width}x${bitmap.height}")
@@ -478,6 +484,16 @@ private fun WalkingResultScreenContent(
     // 지도 MapView 참조 (스냅샷 생성용)
     var mapViewRef by remember { mutableStateOf<com.kakao.vectormap.MapView?>(null) }
 
+    // MapView 렌더링 딜레이 상태 (초기 로딩 딜레이)
+    var shouldShowMapView by remember { mutableStateOf(false) }
+
+    // 화면 로딩 시 500ms 딜레이 후 MapView 표시
+    LaunchedEffect(Unit) {
+        delay(500)
+        shouldShowMapView = true
+        Timber.d("🗺️ MapView 렌더링 시작 (500ms 딜레이 완료)")
+    }
+
     // MapView와 Box 위치 정보 준비 상태 추적
     val isMapViewReady by remember(mapViewRef) { derivedStateOf { mapViewRef != null } }
     val isBoxCoordinatesReady by remember(photoWithPathBoxCoordinates) { derivedStateOf { photoWithPathBoxCoordinates != null } }
@@ -520,7 +536,7 @@ private fun WalkingResultScreenContent(
     // LazyColumn 스크롤 상태 관리
     val lazyListState = rememberLazyListState()
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhiteSecondary)) {
         LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxSize(),
@@ -569,56 +585,56 @@ private fun WalkingResultScreenContent(
                             color = SemanticColor.textBorderSecondary, // 기본 색
                         )
 
-//                        IconButton(
-//                            onClick = {
-//                                coroutineScope.launch {
-//                                    if (capturedSnapshotPath == null) {
-//                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
-//                                        var snapshotPath: String? = null
-//                                        val success = onCaptureSnapshot {
-//                                            try {
-//                                                snapshotPath = if (emotionPhotoUri != null) {
-//                                                    captureMapViewSnapshot(
-//                                                        mapViewRef!!,
-//                                                        context
-//                                                    )
-//                                                } else {
-//                                                    if (mapViewRef != null) {
-//                                                        captureMapViewSnapshot(
-//                                                            mapViewRef!!,
-//                                                            context
-//                                                        )
-//                                                    } else {
-//                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
-//                                                        null
-//                                                    }
-//                                                }
-//                                                snapshotPath
-//                                            } catch (t: Throwable) {
-//                                                Timber.e(t, "공유용 스냅샷 생성 실패")
-//                                                null
-//                                            }
-//                                        }
-//
-//                                        if (success && snapshotPath != null) {
-//                                            capturedSnapshotPath = snapshotPath
-//                                        } else {
-//                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
-//                                            return@launch
-//                                        }
-//                                    }
-//
-//                                    showShareDialog = true
-//                                }
-//                            }
-//                        ) {
-//                            Icon(
-//                                painter = painterResource(R.drawable.ic_action_external),
-//                                tint = SemanticColor.iconGrey,
-//                                contentDescription = "external",
-//                                modifier = Modifier.size(24.dp)
-//                            )
-//                        }
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (capturedSnapshotPath == null) {
+                                        Timber.d("공유하기: 스냅샷이 없어 생성 시작")
+                                        var snapshotPath: String? = null
+                                        val success = onCaptureSnapshot {
+                                            try {
+                                                snapshotPath = if (emotionPhotoUri != null) {
+                                                    capturePhotoWithPathSnapshot(
+                                                        photoWithPathBoxCoordinates,
+                                                        context
+                                                    )
+                                                } else {
+                                                    if (mapViewRef != null) {
+                                                        captureMapViewSnapshot(
+                                                            mapViewRef!!,
+                                                            context
+                                                        )
+                                                    } else {
+                                                        Timber.w("MapView 참조가 없습니다 - 스냅샷 생성 실패")
+                                                        null
+                                                    }
+                                                }
+                                                snapshotPath
+                                            } catch (t: Throwable) {
+                                                Timber.e(t, "공유용 스냅샷 생성 실패")
+                                                null
+                                            }
+                                        }
+
+                                        if (success && snapshotPath != null) {
+                                            capturedSnapshotPath = snapshotPath
+                                        } else {
+                                            Timber.w("공유용 스냅샷 생성 실패 - 다이얼로그 표시 안 함")
+                                            return@launch
+                                        }
+                                    }
+
+                                    showShareDialog = true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_action_external),
+                                tint = SemanticColor.iconGrey,
+                                contentDescription = "external",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                 }

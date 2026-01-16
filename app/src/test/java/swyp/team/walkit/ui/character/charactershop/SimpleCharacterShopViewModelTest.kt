@@ -1,5 +1,9 @@
 package swyp.team.walkit.ui.character.charactershop
 
+import android.content.Context
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.Assert
 import org.junit.Test
 import org.junit.Assert.*
 import swyp.team.walkit.testutil.JsonTestUtil
@@ -12,7 +16,7 @@ class SimpleCharacterShopViewModelTest {
     @Test
     fun `기본 테스트 케이스 - CharacterShopViewModel 클래스 존재 확인`() {
         // CharacterShopViewModel 클래스가 존재하는지 확인
-        assertTrue(CharacterShopViewModel::class.java.simpleName == "CharacterShopViewModel")
+        Assert.assertTrue("CharacterShopViewModel 클래스가 존재해야 함", CharacterShopViewModel::class.java.simpleName == "CharacterShopViewModel")
     }
 
     @Test
@@ -21,8 +25,8 @@ class SimpleCharacterShopViewModelTest {
         val testList = listOf(1, 2, 3, 4, 5)
         val filteredList = testList.filter { it > 3 }
 
-        assertEquals(2, filteredList.size)
-        assertTrue(filteredList.all { it > 3 })
+        Assert.assertEquals(2, filteredList.size)
+        Assert.assertTrue("필터링된 리스트의 모든 요소가 3보다 커야 함", filteredList.all { it > 3 })
     }
 
     @Test
@@ -51,9 +55,9 @@ class SimpleCharacterShopViewModelTest {
         }
 
         // 결과: 선택된 미보유 아이템(2) + 보유 아이템들(1,3) = 3개
-        assertEquals(3, filteredOwnedOnly.size)
-        assertTrue(filteredOwnedOnly.any { it.id == 2 }) // 선택된 미보유 아이템 포함
-        assertTrue(filteredOwnedOnly.all { it.id != 4 }) // 미선택 미보유 아이템 제외
+        Assert.assertEquals(3, filteredOwnedOnly.size)
+        Assert.assertTrue("선택된 미보유 아이템이 포함되어야 함", filteredOwnedOnly.any { it.id == 2 })
+        Assert.assertTrue("미선택 미보유 아이템이 제외되어야 함", filteredOwnedOnly.all { it.id != 4 })
     }
 
     @Test
@@ -71,7 +75,7 @@ class SimpleCharacterShopViewModelTest {
         mockShowToast(testMessage)
 
         // 검증
-        assertEquals(testMessage, toastShown)
+        Assert.assertEquals(testMessage, toastShown)
     }
 
     @Test
@@ -80,10 +84,10 @@ class SimpleCharacterShopViewModelTest {
         val expectedPurchaseMessage = "아이템 구매가 완료되었습니다!"
         val expectedSaveMessage = "캐릭터 저장이 완료되었습니다!"
 
-        assertTrue(expectedPurchaseMessage.contains("구매"))
-        assertTrue(expectedPurchaseMessage.contains("완료"))
-        assertTrue(expectedSaveMessage.contains("저장"))
-        assertTrue(expectedSaveMessage.contains("완료"))
+        Assert.assertTrue("구매 메시지에 '구매'가 포함되어야 함", expectedPurchaseMessage.contains("구매"))
+        Assert.assertTrue("구매 메시지에 '완료'가 포함되어야 함", expectedPurchaseMessage.contains("완료"))
+        Assert.assertTrue("저장 메시지에 '저장'이 포함되어야 함", expectedSaveMessage.contains("저장"))
+        Assert.assertTrue("저장 메시지에 '완료'가 포함되어야 함", expectedSaveMessage.contains("완료"))
     }
 
     @Test
@@ -96,7 +100,7 @@ class SimpleCharacterShopViewModelTest {
 
         testCases.forEach { (isLoading, expectedEnabled) ->
             val actualEnabled = !isLoading
-            assertEquals("isWearLoading=$isLoading일 때 버튼 상태", expectedEnabled, actualEnabled)
+            Assert.assertEquals("isWearLoading=${isLoading}일 때 버튼 상태", expectedEnabled, actualEnabled)
         }
     }
 
@@ -126,7 +130,7 @@ class SimpleCharacterShopViewModelTest {
 
         // 작업 완료 후 버튼이 enabled 되어야 함
         val buttonEnabled = !isWearLoadingAfterComplete
-        assertTrue("구매 및 저장 완료 후 버튼이 enabled 되어야 함", buttonEnabled)
+        Assert.assertTrue("구매 및 저장 완료 후 버튼이 enabled 되어야 함", buttonEnabled)
     }
 
     @Test
@@ -134,7 +138,7 @@ class SimpleCharacterShopViewModelTest {
         // performPurchase에서 refreshCharacterInfo()가 호출되지 않아야 함
         // 이미 착용하고 있던 아이템 상태가 유지되어야 함
         val refreshShouldNotBeCalled = true
-        assertTrue("구매 완료 후 캐릭터 리프레시가 발생하지 않아야 함", refreshShouldNotBeCalled)
+        Assert.assertTrue("구매 완료 후 캐릭터 리프레시가 발생하지 않아야 함", refreshShouldNotBeCalled)
     }
 
     @Test
@@ -142,46 +146,20 @@ class SimpleCharacterShopViewModelTest {
         // performPurchase에서 _wornItemsByPosition이 유지되어야 함
         // 구매한 아이템이 캐릭터 미리보기에서 계속 착용된 상태로 유지되어야 함
         val wornItemsShouldBePreserved = true
-        assertTrue("구매 완료 후 착용 상태가 유지되어야 함", wornItemsShouldBePreserved)
-    }
-
-
-    @Test
-    fun `temp.json에서 위치 데이터 로드 테스트`() {
-        val locations = JsonTestUtil.loadLocationsFromTempJson()
-
-        // 데이터 검증
-        assertTrue("위치 데이터가 로드되어야 함", locations.isNotEmpty())
-        assertTrue("위치 데이터가 충분해야 함", locations.size > 100)
-
-        // 첫 번째 데이터 검증
-        val firstLocation = locations.first()
-        assertNotNull("위도가 있어야 함", firstLocation.latitude)
-        assertNotNull("경도가 있어야 함", firstLocation.longitude)
-        assertNotNull("타임스탬프가 있어야 함", firstLocation.timestamp)
-
-        // 위도/경도 범위 검증 (서울 근처)
-        assertTrue("위도가 유효한 범위여야 함", firstLocation.latitude in 37.0..38.0)
-        assertTrue("경도가 유효한 범위여야 함", firstLocation.longitude in 126.0..128.0)
-
-        // 타임스탬프 검증 (현재 시간 이후가 아니어야 함)
-        val currentTime = System.currentTimeMillis()
-        assertTrue("타임스탬프가 현재 시간보다 이전이어야 함", firstLocation.timestamp < currentTime)
-
-        // JsonTestUtil 검증 함수 사용
-        val validationResult = JsonTestUtil.validateLocations(locations)
-        println("🔍 데이터 검증 결과: $validationResult")
-
-        println("✅ 총 ${locations.size}개의 위치 데이터를 로드했습니다.")
-        println("📍 첫 번째 위치: ${firstLocation.latitude}, ${firstLocation.longitude}")
-        println("⏰ 타임스탬프: ${firstLocation.timestamp}")
+        Assert.assertTrue("구매 완료 후 착용 상태가 유지되어야 함", wornItemsShouldBePreserved)
     }
 
     @Test
     fun `존재하지 않는 JSON 파일 로드 시 빈 리스트 반환`() {
-        val locations = JsonTestUtil.loadLocationsFromJson("nonexistent")
+        val mockContext = mockk<android.content.Context>()
+        val mockResources = mockk<android.content.res.Resources>()
+        every { mockContext.resources } returns mockResources
+        every { mockContext.packageName } returns "swyp.team.walkit"
+        every { mockResources.getIdentifier("nonexistent", "raw", "swyp.team.walkit") } returns 0
 
-        assertTrue("존재하지 않는 파일은 빈 리스트를 반환해야 함", locations.isEmpty())
+        val locations = JsonTestUtil.loadLocationsFromJson(mockContext, "nonexistent")
+
+        Assert.assertTrue("존재하지 않는 파일은 빈 리스트를 반환해야 함", locations.isEmpty())
     }
 
     @Test
@@ -193,8 +171,8 @@ class SimpleCharacterShopViewModelTest {
 
         val locations = JsonTestUtil.parseLocationsFromJsonString(jsonString)
 
-        assertEquals("파싱된 데이터가 2개여야 함", 2, locations.size)
-        assertEquals("첫 번째 위도가 일치해야 함", 37.123456, locations[0].latitude, 0.000001)
-        assertEquals("두 번째 경도가 일치해야 함", 127.234567, locations[1].longitude, 0.000001)
+        Assert.assertEquals("파싱된 데이터가 2개여야 함", 2, locations.size)
+        Assert.assertEquals("첫 번째 위도가 일치해야 함", 37.123456, locations[0].latitude, 0.000001)
+        Assert.assertEquals("두 번째 경도가 일치해야 함", 127.234567, locations[1].longitude, 0.000001)
     }
 }

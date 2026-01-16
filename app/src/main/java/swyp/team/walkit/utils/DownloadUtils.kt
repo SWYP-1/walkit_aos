@@ -9,9 +9,16 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import android.content.ContentValues
+import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Toast
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import timber.log.Timber
+import java.io.FileOutputStream
 import java.io.OutputStream
 import java.net.URL
 
@@ -34,6 +41,75 @@ suspend fun downloadImage(
 
     outputFile
 }
+fun saveBitmap(context: Context, imageBitmap: ImageBitmap, id: String): Boolean {
+    return try {
+        val bitmap = imageBitmap.asAndroidBitmap()
+        val filename = "walkit_screenshot_${id}_${System.currentTimeMillis()}.png"
+
+        val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(
+                    MediaStore.MediaColumns.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES
+                )
+            }
+
+            val uri = context.contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                }
+                true
+            } else {
+                Timber.e("MediaStore에 이미지 삽입 실패")
+                false
+            }
+        } else {
+            val imagesDir =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val image = File(imagesDir, filename)
+
+            FileOutputStream(image).use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            }
+
+            MediaScannerConnection.scanFile(
+                context,
+                arrayOf(image.absolutePath),
+                arrayOf("image/png"),
+                null
+            )
+            true
+        }
+
+        // ✅ 성공 / 실패 Toast
+        Toast.makeText(
+            context,
+            if (success) "이미지가 갤러리에 저장되었습니다" else "이미지 저장에 실패했습니다",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        success
+    } catch (e: Exception) {
+        Timber.e(e, "Bitmap 저장 실패: ${e.message}")
+
+        // ❌ 예외 발생 Toast
+        Toast.makeText(
+            context,
+            "이미지 저장 중 오류가 발생했습니다",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        false
+    }
+}
+
 
 private fun downloadFromUrl(url: String, outputFile: File) {
     val client = OkHttpClient()

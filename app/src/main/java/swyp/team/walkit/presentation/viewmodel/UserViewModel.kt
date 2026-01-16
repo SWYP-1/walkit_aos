@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kakao.sdk.auth.model.OAuthToken
 import com.kakao.sdk.user.UserApiClient
+import com.navercorp.nid.NidOAuth
+import com.navercorp.nid.oauth.util.NidOAuthCallback
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
@@ -175,6 +177,34 @@ class UserViewModel @Inject constructor(
                 }
             }
         }
+        try {
+            // NidOAuth가 초기화되었는지 확인
+            val isInitialized = try {
+                NidOAuth.getApplicationContext() != null
+            } catch (t: Throwable) {
+                false
+            }
+
+            if (!isInitialized) {
+                Timber.w("네이버 OAuth가 초기화되지 않았으므로 로그아웃 건너뜀")
+            } else {
+                val naverCallback = object : NidOAuthCallback {
+                    override fun onSuccess() {
+                        Timber.i("네이버 로그아웃 성공")
+                    }
+
+                    override fun onFailure(errorCode: String, errorDesc: String) {
+                        // 네이버도 이미 로그아웃된 상태일 수 있으므로 경고만 로깅
+                        Timber.w("네이버 로그아웃 실패 (로컬 데이터는 삭제됨): $errorCode - $errorDesc")
+                    }
+                }
+                NidOAuth.logout(naverCallback)
+            }
+        } catch (t: Throwable) {
+            // Naver OAuth가 초기화되지 않았거나 이미 로그아웃된 경우
+            Timber.w("네이버 로그아웃 건너뜀 (초기화되지 않음): ${t.message}")
+        }
+
     }
 
     /**

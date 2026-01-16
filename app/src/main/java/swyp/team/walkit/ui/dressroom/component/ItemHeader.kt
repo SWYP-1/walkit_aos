@@ -3,6 +3,7 @@ package swyp.team.walkit.ui.dressroom.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,12 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,41 +94,43 @@ fun ItemHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val categories = listOf(
-                    null to "all",
-                    EquipSlot.HEAD to "head",
-                    EquipSlot.BODY to "body",
-                    EquipSlot.FEET to "foot"
+                    null to "전체",
+                    EquipSlot.HEAD to "헤어",
+                    EquipSlot.BODY to "목도리",
+                    EquipSlot.FEET to "신발"
                 )
 
                 categories.forEach { (category, label) ->
                     val isSelected = selectedCategory == category
 
-                    // Button을 사용하여 둥근 ripple 효과 적용
-                    Button(
-                        onClick = { onCategoryFilterChange(category) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) SemanticColor.backgroundGreenPrimary
-                            else SemanticColor.backgroundWhitePrimary,
-                            contentColor = if (isSelected) SemanticColor.stateGreenPrimary
-                            else SemanticColor.textBorderPrimary
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        border = if (isSelected) androidx.compose.foundation.BorderStroke(
-                            width = 1.dp,
-                            color = SemanticColor.stateGreenPrimary
-                        ) else BorderStroke(
-                            width = 1.dp,
-                            color = SemanticColor.textBorderTertiary
-                        ),
-                        modifier = Modifier.weight(1f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 12.dp,
-                            vertical = 6.dp
-                        )
+                    // Box를 사용하여 둥근 ripple 효과 적용
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (isSelected) SemanticColor.backgroundGreenPrimary
+                                else SemanticColor.backgroundWhitePrimary,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) SemanticColor.stateGreenPrimary
+                                else SemanticColor.textBorderTertiary,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clickable { onCategoryFilterChange(category) }
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 4.dp
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.walkItTypography.bodyS.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = if (isSelected) SemanticColor.stateGreenPrimary
+                            else SemanticColor.textBorderPrimary
                         )
                     }
                 }

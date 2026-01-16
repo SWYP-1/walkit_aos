@@ -38,7 +38,7 @@ object SessionSyncScheduler {
     }
 
     /** 세션 업로드만 즉시 실행 */
-    fun runSyncOnly(context: Context) {
+    fun runSyncOnce(context: Context) {
         val request = OneTimeWorkRequestBuilder<SessionSyncWorker>()
             .setConstraints(
                 Constraints.Builder()

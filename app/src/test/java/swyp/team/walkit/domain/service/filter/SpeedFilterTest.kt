@@ -1,7 +1,7 @@
 package swyp.team.walkit.domain.service.filter
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.Assert
+import org.junit.Assert.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -26,20 +26,20 @@ class SpeedFilterTest {
 
         // Then
         assertNotNull(result)
-        assertEquals(lat, result.first, 0.0001)
-        assertEquals(lng, result.second, 0.0001)
+        Assert.assertEquals(lat, result.first, 0.0001)
+        Assert.assertEquals(lng, result.second, 0.0001)
     }
 
     @Test
-    fun `정상 속도의 이동은 허용된다`() {
+    fun `자전거급 속도는 필터링된다 - 100ms`() {
         // Given
         val timestamp1 = System.currentTimeMillis()
         val timestamp2 = timestamp1 + 1000 // 1초 후
 
-        // 서울 시청에서 약 100m 떨어진 위치 (정상적인 걷기 속도)
+        // 서울 시청에서 약 100m 떨어진 위치 (자전거급 속도)
         val lat1 = 37.5665  // 서울 시청
         val lng1 = 126.9780
-        val lat2 = 37.5674  // 약 100m 북쪽
+        val lat2 = 37.5674  // 약 100m 북쪽 (1초에 360km/h 속도!)
         val lng2 = 126.9780
 
         // When
@@ -47,12 +47,35 @@ class SpeedFilterTest {
         val result = filter.filter(lat2, lng2, timestamp2) // 두 번째 좌표
 
         // Then
-        // 속도: 약 100m/1초 = 100m/s (자전거 속도)
-        // 30m/s 제한보다 빠르지만, 테스트에서는 허용 (실제로는 보행 속도)
+        // 속도: 약 100m/1초 = 100m/s (360km/h) - 30m/s 제한 초과
+        assertNotNull(result)
+        // 과속 감지로 이전 좌표가 반환되어야 함
+        Assert.assertEquals("과속으로 필터링되어 lat1이 반환되어야 함", lat1, result.first, 0.0001)
+        Assert.assertEquals("과속으로 필터링되어 lng1이 반환되어야 함", lng1, result.second, 0.0001)
+    }
+
+    @Test
+    fun `정상 속도의 이동은 허용된다`() {
+        // Given
+        val timestamp1 = System.currentTimeMillis()
+        val timestamp2 = timestamp1 + 2000 // 2초 후
+
+        // 서울 시청에서 약 20m 떨어진 위치 (정상적인 걷기 속도)
+        val lat1 = 37.5665  // 서울 시청
+        val lng1 = 126.9780
+        val lat2 = 37.56668 // 약 20m 북쪽 (2초에 10m/s = 36km/h - 보행 속도)
+        val lng2 = 126.9780
+
+        // When
+        filter.filter(lat1, lng1, timestamp1) // 첫 번째 좌표
+        val result = filter.filter(lat2, lng2, timestamp2) // 두 번째 좌표
+
+        // Then
+        // 속도: 약 20m/2초 = 10m/s (36km/h) - 30m/s 제한 이내
         assertNotNull(result)
         // 결과는 입력 좌표와 같아야 함 (필터링되지 않음)
-        assertEquals(lat2, result.first, 0.0001)
-        assertEquals(lng2, result.second, 0.0001)
+        Assert.assertEquals("정상 속도로 lat2가 허용되어야 함", lat2, result.first, 0.0001)
+        Assert.assertEquals("정상 속도로 lng2가 허용되어야 함", lng2, result.second, 0.0001)
     }
 
     @Test
@@ -75,8 +98,8 @@ class SpeedFilterTest {
         // 속도: 1000m / 0.1초 = 10000m/s (비정상적으로 빠름)
         // 필터링되어 첫 번째 좌표가 반환되어야 함
         assertNotNull(result)
-        assertEquals(lat1, result.first, 0.0001) // 첫 번째 좌표 반환
-        assertEquals(lng1, result.second, 0.0001)
+        Assert.assertEquals(lat1, result.first, 0.0001) // 첫 번째 좌표 반환
+        Assert.assertEquals(lng1, result.second, 0.0001)
     }
 
     @Test
@@ -108,12 +131,12 @@ class SpeedFilterTest {
         results.add(spikeResult)
 
         // Then
-        assertEquals(4, results.size)
+        Assert.assertEquals(4, results.size)
 
         // 튀는 점은 필터링되어 이전 좌표가 반환되어야 함
         val lastNormalPoint = normalPoints.last()
-        assertEquals(lastNormalPoint.first, spikeResult.first, 0.0001)
-        assertEquals(lastNormalPoint.second, spikeResult.second, 0.0001)
+        Assert.assertEquals(lastNormalPoint.first, spikeResult.first, 0.0001)
+        Assert.assertEquals(lastNormalPoint.second, spikeResult.second, 0.0001)
     }
 
     @Test
@@ -131,8 +154,8 @@ class SpeedFilterTest {
 
         // Then - 시간 차이가 0이므로 현재 좌표 반환
         assertNotNull(result)
-        assertEquals(lat + 0.001, result.first, 0.0001)
-        assertEquals(lng + 0.001, result.second, 0.0001)
+        Assert.assertEquals(lat + 0.001, result.first, 0.0001)
+        Assert.assertEquals(lng + 0.001, result.second, 0.0001)
     }
 
     @Test
@@ -149,8 +172,8 @@ class SpeedFilterTest {
 
         // Then - 새로운 데이터 입력 시 첫 데이터처럼 동작
         val newResult = filter.filter(37.5645, 126.9790, timestamp + 2000)
-        assertEquals(37.5645, newResult.first, 0.0001)
-        assertEquals(126.9790, newResult.second, 0.0001)
+        Assert.assertEquals(37.5645, newResult.first, 0.0001)
+        Assert.assertEquals(126.9790, newResult.second, 0.0001)
     }
 
     @Test
@@ -171,8 +194,8 @@ class SpeedFilterTest {
         assertNotNull(normalResult)
         assertNotNull(fastResult)
         // 정상 속도는 통과, 빠른 속도는 필터링
-        assertEquals(37.56654, normalResult.first, 0.0001) // 통과
-        assertEquals(37.5665, fastResult.first, 0.0001)   // 필터링됨
+        Assert.assertEquals(37.56654, normalResult.first, 0.0001) // 통과
+        Assert.assertEquals(37.5665, fastResult.first, 0.0001)   // 필터링됨
     }
 }
 

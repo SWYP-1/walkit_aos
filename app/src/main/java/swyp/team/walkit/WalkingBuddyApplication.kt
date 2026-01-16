@@ -48,16 +48,24 @@ class WalkingBuddyApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.d("🚀 WalkingBuddyApplication.onCreate() 시작")
 
         initTimber()
+        Timber.d("✅ Timber 초기화 완료")
+        
         initFirebase()
+        Timber.d("✅ Firebase 초기화 완료")
+        
         initSdk()
+        Timber.d("✅ SDK 초기화 완료")
+        
         createNotificationChannel()
+        Timber.d("✅ NotificationChannel 생성 완료")
 
         // 주기적 세션 동기화 스케줄링 (백그라운드)
         SessionSyncScheduler.schedule(this)
 
-        Timber.d("✅ WalkingBuddyApplication initialized")
+        Timber.d("✅ WalkingBuddyApplication initialized 완료")
     }
 
     /* -------------------- WorkManager -------------------- */
@@ -95,13 +103,23 @@ class WalkingBuddyApplication : Application(), Configuration.Provider {
 
     private fun initKakao() {
         val kakaoKey = BuildConfig.KAKAO_APP_KEY
+        Timber.d("🔑 Kakao App Key 확인: ${if (kakaoKey.isBlank()) "비어있음" else "존재함 (길이: ${kakaoKey.length})"}")
         if (kakaoKey.isBlank()) {
-            Timber.e("❌ Kakao App Key missing")
+            Timber.e("❌ Kakao App Key missing - KakaoMapSdk 초기화 스킵")
             return
         }
-        KakaoSdk.init(this, kakaoKey)
-        KakaoMapSdk.init(this, kakaoKey)
-        Timber.d("✅ Kakao SDK initialized")
+        try {
+            Timber.d("🚀 KakaoSdk.init() 시작")
+            KakaoSdk.init(this, kakaoKey)
+            Timber.d("✅ KakaoSdk.init() 완료")
+            
+            Timber.d("🚀 KakaoMapSdk.init() 시작")
+            KakaoMapSdk.init(this, kakaoKey)
+            Timber.d("✅ KakaoMapSdk.init() 완료")
+            Timber.d("✅ Kakao SDK initialized")
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Kakao SDK 초기화 실패")
+        }
     }
 
     private fun initNaver() {

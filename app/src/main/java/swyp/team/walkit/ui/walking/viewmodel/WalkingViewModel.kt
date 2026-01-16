@@ -1,5 +1,10 @@
 package swyp.team.walkit.ui.walking.viewmodel
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import swyp.team.walkit.data.model.EmotionType
@@ -69,6 +74,7 @@ class WalkingViewModel @Inject constructor(
     private val pathSmoother: PathSmoother, // ✅ 경로 스무딩을 위한 PathSmoother 추가
     private val walkingDataStore: WalkingDataStore,
     @ApplicationContext private val context: Context,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val _uiState =
@@ -81,16 +87,31 @@ class WalkingViewModel @Inject constructor(
     private var elapsedBeforePause = 0L
     private var lastStepCount = 0
     private var lastRawStepCount = 0
+    private var isFirstStepUpdateAfterRestart = true // 앱 재시작 후 첫 걸음수 업데이트 여부
 
-    // 현재 세션의 로컬 ID 저장
-    private val _currentSessionLocalId = MutableStateFlow<String?>(null)
+    // 백그라운드 전환 시 저장을 위한 마지막 저장된 걸음수
+    private var lastSavedStepCount = 0
+
+    // ProcessLifecycleOwner 관찰을 위한 LifecycleEventObserver
+    private val lifecycleObserver = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_STOP) {
+            // 앱이 백그라운드로 전환될 때 걸음수 저장
+            saveStepCountOnBackground()
+        }
+    }
+
+    // 현재 세션의 로컬 ID 저장 (SavedStateHandle로 생명주기 동안 유지)
+    var currentSessionLocalId: String?
+        get() = savedStateHandle["current_session_local_id"]
+        set(value) = savedStateHandle.set("current_session_local_id", value)
 
     // 세션 저장 중인지 여부
     private val _isSavingSession = MutableStateFlow(false)
     val isSavingSession = _isSavingSession.asStateFlow()
 
     // 현재 세션을 Flow로 관찰 (DB 변경 시 자동 업데이트)
-    val currentSession: StateFlow<WalkingSession?> = _currentSessionLocalId
+    private val _currentSessionIdFlow = MutableStateFlow<String?>(null)
+    val currentSession: StateFlow<WalkingSession?> = _currentSessionIdFlow
         .flatMapLatest { id ->
             if (id != null) {
                 walkingSessionRepository.observeSessionById(id)
@@ -277,11 +298,38 @@ class WalkingViewModel @Inject constructor(
 
         // 세션 저장 상태 초기화
         _isSessionSaved.value = false
+
+        // SavedStateHandle에서 currentSessionLocalId 관찰하여 _currentSessionIdFlow 업데이트
+        savedStateHandle.getLiveData<String?>("current_session_local_id").observeForever { id ->
+            _currentSessionIdFlow.value = id
+            Timber.d("🚶 SavedStateHandle currentSessionLocalId 변경: $id")
+        }
+        // 초기 값 설정
+        _currentSessionIdFlow.value = savedStateHandle["current_session_local_id"]
+
+        // 앱 생명주기 관찰 시작 (백그라운드 전환 시 저장)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver)
         Timber.d("🚶 WalkingViewModel init 완료 - hashCode: ${this.hashCode()}")
     }
 
     override fun onCleared() {
         Timber.d("🚶 WalkingViewModel onCleared - hashCode: ${this.hashCode()}")
+
+        // 생명주기 관찰 해제
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(lifecycleObserver)
+
+        // ViewModel 파괴 전 마지막 걸음수 저장 (동기적으로 완료 보장)
+        viewModelScope.launch {
+            if (lastStepCount != lastSavedStepCount) {
+                try {
+                    walkingDataStore.setWalkingStepCount(lastStepCount)
+                    Timber.d("💾 ViewModel 종료 시 마지막 걸음수 저장: $lastStepCount")
+                } catch (t: Throwable) {
+                    Timber.e(t, "ViewModel 종료 시 걸음수 저장 실패")
+                }
+            }
+        }
+
         super.onCleared()
     }
 
@@ -329,7 +377,7 @@ class WalkingViewModel @Inject constructor(
     /**
      * 산책용 캐릭터 정보 로드 (현재 위치 기반)
      */
-    private fun loadWalkingCharacter() {
+    fun loadWalkingCharacter() {
         viewModelScope.launch {
             try {
                 Timber.d("산책용 캐릭터 정보 로드 시작")
@@ -544,7 +592,13 @@ class WalkingViewModel @Inject constructor(
                     startTimeMillis = startTime
                     elapsedBeforePause = if (isPaused) currentDuration else 0L
 
-                    Timber.d("DataStore에서 산책 상태 복원됨: stepCount=$stepCount, duration=$currentDuration")
+                    // 걸음수 변수 복원 (앱 재시작 시 걸음수 복원을 위해)
+                    lastStepCount = stepCount
+                    lastRawStepCount = 0 // 센서 재시작 시 0부터 시작
+                    isFirstStepUpdateAfterRestart = true // 첫 번째 업데이트 플래그 설정
+                    lastSavedStepCount = stepCount // 복원된 값으로 저장된 걸음수 초기화
+
+                    Timber.d("🔄 DataStore에서 산책 상태 복원됨: stepCount=$stepCount, duration=$currentDuration, lastStepCount=$lastStepCount")
                 } else {
                     // 산책 상태가 없거나 무효화된 경우 기본 감정 선택 상태로 설정
                     _uiState.value = WalkingUiState.PreWalkingEmotionSelection()
@@ -570,43 +624,6 @@ class WalkingViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 앱 재시작 시 저장된 세션 상태 복원 (DB 기반)
-     */
-//    private fun restoreSessionState() {
-//        viewModelScope.launch {
-//            try {
-//                // 가장 최근의 미완료 세션 조회 (endTime이 null인 세션)
-//                val latestIncompleteSession = walkingSessionRepository.getAllSessions()
-//                    .firstOrNull()
-//                    ?.firstOrNull { it.endTime == null }
-//
-//                if (latestIncompleteSession != null) {
-//                    Timber.d("미완료 세션 발견, Walking 상태로 복원: ${latestIncompleteSession.id}")
-//
-//                    // 세션 ID 설정 (Flow가 자동으로 세션 데이터를 로드)
-//                    _currentSessionLocalId.value = latestIncompleteSession.id
-//
-//                    // Walking 상태로 복원
-//                    _uiState.value = WalkingUiState.Walking(
-//                        stepCount = latestIncompleteSession.stepCount,
-//                        duration = System.currentTimeMillis() - latestIncompleteSession.startTime,
-//                        isPaused = false // 재시작 시 일시정지 해제
-//                    )
-//
-//                    // 기존 감정 상태 복원
-//                    _preWalkingEmotion.value = latestIncompleteSession.preWalkEmotion
-//                    _postWalkingEmotion.value = latestIncompleteSession.postWalkEmotion
-//
-//                    // 트래킹 재시작 (포그라운드 서비스 재개)
-//                    tracking.startTracking()
-//                }
-//            } catch (t: Throwable) {
-//                Timber.e(t, "세션 상태 복원 실패")
-//                // 복원 실패 시 기본 상태 유지
-//            }
-//        }
-//    }
 
     /**
      * 추적 상태 관찰 및 센서 상태 업데이트
@@ -686,16 +703,22 @@ class WalkingViewModel @Inject constructor(
         }
 
         // 새로운 산책 시작 전 DataStore 초기화 (이전 잔여 데이터 제거)
+        // 주의: 새로운 산책 시작이므로 기존 데이터를 복원하지 않음
         clearWalkingStateFromDataStore()
 
         // 세션 저장 상태 초기화
         _isSessionSaved.value = false
-        _currentSessionLocalId.value = null
+        currentSessionLocalId = null
 
+        // 새로운 산책 시작: 항상 0부터 시작
         startTimeMillis = System.currentTimeMillis()
-        // elapsedBeforePause는 유지 (강제 종료 후 재시작 시 이전 시간 보존)
+        elapsedBeforePause = 0L
         lastStepCount = 0
         lastRawStepCount = 0
+        lastSavedStepCount = 0 // 새로운 산책 시작 시 저장된 걸음수 초기화
+        isFirstStepUpdateAfterRestart = false // 새로운 세션이므로 플래그 false
+
+        Timber.d("🚶 새로운 산책 시작: 걸음수=0, 시작시간=$startTimeMillis")
 
         // 위치 리스트 초기화 및 현재 위치를 첫 번째에 추가
         viewModelScope.launch {
@@ -719,6 +742,7 @@ class WalkingViewModel @Inject constructor(
         viewModelScope.launch {
             tracking.startTracking()
         }
+        // 새로운 산책 시작: 항상 0부터 시작
         _uiState.value =
             WalkingUiState.Walking(
                 stepCount = 0,
@@ -753,6 +777,18 @@ class WalkingViewModel @Inject constructor(
         viewModelScope.launch {
             tracking.resumeTracking()
         }
+
+        // 일시정지 해제 시 시간 계산을 위해 startTimeMillis 업데이트
+        // elapsedBeforePause는 유지 (이미 경과한 시간)
+        val state = _uiState.value
+        if (state is WalkingUiState.Walking && state.isPaused) {
+            // 현재까지 경과한 시간을 elapsedBeforePause에 저장
+            elapsedBeforePause = state.duration
+            // 새로운 시작 시간 설정 (현재 시간)
+            startTimeMillis = System.currentTimeMillis()
+            Timber.d("🔄 산책 재개: elapsedBeforePause=$elapsedBeforePause, startTimeMillis=$startTimeMillis")
+        }
+
         // 타이머 업데이트 재개 (일시정지 해제 시 타이머를 다시 시작)
         startDurationUpdates()
         // DataStore에 재개 상태 저장
@@ -786,7 +822,7 @@ class WalkingViewModel @Inject constructor(
         if (currentState is WalkingUiState.Walking) {
             Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - 산책 진행 중이므로 중단")
             stopWalking()
-        } else if(currentState is WalkingUiState.PreWalkingEmotionSelection){
+        } else if (currentState is WalkingUiState.PreWalkingEmotionSelection) {
             stopWalking()
             Timber.d("🚶 WalkingViewModel.stopWalkingIfNeeded - pre감정 선택 진행 중이므로 중단")
         } else {
@@ -804,22 +840,25 @@ class WalkingViewModel @Inject constructor(
         // 완료된 세션 생성 (현재 메모리 데이터로 즉시 생성)
         val targetStepCount = currentGoal?.targetStepCount ?: 0
         val targetWalkCount = currentGoal?.targetWalkCount ?: 0
-        val completedSession = createCompletedSession(targetStepCount = targetStepCount, targetWalkCount = targetWalkCount)
+        val completedSession = createCompletedSession(
+            targetStepCount = targetStepCount,
+            targetWalkCount = targetWalkCount
+        )
 
         // 세션 저장 중 상태로 변경
         _isSavingSession.value = true
 
         // DB에 저장하고 localId를 받아옴 (완료될 때까지 동기적으로 대기)
         try {
-            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=${_currentSessionLocalId.value}")
-            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전 세션 정보: userId=${completedSession.userId}, localId=${completedSession.id}")
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=${currentSessionLocalId}")
+            Timber.d("🚶 WalkingViewModel.stopWalking - 저장 전 세션 정보: userId=${completedSession.userId}, localId=${completedSession.id}, startTime=${completedSession.startTime}")
             val sessionId = walkingSessionRepository.createSessionPartial(completedSession)
             Timber.d("🚶 WalkingViewModel.stopWalking - 저장 후: viewModel.hashCode=${this.hashCode()}, currentSessionLocalId=$sessionId, postEmotion=${completedSession.postWalkEmotion}")
-            Timber.d("부분 세션 저장 완료: localId=$sessionId, userId=${completedSession.userId}, postEmotion=${completedSession.postWalkEmotion}")
+            Timber.d("🚶 [STOPWALKING] 세션 저장 완료: ID=$sessionId, userId=${completedSession.userId}, startTime=${completedSession.startTime}, 걸음수=${completedSession.stepCount}")
 
             // ⭐ DB 저장이 완료된 후 세션 ID만 설정 (UI 상태는 이미 변경됨)
-            _currentSessionLocalId.value = sessionId
-            Timber.d("🚶 WalkingViewModel.stopWalking - _currentSessionLocalId 설정 완료: ${_currentSessionLocalId.value}, ViewModel hashCode: ${this.hashCode()}")
+            currentSessionLocalId = sessionId
+            Timber.d("🚶 WalkingViewModel.stopWalking - currentSessionLocalId 설정 완료: ${currentSessionLocalId}, ViewModel hashCode: ${this.hashCode()}")
             _isSessionSaved.value = true  // 세션 저장 완료 플래그 설정
             _isSavingSession.value = false  // 세션 저장 완료
             // _uiState.value는 이미 버튼 클릭 시 finishWalking()에서 변경됨
@@ -827,7 +866,15 @@ class WalkingViewModel @Inject constructor(
             // DataStore에서 산책 상태 초기화 (산책이 완료되었으므로)
             clearWalkingStateFromDataStore()
 
-            Timber.d("🚶 WalkingViewModel.stopWalking - 모든 작업 완료: sessionId=$sessionId")
+            // 메모리 변수들도 초기화 (다음 산책을 위해)
+            startTimeMillis = 0L
+            elapsedBeforePause = 0L
+            lastStepCount = 0
+            lastRawStepCount = 0
+            lastSavedStepCount = 0
+            isFirstStepUpdateAfterRestart = false
+
+            Timber.d("🚶 WalkingViewModel.stopWalking - 모든 작업 완료: sessionId=$sessionId, 메모리 변수 초기화됨")
         } catch (t: Throwable) {
             Timber.e(t, "부분 세션 저장 실패")
             // 에러 발생 시 Error 상태로 변경 (사용자에게 에러 표시)
@@ -864,7 +911,11 @@ class WalkingViewModel @Inject constructor(
     private fun handleTrackingResumed() {
         val state = _uiState.value
         if (state is WalkingUiState.Walking && state.isPaused) {
+            // 현재까지 경과한 시간을 elapsedBeforePause에 저장
+            elapsedBeforePause = state.duration
+            // 새로운 시작 시간 설정 (현재 시간)
             startTimeMillis = System.currentTimeMillis()
+            Timber.d("🔄 추적 재개: elapsedBeforePause=$elapsedBeforePause, startTimeMillis=$startTimeMillis")
             _uiState.value = state.copy(isPaused = false)
         }
     }
@@ -873,16 +924,68 @@ class WalkingViewModel @Inject constructor(
         validatedStepCount: Int,
         validationResult: StepValidationResult? = null
     ) {
-        lastRawStepCount = validatedStepCount
-
         // 검증 결과를 저장 (UI 표시용)
         _latestValidationResult.value = validationResult
 
         val state = _uiState.value
         if (state is WalkingUiState.Walking && !state.isPaused) {
-            // 검증된 걸음 수만 사용 (검증 실패 시 증가하지 않음)
-            lastStepCount = validatedStepCount
-            _uiState.value = state.copy(stepCount = validatedStepCount)
+            val finalStepCount = if (isFirstStepUpdateAfterRestart && lastStepCount > 0) {
+                // 앱 재시작 후 첫 번째 업데이트: 기존 걸음수 유지
+                // (새 센서는 0부터 시작하므로 validatedStepCount는 무시)
+                Timber.d("🔄 첫 번째 걸음수 업데이트: 기존 걸음수 유지 ($lastStepCount), 새 센서 값=$validatedStepCount")
+                isFirstStepUpdateAfterRestart = false
+                lastRawStepCount = validatedStepCount // 기준점으로 저장
+                lastStepCount
+            } else {
+                // 이후 업데이트: 증가량 계산하여 기존 걸음수에 더하기
+                val stepDelta = validatedStepCount - lastRawStepCount
+                val newStepCount = lastStepCount + stepDelta.coerceAtLeast(0)
+                Timber.d("🔄 걸음수 업데이트: 기존=$lastStepCount, 증가량=$stepDelta, 최종=$newStepCount")
+                lastRawStepCount = validatedStepCount
+                newStepCount
+            }
+
+            lastStepCount = finalStepCount
+            _uiState.value = state.copy(stepCount = finalStepCount)
+
+            // 걸음수 업데이트 시 DataStore에 저장 (앱 재시작 시 복원을 위해)
+            // 최적화: 일정 간격(10초) 또는 일정 증가량(50걸음) 이상일 때만 저장
+            val currentTime = System.currentTimeMillis()
+            val stepCountDelta = finalStepCount - lastSavedStepCount
+
+            // 백그라운드 전환 시 저장을 위해 항상 저장 (간단한 구현)
+            // 필요시 시간/증가량 기반 최적화 가능
+            viewModelScope.launch {
+                walkingDataStore.setWalkingStepCount(finalStepCount)
+                lastSavedStepCount = finalStepCount
+            }
+        }
+    }
+
+    /**
+     * 앱이 백그라운드로 전환될 때 걸음수 저장
+     * ProcessLifecycleOwner의 ON_STOP 이벤트에서 호출됨
+     */
+    private fun saveStepCountOnBackground() {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                if (currentState is WalkingUiState.Walking) {
+                    // 현재 걸음수가 마지막 저장된 값과 다를 때만 저장
+                    if (lastStepCount != lastSavedStepCount) {
+                        walkingDataStore.setWalkingStepCount(lastStepCount)
+                        lastSavedStepCount = lastStepCount
+                        Timber.d("💾 백그라운드 전환 시 걸음수 저장: $lastStepCount")
+                    } else {
+                        Timber.d("💾 백그라운드 전환 시 걸음수 저장 불필요 (변경 없음): $lastStepCount")
+                    }
+
+                    // 전체 산책 상태도 저장 (일시정지 상태, 시간 등)
+                    saveWalkingStateToDataStore()
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "백그라운드 전환 시 걸음수 저장 실패")
+            }
         }
     }
 
@@ -959,17 +1062,18 @@ class WalkingViewModel @Inject constructor(
      *
      * 하이브리드 접근: 메모리에서 즉시 세션 객체를 생성하여 Completed 상태로 사용
      */
-    private suspend fun createCompletedSession(targetStepCount: Int = 0, targetWalkCount: Int = 0): WalkingSession {
+    private suspend fun createCompletedSession(
+        targetStepCount: Int = 0,
+        targetWalkCount: Int = 0
+    ): WalkingSession {
         val preEmotion = _preWalkingEmotion.value
-            ?: throw IllegalStateException("산책 전 감정이 선택되지 않았습니다")
-
-        // postWalkEmotion이 선택되지 않았으면 preWalkEmotion과 동일하게 설정
+            ?: EmotionType.HAPPY.name
         val postEmotion = _postWalkingEmotion.value ?: preEmotion
 
         val endTime = System.currentTimeMillis()
-//        val collectedLocations = _locations.value
+        val collectedLocations = _locations.value
 //        //TODO : 삭제
-        val collectedLocations = loadLocationsFromJson(context)
+//        val collectedLocations = loadLocationsFromJson(context)
         val totalDistance = calculateTotalDistance(collectedLocations)
 
         // ✅ 경로 스무딩 적용
@@ -1037,7 +1141,7 @@ class WalkingViewModel @Inject constructor(
     fun updatePostWalkEmotion(postWalkEmotion: EmotionType) {
         viewModelScope.launch {
             try {
-                val localId = _currentSessionLocalId.value
+                val localId = currentSessionLocalId
                 if (localId == null) {
                     Timber.w("세션이 없어 산책 후 감정 업데이트를 건너뜀 - ViewModel 재생성으로 인한 상태 손실 가능성")
                     return@launch
@@ -1067,9 +1171,9 @@ class WalkingViewModel @Inject constructor(
      * @return 업데이트 성공 여부
      */
     fun updateSessionImageAndNote() {
-        Timber.d("updateSessionImageAndNote 호출 - ViewModel hashCode: ${this.hashCode()}, currentSessionLocalId: ${_currentSessionLocalId.value}")
+        Timber.d("updateSessionImageAndNote 호출 - ViewModel hashCode: ${this.hashCode()}, currentSessionLocalId: ${currentSessionLocalId}")
         viewModelScope.launch {
-            val localId = _currentSessionLocalId.value
+            val localId = currentSessionLocalId
             if (localId == null) {
                 Timber.w("세션이 없어 이미지/노트 업데이트를 건너뜀 - ViewModel 재생성으로 인한 상태 손실 가능성")
                 return@launch
@@ -1140,11 +1244,11 @@ class WalkingViewModel @Inject constructor(
      */
     fun deleteCurrentSession() {
         viewModelScope.launch {
-            val localId = _currentSessionLocalId.value
+            val localId = currentSessionLocalId
             if (localId != null) {
                 try {
                     walkingSessionRepository.deleteSession(localId)
-                    _currentSessionLocalId.value = null
+                    currentSessionLocalId = null
                     Timber.d("임시 산책 세션 삭제 완료: localId=$localId")
                 } catch (t: Throwable) {
                     Timber.e(t, "임시 산책 세션 삭제 실패: localId=$localId")
@@ -1165,7 +1269,7 @@ class WalkingViewModel @Inject constructor(
             try {
                 _snapshotState.value = SnapshotState.Syncing
 
-                val localId = _currentSessionLocalId.value
+                val localId = currentSessionLocalId
                 if (localId == null) {
                     Timber.w("세션이 없어 서버 동기화를 건너뜀 - ViewModel 재생성으로 인한 상태 손실 가능성")
                     _snapshotState.value = SnapshotState.Error("세션 정보를 찾을 수 없습니다")
@@ -1174,8 +1278,13 @@ class WalkingViewModel @Inject constructor(
 
                 // nonCancellable 컨텍스트를 사용하여 화면을 벗어나도 네트워크 요청이 계속 진행되도록 함
                 // 큰 이미지 파일(3MB+) 업로드 중에 화면을 벗어나도 취소되지 않음
-                withContext(NonCancellable) {
+                val syncedLocalId = withContext(NonCancellable) {
                     walkingSessionRepository.syncSessionToServer(localId)
+                }
+
+                // 서버 동기화 성공 시 로깅
+                if (syncedLocalId != null) {
+                    Timber.d("서버 동기화 성공: localId=$localId")
                 }
 
                 _snapshotState.value = SnapshotState.Complete
@@ -1183,7 +1292,7 @@ class WalkingViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 // nonCancellable을 사용했으므로 이 경우는 발생하지 않아야 하지만, 안전을 위해 처리
                 _snapshotState.value = SnapshotState.Error("서버 동기화 취소됨")
-                Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${_currentSessionLocalId.value}")
+                Timber.w("서버 동기화 취소됨 (예상치 못한 취소): localId=${currentSessionLocalId}")
             } catch (t: Throwable) {
                 // 실제 서버 에러인 경우에만 로깅 및 사용자 알림
                 _snapshotState.value = SnapshotState.Error(t.message ?: "서버 동기화 실패")
@@ -1227,7 +1336,7 @@ class WalkingViewModel @Inject constructor(
      * 현재 세션의 로컬 ID 노출 (WalkingResultScreen에서 사용)
      */
     val currentSessionLocalIdValue: String?
-        get() = _currentSessionLocalId.value
+        get() = currentSessionLocalId
 
     /**
      * 현재 사용자 ID 확인 (로그인 상태 체크용)
@@ -1249,7 +1358,7 @@ class WalkingViewModel @Inject constructor(
      * @param imagePath 스냅샷 파일 경로
      */
     suspend fun saveSnapshotToSession(imagePath: String?) {
-        val localId = _currentSessionLocalId.value
+        val localId = currentSessionLocalId
         if (localId == null) {
             Timber.w("세션이 없어 스냅샷 저장을 건너뜀 - ViewModel 재생성으로 인한 상태 손실 가능성")
             return
@@ -1279,7 +1388,7 @@ class WalkingViewModel @Inject constructor(
      * 총 이동 거리 계산 (미터)
      * LocationPoint 리스트를 기반으로 GPS 거리를 계산합니다.
      */
-     fun calculateTotalDistance(locations: List<LocationPoint>): Float {
+    fun calculateTotalDistance(locations: List<LocationPoint>): Float {
         if (locations.size < 2) {
             return 0f
         }
@@ -1388,27 +1497,34 @@ class WalkingViewModel @Inject constructor(
                     when (workInfo.state) {
                         androidx.work.WorkInfo.State.ENQUEUED -> {
                             Timber.d("📋 Worker가 대기열에 있음")
-                            _workerSyncStatus.value = WorkerSyncStatus.Error("Worker가 대기열에 있지만 실행되지 않음")
+                            _workerSyncStatus.value =
+                                WorkerSyncStatus.Error("Worker가 대기열에 있지만 실행되지 않음")
                         }
+
                         androidx.work.WorkInfo.State.RUNNING -> {
                             Timber.d("🏃 Worker가 실행 중")
                             _workerSyncStatus.value = WorkerSyncStatus.Running
                         }
+
                         androidx.work.WorkInfo.State.SUCCEEDED -> {
                             Timber.d("✅ Worker가 성공")
                             _workerSyncStatus.value = WorkerSyncStatus.Success
                         }
+
                         androidx.work.WorkInfo.State.FAILED -> {
                             Timber.d("❌ Worker가 실패")
                             _workerSyncStatus.value = WorkerSyncStatus.Error("Worker 실행 실패")
                         }
+
                         androidx.work.WorkInfo.State.CANCELLED -> {
                             Timber.d("🚫 Worker가 취소됨")
                             _workerSyncStatus.value = WorkerSyncStatus.Error("Worker가 취소됨")
                         }
+
                         else -> {
                             Timber.d("❓ Worker 상태: ${workInfo.state}")
-                            _workerSyncStatus.value = WorkerSyncStatus.Error("알 수 없는 상태: ${workInfo.state}")
+                            _workerSyncStatus.value =
+                                WorkerSyncStatus.Error("알 수 없는 상태: ${workInfo.state}")
                         }
                     }
                 } else {

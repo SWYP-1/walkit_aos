@@ -9,6 +9,7 @@ import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -134,7 +135,13 @@ constructor(
                     walkingSessionDao
                         .getSyncedSessionsBetweenForUser(userId, startMillis, endMillis)
                         .map { entities ->
-                            Timber.d("📅 Repository - getSyncedSessionsBetweenForUser 결과: ${entities.size}개 엔티티")
+                            Timber.d("📅 Repository - getSyncedSessionsBetweenForUser 결과: ${entities.size}개 엔티티 (userId=$userId, startMillis=$startMillis, endMillis=$endMillis)")
+                            entities.forEachIndexed { index, entity ->
+                                val sessionDate = java.time.Instant.ofEpochMilli(entity.startTime)
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate()
+                                Timber.d("📅   엔티티[$index]: id=${entity.id}, startTime=${entity.startTime}, sessionDate=$sessionDate, 걸음수=${entity.stepCount}, syncState=${entity.syncState}, userId=${entity.userId}")
+                            }
                             // mapper에서 이미 모든 예외를 처리하므로 안전하게 매핑 가능
                             val sessions = entities.map { entity -> WalkingSessionMapper.toDomain(entity) }
                             Timber.d("📅 Repository - 매핑 완료: ${sessions.size}개 세션")
@@ -241,6 +248,22 @@ constructor(
     }
 
     /**
+     * 모든 세션 조회 (디버깅용)
+     */
+    fun getAllSessions(): Flow<List<WalkingSession>> {
+        return walkingSessionDao.getAllSessions().map { entities ->
+            entities.map { WalkingSessionMapper.toDomain(it) }
+        }
+    }
+
+    /**
+     * 특정 사용자의 세션이 하나라도 존재하는지 확인 (효율적 조회용)
+     */
+    suspend fun hasAnySessionsForUser(userId: Long): Boolean {
+        return walkingSessionDao.hasAnySessionsForUser(userId)
+    }
+
+    /**
      * 동기화된 세션 조회 (SYNCED 상태)
      */
     suspend fun getSyncedSessions(): List<WalkingSession> {
@@ -313,7 +336,11 @@ constructor(
     /**
      * 총 걸음수 조회 (Flow로 실시간 업데이트)
      */
-    fun getTotalStepCount(): Flow<Int> = walkingSessionDao.getTotalStepCount()
+    fun getTotalStepCount(): Flow<Int> = userDao.observeCurrentUser()
+        .map { it?.userId ?: 0L }
+        .flatMapLatest { userId ->
+            walkingSessionDao.getTotalStepCount(userId)
+        }
 
     /**
      * 총 이동거리 조회 (Flow로 실시간 업데이트, 미터 단위)
@@ -323,7 +350,11 @@ constructor(
     /**
      * 총 산책 시간 조회 (Flow로 실시간 업데이트, 밀리초 단위)
      */
-    fun getTotalDuration(): Flow<Long> = walkingSessionDao.getTotalDuration()
+    fun getTotalDuration(): Flow<Long> = userDao.observeCurrentUser()
+        .map { it?.userId ?: 0L }
+        .flatMapLatest { userId ->
+            walkingSessionDao.getTotalDuration(userId)
+        }
 
     /**
      * 부분 세션 생성 (stopWalking() 실행 시 즉시 호출)
@@ -499,8 +530,9 @@ constructor(
      * 세션을 서버와 동기화 (WalkingResultScreen에서 "기록 완료" 버튼 클릭 시 호출)
      *
      * @param localId 동기화할 세션의 로컬 ID
+     * @return 업데이트된 서버 세션 ID (성공 시) 또는 null (실패 시)
      */
-    suspend fun syncSessionToServer(localId: String) {
+    suspend fun syncSessionToServer(localId: String): String? {
         val userId = getCurrentUserId()
         val entity = walkingSessionDao.getSessionByIdForUser(userId,localId)
             ?: throw IllegalStateException("세션을 찾을 수 없습니다: ID=$localId")
@@ -508,7 +540,7 @@ constructor(
         // 이미 동기화된 경우 스킵
         if (entity.syncState == SyncState.SYNCED) {
             Timber.d("이미 동기화된 세션: localId=$localId")
-            return
+            return "-1"
         }
 
         // Domain 모델로 변환
@@ -572,16 +604,24 @@ constructor(
                 is Result.Success -> {
                     val response = result.data
                     val serverImageUrl = response.imageUrl
+                    val serverSessionId = response.id.toString()
 
+                    // serverId만 업데이트 (Primary Key 유지)
                     val updatedEntity = entity.copy(
-                        serverImageUrl = serverImageUrl // 서버에서 받은 URL 저장
+                        serverId = serverSessionId, // 서버 ID 저장 (Primary Key 변경 없음)
+                        serverImageUrl = serverImageUrl, // 서버에서 받은 URL 저장
+                        syncState = SyncState.SYNCED, // ✅ 동기화 상태도 SYNCED로 변경
+                        isSynced = true
                         // localImagePath는 유지 (오프라인 지원)
                     )
                     walkingSessionDao.update(updatedEntity)
 
-                    // 동기화 성공
-                    walkingSessionDao.markSessionAsSynced(localId)
-                    Timber.d("서버 동기화 성공: localId=$localId, serverImageUrl=$serverImageUrl")
+                    Timber.d("서버 동기화 성공: localId=$localId, serverId=$serverSessionId, serverImageUrl=$serverImageUrl marked :${session.isSynced} " )
+                    return localId // 기존 로컬 ID 반환 (변경 없음)
+
+                    // WalkingViewModel의 currentSessionLocalId도 업데이트
+                    // (ViewModel 재생성 시에도 유지되도록 SavedStateHandle 사용)
+                    // 하지만 여기서는 Repository 레벨이므로 ViewModel에 콜백을 전달해야 함
                 }
 
                 is Result.Error -> {
@@ -599,14 +639,15 @@ constructor(
                 walkingSessionDao.updateSyncState(localId, SyncState.PENDING)
                 Timber.w("서버 동기화 취소됨 (재시도 가능): localId=$localId")
                 // 취소 예외는 다시 throw하지 않음 (정상적인 취소이므로)
-                return
+                return null
             }
 
             // 실제 서버 에러인 경우에만 FAILED 상태로 변경
             walkingSessionDao.updateSyncState(localId, SyncState.FAILED)
             Timber.e(t, "서버 동기화 실패: localId=$localId")
-            throw t
+            return null // 실패 시 null 반환
         }
+        return localId
     }
 
     suspend fun updateSessionNote(id: String, newNote: String) {
@@ -622,6 +663,43 @@ constructor(
 
         Timber.d("세션 노트 업데이트 완료: localId: $id : note : $newNote")
 
+    }
+
+    /**
+     * 디버깅용: 모든 세션 상태 확인
+     */
+    suspend fun debugAllSessions() {
+        try {
+            val currentUserId = getCurrentUserId()
+            Timber.d("🔍 [DEBUG] 현재 사용자 ID: $currentUserId")
+
+            // 모든 세션 조회 (userId 필터 없이)
+            val allEntities = walkingSessionDao.getAllSessions().first()
+            Timber.d("🔍 [DEBUG] 데이터베이스 전체 세션 수: ${allEntities.size}")
+            allEntities.forEachIndexed { index, entity ->
+                val sessionDate = java.time.Instant.ofEpochMilli(entity.startTime)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate()
+                Timber.d("🔍 [DEBUG] 전체 세션[$index]: id=${entity.id}, userId=${entity.userId}, startTime=${entity.startTime}, sessionDate=$sessionDate, 걸음수=${entity.stepCount}, syncState=${entity.syncState}")
+            }
+
+            // 현재 사용자 세션만 조회
+            if (currentUserId > 0) {
+                val userEntities = allEntities.filter { it.userId == currentUserId }
+                Timber.d("🔍 [DEBUG] 현재 사용자(${currentUserId}) 세션 수: ${userEntities.size}")
+
+                // SYNCED 상태 세션만
+                val syncedEntities = userEntities.filter { it.syncState == swyp.team.walkit.data.local.entity.SyncState.SYNCED }
+                Timber.d("🔍 [DEBUG] SYNCED 상태 세션 수: ${syncedEntities.size}")
+
+                // 최근 30일 이내 세션
+                val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+                val recentEntities = userEntities.filter { it.startTime >= thirtyDaysAgo }
+                Timber.d("🔍 [DEBUG] 최근 30일 세션 수: ${recentEntities.size}")
+            }
+        } catch (e: Throwable) {
+            Timber.e(e, "🔍 [DEBUG] 세션 디버깅 실패")
+        }
     }
 }
 

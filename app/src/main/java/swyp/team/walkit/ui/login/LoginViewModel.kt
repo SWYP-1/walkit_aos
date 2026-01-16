@@ -32,6 +32,7 @@ import swyp.team.walkit.data.remote.dto.ApiErrorResponse
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.data.remote.auth.TokenProvider
 import swyp.team.walkit.domain.service.FcmTokenManager
+import swyp.team.walkit.worker.SessionSyncScheduler
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -116,6 +117,8 @@ class LoginViewModel @Inject constructor(
                         if (!user.nickname.isNullOrBlank()) {
                             _isLoggedIn.value = true
                             Timber.i("사용자 정보 확인 성공 - 닉네임: ${user.nickname}, 로그인 상태 유지")
+                            SessionSyncScheduler.runSyncOnce(application)
+
                         } else {
                             // 닉네임이 없으면 온보딩 필요
                             _isLoggedIn.value = false
@@ -235,6 +238,7 @@ class LoginViewModel @Inject constructor(
                     _uiState.value = LoginUiState.Error("토큰을 가져오지 못했습니다.")
                 }
             }
+
             Activity.RESULT_CANCELED -> {
                 // 로그인 실패 또는 취소
                 val errorCode = NidOAuth.getLastErrorCode().code
@@ -419,17 +423,19 @@ class LoginViewModel @Inject constructor(
                         Timber.i("로그인 직후 사용자 정보 확인 시작")
                         checkUserStatusAfterLogin()
                     }
+
                     is Result.Error -> {
                         // ✅ Repository 레이어에서 에러 메시지 파싱
-                        val errorMessage = parseErrorMessage(result.exception) 
-                            ?: result.message 
+                        val errorMessage = parseErrorMessage(result.exception)
+                            ?: result.message
                             ?: "서버 로그인에 실패했습니다"
-                        
+
                         _uiState.value = LoginUiState.Error(errorMessage)
                         _isLoggedIn.value = false
                         _isLoginChecked.value = true  // ✅ 로그인 실패 시에도 SplashScreen이 진행할 수 있도록 설정
                         Timber.e(result.exception, "서버 로그인 실패: $errorMessage")
                     }
+
                     Result.Loading -> {
                         // 이미 Loading 상태
                     }
@@ -463,7 +469,7 @@ class LoginViewModel @Inject constructor(
                         Timber.i("로그인 완료 - 닉네임 있음: ${user.nickname}")
 
                         // 서버 데이터 동기화 WorkManager 즉시 실행
-//                        swyp.team.walkit.worker.SessionSyncScheduler.runSyncOnly(application)
+                        SessionSyncScheduler.runSyncOnce(application)
                         Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
 
                         onNavigateToMain?.invoke()
@@ -511,7 +517,7 @@ class LoginViewModel @Inject constructor(
      */
     private fun parseErrorMessage(exception: Throwable?): String? {
         if (exception !is HttpException) return null
-        
+
         return try {
             val errorBody = exception.response()?.errorBody()?.string()
             if (errorBody != null) {
@@ -520,7 +526,7 @@ class LoginViewModel @Inject constructor(
                     isLenient = true
                 }
                 val apiError = json.decodeFromString<ApiErrorResponse>(errorBody)
-                
+
                 // ✅ ViewModel에서 에러 코드/이름에 따라 메시지 변환
                 when {
                     // 탈퇴한 회원 (code: 1007, name: USER_DELETED)

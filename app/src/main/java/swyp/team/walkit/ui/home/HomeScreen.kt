@@ -2,6 +2,7 @@ package swyp.team.walkit.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +26,7 @@ import swyp.team.walkit.core.DataState
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.domain.model.Goal
 import swyp.team.walkit.domain.model.User
-import swyp.team.walkit.ui.home.components.WeeklyRecordCard
 import swyp.team.walkit.ui.home.components.HomeHeader
-import swyp.team.walkit.ui.home.components.DominantEmotionCard
-import swyp.team.walkit.ui.home.components.EmotionIcon
-import swyp.team.walkit.ui.home.components.HomeEmptySession
 import swyp.team.walkit.ui.home.components.ProfileSection
 import swyp.team.walkit.ui.home.components.MissionSection
 import swyp.team.walkit.ui.home.components.WeeklyRecordSection
@@ -242,20 +239,10 @@ private fun HomeBottomSection(
 
         is DataState.Error -> {
             // Room 데이터 로딩 실패 (API와 별개로 처리)
-            Text(
-                text = "산책 기록을 불러올 수 없습니다",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
         }
 
         DataState.Loading -> {
             // Room 데이터 로딩 중 (API와 별개로 처리)
-            Text(
-                text = "산책 기록을 불러오는 중...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

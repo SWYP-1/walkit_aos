@@ -33,6 +33,7 @@ data class ActivityStats(
 data class WalkingSession(
     val id: String = UUID.randomUUID().toString(),
     val userId: Long = 0L, // 사용자 ID 추가 (기본값 0)
+    val serverId: String? = null, // 서버에서 받은 세션 ID (중복 저장 방지용)
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,

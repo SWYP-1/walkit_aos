@@ -19,6 +19,7 @@ data class WalkingSessionEntity(
     @PrimaryKey
     val id: String,
     val userId: Long, // 사용자 ID 추가
+    val serverId: String? = null, // 서버에서 받은 세션 ID (중복 저장 방지용)
     val startTime: Long,
     val endTime: Long,
     val stepCount: Int = 0,

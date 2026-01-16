@@ -430,8 +430,6 @@ fun LatLngBoundsTestScreen(
             KakaoMapView(
                 locations = randomLocations,
                 viewModel = mapViewModel,
-                updateTrigger = updateTrigger, // 패딩 변경 시 지도 업데이트
-                latLngBoundsPaddingPx = currentPaddingPx, // 동적 패딩 적용
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -591,7 +589,6 @@ fun RandomPathTestScreen(
             KakaoMapView(
                 locations = locations,
                 viewModel = mapViewModel,
-                updateTrigger = updateTrigger,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()

@@ -1,6 +1,6 @@
 package swyp.team.walkit.data.local.mapper
 
-import org.junit.Assert.assertEquals
+import org.junit.Assert
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import swyp.team.walkit.data.remote.walking.dto.CharacterDto
@@ -39,26 +39,26 @@ class CharacterMapperTest {
         val result = CharacterMapper.toDomain(characterDto)
 
         // Then
-        assertEquals("테스트사용자", result.nickName)
-        assertEquals(5, result.level)
-        assertEquals(Grade.SEED, result.grade)
-        assertEquals("background_forest.png", result.backgroundImageName)
-        assertEquals("character_seed.png", result.characterImageName)
+        Assert.assertEquals("테스트사용자", result.nickName)
+        Assert.assertEquals(5, result.level)
+        Assert.assertEquals(Grade.SEED, result.grade)
+        Assert.assertEquals("background_forest.png", result.backgroundImageName)
+        Assert.assertEquals("character_seed.png", result.characterImageName)
 
         // Body image (itemTag가 null이므로 null)
         assertNotNull(result.bodyImage)
-        assertEquals("body_red_jacket.png", result.bodyImage?.imageName)
-        assertEquals(null, result.bodyImage?.itemTag)
+        Assert.assertEquals("body_red_jacket.png", result.bodyImage?.imageName)
+        Assert.assertEquals(null, result.bodyImage?.itemTag)
 
         // Head image (itemTag가 "TOP")
         assertNotNull(result.headImage)
-        assertEquals("head_green_hat.png", result.headImage?.imageName)
-        assertEquals("TOP", result.headImage?.itemTag)
+        Assert.assertEquals("head_green_hat.png", result.headImage?.imageName)
+        Assert.assertEquals("TOP", result.headImage?.itemTag)
 
         // Feet image
         assertNotNull(result.feetImage)
-        assertEquals("feet_blue_socks.png", result.feetImage?.imageName)
-        assertEquals(null, result.feetImage?.itemTag)
+        Assert.assertEquals("feet_blue_socks.png", result.feetImage?.imageName)
+        Assert.assertEquals(null, result.feetImage?.itemTag)
     }
 
     @Test
@@ -79,14 +79,14 @@ class CharacterMapperTest {
         val result = CharacterMapper.toDomain(characterDto)
 
         // Then
-        assertEquals("게스트", result.nickName) // 기본값
-        assertEquals(1, result.level)
-        assertEquals(Grade.TREE, result.grade)
-        assertEquals(null, result.backgroundImageName)
-        assertEquals(null, result.characterImageName)
-        assertEquals(null, result.bodyImage)
-        assertEquals(null, result.headImage)
-        assertEquals(null, result.feetImage)
+        Assert.assertEquals("게스트", result.nickName) // 기본값
+        Assert.assertEquals(1, result.level)
+        Assert.assertEquals(Grade.TREE, result.grade)
+        Assert.assertEquals(null, result.backgroundImageName)
+        Assert.assertEquals(null, result.characterImageName)
+        Assert.assertEquals(null, result.bodyImage)
+        Assert.assertEquals(null, result.headImage)
+        Assert.assertEquals(null, result.feetImage)
     }
 
 
@@ -103,12 +103,12 @@ class CharacterMapperTest {
         )
 
         // When & Then - 백워드 호환성 게터들
-        assertEquals("head_test.png", character.headImageName)
-        assertEquals("DECOR", character.headImageTag)
-        assertEquals("body_test.png", character.bodyImageName)
-        assertEquals(null, character.bodyImage?.itemTag) // body는 tag가 없으므로 null
-        assertEquals("feet_test.png", character.feetImageName)
-        assertEquals(null, character.feetImage?.itemTag) // feet는 tag가 없으므로 null
+        Assert.assertEquals("head_test.png", character.headImageName)
+        Assert.assertEquals("DECOR", character.headImageTag)
+        Assert.assertEquals("body_test.png", character.bodyImageName)
+        Assert.assertEquals(null, character.bodyImage?.itemTag) // body는 tag가 없으므로 null
+        Assert.assertEquals("feet_test.png", character.feetImageName)
+        Assert.assertEquals(null, character.feetImage?.itemTag) // feet는 tag가 없으므로 null
     }
 
     @Test
@@ -124,11 +124,11 @@ class CharacterMapperTest {
         )
 
         // When & Then
-        assertEquals(null, character.headImageName)
-        assertEquals(null, character.headImageTag)
-        assertEquals(null, character.bodyImageName)
-        assertEquals(null, character.bodyImage?.itemTag)
-        assertEquals(null, character.feetImageName)
-        assertEquals(null, character.feetImage?.itemTag)
+        Assert.assertEquals(null, character.headImageName)
+        Assert.assertEquals(null, character.headImageTag)
+        Assert.assertEquals(null, character.bodyImageName)
+        Assert.assertEquals(null, character.bodyImage?.itemTag)
+        Assert.assertEquals(null, character.feetImageName)
+        Assert.assertEquals(null, character.feetImage?.itemTag)
     }
 }

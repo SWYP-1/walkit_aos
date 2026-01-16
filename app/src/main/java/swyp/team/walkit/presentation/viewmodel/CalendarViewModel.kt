@@ -62,6 +62,7 @@ class CalendarViewModel @Inject constructor(
     private val today = MutableStateFlow(LocalDate.now())
     val currentDate: StateFlow<LocalDate> = today.asStateFlow()
 
+
     // 데이터 로딩 상태
     private val _isLoadingDaySessions = MutableStateFlow(true)
     val isLoadingDaySessions: StateFlow<Boolean> = _isLoadingDaySessions.asStateFlow()
@@ -115,7 +116,17 @@ class CalendarViewModel @Inject constructor(
         today
             .flatMapLatest { date ->
                 val (start, end) = monthRange(date)
+                Timber.d("📅 CalendarViewModel - monthSessions 쿼리: date=$date, start=$start (${java.time.Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault())}), end=$end (${java.time.Instant.ofEpochMilli(end).atZone(ZoneId.systemDefault())})")
                 walkingSessionRepository.getSessionsBetween(start, end)
+                    .onEach { sessions ->
+                        Timber.d("📅 CalendarViewModel - monthSessions 결과: ${sessions.size}개 세션")
+                        sessions.forEachIndexed { index, session ->
+                            val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            Timber.d("📅   월간 세션[$index]: id=${session.id}, startTime=${session.startTime}, sessionDate=$sessionDate, 걸음수=${session.stepCount}, 사용자ID=${session.userId}")
+                        }
+                    }
             }.catch { e ->
                 // ExceptionInInitializerError 등 Error 타입도 처리
                 Timber.e(e, "월간 세션 로드 실패")
@@ -159,7 +170,17 @@ class CalendarViewModel @Inject constructor(
         today
             .flatMapLatest { date ->
                 val (start, end) = weekRange(date)
+                Timber.d("📅 CalendarViewModel - weekSessions 쿼리: date=$date, start=$start (${java.time.Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault())}), end=$end (${java.time.Instant.ofEpochMilli(end).atZone(ZoneId.systemDefault())})")
                 walkingSessionRepository.getSessionsBetween(start, end)
+                    .onEach { sessions ->
+                        Timber.d("📅 CalendarViewModel - weekSessions 결과: ${sessions.size}개 세션")
+                        sessions.forEachIndexed { index, session ->
+                            val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            Timber.d("📅   주간 세션[$index]: id=${session.id}, startTime=${session.startTime}, sessionDate=$sessionDate, 걸음수=${session.stepCount}, 사용자ID=${session.userId}")
+                        }
+                    }
             }.catch { e ->
                 // ExceptionInInitializerError 등 Error 타입도 처리
                 Timber.e(e, "주간 세션 로드 실패")
@@ -190,7 +211,7 @@ class CalendarViewModel @Inject constructor(
                             val sessionDate = java.time.Instant.ofEpochMilli(session.startTime)
                                 .atZone(ZoneId.systemDefault())
                                 .toLocalDate()
-                            Timber.d("📅   세션[$index]: id=${session.id}, startTime=${session.startTime}, sessionDate=$sessionDate")
+                            Timber.d("📅   세션[$index]: id=${session.id}, startTime=${session.startTime}, sessionDate=$sessionDate, 걸음수=${session.stepCount}, 거리=${String.format("%.2f", session.totalDistance)}km, 사용자ID=${session.userId}")
                         }
                     }
             }.catch { e ->
@@ -281,10 +302,22 @@ class CalendarViewModel @Inject constructor(
     }
 
     /**
+     * 디버깅용: 모든 세션 상태 확인
+     */
+    fun debugAllSessions() {
+        viewModelScope.launch {
+            try {
+                walkingSessionRepository.debugAllSessions()
+            } catch (e: Throwable) {
+                Timber.e(e, "🔍 [DEBUG] 세션 디버깅 실패")
+            }
+        }
+    }
+
+    /**
      * 특정 날짜로 설정
      */
     fun setDate(date: LocalDate) {
-        Timber.d("📅 CalendarViewModel - setDate 호출: $date")
         today.value = date
         // 날짜 변경 시 로딩 상태로 설정
         _isLoadingDaySessions.value = true
@@ -302,14 +335,14 @@ class CalendarViewModel @Inject constructor(
 
 
 // CalendarViewModel.kt
-fun nextWeek() {
-    val current = today.value
-    val currentWeekStart = current.with(DayOfWeek.MONDAY)
-    val nextWeekStart = currentWeekStart.plusWeeks(1)
+    fun nextWeek() {
+        val current = today.value
+        val currentWeekStart = current.with(DayOfWeek.MONDAY)
+        val nextWeekStart = currentWeekStart.plusWeeks(1)
 
-    today.value = nextWeekStart
-    _isLoadingDaySessions.value = true
-}
+        today.value = nextWeekStart
+        _isLoadingDaySessions.value = true
+    }
 
     fun prevWeek() {
         val current = today.value

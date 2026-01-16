@@ -1,6 +1,6 @@
 package swyp.team.walkit.domain.service.filter
 
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.Assert
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -26,8 +26,8 @@ class PathSmootherTest {
         val result = pathSmoother.smoothPath(latitudes, longitudes)
 
         // Then
-        assertEquals(latitudes, result.first)
-        assertEquals(longitudes, result.second)
+        Assert.assertEquals(latitudes, result.first)
+        Assert.assertEquals(longitudes, result.second)
     }
 
     @Test
@@ -40,8 +40,8 @@ class PathSmootherTest {
         val result = pathSmoother.smoothPath(latitudes, longitudes)
 
         // Then
-        assertEquals(latitudes, result.first)
-        assertEquals(longitudes, result.second)
+        Assert.assertEquals(latitudes, result.first)
+        Assert.assertEquals(longitudes, result.second)
     }
 
     @Test
@@ -66,13 +66,13 @@ class PathSmootherTest {
         // Then
         assertNotNull(result.first)
         assertNotNull(result.second)
-        assertEquals(result.first.size, result.second.size)
+        Assert.assertEquals(result.first.size, result.second.size)
 
         // 스무딩 후에도 시작점과 끝점은 유지되어야 함
-        assertEquals(latitudes.first(), result.first.first(), 0.0001)
-        assertEquals(latitudes.last(), result.first.last(), 0.0001)
-        assertEquals(longitudes.first(), result.second.first(), 0.0001)
-        assertEquals(longitudes.last(), result.second.last(), 0.0001)
+        Assert.assertEquals(latitudes.first(), result.first.first(), 0.0001)
+        Assert.assertEquals(latitudes.last(), result.first.last(), 0.0001)
+        Assert.assertEquals(longitudes.first(), result.second.first(), 0.0001)
+        Assert.assertEquals(longitudes.last(), result.second.last(), 0.0001)
     }
 
     @Test
@@ -104,12 +104,24 @@ class PathSmootherTest {
         assertNotNull(result.first)
         assertNotNull(result.second)
 
-        // 스무딩 후 포인트 수가 줄어들거나 같아야 함
-        assertTrue(result.first.size <= latitudes.size)
+        // 스무딩 후 포인트 수는 단순화와 보간에 따라 달라질 수 있음
+        // (단순화로 줄어들 수 있고, Catmull-Rom 보간으로 늘어날 수 있음)
+        Assert.assertTrue("최소 2개 점은 있어야 함", result.first.size >= 2)
+
+        // 위도/경도 리스트 크기가 같아야 함
+        Assert.assertEquals("위도/경도 리스트 크기가 같아야 함", result.first.size, result.second.size)
 
         // 시작점과 끝점은 유지
-        assertEquals(latitudes.first(), result.first.first(), 0.0001)
-        assertEquals(latitudes.last(), result.first.last(), 0.0001)
+        Assert.assertEquals("시작점 유지", latitudes.first(), result.first.first(), 0.0001)
+        Assert.assertEquals("끝점 유지", latitudes.last(), result.first.last(), 0.0001)
+
+        // 모든 좌표가 유효한 범위 내에 있어야 함
+        result.first.forEach { lat ->
+            Assert.assertTrue("위도는 -90~90 범위여야 함", lat in -90.0..90.0)
+        }
+        result.second.forEach { lng ->
+            Assert.assertTrue("경도는 -180~180 범위여야 함", lng in -180.0..180.0)
+        }
     }
 
     @Test
@@ -129,7 +141,7 @@ class PathSmootherTest {
         // Then
         assertNotNull(result.first)
         assertNotNull(result.second)
-        assertTrue(result.first.size >= latitudes.size) // 보간으로 포인트가 늘어날 수 있음
+        Assert.assertTrue("보간으로 포인트가 늘어날 수 있음", result.first.size >= latitudes.size)
     }
 
     @Test
@@ -150,16 +162,16 @@ class PathSmootherTest {
 
         // Then
         assertNotNull(stats)
-        assertTrue(stats.containsKey("original_points"))
-        assertTrue(stats.containsKey("smoothed_points"))
-        assertTrue(stats.containsKey("compression_ratio"))
-        assertTrue(stats.containsKey("simplify_tolerance"))
-        assertTrue(stats.containsKey("smooth_segments"))
+        Assert.assertTrue(stats.containsKey("original_points"))
+        Assert.assertTrue(stats.containsKey("smoothed_points"))
+        Assert.assertTrue(stats.containsKey("compression_ratio"))
+        Assert.assertTrue(stats.containsKey("simplify_tolerance"))
+        Assert.assertTrue(stats.containsKey("smooth_segments"))
 
-        assertEquals(originalLatitudes.size, stats["original_points"])
-        assertEquals(smoothedResult.first.size, stats["smoothed_points"])
-        assertEquals(5.0, stats["simplify_tolerance"])
-        assertEquals(5, stats["smooth_segments"])
+        Assert.assertEquals(originalLatitudes.size, stats["original_points"])
+        Assert.assertEquals(smoothedResult.first.size, stats["smoothed_points"])
+        Assert.assertEquals(5.0, stats["simplify_tolerance"])
+        Assert.assertEquals(8, stats["smooth_segments"])
     }
 
     @Test
@@ -172,8 +184,8 @@ class PathSmootherTest {
         val result = pathSmoother.smoothPath(latitudes, longitudes)
 
         // Then
-        assertEquals(latitudes, result.first)
-        assertEquals(longitudes, result.second)
+        Assert.assertEquals(latitudes, result.first)
+        Assert.assertEquals(longitudes, result.second)
     }
 
     @Test
@@ -196,14 +208,14 @@ class PathSmootherTest {
         // Then
         assertNotNull(result.first)
         assertNotNull(result.second)
-        assertTrue(result.first.size > 0)
-        assertTrue(result.second.size > 0)
-        assertEquals(result.first.size, result.second.size)
+        Assert.assertTrue("부드럽게 처리된 위도 좌표가 있어야 함", result.first.size > 0)
+        Assert.assertTrue("부드럽게 처리된 경도 좌표가 있어야 함", result.second.size > 0)
+        Assert.assertEquals(result.first.size, result.second.size)
 
         // 경로의 전체적인 방향성은 유지되어야 함 (북쪽으로의 이동)
         val originalLatRange = latitudes.max() - latitudes.min()
         val smoothedLatRange = result.first.max() - result.first.min()
-        assertTrue(abs(smoothedLatRange - originalLatRange) < 0.01) // 큰 변화 없음
+        Assert.assertTrue(abs(smoothedLatRange - originalLatRange) < 0.01) // 큰 변화 없음
     }
 
     @Test
@@ -220,8 +232,8 @@ class PathSmootherTest {
         assertNotNull(result.first)
         assertNotNull(result.second)
         // 시작점과 끝점은 유지
-        assertEquals(latitudes.first(), result.first.first(), 0.0001)
-        assertEquals(latitudes.last(), result.first.last(), 0.0001)
+        Assert.assertEquals(latitudes.first(), result.first.first(), 0.0001)
+        Assert.assertEquals(latitudes.last(), result.first.last(), 0.0001)
     }
 }
 

@@ -31,10 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -172,6 +175,7 @@ fun CharacterAndBackground(
     val slotConfigs = remember(character, wornItemsByPosition, cosmeticItems) {
         createSlotImageConfigs(character, wornItemsByPosition, cosmeticItems)
     }
+    val context = LocalContext.current
     // 오늘 날짜의 계절 확인
     val backgroundRes =
         when (currentSeason) {
@@ -198,25 +202,27 @@ fun CharacterAndBackground(
     )
     {
         // 1️⃣ 배경
-        Image(
-            painter = painterResource(backgroundRes),
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(character.backgroundImageName)
+                .crossfade(true)
+                .build(),
             contentDescription = "season background",
             modifier = Modifier
                 .fillMaxWidth()
                 .height(440.dp), // 고정 높이로 설정하여 스크롤 가능하게 함
             contentScale = ContentScale.Crop,
+            error = painterResource(backgroundRes)
         )
 
         // 2️⃣ 헤더 (상단)
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-//                .windowInsetsPadding(WindowInsets.statusBars) // 상태바 영역만 패딩 적용// 캐릭터 영역의 고정 높이
+                .fillMaxWidth().padding(top = 8.dp)
         ) {
             DressingRoomHeader(
                 grade = character.grade,
-                nickName = character.nickName,
-                onBack = onBackClick,
+                level = character.level,
                 points = points,
                 onClickQuestion = onQuestionClick
             )

@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -189,9 +190,11 @@ fun FriendSearchDetailScreenContent(
 ) {
     var isMoreMenuExpanded by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier
-        .fillMaxSize()
-        .background(SemanticColor.backgroundWhiteSecondary)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhiteSecondary)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -240,7 +243,11 @@ fun FriendSearchDetailScreenContent(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // 사용자 정보 섹션
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val color = Color(0xFF888888) // 부드러운 검정
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.background(GradientUtils.fadeToGray(color))
+                ) {
                     // Lottie 캐릭터 표시
                     processedLottieJson?.let { lottieJson ->
                         val composition by rememberLottieComposition(
@@ -269,7 +276,6 @@ fun FriendSearchDetailScreenContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(GradientUtils.fadeToGray())
                             .padding(horizontal = 20.dp, vertical = 26.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -326,7 +332,7 @@ fun FriendSearchDetailScreenContent(
                             )
                         }
 
-                        if (followStatus != FollowStatus.ACCEPTED) {
+                        if (followStatus != FollowStatus.ACCEPTED && followStatus != FollowStatus.MYSELF) {
                             Box(
                                 modifier = Modifier
                                     .background(

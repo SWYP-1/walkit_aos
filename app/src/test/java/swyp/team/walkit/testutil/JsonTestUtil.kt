@@ -20,7 +20,7 @@ object JsonTestUtil {
      * @param fileName raw 리소스의 파일명 (확장자 제외)
      * @return 위치 데이터 리스트, 실패 시 빈 리스트
      */
-    fun loadLocationsFromJson(context: Context,fileName: String = "temp"): List<LocationPoint> {
+    fun loadLocationsFromJson(context: Context, fileName: String = "temp"): List<LocationPoint> {
         return try {
             // JSON 파일 읽기 (raw 리소스)
             val resourceId = context.resources.getIdentifier(fileName, "raw", context.packageName)

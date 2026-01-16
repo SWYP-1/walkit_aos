@@ -264,6 +264,7 @@ fun MyPageScreen(
                                 nickname = userState.data.nickname,
                                 profileImageUrl = userState.data.profileImageUrl,
                                 grade = userState.data.grade,
+                                level = userState.data.level,
                                 consecutiveDays = consecutiveDays,
                             )
                         }

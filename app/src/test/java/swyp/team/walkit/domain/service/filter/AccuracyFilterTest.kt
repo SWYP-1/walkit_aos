@@ -1,8 +1,8 @@
 package swyp.team.walkit.domain.service.filter
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.Assert
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.jupiter.api.Test
 
 class AccuracyFilterTest {
@@ -20,7 +20,7 @@ class AccuracyFilterTest {
 
         // Then
         assertNotNull(result)
-        assertEquals(lat to lng, result)
+        Assert.assertEquals(lat to lng, result)
     }
 
     @Test
@@ -51,7 +51,7 @@ class AccuracyFilterTest {
 
         // Then
         assertNotNull(result)
-        assertEquals(lat to lng, result)
+        Assert.assertEquals(lat to lng, result)
     }
 
     @Test

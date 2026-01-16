@@ -106,7 +106,6 @@ fun SessionThumbnailList(
                     .fillMaxWidth()
                     .aspectRatio(1f),
                 isSnapshotLoading = isSnapshotLoading,
-                thumbnailCoordinates = thumbnailCoordinates,
             )
         }
     }
@@ -127,7 +126,6 @@ fun SessionThumbnailItem(
     onClick: (WalkingSession) -> Unit,
     modifier: Modifier = Modifier,
     isSnapshotLoading: Boolean = false,
-    thumbnailCoordinates: androidx.compose.runtime.MutableState<androidx.compose.ui.layout.LayoutCoordinates?>? = null,
 ) {
     val context = LocalContext.current
 
@@ -144,12 +142,6 @@ fun SessionThumbnailItem(
                     Modifier
                 }
             )
-            .onGloballyPositioned { coordinates ->
-                Timber.d("📍 [SessionThumbnailItem] onGloballyPositioned 호출됨")
-                // MutableState에 좌표 저장
-                thumbnailCoordinates?.value = coordinates
-                Timber.d("📍 [SessionThumbnailItem] 좌표 저장 완료 - size: ${coordinates.size}")
-            },
     ) {
         Box(
             modifier = Modifier
@@ -170,82 +162,34 @@ fun SessionThumbnailItem(
                 }
             }
 
-            // 이미지 URI 가져오기 (localImagePath -> serverImageUrl 순서)
-            if (session.isSynced) {
-                // 서버 동기화된 세션은 실제 이미지 표시 시도
-                val imageUri = session.getImageUri()
+            val imageUri = session.getImageUri()
 
-                if (imageUri != null) {
-                    // 이미지가 있으면 이미지 표시
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(
-                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
-                                    // 서버 URL인 경우
-                                    imageUri
-                                } else {
-                                    // 로컬 파일 경로인 경우
-                                    File(imageUri)
-                                }
-                            )
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "산책 기록 썸네일",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.matchParentSize()
-                    )
-                } else {
-                    // 이미지가 없어도 서버 동기화된 세션이므로 경로 썸네일 표시
-                    PathThumbnail(
-                        locations = session.locations,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+            if (imageUri != null) {
+                // 이미지가 있으면 이미지 표시
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(
+                            if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
+                                // 서버 URL인 경우
+                                imageUri
+                            } else {
+                                // 로컬 파일 경로인 경우
+                                File(imageUri)
+                            }
+                        )
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "산책 기록 썸네일",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.matchParentSize()
+                )
             } else {
-                val imageUri = session.getImageUri()
-
-                if (imageUri != null) {
-                    // 이미지가 있으면 이미지 표시
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(
-                                if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
-                                    // 서버 URL인 경우
-                                    imageUri
-                                } else {
-                                    // 로컬 파일 경로인 경우
-                                    File(imageUri)
-                                }
-                            )
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "산책 기록 썸네일",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize()
-                    )
-                    PathThumbnail(
-                        locations = session.locations,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    // 서버 동기화되지 않은 세션은 MapView로 경로 표시 (스냅샷용)
-                }
+                // 이미지가 없어도 서버 동기화된 세션이므로 경로 썸네일 표시
+                PathThumbnail(
+                    locations = session.locations,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
-
-        val startTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.startTime)
-        val enTimeWithSeconds = DateUtils.formatToTimeHHMMSS(session.endTime)
-
-//        Text(
-//            text = "$startTimeWithSeconds ~ $enTimeWithSeconds",
-//            // body S/semibold
-//            style = MaterialTheme.walkItTypography.bodyS.copy(
-//                fontWeight = FontWeight.SemiBold
-//            ),
-//            color = SemanticColor.textBorderPrimaryInverse,
-//            modifier = Modifier
-//                .align(alignment = Alignment.BottomEnd)
-//                .padding(16.dp)
-//        )
     }
 }
