@@ -37,7 +37,8 @@ fun OnboardingScreen(
                 when (uiState.currentStep) {
                     0 -> NicknameStep(
                         uiState = uiState,
-                        onNicknameChange = viewModel::updateNickname,
+                        onNicknameChange = viewModel::updateNicknameRaw,
+                        onValidationTrigger = viewModel::validateNicknameOnComplete,
                         onNext = {
                             try {
                                 viewModel.registerNickname()

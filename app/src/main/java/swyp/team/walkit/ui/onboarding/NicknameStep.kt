@@ -100,6 +100,7 @@ private fun calculateNicknameStepUiState(uiState: OnboardingUiState): NicknameSt
 fun NicknameStep(
     uiState: OnboardingUiState,
     onNicknameChange: (String) -> Unit,
+    onValidationTrigger: () -> Unit,
     onCheckDuplicate: () -> Unit,
     onNext: () -> Unit,
 ) {
@@ -158,6 +159,7 @@ fun NicknameStep(
                     focusRequester = focusRequester,
                     keyboardController = keyboardController,
                     onValueChange = onNicknameChange,
+                    onValidationTrigger = onValidationTrigger,
                     onDone = {
                         keyboardController.hide()
 //                        if (stepUiState.canGoNext) {
@@ -198,6 +200,7 @@ fun NicknameStep(
 fun NicknameInputField(
     value: String,
     onValueChange: (String) -> Unit,
+    onValidationTrigger: () -> Unit,
     isError: Boolean,
     errorMessage: String?,
     focusRequester: FocusRequester,
@@ -250,7 +253,15 @@ fun NicknameInputField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
-                    .onFocusChanged { isFocused = it.isFocused },
+                    .onFocusChanged { focusState ->
+                        val wasFocused = isFocused
+                        isFocused = focusState.isFocused
+
+                        // 포커스 아웃 시점에 유효성 검증 트리거
+                        if (wasFocused && !focusState.isFocused) {
+                            onValidationTrigger()
+                        }
+                    },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
                     onDone = {
@@ -316,12 +327,13 @@ private fun NicknameStepPreview() {
         NicknameStep(
             uiState = OnboardingUiState(
                 nicknameState = NicknameState(
-                    value = "닉네임예시",
+                    filteredValue = "닉네임예시",
                     validationError = null,
                     isDuplicate = false
                 )
             ),
             onNicknameChange = {},
+            onValidationTrigger = {},
             onCheckDuplicate = {},
             onNext = {}
         )

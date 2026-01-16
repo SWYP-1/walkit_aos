@@ -21,15 +21,21 @@ import swyp.team.walkit.domain.model.OnboardingProgress
 import swyp.team.walkit.domain.model.Goal
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.domain.repository.GoalRepository
+import swyp.team.walkit.utils.NicknameUtils
 import timber.log.Timber
 import java.time.LocalDate
 
 
 data class NicknameState(
-    val value: String = "",
+    val rawValue: String = "",           // 필터링 전 원본 입력값
+    val filteredValue: String = "",      // 필터링된 값 (UI에 표시되는 값)
     val isDuplicate: Boolean? = null,
     val validationError: String? = null
 ) {
+    // 하위 호환성을 위한 value 프로퍼티
+    val value: String
+        get() = filteredValue
+
     /**
      * 닉네임 유효성 검증
      * - 최소 1자 ~ 최대 20자
@@ -213,7 +219,7 @@ constructor(
                 privacyPolicyChecked = true,
                 marketingConsentChecked = progress.marketingConsent,
                 nicknameState = NicknameState(
-                    value = progress.nickname,
+                    filteredValue = progress.nickname,
                     isDuplicate = if (progress.nicknameRegistered) false else null
                 ),
                 goalCount = progress.goalCount,
@@ -334,13 +340,50 @@ constructor(
 
 
     /**
-     * 닉네임 업데이트
+     * 닉네임 입력 중 (에러 표시하지 않음)
+     * 입력 중에는 자연스러운 입력을 위해 필터링하지 않음
+     */
+    fun updateNicknameRaw(rawInput: String) {
+        _uiState.value = _uiState.value.copy(
+            nicknameState = NicknameState(
+                rawValue = rawInput,
+                filteredValue = rawInput,  // 입력 중에는 그대로 표시
+                validationError = null,    // 입력 중 에러 표시하지 않음
+                isDuplicate = null
+            )
+        )
+        saveProgress()
+    }
+
+    /**
+     * 입력 완료 시점 유효성 검증 및 필터링 적용 (에러 표시)
+     */
+    fun validateNicknameOnComplete() {
+        val currentState = _uiState.value.nicknameState
+        val rawInput = currentState.rawValue
+
+        // 포커스 아웃 시점에 필터링 적용
+        val filtered = NicknameUtils.filterIncompleteKorean(rawInput)
+        val validationError = NicknameState.validateNickname(filtered)
+
+        _uiState.value = _uiState.value.copy(
+            nicknameState = NicknameState(
+                rawValue = rawInput,
+                filteredValue = filtered,  // 필터링된 값으로 업데이트
+                validationError = validationError,
+                isDuplicate = currentState.isDuplicate
+            )
+        )
+    }
+
+    /**
+     * 닉네임 업데이트 (기존 함수 - 호환성 유지)
      */
     fun updateNickname(nickname: String) {
         val validationError = NicknameState.validateNickname(nickname)
         _uiState.value = _uiState.value.copy(
             nicknameState = NicknameState(
-                value = nickname,
+                filteredValue = nickname,
                 validationError = validationError
             )
         )

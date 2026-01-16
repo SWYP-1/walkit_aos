@@ -99,9 +99,9 @@ fun BirthYearStep(
         yearValid && monthValid && dayValid
     }
 
-    // 모든 필드가 채워졌는지 확인
-    val allFieldsFilled = remember(yearText.text, monthText.text, dayText.text) {
-        yearText.text.length == 4 && monthText.text.length == 2 && dayText.text.length == 2
+    // 모든 필드가 채워졌는지 확인 (실제 값으로 판단)
+    val allFieldsFilled = remember(currentYear, currentMonth, currentDay) {
+        currentYear > 0 && currentMonth > 0 && currentDay > 0
     }
 
 //    // 일자가 유효 범위를 벗어나면 자동으로 조정
@@ -236,7 +236,11 @@ fun BirthYearStep(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // 날짜 입력 필드 (년, 월, 일)
-                val isError = allFieldsFilled && !isValidDate
+                // 각 필드별 유효성 검사: 입력된 값이 있고 유효하지 않을 때만 에러 표시
+                val yearError = yearText.text.length == 4 && !(currentYear in 1901..LocalDate.now().year)
+                val monthError = monthText.text.length == 2 && !(currentMonth in 1..12)
+                val dayError = dayText.text.length == 2 && currentDay > 0 && !isValidDate
+                val isError = yearError || monthError || dayError
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -297,7 +301,8 @@ fun BirthYearStep(
                     CtaButton(
                         text = "다음으로",
                         onClick = onNext,
-                        modifier = Modifier.weight(1f),   // 2.4
+                        enabled = allFieldsFilled && isValidDate,  // 입력 완료되고 유효할 때만 활성화
+                        modifier = Modifier.weight(1f),
                         iconResId = R.drawable.ic_arrow_forward
                     )
                 }
@@ -365,7 +370,7 @@ private fun BirthYearStepEmptyPreview() {
     WalkItTheme {
         BirthYearStep(
             uiState = OnboardingUiState(
-                nicknameState = NicknameState("홍길동"),
+                nicknameState = NicknameState(filteredValue = "홍길동"),
                 birthYear = 0,
                 birthMonth = 0,
                 birthDay = 0,
@@ -385,7 +390,7 @@ private fun BirthYearStepPreview() {
     WalkItTheme {
         BirthYearStep(
             uiState = OnboardingUiState(
-                nicknameState = NicknameState("홍길동"),
+                nicknameState = NicknameState(filteredValue = "홍길동"),
                 birthYear = 1998,
                 birthMonth = 5,
                 birthDay = 15,
