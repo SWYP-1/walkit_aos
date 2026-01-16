@@ -54,9 +54,13 @@ class UserRepositoryImpl @Inject constructor(
 
     init {
         // ✅ Room 만이 userState 를 변경한다
+        Timber.d("UserRepositoryImpl: observeCurrentUser 시작")
         userDao.observeCurrentUser()
             .onEach { entity ->
-                userState.value = entity?.let(UserMapper::toDomain)
+                Timber.d("UserRepositoryImpl: observeCurrentUser emit - entity=$entity")
+                val user = entity?.let(UserMapper::toDomain)
+                Timber.d("UserRepositoryImpl: userState 업데이트 - user=$user")
+                userState.value = user
             }
             .launchIn(scope)
     }
@@ -123,7 +127,15 @@ class UserRepositoryImpl @Inject constructor(
                 val response = remoteDataSource.registerNickname(nickname)
 
                 if (response.isSuccessful) {
-                    // HTTP 2xx 성공
+                    // HTTP 2xx 성공 - 로컬 DB 업데이트
+                    val currentUser = userDao.getCurrentUser()
+                    if (currentUser != null) {
+                        val updatedUser = currentUser.copy(nickname = nickname)
+                        userDao.upsert(updatedUser)
+                        Timber.d("닉네임 로컬 DB 업데이트 성공: $nickname")
+                    } else {
+                        Timber.w("로컬 DB에 사용자 정보가 없어 닉네임 업데이트 생략")
+                    }
                     Result.Success(Unit)
                 } else {
                     // HTTP 실패 (4xx, 5xx)
@@ -156,7 +168,27 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun updateBirthDate(birthDate: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
+                // 서버에 생년월일 업데이트
                 remoteDataSource.updateBirthDate(birthDate)
+                Timber.d("생년월일 서버 업데이트 성공: $birthDate")
+
+                // 로컬 DB 업데이트 - 현재 사용자 정보 가져와서 birthDate만 수정
+                Timber.d("UserRepositoryImpl: 생년월일 로컬 DB 업데이트 시작 - birthDate=$birthDate")
+                val currentUser = userDao.getCurrentUser()
+                Timber.d("UserRepositoryImpl: 현재 DB 사용자 정보 - currentUser=$currentUser")
+                if (currentUser != null) {
+                    val updatedUser = currentUser.copy(birthDate = birthDate)
+                    Timber.d("UserRepositoryImpl: 업데이트할 사용자 정보 - updatedUser=$updatedUser")
+                    userDao.upsert(updatedUser)
+                    Timber.d("생년월일 로컬 DB 업데이트 성공: $birthDate")
+
+                    // 업데이트 후 확인
+                    val afterUpdate = userDao.getCurrentUser()
+                    Timber.d("UserRepositoryImpl: 업데이트 후 DB 상태 - afterUpdate=$afterUpdate")
+                } else {
+                    Timber.w("로컬 DB에 사용자 정보가 없어 생년월일 업데이트 생략")
+                }
+
                 Result.Success(Unit)
             } catch (t: Throwable) {
                 Timber.e(t, "생년월일 업데이트 실패: $birthDate")

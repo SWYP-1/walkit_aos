@@ -549,7 +549,7 @@ constructor(
                 .onSuccess {
                     Timber.d("생년월일 업데이트 성공: $birthDate")
                     _uiState.value = _uiState.value.copy(isLoading = false)
-                    // 진행 상태 저장
+                    // 진행 상태 저장 (생년월일 값들은 이미 저장되어 있음)
                     saveProgress()
                     // 다음 단계로 진행
                     nextStep()

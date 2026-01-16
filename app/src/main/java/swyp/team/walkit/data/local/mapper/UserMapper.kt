@@ -20,7 +20,7 @@ object UserMapper {
 
     fun toDomain(entity: UserEntity): User =
         User(
-            userId = entity.userId ?: 0L,
+            userId = entity.userId,
             imageName = entity.imageName,
             nickname = entity.nickname,
             birthDate = entity.birthDate,

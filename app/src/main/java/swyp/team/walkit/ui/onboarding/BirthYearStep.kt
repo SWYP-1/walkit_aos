@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,20 +61,22 @@ fun BirthYearStep(
 ) {
     // 생년월일 업데이트 API 호출 시 로딩 표시
     val isLoading = uiState.isLoading && uiState.currentStep == 1
-    val currentYear = uiState.birthYear
-    val currentMonth = uiState.birthMonth
-    val currentDay = uiState.birthDay
 
-    // 텍스트 필드 값 상태 관리
+    // 텍스트 필드 값 상태 관리 - 빈 값으로 시작 (DataStore 연동 임시 비활성화)
     var yearText by remember { mutableStateOf(TextFieldValue("")) }
     var monthText by remember { mutableStateOf(TextFieldValue("")) }
     var dayText by remember { mutableStateOf(TextFieldValue("")) }
 
+    // 텍스트 필드에서 실제 파싱된 값들 (UI 활성화 조건용)
+    val parsedYear = yearText.text.toIntOrNull() ?: 0
+    val parsedMonth = monthText.text.toIntOrNull() ?: 0
+    val parsedDay = dayText.text.toIntOrNull() ?: 0
+
     // 해당 월의 마지막 날짜 계산
-    val daysInMonth = remember(currentYear, currentMonth) {
+    val daysInMonth = remember(parsedYear, parsedMonth) {
         try {
-            if (currentYear > 0 && currentMonth > 0) {
-                LocalDate.of(currentYear, currentMonth, 1).lengthOfMonth()
+            if (parsedYear > 0 && parsedMonth > 0) {
+                LocalDate.of(parsedYear, parsedMonth, 1).lengthOfMonth()
             } else {
                 31
             }
@@ -82,13 +85,13 @@ fun BirthYearStep(
         }
     }
 
-    // 유효성 검사 결과
-    val isValidDate = remember(currentYear, currentMonth, currentDay) {
-        val yearValid = currentYear in 1901..LocalDate.now().year
-        val monthValid = currentMonth in 1..12
+    // 유효성 검사 결과 (텍스트 필드 값 기준)
+    val isValidDate = remember(parsedYear, parsedMonth, parsedDay) {
+        val yearValid = parsedYear in 1901..LocalDate.now().year
+        val monthValid = parsedMonth in 1..12
         val dayValid = try {
-            if (currentYear > 0 && currentMonth > 0 && currentDay > 0) {
-                LocalDate.of(currentYear, currentMonth, currentDay)
+            if (parsedYear > 0 && parsedMonth > 0 && parsedDay > 0) {
+                LocalDate.of(parsedYear, parsedMonth, parsedDay)
                 true
             } else {
                 false
@@ -99,9 +102,9 @@ fun BirthYearStep(
         yearValid && monthValid && dayValid
     }
 
-    // 모든 필드가 채워졌는지 확인 (실제 값으로 판단)
-    val allFieldsFilled = remember(currentYear, currentMonth, currentDay) {
-        currentYear > 0 && currentMonth > 0 && currentDay > 0
+    // 모든 필드가 채워졌는지 확인 (텍스트 필드 값 기준)
+    val allFieldsFilled = remember(parsedYear, parsedMonth, parsedDay) {
+        parsedYear > 0 && parsedMonth > 0 && parsedDay > 0
     }
 
 //    // 일자가 유효 범위를 벗어나면 자동으로 조정
@@ -153,18 +156,21 @@ fun BirthYearStep(
 
     // 월 입력 처리
     fun handleMonthInput(newValue: TextFieldValue) {
-        val text = newValue.text.filter { it.isDigit() }
-        if (text.length <= 2) {
-            monthText = newValue.copy(text = text)
-            if (text.length == 2) {
-                val month = text.toIntOrNull() ?: 0
+        val filteredText = newValue.text.filter { it.isDigit() }
+        if (filteredText.length <= 2) {
+            // 필터링된 텍스트로 설정하고 커서를 텍스트 끝으로 명시적 설정
+            monthText = TextFieldValue(filteredText, TextRange(filteredText.length))
+
+            if (filteredText.isNotEmpty()) {
+                val month = filteredText.toIntOrNull() ?: 0
                 if (month in 1..12) {
                     onMonthChange(month)
                 } else {
-                    // 유효하지 않은 월인 경우 0으로 설정
+                    // 유효하지 않은 월인 경우 0으로 설정하고 텍스트 필드 초기화
                     onMonthChange(0)
+                    monthText = TextFieldValue("", TextRange(0))
                 }
-            } else if (text.isEmpty()) {
+            } else {
                 onMonthChange(0)
             }
         }
@@ -172,16 +178,17 @@ fun BirthYearStep(
 
     // 일 입력 처리
     fun handleDayInput(newValue: TextFieldValue) {
-        val text = newValue.text.filter { it.isDigit() }
-        if (text.length <= 2) {
-            dayText = newValue.copy(text = text)
-            if (text.length == 2) {
-                val day = text.toIntOrNull() ?: 0
+        val filteredText = newValue.text.filter { it.isDigit() }
+        if (filteredText.length <= 2) {
+            // 필터링된 텍스트로 설정하고 커서를 텍스트 끝으로 명시적 설정
+            dayText = TextFieldValue(filteredText, TextRange(filteredText.length))
+
+            if (filteredText.isNotEmpty()) {
+                val day = filteredText.toIntOrNull() ?: 0
                 if (day > 0) {
-                    // 유효성 검사는 LaunchedEffect에서 처리
                     onDayChange(day)
                 }
-            } else if (text.isEmpty()) {
+            } else {
                 onDayChange(0)
             }
         }
@@ -237,9 +244,9 @@ fun BirthYearStep(
 
                 // 날짜 입력 필드 (년, 월, 일)
                 // 각 필드별 유효성 검사: 입력된 값이 있고 유효하지 않을 때만 에러 표시
-                val yearError = yearText.text.length == 4 && !(currentYear in 1901..LocalDate.now().year)
-                val monthError = monthText.text.length == 2 && !(currentMonth in 1..12)
-                val dayError = dayText.text.length == 2 && currentDay > 0 && !isValidDate
+                val yearError = yearText.text.length == 4 && !(parsedYear in 1901..LocalDate.now().year)
+                val monthError = monthText.text.length == 2 && !(parsedMonth in 1..12)
+                val dayError = dayText.text.length == 2 && parsedDay > 0 && !isValidDate
                 val isError = yearError || monthError || dayError
 
                 Row(

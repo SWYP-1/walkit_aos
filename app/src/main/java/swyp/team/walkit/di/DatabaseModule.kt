@@ -62,7 +62,7 @@ object DatabaseModule {
                 AppDatabase::class.java,
                 AppDatabase.DATABASE_NAME,
             )
-            .addMigrations(MIGRATION_11_12)
+            .addMigrations(MIGRATION_11_12, AppDatabase.MIGRATION_12_13)
             .build()
 
     @Provides

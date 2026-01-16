@@ -12,9 +12,9 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "user_profile")
 data class UserEntity(
-    @PrimaryKey
     val nickname: String,
-    val userId: Long? = null,
+    @PrimaryKey
+    val userId: Long,
     val imageName: String? = null,
     val birthDate: String? = null,
     val email: String? = null,

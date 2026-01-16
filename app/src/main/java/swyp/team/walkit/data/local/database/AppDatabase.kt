@@ -41,16 +41,12 @@ import swyp.team.walkit.data.local.entity.WalkingSessionEntity
         GoalEntity::class,
         NotificationSettingsEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
-    companion object {
-        const val DATABASE_NAME = "walking_database"
-
-    }
     abstract fun walkingSessionDao(): WalkingSessionDao
     abstract fun purchasedItemDao(): PurchasedItemDao
     abstract fun appliedItemDao(): AppliedItemDao
@@ -59,5 +55,42 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun characterDao(): CharacterDao
     abstract fun goalDao(): GoalDao
     abstract fun notificationSettingsDao(): NotificationSettingsDao
+
+    companion object {
+        /**
+         * Migration from version 12 to 13: Change UserEntity PrimaryKey from nickname to userId
+         */
+        const val DATABASE_NAME = "walking_database"
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 1. Create new table with userId as PrimaryKey
+                database.execSQL("""
+                    CREATE TABLE user_profile_new (
+                        userId INTEGER PRIMARY KEY NOT NULL,
+                        nickname TEXT NOT NULL,
+                        imageName TEXT,
+                        birthDate TEXT,
+                        email TEXT,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """)
+
+                // 2. Copy data from old table (only rows where userId is not null, pick one record per userId)
+                database.execSQL("""
+                    INSERT OR REPLACE INTO user_profile_new (userId, nickname, imageName, birthDate, email, updatedAt)
+                    SELECT userId, nickname, imageName, birthDate, email, updatedAt
+                    FROM user_profile
+                    WHERE userId IS NOT NULL
+                    ORDER BY updatedAt DESC
+                """)
+
+                // 3. Drop old table
+                database.execSQL("DROP TABLE user_profile")
+
+                // 4. Rename new table to original name
+                database.execSQL("ALTER TABLE user_profile_new RENAME TO user_profile")
+            }
+        }
+    }
 
 }

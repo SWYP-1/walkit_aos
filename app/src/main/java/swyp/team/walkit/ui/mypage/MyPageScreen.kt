@@ -345,9 +345,6 @@ fun MyPageScreen(
                     }
                 }
             }
-            item {
-
-            }
         }
     }
 }

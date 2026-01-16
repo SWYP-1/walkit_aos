@@ -41,6 +41,7 @@ class UserInfoManagementViewModel @Inject constructor(
         private const val MAX_NICKNAME_LENGTH = 20
         private const val ERROR_TOO_LONG = "닉네임은 최대 20자까지 입력 가능합니다"
         private const val ERROR_HAS_SPACE = "닉네임에 띄어쓰기를 사용할 수 없습니다"
+        private const val ERROR_INVALID_CHARS = "닉네임은 한글과 영문만 사용할 수 있습니다"
 
         /**
          * 닉네임 유효성 검증
@@ -55,7 +56,7 @@ class UserInfoManagementViewModel @Inject constructor(
             return when {
                 nickname.length > MAX_NICKNAME_LENGTH -> ERROR_TOO_LONG
                 nickname.contains(" ") -> ERROR_HAS_SPACE
-                !nickname.matches(Regex("^[가-힣a-zA-Z]*$")) -> "숫자와 특수문자는 사용할 수 없습니다"
+                !nickname.matches(Regex("^[가-힣a-zA-Z]*$")) -> ERROR_INVALID_CHARS
                 else -> null
             }
         }
@@ -71,6 +72,9 @@ class UserInfoManagementViewModel @Inject constructor(
 
     // Goal 상태
     val goalFlow: StateFlow<Goal?> = goalRepository.goalFlow
+
+    // User 상태 - 실시간 업데이트를 위해 userFlow 구독
+    val userFlow: StateFlow<User?> = userRepository.userFlow
 
     // 연동된 계정 정보 (Flow를 StateFlow로 변환)
     val provider: StateFlow<String?> = authDataStore.provider
@@ -110,6 +114,35 @@ class UserInfoManagementViewModel @Inject constructor(
     init {
         loadUserInfo()
         loadGoal()
+
+        // User 정보 실시간 업데이트 구독
+        viewModelScope.launch {
+            Timber.d("UserInfoManagementViewModel: userFlow collect 시작")
+            userRepository.userFlow.collect { user ->
+                Timber.d("UserInfoManagementViewModel: userFlow emit 감지 - user=$user")
+                if (user != null) {
+                    Timber.d("UserInfoManagementViewModel: User 정보 업데이트 감지 - nickname=${user.nickname}, birthDate=${user.birthDate}")
+                    // User 정보가 업데이트되면 UI 상태 업데이트
+                    currentUser = user
+                    _userInput.value = UserInput(
+                        nickname = user.nickname ?: "",
+                        birthDate = user.birthDate ?: "",
+                        email = user.email,
+                        imageName = user.imageName,
+                    )
+                    // 현재 UI 상태가 Success인 경우에만 업데이트
+                    val currentState = _uiState.value
+                    if (currentState is UserInfoUiState.Success) {
+                        _uiState.value = UserInfoUiState.Success(user)
+                        Timber.d("UserInfoManagementViewModel: UI 상태 업데이트 완료")
+                    } else {
+                        Timber.d("UserInfoManagementViewModel: UI 상태가 Success가 아니어서 업데이트 생략 - currentState=$currentState")
+                    }
+                } else {
+                    Timber.d("UserInfoManagementViewModel: User 정보가 null임")
+                }
+            }
+        }
     }
 
     /**
