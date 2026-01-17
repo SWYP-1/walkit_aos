@@ -355,9 +355,9 @@ class LoginViewModel @Inject constructor(
                 authDataStore.clear()
                 // 🔥 Room 사용자 데이터도 삭제 (로그인 전환 시 캐시된 이전 사용자 데이터 제거)
                 userRepository.clearAuth()
-                // 🔥 온보딩 데이터도 초기화 (로그인 전환 시 이전 온보딩 상태 제거)
-                onboardingDataStore.clearAllOnboardingData()
-                Timber.i("로컬 토큰 및 데이터 삭제 완료")
+                // ✅ 온보딩 데이터는 유지 (사용자가 완료한 온보딩 상태는 로그아웃 후에도 보존)
+                // onboardingDataStore.clearAllOnboardingData() // 제거됨
+                Timber.i("로컬 토큰 및 데이터 삭제 완료 (온보딩 데이터 유지)")
             } catch (t: Throwable) {
                 Timber.e(t, "로컬 데이터 삭제 실패")
             }

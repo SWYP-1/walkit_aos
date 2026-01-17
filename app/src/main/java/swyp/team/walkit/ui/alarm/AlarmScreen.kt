@@ -1,5 +1,6 @@
 package swyp.team.walkit.ui.alarm
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import swyp.team.walkit.ui.alarm.component.AlarmListItem
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CustomProgressIndicator
 import swyp.team.walkit.ui.components.ProgressIndicatorSize
+import swyp.team.walkit.ui.theme.SemanticColor
 
 /**
  * 알람 화면 Route
@@ -70,8 +72,7 @@ private fun AlarmScreenContent(
 ) {
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.navigationBars),
+            .fillMaxSize().background(SemanticColor.backgroundWhiteSecondary)
     ) {
         AppHeader(
             title = "알림",

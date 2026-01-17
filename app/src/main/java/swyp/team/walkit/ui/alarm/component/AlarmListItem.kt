@@ -1,27 +1,15 @@
 package swyp.team.walkit.ui.alarm.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
@@ -30,20 +18,6 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 
-/**
- * 알람 리스트 아이템 컴포넌트
- *
- * Figma 디자인 기반 알람 리스트 아이템
- * - 팔로우 알람: person_add 아이콘, 확인/삭제 버튼
- * - 목표 달성 알람: award_star 아이콘, 버튼 없음
- *
- * @param alarmType 알람 타입 (FOLLOW, GOAL_ACHIEVEMENT)
- * @param message 알람 메시지
- * @param date 날짜 문자열
- * @param onConfirm 확인 버튼 클릭 핸들러 (팔로우 알람일 때만 표시)
- * @param onDelete 삭제 버튼 클릭 핸들러 (팔로우 알람일 때만 표시)
- * @param modifier Modifier
- */
 @Composable
 fun AlarmListItem(
     alarmType: AlarmType,
@@ -59,21 +33,21 @@ fun AlarmListItem(
                 .fillMaxWidth()
                 .background(SemanticColor.backgroundWhitePrimary)
                 .padding(horizontal = 16.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 왼쪽: 아이콘 + 텍스트
+
+            /* -------------------- 왼쪽 영역 -------------------- */
             Row(
+                modifier = Modifier
+                    .weight(1f, fill = true),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
             ) {
-                // 아이콘 (24x24)
                 Icon(
                     painter = when (alarmType) {
                         AlarmType.FOLLOW -> painterResource(R.drawable.ic_persion_plus)
-                        AlarmType.GOAL -> painterResource(R.drawable.ic_award_start)
-                        AlarmType.INACTIVE_USER -> painterResource(R.drawable.ic_award_start)
+                        AlarmType.GOAL,
+                        AlarmType.INACTIVE_USER,
                         AlarmType.MISSION_OPEN -> painterResource(R.drawable.ic_award_start)
                     },
                     contentDescription = null,
@@ -81,13 +55,13 @@ fun AlarmListItem(
                     modifier = Modifier.size(24.dp),
                 )
 
-                // 텍스트 영역
                 Column(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth(), // ⭐ 핵심
                 ) {
-                    // 메시지 (body S/medium 또는 caption M/medium)
                     Text(
                         text = message,
+                        overflow = TextOverflow.Ellipsis,
                         style = if (alarmType == AlarmType.FOLLOW) {
                             MaterialTheme.walkItTypography.captionM.copy(
                                 fontWeight = FontWeight.Medium,
@@ -100,7 +74,6 @@ fun AlarmListItem(
                         color = SemanticColor.textBorderPrimary,
                     )
 
-                    // 날짜 (caption M/regular)
                     Text(
                         text = date,
                         style = MaterialTheme.walkItTypography.captionM,
@@ -109,28 +82,25 @@ fun AlarmListItem(
                 }
             }
 
-            // 오른쪽: 버튼 (팔로우 알람일 때만 표시)
+            /* -------------------- 오른쪽 버튼 영역 -------------------- */
             if (alarmType == AlarmType.FOLLOW) {
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentWidth(), // ⭐ 고정폭 제거
                 ) {
-                    // 확인 버튼
                     onConfirm?.let {
                         Button(
                             onClick = it,
-                            modifier = Modifier
-                                .width(54.dp)
-                                .height(28.dp),
+                            modifier = Modifier.height(28.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = SemanticColor.buttonPrimaryDefault,
                                 contentColor = SemanticColor.textBorderPrimaryInverse,
                             ),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 4.dp,
-                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                         ) {
                             Text(
@@ -138,27 +108,21 @@ fun AlarmListItem(
                                 style = MaterialTheme.walkItTypography.captionM.copy(
                                     fontWeight = FontWeight.SemiBold,
                                 ),
-                                color = SemanticColor.textBorderPrimaryInverse,
+                                maxLines = 1,
                             )
                         }
                     }
 
-                    // 삭제 버튼
                     onDelete?.let {
                         Button(
                             onClick = it,
-                            modifier = Modifier
-                                .width(54.dp)
-                                .height(28.dp),
+                            modifier = Modifier.height(28.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = SemanticColor.buttonDisabled,
                                 contentColor = SemanticColor.textBorderSecondary,
                             ),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 8.dp,
-                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                         ) {
                             Text(
@@ -166,7 +130,7 @@ fun AlarmListItem(
                                 style = MaterialTheme.walkItTypography.captionM.copy(
                                     fontWeight = FontWeight.SemiBold,
                                 ),
-                                color = SemanticColor.textBorderSecondary,
+                                maxLines = 1,
                             )
                         }
                     }
@@ -174,7 +138,6 @@ fun AlarmListItem(
             }
         }
 
-        // 하단 Divider
         Divider(
             modifier = Modifier
                 .fillMaxWidth()
@@ -191,7 +154,7 @@ private fun AlarmListItemFollowPreview() {
     WalkItTheme {
         AlarmListItem(
             alarmType = AlarmType.FOLLOW,
-            message = "닉네임님이 워킷님을 팔로우합니다.",
+            message = "닉네임님이 워킷님을 팔로우합니다. 메시지가 길어질 경우에도 버튼은 잘리지 않습니다.",
             date = "2025년 12월 16일",
             onConfirm = {},
             onDelete = {},
@@ -201,7 +164,7 @@ private fun AlarmListItemFollowPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun AlarmListItemGoalAchievementPreview() {
+private fun AlarmListItemGoalPreview() {
     WalkItTheme {
         AlarmListItem(
             alarmType = AlarmType.GOAL,
@@ -210,4 +173,3 @@ private fun AlarmListItemGoalAchievementPreview() {
         )
     }
 }
-
