@@ -355,8 +355,7 @@ class LoginViewModel @Inject constructor(
                 authDataStore.clear()
                 // 🔥 Room 사용자 데이터도 삭제 (로그인 전환 시 캐시된 이전 사용자 데이터 제거)
                 userRepository.clearAuth()
-                // ✅ 온보딩 데이터는 유지 (사용자가 완료한 온보딩 상태는 로그아웃 후에도 보존)
-                // onboardingDataStore.clearAllOnboardingData() // 제거됨
+                // ✅ 온보딩 데이터도 유지 (사용자가 완료한 온보딩 상태 보존)
                 Timber.i("로컬 토큰 및 데이터 삭제 완료 (온보딩 데이터 유지)")
             } catch (t: Throwable) {
                 Timber.e(t, "로컬 데이터 삭제 실패")
@@ -486,9 +485,8 @@ class LoginViewModel @Inject constructor(
                         // 닉네임이 없음 - 로컬 온보딩 상태 확인 (리프레시 실패 후 재로그인 시 서버 데이터 불일치 방지)
                         viewModelScope.launch {
                             val localOnboardingCompleted = onboardingDataStore.isCompleted.first()
-                            val localTermsAgreed = onboardingDataStore.isTermsAgreed.first()
 
-                            if (localOnboardingCompleted && localTermsAgreed) {
+                            if (localOnboardingCompleted) {
                                 // 로컬에서 온보딩 완료 상태 확인됨 - 서버 데이터 불일치로 간주하고 메인으로 이동
                                 Timber.w("서버 닉네임 없음 but 로컬 온보딩 완료됨 - 서버 데이터 불일치, 메인으로 이동")
                                 _isLoggedIn.value = true

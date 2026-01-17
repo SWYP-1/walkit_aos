@@ -72,7 +72,7 @@ private fun AlarmScreenContent(
 ) {
     Column(
         modifier = modifier
-            .fillMaxSize().background(SemanticColor.backgroundWhiteSecondary)
+            .fillMaxSize().background(SemanticColor.backgroundWhitePrimary)
     ) {
         AppHeader(
             title = "알림",
@@ -81,7 +81,7 @@ private fun AlarmScreenContent(
 
         Surface(
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary),
         ) {
             if (isLoading) {
                 Box(
@@ -94,12 +94,10 @@ private fun AlarmScreenContent(
                 }
             } else {
                 LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize() // ⭐ 핵심
+                        .background(SemanticColor.backgroundWhitePrimary),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
-                    contentPadding = PaddingValues(
-                        bottom = with(LocalDensity.current) {
-                            WindowInsets.navigationBars.getBottom(this).toDp() + 12.dp
-                        },
-                    ),
                 ) {
                     items(
                         items = alarms,

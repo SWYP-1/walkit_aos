@@ -165,6 +165,30 @@ class OnboardingDataStore @Inject constructor(
     }
 
     /**
+     * 온보딩 진행 상태만 초기화 (약관 동의 및 완료 상태는 유지)
+     * 로그아웃 시 사용자가 완료한 온보딩 상태는 보존하되 진행 데이터는 초기화
+     */
+    suspend fun clearOnboardingProgressOnly() {
+        dataStore.edit { prefs ->
+            // ✅ 약관 동의 상태 및 완료 상태는 유지
+            // 진행 상태 데이터만 제거
+            prefs.remove(currentStepKey)
+            prefs.remove(nicknameKey)
+            prefs.remove(selectedImageUriKey)
+            prefs.remove(sexKey)
+            prefs.remove(goalCountKey)
+            prefs.remove(stepTargetKey)
+            prefs.remove(unitKey)
+            prefs.remove(birthYearKey)
+            prefs.remove(birthMonthKey)
+            prefs.remove(birthDayKey)
+            prefs.remove(marketingConsentKey)
+            prefs.remove(nicknameRegisteredKey)
+            // ✅ completedKey는 유지 (온보딩 완료 상태 보존)
+        }
+    }
+
+    /**
      * 특정 소셜 제공자의 온보딩 데이터 초기화
      * 로그아웃 시 해당 제공자의 온보딩 상태만 초기화
      */
