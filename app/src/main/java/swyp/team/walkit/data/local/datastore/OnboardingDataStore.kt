@@ -210,24 +210,34 @@ class OnboardingDataStore @Inject constructor(
      * 중첩된 updateData 호출을 방지하기 위해 하나의 edit 블록에서 처리
      */
     suspend fun completeOnboarding() {
-        dataStore.edit { prefs ->
-            // 완료 상태 저장
-            prefs[completedKey] = true
-            // 약관 동의 상태 초기화
-            prefs.remove(termsAgreedKey)
-            // 진행 상태 데이터 모두 제거
-            prefs.remove(currentStepKey)
-            prefs.remove(nicknameKey)
-            prefs.remove(selectedImageUriKey)
-            prefs.remove(sexKey)
-            prefs.remove(goalCountKey)
-            prefs.remove(stepTargetKey)
-            prefs.remove(unitKey)
-            prefs.remove(birthYearKey)
-            prefs.remove(birthMonthKey)
-            prefs.remove(birthDayKey)
-            prefs.remove(marketingConsentKey)
-            prefs.remove(nicknameRegisteredKey)
+        Timber.d("OnboardingDataStore.completeOnboarding() 시작")
+        try {
+            dataStore.edit { prefs ->
+                // 완료 상태 저장
+                prefs[completedKey] = true
+                Timber.d("온보딩 완료 상태 저장: completedKey = true")
+                // 약관 동의 상태 초기화
+                prefs.remove(termsAgreedKey)
+                Timber.d("약관 동의 상태 초기화: termsAgreedKey 삭제")
+                // 진행 상태 데이터 모두 제거
+                prefs.remove(currentStepKey)
+                prefs.remove(nicknameKey)
+                prefs.remove(selectedImageUriKey)
+                prefs.remove(sexKey)
+                prefs.remove(goalCountKey)
+                prefs.remove(stepTargetKey)
+                prefs.remove(unitKey)
+                prefs.remove(birthYearKey)
+                prefs.remove(birthMonthKey)
+                prefs.remove(birthDayKey)
+                prefs.remove(marketingConsentKey)
+                prefs.remove(nicknameRegisteredKey)
+                Timber.d("진행 상태 데이터 모두 제거 완료")
+            }
+            Timber.i("OnboardingDataStore.completeOnboarding() 성공")
+        } catch (e: Exception) {
+            Timber.e(e, "OnboardingDataStore.completeOnboarding() 실패")
+            throw e
         }
     }
 }

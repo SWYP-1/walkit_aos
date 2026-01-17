@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import swyp.team.walkit.core.Result
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.data.remote.friend.FollowRemoteDataSource
 import swyp.team.walkit.data.remote.user.AlreadyFollowingException
 import swyp.team.walkit.data.remote.user.FollowRequestAlreadyExistsException
@@ -22,6 +23,7 @@ import swyp.team.walkit.data.remote.user.UserRemoteDataSource
 import swyp.team.walkit.data.remote.user.UserSearchResult
 import swyp.team.walkit.domain.model.FollowStatus
 import swyp.team.walkit.domain.model.Friend
+import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.domain.repository.FriendRepository
 import timber.log.Timber
 import android.content.SharedPreferences
@@ -55,6 +57,7 @@ constructor(
     private val userRemoteDataSource: UserRemoteDataSource,
     private val followRemoteDataSource: FollowRemoteDataSource,
     private val friendRepository: FriendRepository,
+    private val authEventBus: AuthEventBus,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FriendUiState>(FriendUiState.Loading)
@@ -111,6 +114,14 @@ constructor(
 
                 is Result.Error -> {
                     Timber.e(result.exception, "친구 목록 로드 실패")
+
+                    // 토큰 만료 에러인지 확인
+                    if (result.exception is AuthExpiredException) {
+                        Timber.w("토큰 만료로 인한 친구 목록 로드 실패 - 로그인 필요")
+                        // 로그인 화면으로 이동하는 이벤트 발생
+                        authEventBus.notifyRequireLogin()
+                    }
+
                     _uiState.value = FriendUiState.Error(result.message)
                 }
 

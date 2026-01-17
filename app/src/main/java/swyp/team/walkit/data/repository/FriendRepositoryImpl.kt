@@ -106,6 +106,36 @@ class FriendRepositoryImpl @Inject constructor(
         }
 
     /**
+     * 팔로우 요청 수락
+     */
+    override suspend fun acceptFollowRequest(nickname: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                followRemoteDataSource.acceptFollowRequest(nickname)
+                Timber.d("팔로우 요청 수락 성공: $nickname")
+                Result.Success(Unit)
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로우 요청 수락 실패: $nickname")
+                Result.Error(t, t.message)
+            }
+        }
+
+    /**
+     * 팔로우 요청 거절
+     */
+    override suspend fun rejectFollowRequest(nickname: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                followRemoteDataSource.rejectFollowRequest(nickname)
+                Timber.d("팔로우 요청 거절 성공: $nickname")
+                Result.Success(Unit)
+            } catch (t: Throwable) {
+                Timber.e(t, "팔로우 요청 거절 실패: $nickname")
+                Result.Error(t, t.message)
+            }
+        }
+
+    /**
      * 캐시 무효화 (수동 갱신용)
      */
     override fun invalidateCache() {

@@ -7,7 +7,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -54,21 +56,32 @@ interface TokenProvider {
     suspend fun clearTokens()
 
     /**
-     * 토큰 갱신이 필요한 경우 자동으로 갱신 (동시성 제어 포함)
-     * @param authApi AuthApi 인스턴스
-     * @param refreshToken 리프레시 토큰
-     * @return 갱신 성공 여부
-     */
-    suspend fun refreshTokensIfNeeded(authApi: AuthApi, refreshToken: String): Boolean
-
-    /**
-     * 강제 토큰 갱신 (401 발생 시 무조건 리프레시)
+     * 401 발생 시 토큰 갱신 (앱 전체에서 단일 refresh 보장)
      * @param authApi AuthApi 인스턴스
      * @return 갱신 성공 여부
      */
-    suspend fun forceRefreshTokens(authApi: AuthApi): Boolean
+    suspend fun refreshTokensOn401(authApi: AuthApi): Boolean
 
     fun isRefreshTokenValid(): Boolean
+
+    /**
+     * 마지막 토큰 갱신 성공 시간을 반환
+     * @return 마지막 성공 시간 (밀리초)
+     */
+    fun getLastRefreshSuccessTime(): Long
+
+    /**
+     * 현재 토큰 갱신이 진행 중인지 확인
+     * @return 진행 중이면 true
+     */
+    fun isRefreshing(): Boolean
+
+    /**
+     * 진행 중인 리프레시 완료를 대기 (동기 버전)
+     * @param timeoutMs 타임아웃 시간 (기본 10초)
+     * @return 성공 여부, 타임아웃 시 false
+     */
+    fun awaitRefreshCompletionSync(timeoutMs: Long = 10000): Boolean
 }
 
 /**
@@ -84,15 +97,16 @@ class TokenProviderImpl @Inject constructor(
     private val _cachedAccessToken = MutableStateFlow<String?>(null)
     private val _cachedRefreshToken = MutableStateFlow<String?>(null)
 
-    // 리프레시 동기화
-    private val refreshMutex = Mutex()
-    private var isRefreshing = false
-    private var currentRefreshDeferred: CompletableDeferred<Boolean>? = null
 
     // 리프레시 상태 추적
     private var lastRefreshSuccessTime = 0L
     private var lastRefreshFailureTime = 0L
-    private val REFRESH_FAILURE_COOLDOWN_MS = 30000L // 30초 쿨다운
+    private val REFRESH_FAILURE_COOLDOWN_MS = 10000L // 10초 쿨다운
+
+    // 단일 refresh 보장을 위한 상태 관리
+    private val singleRefreshMutex = Mutex() // 앱 전체 단일 refresh 보장
+    private var currentRefreshJob: CompletableDeferred<Boolean>? = null
+    private var refreshTokenConsumed = false // refresh token 사용 여부 추적
 
     // Flow 구독을 위한 CoroutineScope
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -113,11 +127,25 @@ class TokenProviderImpl @Inject constructor(
     }
 
     override fun getAccessToken(): String? {
-        return _cachedAccessToken.value
+        return _cachedAccessToken.value ?: runBlocking(Dispatchers.IO) {
+            try {
+                authDataStore.accessToken.first()
+            } catch (e: Exception) {
+                Timber.w("TokenProvider - DataStore에서 액세스 토큰 로드 실패: ${e.message}")
+                null
+            }
+        }
     }
 
     override fun getRefreshToken(): String? {
-        return _cachedRefreshToken.value
+        return _cachedRefreshToken.value ?: runBlocking(Dispatchers.IO) {
+            try {
+                authDataStore.refreshToken.first()
+            } catch (e: Exception) {
+                Timber.w("TokenProvider - DataStore에서 리프레시 토큰 로드 실패: ${e.message}")
+                null
+            }
+        }
     }
 
     override suspend fun updateTokens(accessToken: String, refreshToken: String?) {
@@ -135,80 +163,66 @@ class TokenProviderImpl @Inject constructor(
     override suspend fun clearTokens() {
         authDataStore.clear()
         // Flow 구독으로 자동 업데이트됨
-    }
 
-    override suspend fun refreshTokensIfNeeded(authApi: AuthApi, refreshToken: String): Boolean {
-        return doRefreshTokens(authApi, forceRefresh = false)
-    }
-
-    /**
-     * 강제 토큰 갱신 (401 발생 시 사용)
-     */
-    override suspend fun forceRefreshTokens(authApi: AuthApi): Boolean {
-        return doRefreshTokens(authApi, forceRefresh = true)
+        // 토큰 클리어 시 refresh token 소비 상태도 리셋
+        refreshTokenConsumed = false
+        Timber.d("TokenProvider - 토큰 클리어, refresh token 소비 상태 리셋")
     }
 
     /**
-     * 리프레시 토큰이 유효한지 확인 (실패 쿨다운 중인지)
+     * 401 발생 시 토큰 갱신 (앱 전체에서 단일 refresh 보장)
+     * 서버가 refresh token을 한 번만 허용하므로 중복 요청 방지
      */
-    override fun isRefreshTokenValid(): Boolean {
-        val currentTime = System.currentTimeMillis()
-        return currentTime - lastRefreshFailureTime >= REFRESH_FAILURE_COOLDOWN_MS
-    }
+    override suspend fun refreshTokensOn401(authApi: AuthApi): Boolean {
+        // 🔒 앱 전체에서 단 하나의 refresh만 수행되도록 보장
+        return singleRefreshMutex.withLock {
+            val currentTime = System.currentTimeMillis()
 
-    /**
-     * 공통 토큰 갱신 로직 - AuthApi 방식
-     * @param forceRefresh true면 캐시된 토큰 존재 여부와 관계없이 강제 리프레시
-     */
-    private suspend fun doRefreshTokens(authApi: AuthApi, forceRefresh: Boolean = false): Boolean {
-        val currentTime = System.currentTimeMillis()
-
-        // 🔍 최근 리프레시 실패 후 쿨다운 기간인지 확인 (불필요한 재시도 방지)
-        if (!forceRefresh && currentTime - lastRefreshFailureTime < REFRESH_FAILURE_COOLDOWN_MS) {
-            Timber.d("TokenProvider - 최근 리프레시 실패 후 쿨다운 기간(${REFRESH_FAILURE_COOLDOWN_MS}ms), 리프레시 생략")
-            return false
-        }
-
-        // 🔍 리프레시 진행 중인지 확인 (CompletableDeferred로 대기)
-        if (isRefreshing && currentRefreshDeferred != null && !forceRefresh) {
-            Timber.d("TokenProvider - 다른 요청에서 리프레시 진행 중, 결과 대기")
-
-            // ✅ 효율적 대기 (타임아웃 10초)
-            return withTimeoutOrNull(10000) {
-                currentRefreshDeferred?.await()
-            } ?: run {
-                Timber.w("TokenProvider - 리프레시 대기 시간 초과")
-                false
+            // 1️⃣ 이미 진행 중인 refresh가 있는 경우 결과 대기
+            currentRefreshJob?.let { job ->
+                Timber.d("TokenProvider - 이미 진행 중인 refresh가 있음, 결과 대기")
+                return withTimeoutOrNull(15000) { // 15초 타임아웃
+                    job.await()
+                } ?: run {
+                    Timber.w("TokenProvider - refresh 대기 시간 초과")
+                    false
+                }
             }
-        }
 
-        // 🔍 이미 유효한 토큰이 있는지 먼저 확인 (중복 refresh 방지)
-        // 단, forceRefresh가 true이면 캐시 확인 생략
-        if (!forceRefresh) {
-            val currentToken = getAccessToken()
-            if (!currentToken.isNullOrBlank()) {
-                Timber.d("TokenProvider - 이미 유효한 토큰 존재(${currentToken.take(10)}...), refresh 생략")
-                return true
+            // 2️⃣ refresh token이 이미 소비되었는지 확인
+            if (refreshTokenConsumed) {
+                Timber.w("TokenProvider - refresh token이 이미 소비됨, 추가 refresh 불가")
+                return false
             }
-        }
 
-        // ✅ 리프레시 작업 시작 (Mutex로 보호)
-        return refreshMutex.withLock {
-            isRefreshing = true
-            currentRefreshDeferred = CompletableDeferred()
+            // 3️⃣ 최근 성공 후 보호 기간인지 확인 (5초 내 재요청 방지)
+            if (currentTime - lastRefreshSuccessTime < 5000) {
+                Timber.d("TokenProvider - 최근 성공 후 보호 기간 중, 재요청 방지")
+                return true // 이미 유효한 토큰이 있다고 간주
+            }
+
+            // 4️⃣ 쿨다운 기간 확인
+            if (currentTime - lastRefreshFailureTime < REFRESH_FAILURE_COOLDOWN_MS) {
+                Timber.d("TokenProvider - 쿨다운 기간 중")
+                return false
+            }
+
+            // 5️⃣ 새로운 refresh 작업 시작
+            Timber.d("TokenProvider - 새로운 refresh 작업 시작")
+            val refreshJob = CompletableDeferred<Boolean>()
+            currentRefreshJob = refreshJob
 
             try {
                 val refreshToken = getRefreshToken()
                 if (refreshToken.isNullOrBlank()) {
-                    Timber.w("리프레시 토큰 없음")
-                    clearTokens()
-                    currentRefreshDeferred?.complete(false)
-                    isRefreshing = false
-                    currentRefreshDeferred = null
+                    Timber.w("TokenProvider - refresh token 없음")
+                    refreshJob.complete(false)
                     return false
                 }
 
-                Timber.d("토큰 갱신 시작")
+                // refresh token 사용 표시 (한 번만 사용 가능하므로)
+                refreshTokenConsumed = true
+
                 val refreshRequest = RefreshTokenRequest(refreshToken)
                 val response = authApi.refreshToken(refreshRequest)
 
@@ -217,33 +231,71 @@ class TokenProviderImpl @Inject constructor(
                     if (newTokens?.accessToken?.isNotBlank() == true) {
                         updateTokens(newTokens.accessToken, newTokens.refreshToken)
                         lastRefreshSuccessTime = System.currentTimeMillis()
-                        lastRefreshFailureTime = 0L // 성공 시 실패 쿨다운 리셋
-                        Timber.i("토큰 갱신 성공")
-                        currentRefreshDeferred?.complete(true)
-                        isRefreshing = false
-                        currentRefreshDeferred = null
+                        lastRefreshFailureTime = 0L // 성공 시 쿨다운 리셋
+
+                        // 새로운 refresh token을 받았으므로 소비 상태 리셋
+                        if (newTokens.refreshToken?.isNotBlank() == true) {
+                            refreshTokenConsumed = false
+                            Timber.d("TokenProvider - 새로운 refresh token 수신, 소비 상태 리셋")
+                        }
+
+                        Timber.i("TokenProvider - refresh 성공")
+                        refreshJob.complete(true)
                         return true
                     }
                 }
 
-                Timber.e("토큰 갱신 실패: ${response.code()}")
+                Timber.e("TokenProvider - refresh 실패: ${response.code()}")
                 lastRefreshFailureTime = System.currentTimeMillis()
                 clearTokens()
-                currentRefreshDeferred?.complete(false)
-                isRefreshing = false
-                currentRefreshDeferred = null
+                refreshJob.complete(false)
                 return false
 
             } catch (e: Exception) {
-                Timber.e("토큰 갱신 예외: ${e.message}")
+                Timber.e("TokenProvider - refresh 예외: ${e.message}")
                 lastRefreshFailureTime = System.currentTimeMillis()
                 clearTokens()
-                currentRefreshDeferred?.complete(false)
-                isRefreshing = false
-                currentRefreshDeferred = null
+                refreshJob.complete(false)
                 return false
+            } finally {
+                currentRefreshJob = null
             }
         }
     }
+
+    /**
+     * 리프레시 토큰이 유효한지 확인 (실패 쿨다운 중인지)
+     * 단순한 시간 기반 검증으로 변경 - 더 예측 가능하고 안정적
+     */
+    override fun isRefreshTokenValid(): Boolean {
+        val currentTime = System.currentTimeMillis()
+
+        // 최근 실패 후 쿨다운 기간 중인지 확인
+        if (currentTime - lastRefreshFailureTime < REFRESH_FAILURE_COOLDOWN_MS) {
+            Timber.d("TokenProvider - 최근 리프레시 실패 후 쿨다운 기간 중 (${(REFRESH_FAILURE_COOLDOWN_MS - (currentTime - lastRefreshFailureTime))/1000}초 남음)")
+            return false
+        }
+
+        return true
+    }
+
+    override fun getLastRefreshSuccessTime(): Long {
+        return lastRefreshSuccessTime
+    }
+
+    override fun isRefreshing(): Boolean {
+        return currentRefreshJob != null
+    }
+
+    override fun awaitRefreshCompletionSync(timeoutMs: Long): Boolean {
+        val job = currentRefreshJob ?: return false
+
+        return runBlocking(Dispatchers.IO) {
+            withTimeoutOrNull(timeoutMs) {
+                job.await()
+            } ?: false
+        }
+    }
+
 }
 

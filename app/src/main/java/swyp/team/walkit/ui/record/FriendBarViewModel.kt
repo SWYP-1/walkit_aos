@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import swyp.team.walkit.core.Result
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
+import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.domain.model.Friend
 import swyp.team.walkit.domain.repository.FriendRepository
 import timber.log.Timber
@@ -20,6 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class FriendBarViewModel @Inject constructor(
     private val friendRepository: FriendRepository,
+    private val authEventBus: AuthEventBus,
 ) : ViewModel() {
 
     /**
@@ -52,7 +55,14 @@ class FriendBarViewModel @Inject constructor(
      */
     private fun loadFriends(force: Boolean) {
         viewModelScope.launch {
-            friendRepository.loadFriends(force)
+            val result = friendRepository.loadFriends(force)
+
+            // 토큰 만료 에러인지 확인
+            if (result is Result.Error && result.exception is AuthExpiredException) {
+                Timber.w("토큰 만료로 인한 친구 목록 로드 실패 - 로그인 필요")
+                // 로그인 화면으로 이동하는 이벤트 발생
+                authEventBus.notifyRequireLogin()
+            }
         }
     }
 

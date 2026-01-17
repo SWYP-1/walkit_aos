@@ -23,6 +23,7 @@ fun AlarmListItem(
     alarmType: AlarmType,
     message: String,
     date: String,
+    senderNickname : String? = null,
     onConfirm: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -83,7 +84,7 @@ fun AlarmListItem(
             }
 
             /* -------------------- 오른쪽 버튼 영역 -------------------- */
-            if (alarmType == AlarmType.FOLLOW) {
+            if (alarmType == AlarmType.FOLLOW && senderNickname != null) {
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Row(

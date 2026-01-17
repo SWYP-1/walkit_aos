@@ -51,42 +51,38 @@ class AuthInterceptor @Inject constructor(
 
         val response = chain.proceed(newRequest)
 
-        // 401 응답 감지 시 토큰 갱신 시도 (Authenticator 대신 Interceptor에서 처리)
+        // 401 응답 감지 시 토큰 갱신 시도
         if (response.code == 401) {
             Timber.e("AuthInterceptor - 401 감지! 코드: ${response.code}, URL: ${request.url}")
             response.close() // 기존 응답 닫기
 
             return runBlocking {
-                // 🔒 여러 401 요청 동시 접근 방지
+                // 🔒 여러 401 요청 동시 접근 방지 (단순 동기화)
                 interceptorMutex.withLock {
                     try {
-                        // 🔍 리프레시 토큰 유효성 먼저 확인 (최근 실패한 경우 재시도 방지)
-                        if (!tokenProvider.isRefreshTokenValid()) {
-                            Timber.w("AuthInterceptor - 최근 리프레시 실패로 토큰이 무효함, 즉시 인증 만료 처리")
-                            throw AuthExpiredException("Refresh token is invalid due to recent failures")
-                        }
-
-                        val refreshToken = tokenProvider.getRefreshToken()
-                        if (refreshToken.isNullOrBlank()) {
-                            Timber.w("AuthInterceptor - 리프레시 토큰 없음")
-                            throw AuthExpiredException("No refresh token available")
-                        }
-
+                        // 📞 TokenProvider에 refresh 요청 (단일 refresh 보장)
                         val authApi = retrofitProvider.get().create(swyp.team.walkit.data.api.auth.AuthApi::class.java)
-                        val refreshSuccess = tokenProvider.forceRefreshTokens(authApi)
+                        val refreshSuccess = tokenProvider.refreshTokensOn401(authApi)
+
                         if (refreshSuccess) {
                             Timber.d("AuthInterceptor - 토큰 갱신 성공, 원래 요청 재시도")
                             val newAccessToken = tokenProvider.getAccessToken()
+                            if (newAccessToken.isNullOrBlank()) {
+                                Timber.e("AuthInterceptor - 갱신 성공했는데 액세스 토큰이 없음!")
+                                throw AuthExpiredException("Token refresh succeeded but no access token available")
+                            }
+
+                            // 🔄 새로운 토큰으로 원래 요청 재시도
                             val retryRequest = request.newBuilder()
                                 .header("Authorization", "Bearer $newAccessToken")
                                 .build()
                             val retryResponse = chain.proceed(retryRequest)
 
-                            // ⚠️ 재시도했는데 또 401이면 무한 루프 방지
+                            // ⚠️ 재시도했는데 또 401이면 인증 만료 처리
                             if (retryResponse.code == 401) {
-                                Timber.e("AuthInterceptor - 재시도했는데 또 401! 무한 루프 방지")
+                                Timber.e("AuthInterceptor - 재시도했는데 또 401! 인증 만료")
                                 retryResponse.close()
-                                throw AuthExpiredException("Token refresh succeeded but request still fails")
+                                throw AuthExpiredException("Authentication expired - request still fails after token refresh")
                             }
 
                             return@runBlocking retryResponse

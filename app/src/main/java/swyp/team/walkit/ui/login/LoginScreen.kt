@@ -1,10 +1,8 @@
 package swyp.team.walkit.ui.login
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,11 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import swyp.team.walkit.ui.components.ErrorDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,14 +27,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.ui.onboarding.OnboardingViewModel
 import swyp.team.walkit.ui.components.CustomProgressIndicator
-import swyp.team.walkit.ui.components.LoadingOverlay
-import swyp.team.walkit.ui.components.ProgressIndicatorSize
 import swyp.team.walkit.ui.login.components.LoginButton
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.kakaoYellow
@@ -48,8 +39,6 @@ import swyp.team.walkit.ui.theme.naverGreen
 import swyp.team.walkit.ui.login.terms.TermsAgreementDialogContent
 import swyp.team.walkit.ui.login.terms.TermsAgreementOverlayRoute
 import swyp.team.walkit.ui.login.terms.TermsAgreementUiState
-import swyp.team.walkit.ui.theme.Blue3
-import swyp.team.walkit.ui.theme.Red5
 import timber.log.Timber
 
 
@@ -61,7 +50,7 @@ import timber.log.Timber
 @Composable
 fun LoginRoute(
     modifier: Modifier = Modifier,
-    onNavigateToTermsAgreement: () -> Unit,
+    onNavigateToOnBoarding: () -> Unit,
     onNavigateToMain: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
@@ -70,8 +59,9 @@ fun LoginRoute(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val isLoginChecked by viewModel.isLoginChecked.collectAsStateWithLifecycle()
     val onboardingCompleted by onboardingViewModel.isCompleted.collectAsStateWithLifecycle(false)
-    val termsAgreed by onboardingViewModel.isTermsAgreed.collectAsStateWithLifecycle(false)
+    val termsAgreed by onboardingViewModel.isTermsAgreed.collectAsStateWithLifecycle(null)
 
     // 다이얼로그 표시 상태 관리
     var showTermsDialog by remember { mutableStateOf(false) }
@@ -89,24 +79,29 @@ fun LoginRoute(
     LaunchedEffect(Unit) {
         viewModel.setNavigationCallbacks(
             onNavigateToMain = onNavigateToMain,
-            onNavigateToTermsAgreement = onNavigateToTermsAgreement
+            onNavigateToOnBoarding = onNavigateToOnBoarding
         )
     }
 
     // 다이얼로그 표시 여부 결정
-    LaunchedEffect(isLoggedIn, termsAgreed, isNavigating) {
-        showTermsDialog = isLoggedIn && !termsAgreed && !isNavigating
+    LaunchedEffect(isLoginChecked, termsAgreed, isNavigating, isLoggedIn) {
+        // termsAgreed가 null이면 아직 로드 중이므로 다이얼로그 표시하지 않음 (깜빡임 방지)
+        val shouldShowDialog = isLoginChecked && isLoggedIn && termsAgreed == false && !isNavigating
+        Timber.d("약관 동의 다이얼로그 표시 조건 - shouldShowDialog: $shouldShowDialog (isLoginChecked: $isLoginChecked, isLoggedIn: $isLoggedIn, termsAgreed: $termsAgreed, isNavigating: $isNavigating)")
+        showTermsDialog = shouldShowDialog
     }
 
     /**
-     * ✅ 단 하나의 Navigation 진입점
-     * - isNavigating 상태를 체크하여 중복 네비게이션 방지
+     * ✅ Navigation 진입점 (수정됨)
+     * - 로그인 성공 후 메인으로 이동하는 로직만 유지
+     * - 약관 동의 및 온보딩 이동은 LoginViewModel에서 처리
      */
-    LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted) {
-        if (!isLoggedIn || isNavigating) return@LaunchedEffect
+    LaunchedEffect(termsAgreed) {
+        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed")
+        if (!isLoginChecked) return@LaunchedEffect
 
-        if(termsAgreed){
-            onNavigateToTermsAgreement()
+        if(termsAgreed == true){
+            onNavigateToOnBoarding()
         }
     }
     LaunchedEffect(isNavigating) {

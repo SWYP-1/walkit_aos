@@ -27,8 +27,9 @@ import javax.inject.Singleton
  * ⚠️ DEPRECATED: AuthInterceptor가 401을 처리하므로 더 이상 사용되지 않음
  * 서버가 WWW-Authenticate 헤더를 보내지 않아 실제로는 호출되지 않음
  *
- * 유지 이유: 향후 서버가 WWW-Authenticate 헤더를 보낼 경우를 대비
- * 실제 동작: AuthInterceptor가 모든 401을 처리하므로 이 클래스는 실행되지 않음
+ * 이 클래스는 유지되지만 실제로는 실행되지 않음
+ * AuthInterceptor가 모든 401 처리를 담당하므로 이 클래스의 refreshTokensIfNeeded 호출도
+ * 새로운 refreshTokensOn401으로 변경됨 (호환성 유지)
  */
 @Singleton
 class TokenAuthenticator @Inject constructor(
@@ -83,8 +84,8 @@ class TokenAuthenticator @Inject constructor(
                         .build()
                 }
 
-                // TokenProvider를 통한 토큰 갱신 (Mutex로 동시성 제어)
-                val refreshSuccess = tokenProvider.refreshTokensIfNeeded(authApi, refreshToken)
+                // TokenProvider를 통한 토큰 갱신 (앱 전체 단일 refresh 보장)
+                val refreshSuccess = tokenProvider.refreshTokensOn401(authApi)
 
                 if (refreshSuccess) {
                     val newAccessToken = tokenProvider.getAccessToken()

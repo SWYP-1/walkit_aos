@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import swyp.team.walkit.core.Result
-import swyp.team.walkit.data.remote.friend.FollowRemoteDataSource
 import swyp.team.walkit.data.remote.notification.NotificationRemoteDataSource
 import swyp.team.walkit.data.remote.user.UserRemoteDataSource
 import swyp.team.walkit.data.repository.NotificationRepository
@@ -29,7 +28,6 @@ class AlarmViewModel
 constructor(
     private val notificationRemoteDataSource: NotificationRemoteDataSource,
     private val notificationRepository: NotificationRepository,
-    private val followRemoteDataSource: FollowRemoteDataSource,
     private val friendRepository: FriendRepository,
 ) : ViewModel() {
 
@@ -142,12 +140,22 @@ constructor(
                 }
 
                 Timber.d("팔로우 요청 수락 시작: ${alarm.senderNickname}")
-                followRemoteDataSource.acceptFollowRequest(alarm.senderNickname)
-                Timber.d("팔로우 요청 수락 성공: ${alarm.senderNickname}")
+                when (val result = friendRepository.acceptFollowRequest(alarm.senderNickname)) {
+                    is Result.Success -> {
+                        Timber.d("팔로우 요청 수락 성공: ${alarm.senderNickname}")
 
-                // 친구 목록 캐시 무효화 및 이벤트 발행
-                friendRepository.invalidateCache()
-                friendRepository.emitFriendUpdated()
+                        // 친구 목록 캐시 무효화 및 이벤트 발행
+                        friendRepository.invalidateCache()
+                        friendRepository.emitFriendUpdated()
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "팔로우 요청 수락 실패: ${alarm.senderNickname}")
+                        throw result.exception ?: Exception("팔로우 요청 수락 실패")
+                    }
+                    Result.Loading -> {
+                        // 로딩 상태
+                    }
+                }
 
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }
@@ -171,12 +179,22 @@ constructor(
                 }
 
                 Timber.d("팔로우 요청 거절 시작: ${alarm.senderNickname}")
-                followRemoteDataSource.rejectFollowRequest(alarm.senderNickname)
-                Timber.d("팔로우 요청 거절 성공: ${alarm.senderNickname}")
+                when (val result = friendRepository.rejectFollowRequest(alarm.senderNickname)) {
+                    is Result.Success -> {
+                        Timber.d("팔로우 요청 거절 성공: ${alarm.senderNickname}")
 
-                // 친구 목록 캐시 무효화 및 이벤트 발행 (거절의 경우도 목록 변경 가능성 대비)
-                friendRepository.invalidateCache()
-                friendRepository.emitFriendUpdated()
+                        // 친구 목록 캐시 무효화 및 이벤트 발행 (거절의 경우도 목록 변경 가능성 대비)
+                        friendRepository.invalidateCache()
+                        friendRepository.emitFriendUpdated()
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "팔로우 요청 거절 실패: ${alarm.senderNickname}")
+                        throw result.exception ?: Exception("팔로우 요청 거절 실패")
+                    }
+                    Result.Loading -> {
+                        // 로딩 상태
+                    }
+                }
 
                 // 알람 목록에서 제거
                 _alarms.value = _alarms.value.filter { it.id != alarmId }

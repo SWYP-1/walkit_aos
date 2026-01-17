@@ -112,7 +112,7 @@ fun NavGraph(
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 LoginRoute(
                     modifier = Modifier.padding(paddingValues),
-                    onNavigateToTermsAgreement = {
+                    onNavigateToOnBoarding = {
                         navController.navigate(Screen.Onboarding.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }

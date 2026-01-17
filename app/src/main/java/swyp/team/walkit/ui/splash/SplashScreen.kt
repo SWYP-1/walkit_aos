@@ -31,14 +31,14 @@ fun SplashScreen(
     loginViewModel: LoginViewModel = hiltViewModel(),
 ) {
     val isLoggedIn by loginViewModel.isLoggedIn.collectAsStateWithLifecycle()
-    val isLoginChecked by loginViewModel.isLoginChecked.collectAsStateWithLifecycle()
+    val isSplashChecked by loginViewModel.isSplashChecked.collectAsStateWithLifecycle()
     var navigated by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isLoginChecked, isLoggedIn) {
-        Timber.d("스플래시 LaunchedEffect 실행 - loginChecked:$isLoginChecked, loggedIn:$isLoggedIn, navigated:$navigated")
+    LaunchedEffect(isSplashChecked, isLoggedIn) {
+        Timber.d("스플래시 LaunchedEffect 실행 - loginChecked:$isSplashChecked, loggedIn:$isLoggedIn, navigated:$navigated")
 
-        if (!isLoginChecked || navigated) {
-            Timber.d("스플래시 네비게이션 스킵 - loginChecked:$isLoginChecked, navigated:$navigated")
+        if (!isSplashChecked || navigated) {
+            Timber.d("스플래시 네비게이션 스킵 - loginChecked:$isSplashChecked, navigated:$navigated")
             return@LaunchedEffect
         }
 
@@ -50,7 +50,7 @@ fun SplashScreen(
 
         Timber.i(
             "스플래시 분기 결정 - loginChecked:%s, loggedIn:%s, target:%s",
-            isLoginChecked,
+            isSplashChecked,
             isLoggedIn,
             targetRoute,
         )
@@ -71,9 +71,6 @@ fun SplashScreen(
             .background(SemanticColor.backgroundWhitePrimary),
         contentAlignment = Alignment.Center,
     ) {
-//        LottieAnimationView(
-//            modifier = Modifier.size(260.dp),
-//        )
         Image(
             painter = painterResource(R.drawable.logo_splash),
             contentDescription = "splash",

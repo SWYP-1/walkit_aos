@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import swyp.team.walkit.core.onError
 import swyp.team.walkit.core.onSuccess
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.domain.model.User
+import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.domain.repository.FriendRepository
 import swyp.team.walkit.domain.repository.UserRepository
 import timber.log.Timber
@@ -25,6 +27,7 @@ import javax.inject.Inject
 class RecordViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val friendRepository: FriendRepository,
+    private val authEventBus: AuthEventBus,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecordUiState>(RecordUiState.Loading)
@@ -52,7 +55,14 @@ class RecordViewModel @Inject constructor(
                     selectedFriendNickname = null,
                 )
             }
-            .onError { _, _ ->
+            .onError { exception, _ ->
+                // 토큰 만료 에러인지 확인
+                if (exception is AuthExpiredException) {
+                    Timber.w("토큰 만료로 인한 사용자 정보 로드 실패 - 로그인 필요")
+                    // 로그인 화면으로 이동하는 이벤트 발생
+                    authEventBus.notifyRequireLogin()
+                }
+
                 _uiState.value = RecordUiState.Error(
                     message = "사용자 정보를 불러올 수 없습니다."
                 )

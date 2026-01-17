@@ -32,6 +32,16 @@ interface FriendRepository {
     suspend fun blockUser(nickname: String): Result<Unit>
 
     /**
+     * 팔로우 요청 수락
+     */
+    suspend fun acceptFollowRequest(nickname: String): Result<Unit>
+
+    /**
+     * 팔로우 요청 거절
+     */
+    suspend fun rejectFollowRequest(nickname: String): Result<Unit>
+
+    /**
      * 캐시 무효화 (수동 갱신용)
      */
     fun invalidateCache()

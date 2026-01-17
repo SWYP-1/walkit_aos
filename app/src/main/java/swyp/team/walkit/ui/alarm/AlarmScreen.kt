@@ -107,6 +107,7 @@ private fun AlarmScreenContent(
                             alarmType = alarm.type,
                             message = alarm.message,
                             date = alarm.date,
+                            senderNickname = alarm.senderNickname,
                             onConfirm = if (alarm.type == AlarmType.FOLLOW) {
                                 { onConfirmFollow(alarm.id) }
                             } else {

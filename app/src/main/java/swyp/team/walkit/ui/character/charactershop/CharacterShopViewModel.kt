@@ -30,6 +30,8 @@ import swyp.team.walkit.domain.model.LottieCharacterState
 import swyp.team.walkit.domain.model.WearState
 import swyp.team.walkit.domain.repository.CharacterRepository
 import swyp.team.walkit.domain.repository.CosmeticItemRepository
+import swyp.team.walkit.core.AuthEventBus
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.domain.repository.PointRepository
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.domain.service.CharacterImageLoader
@@ -53,6 +55,7 @@ class CharacterShopViewModel @Inject constructor(
     val lottieImageProcessor: LottieImageProcessor,
     private val characterImageLoader: CharacterImageLoader,
     private val characterEventBus: swyp.team.walkit.core.CharacterEventBus, // ✅ 이벤트 버스 추가
+    private val authEventBus: AuthEventBus,
 ) : ViewModel() {
 
     // UI 상태
@@ -181,6 +184,14 @@ class CharacterShopViewModel @Inject constructor(
                     }
                     .onError { exception, message ->
                         Timber.Forest.e(exception, "사용자 정보 로드 실패: $message")
+
+                        // 토큰 만료 에러인지 확인
+                        if (exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 사용자 정보 로드 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                            return@launch
+                        }
+
                         Timber.Forest.e("UI 상태를 Error로 설정: 사용자 정보 로드 실패")
                         _uiState.value = DressingRoomUiState.Error(message ?: "사용자 정보 로드 실패")
                         return@launch
@@ -223,6 +234,14 @@ class CharacterShopViewModel @Inject constructor(
                     }
                     .onError { exception, message ->
                         Timber.Forest.e(exception, "캐릭터 로드 실패: $message")
+
+                        // 토큰 만료 에러인지 확인
+                        if (exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 캐릭터 로드 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                            return@launch
+                        }
+
                         Timber.Forest.e("캐릭터 로드 실패에도 계속 진행 (아이템은 표시 가능)")
 
                         // 캐릭터 로드 실패 시에도 아이템은 표시할 수 있으므로 계속 진행
@@ -245,6 +264,14 @@ class CharacterShopViewModel @Inject constructor(
                             itemsResult.exception,
                             "코스메틱 아이템 로드 실패: ${itemsResult.message}"
                         )
+
+                        // 토큰 만료 에러인지 확인
+                        if (itemsResult.exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 코스메틱 아이템 로드 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                            return@launch
+                        }
+
                         Timber.Forest.e("UI 상태를 Error로 설정: 코스메틱 아이템 로드 실패")
                         _uiState.value =
                             DressingRoomUiState.Error(itemsResult.message ?: "아이템 로드 실패")
@@ -271,6 +298,14 @@ class CharacterShopViewModel @Inject constructor(
                             pointResult.exception,
                             "포인트 정보 로드 실패: ${pointResult.message} - 기본값 0 사용"
                         )
+
+                        // 토큰 만료 에러인지 확인
+                        if (pointResult.exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 포인트 정보 로드 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                            return@launch
+                        }
+
                         userPoint = 0 // 실패 시 기본값 사용
                     }
 
@@ -940,6 +975,12 @@ class CharacterShopViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.Forest.e(result.exception, "코스메틱 아이템 구매 실패")
 
+                        // 토큰 만료 에러인지 확인
+                        if (result.exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 아이템 구매 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                        }
+
                         // 실패 시에도 다이얼로그 닫기
                         dismissCartDialog()
 
@@ -1004,6 +1045,12 @@ class CharacterShopViewModel @Inject constructor(
                             result.exception,
                             "코스메틱 아이템 ${if (isWorn) "착용" else "해제"} 실패: itemId=$itemId"
                         )
+
+                        // 토큰 만료 에러인지 확인
+                        if (result.exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 아이템 착용/해제 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                        }
                     }
 
                     Result.Loading -> {}
@@ -1237,6 +1284,12 @@ class CharacterShopViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         Timber.Forest.w(pointResult.exception, "포인트 갱신 실패: ${pointResult.message}")
+
+                        // 토큰 만료 에러인지 확인
+                        if (pointResult.exception is AuthExpiredException) {
+                            Timber.Forest.w("토큰 만료로 인한 포인트 갱신 실패 - 로그인 필요")
+                            authEventBus.notifyRequireLogin()
+                        }
                     }
                     Result.Loading -> {
                         Timber.Forest.d("포인트 갱신 중...")
@@ -1309,6 +1362,14 @@ class CharacterShopViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     Timber.Forest.e(result.exception, "캐릭터 정보 refresh 실패: ${result.message}")
+
+                    // 토큰 만료 에러인지 확인
+                    if (result.exception is AuthExpiredException) {
+                        Timber.w("토큰 만료로 인한 캐릭터 정보 refresh 실패 - 로그인 필요")
+                        authEventBus.notifyRequireLogin()
+                        return@refreshCharacterInfo
+                    }
+
                     // 에러 발생 시 사용자에게 알림
                     showInfoBanner("캐릭터 정보 갱신 실패", "잠시 후 다시 시도해주세요")
                 }

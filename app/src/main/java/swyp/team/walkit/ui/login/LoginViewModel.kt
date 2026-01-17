@@ -61,7 +61,8 @@ class LoginViewModel @Inject constructor(
 ) : ViewModel() {
 
     private var onNavigateToMain: (() -> Unit)? = null
-    private var onNavigateToTermsAgreement: (() -> Unit)? = null
+    private var onNavigateToOnBoarding: (() -> Unit)? = null
+
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -70,6 +71,10 @@ class LoginViewModel @Inject constructor(
 
     private val _isLoginChecked = MutableStateFlow(false)
     val isLoginChecked: StateFlow<Boolean> = _isLoginChecked.asStateFlow()
+
+    private val _isSplashChecked = MutableStateFlow(false)
+    val isSplashChecked: StateFlow<Boolean> = _isSplashChecked.asStateFlow()
+
 
     init {
         Timber.i("LoginViewModel 초기화 시작")
@@ -81,10 +86,10 @@ class LoginViewModel @Inject constructor(
      */
     fun setNavigationCallbacks(
         onNavigateToMain: () -> Unit,
-        onNavigateToTermsAgreement: () -> Unit
+        onNavigateToOnBoarding : () -> Unit,
     ) {
         this.onNavigateToMain = onNavigateToMain
-        this.onNavigateToTermsAgreement = onNavigateToTermsAgreement
+        this.onNavigateToOnBoarding = onNavigateToOnBoarding
     }
 
     /**
@@ -96,7 +101,7 @@ class LoginViewModel @Inject constructor(
         Timber.i("checkLoginStatus() 시작")
         viewModelScope.launch {
             Timber.d("checkLoginStatus() 코루틴 시작")
-            _isLoginChecked.value = false
+            _isSplashChecked.value = false
             try {
                 // 서버 토큰 확인
                 Timber.d("서버 토큰 확인 시작")
@@ -141,9 +146,9 @@ class LoginViewModel @Inject constructor(
                 Timber.e(t, "로그인 상태 확인 실패")
                 _isLoggedIn.value = false
             } finally {
-                Timber.i("checkLoginStatus() 완료 - isLoginChecked = true 설정")
-                _isLoginChecked.value = true
-                Timber.d("최종 상태 - isLoggedIn: ${_isLoggedIn.value}, isLoginChecked: ${_isLoginChecked.value}")
+                _isSplashChecked.value = true
+                Timber.i("checkLoginStatus() 완료 - _isSplashChecked = true 설정")
+                Timber.d("최종 상태 - isLoggedIn: ${_isLoggedIn.value}, isLoginChecked: ${_isSplashChecked.value}")
             }
         }
     }
@@ -355,7 +360,7 @@ class LoginViewModel @Inject constructor(
                 authDataStore.clear()
                 // 🔥 Room 사용자 데이터도 삭제 (로그인 전환 시 캐시된 이전 사용자 데이터 제거)
                 userRepository.clearAuth()
-                // ✅ 온보딩 데이터도 유지 (사용자가 완료한 온보딩 상태 보존)
+                // ✅ 온보딩 데이터 유지 (사용자가 완료한 온보딩 상태 보존)
                 Timber.i("로컬 토큰 및 데이터 삭제 완료 (온보딩 데이터 유지)")
             } catch (t: Throwable) {
                 Timber.e(t, "로컬 데이터 삭제 실패")
@@ -430,6 +435,7 @@ class LoginViewModel @Inject constructor(
                         // 즉시 사용자 정보 확인 (Splash 대신 여기서 처리)
                         Timber.i("로그인 직후 사용자 정보 확인 시작")
                         checkUserStatusAfterLogin()
+//                        _isLoginChecked.value = true
                     }
 
                     is Result.Error -> {
@@ -470,35 +476,39 @@ class LoginViewModel @Inject constructor(
                 userRepository.refreshUser().onSuccess { user ->
                     Timber.i("로그인 직후 사용자 정보 조회 성공: ${user.nickname}")
 
-                    // 닉네임이 있는 경우: Main으로 이동
-                    if (!user.nickname.isNullOrBlank()) {
-                        _isLoggedIn.value = true
-                        _uiState.value = LoginUiState.Idle
-                        Timber.i("로그인 완료 - 닉네임 있음: ${user.nickname}")
+                    // 신규 가입 감지: 서버 닉네임이 있지만 로컬 온보딩이 완료되지 않은 경우
+                    viewModelScope.launch {
+                        val isOnboardingCompleted = onboardingDataStore.isCompleted.first()
+                        Timber.d("로컬 온보딩 완료 상태: $isOnboardingCompleted")
 
-                        // 서버 데이터 동기화 WorkManager 즉시 실행
-                        SessionSyncScheduler.runSyncOnce(application)
-                        Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
+                        // 디버깅: DataStore 값들 확인
+                        val progress = onboardingDataStore.getProgress()
+                        Timber.d("DataStore 현재 값들 - completedKey: 확인불가, currentStep: ${progress.currentStep}, nickname: '${progress.nickname}'")
 
-                        onNavigateToMain?.invoke()
-                    } else {
-                        // 닉네임이 없음 - 로컬 온보딩 상태 확인 (리프레시 실패 후 재로그인 시 서버 데이터 불일치 방지)
-                        viewModelScope.launch {
-                            val localOnboardingCompleted = onboardingDataStore.isCompleted.first()
+                        if (!user.nickname.isNullOrBlank() && isOnboardingCompleted) {
+                            // 닉네임 있고 로컬 온보딩도 완료됨 - 기존 사용자, 메인으로 이동
+                            Timber.i("로그인 완료 - 기존 사용자: ${user.nickname}")
 
-                            if (localOnboardingCompleted) {
-                                // 로컬에서 온보딩 완료 상태 확인됨 - 서버 데이터 불일치로 간주하고 메인으로 이동
-                                Timber.w("서버 닉네임 없음 but 로컬 온보딩 완료됨 - 서버 데이터 불일치, 메인으로 이동")
-                                _isLoggedIn.value = true
-                                _uiState.value = LoginUiState.Idle
-                                onNavigateToMain?.invoke()
-                            } else {
-                                // 닉네임이 없고 로컬 온보딩도 미완료: 약관 동의 → 온보딩
-                                _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
-                                _uiState.value = LoginUiState.Idle
-                                Timber.i("로그인 완료 - 닉네임 없음, 약관 동의 필요")
-                                // 약관 동의 다이얼로그는 LoginRoute에서 처리됨
-                            }
+                            // 서버 데이터 동기화 WorkManager 즉시 실행
+                            SessionSyncScheduler.runSyncOnce(application)
+                            Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
+
+                            // 기존 사용자는 약관 동의 완료로 간주하여 다이얼로그 표시 방지
+                            Timber.d("LoginViewModel - 기존 사용자 약관 동의 완료로 설정하여 다이얼로그 방지")
+
+                            // 네비게이션 실행
+                            onNavigateToMain?.invoke()
+                        } else {
+                            // 신규 사용자 또는 온보딩 미완료 - 약관 동의부터 시작
+                            val reason = if (user.nickname.isNullOrBlank()) "서버 닉네임 없음" else "로컬 온보딩 미완료"
+                            Timber.i("약관 동의 시작 - 신규 사용자 감지: $reason")
+
+                            // 상태 업데이트 (다이얼로그 표시를 위한 trigger)
+                            _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
+                            _uiState.value = LoginUiState.Idle
+
+                            Timber.d("LoginViewModel - 약관 동의용 상태 설정 완료: isLoggedIn=true")
+                            // 약관 동의 다이얼로그는 LoginRoute에서 상태를 감지하여 자동 표시됨
                         }
                     }
                 }.onError { throwable, message ->
