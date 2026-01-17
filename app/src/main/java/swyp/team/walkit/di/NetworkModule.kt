@@ -3,6 +3,7 @@ package swyp.team.walkit.di
 import swyp.team.walkit.data.api.auth.AuthApi
 import swyp.team.walkit.data.api.auth.CharacterApi
 import swyp.team.walkit.data.api.cosmetic.CosmeticItemApi
+import swyp.team.walkit.data.remote.auth.AuthRemoteDataSource
 import swyp.team.walkit.data.remote.auth.CharacterRemoteDataSource
 import swyp.team.walkit.data.api.follower.FollowerApi
 import swyp.team.walkit.data.api.goal.GoalApi
@@ -30,6 +31,7 @@ import swyp.team.walkit.data.api.walking.WalkApi
 import swyp.team.walkit.data.api.home.HomeApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 @Module
@@ -68,28 +70,29 @@ object NetworkModule {
     @Singleton
     fun provideAuthInterceptor(
         tokenProvider: TokenProvider,
-    ): AuthInterceptor = AuthInterceptor(tokenProvider)
+        @Named("walkit") retrofitProvider: Provider<Retrofit>,
+    ): AuthInterceptor = AuthInterceptor(tokenProvider, retrofitProvider)
 
     @Provides
     @Singleton
     fun provideTokenAuthenticator(
         @ApplicationContext context: Context,
         tokenProvider: TokenProvider,
+        @Named("walkit") retrofitProvider: Provider<Retrofit>,
         authEventBus: AuthEventBus,
-    ): TokenAuthenticator = TokenAuthenticator(context, tokenProvider, authEventBus)
+    ): TokenAuthenticator = TokenAuthenticator(context, tokenProvider, authEventBus, retrofitProvider)
 
     @Provides
     @Singleton
     fun provideOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: AuthInterceptor,
-        tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient
             .Builder()
-            .addInterceptor(authInterceptor) // 로깅 전에 추가 (순서 중요)
+            .addInterceptor(authInterceptor) // 헤더 추가 + 401 처리 (순서 중요)
             .addInterceptor(loggingInterceptor)
-            .authenticator(tokenAuthenticator) // 401 응답 처리
+            // TokenAuthenticator 제거 - AuthInterceptor가 401 처리
             .followRedirects(false) // API에서는 리다이렉트 따라가지 않음 (중요!)
             .followSslRedirects(false)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -116,6 +119,12 @@ object NetworkModule {
     fun provideAuthApi(
         @Named("walkit") retrofit: Retrofit,
     ): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthRemoteDataSource(
+        authApi: AuthApi,
+    ): AuthRemoteDataSource = AuthRemoteDataSource(authApi)
 
     @Provides
     @Singleton

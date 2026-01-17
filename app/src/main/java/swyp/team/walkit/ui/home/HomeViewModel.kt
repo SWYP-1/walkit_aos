@@ -42,7 +42,7 @@ import swyp.team.walkit.domain.repository.CharacterRepository
 import swyp.team.walkit.domain.repository.GoalRepository
 import swyp.team.walkit.domain.repository.MissionRepository
 import swyp.team.walkit.domain.repository.HomeRepository
-import swyp.team.walkit.data.remote.interceptor.AuthExpiredException
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.domain.repository.UserRepository
 import swyp.team.walkit.domain.repository.WalkRepository
@@ -354,7 +354,7 @@ class HomeViewModel @Inject constructor(
                             val sessionDate = Instant.ofEpochMilli(session.startTime)
                                 .atZone(ZoneId.systemDefault())
                                 .toLocalDate()
-                            Timber.d("세션 날짜: $sessionDate, 오늘: $today, 걸음: ${session.stepCount}")
+//                            Timber.d("세션 날짜: $sessionDate, 오늘: $today, 걸음: ${session.stepCount}")
                             sessionDate == today
                         }
 

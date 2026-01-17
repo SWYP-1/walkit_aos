@@ -131,7 +131,9 @@ fun CharacterShopRoute(
 
         // MainScreen의 padding을 무시하고 상태바 영역만 직접 처리
         androidx.compose.foundation.layout.Box(
-            modifier = modifier.fillMaxSize()
+            modifier = modifier
+                .fillMaxSize()
+                .background(SemanticColor.backgroundWhiteSecondary)
 
         ) {
             // 바텀 시트 (캐릭터 표시 + 그리드)

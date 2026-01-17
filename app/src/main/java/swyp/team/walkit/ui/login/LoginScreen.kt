@@ -103,7 +103,6 @@ fun LoginRoute(
      * - isNavigating 상태를 체크하여 중복 네비게이션 방지
      */
     LaunchedEffect(isLoggedIn, termsAgreed, onboardingCompleted) {
-        Timber.d("여기 오냐?")
         if (!isLoggedIn || isNavigating) return@LaunchedEffect
 
         if(termsAgreed){

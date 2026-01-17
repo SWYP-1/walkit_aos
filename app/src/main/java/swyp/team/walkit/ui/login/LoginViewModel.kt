@@ -289,6 +289,15 @@ class LoginViewModel @Inject constructor(
      */
     fun logout() {
         viewModelScope.launch {
+            Timber.i("로그아웃 시작")
+
+            try {
+                Timber.d("서버 로그아웃 시도")
+                authRemoteDataSource.logout()
+                // 서버 로그아웃 결과는 로깅만 하고, 실패해도 로컬 로그아웃은 진행
+            } catch (t: Throwable) {
+                Timber.w(t, "서버 로그아웃 실패 (로컬 로그아웃은 계속 진행)")
+            }
             // 현재 로그인한 제공자 확인
             val currentProvider = authDataStore.getProvider()
 
@@ -474,11 +483,25 @@ class LoginViewModel @Inject constructor(
 
                         onNavigateToMain?.invoke()
                     } else {
-                        // 닉네임이 없으면: 약관 동의 → 온보딩
-                        _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
-                        _uiState.value = LoginUiState.Idle
-                        Timber.i("로그인 완료 - 닉네임 없음, 약관 동의 필요")
-                        // 약관 동의 다이얼로그는 LoginRoute에서 처리됨
+                        // 닉네임이 없음 - 로컬 온보딩 상태 확인 (리프레시 실패 후 재로그인 시 서버 데이터 불일치 방지)
+                        viewModelScope.launch {
+                            val localOnboardingCompleted = onboardingDataStore.isCompleted.first()
+                            val localTermsAgreed = onboardingDataStore.isTermsAgreed.first()
+
+                            if (localOnboardingCompleted && localTermsAgreed) {
+                                // 로컬에서 온보딩 완료 상태 확인됨 - 서버 데이터 불일치로 간주하고 메인으로 이동
+                                Timber.w("서버 닉네임 없음 but 로컬 온보딩 완료됨 - 서버 데이터 불일치, 메인으로 이동")
+                                _isLoggedIn.value = true
+                                _uiState.value = LoginUiState.Idle
+                                onNavigateToMain?.invoke()
+                            } else {
+                                // 닉네임이 없고 로컬 온보딩도 미완료: 약관 동의 → 온보딩
+                                _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
+                                _uiState.value = LoginUiState.Idle
+                                Timber.i("로그인 완료 - 닉네임 없음, 약관 동의 필요")
+                                // 약관 동의 다이얼로그는 LoginRoute에서 처리됨
+                            }
+                        }
                     }
                 }.onError { throwable, message ->
                     // 사용자 정보 조회 실패 (토큰 만료 등)

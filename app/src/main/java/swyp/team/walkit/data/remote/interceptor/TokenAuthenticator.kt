@@ -5,36 +5,44 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
+import retrofit2.Retrofit
 import swyp.team.walkit.core.AuthEventBus
+import swyp.team.walkit.data.api.auth.AuthApi
 import swyp.team.walkit.data.remote.auth.TokenProvider
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
  * 401 Unauthorized 응답 시 토큰 갱신을 처리하는 Authenticator
- * 
- * 동작 방식:
- * 1. 401 응답 감지
- * 2. Refresh Token으로 새로운 Access Token 요청 (향후 구현)
- * 3. 새 토큰으로 원래 요청 재시도
- * 4. 실패 시 null 반환 (재시도 안 함)
- * 
- * 주의: 현재는 토큰 갱신 로직이 없으므로 null 반환
- * 향후 refresh token API가 추가되면 구현 필요
+ *
+ * ⚠️ DEPRECATED: AuthInterceptor가 401을 처리하므로 더 이상 사용되지 않음
+ * 서버가 WWW-Authenticate 헤더를 보내지 않아 실제로는 호출되지 않음
+ *
+ * 유지 이유: 향후 서버가 WWW-Authenticate 헤더를 보낼 경우를 대비
+ * 실제 동작: AuthInterceptor가 모든 401을 처리하므로 이 클래스는 실행되지 않음
  */
 @Singleton
 class TokenAuthenticator @Inject constructor(
     private val context: Context,
     private val tokenProvider: TokenProvider,
     private val authEventBus: AuthEventBus,
+    @Named("walkit") private val retrofitProvider: Provider<Retrofit>,
 ) : Authenticator {
-    // Application Scope로 이벤트 발생 (메인 스레드에서 실행)
+
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // 🔒 TokenAuthenticator 레벨 동시성 제어
+    // 여러 401 요청이 동시에 도착해도 하나의 refresh만 수행
+    private val authenticatorMutex = kotlinx.coroutines.sync.Mutex()
 
     override fun authenticate(route: Route?, response: Response): Request? {
         // 401이 아니면 처리하지 않음
@@ -42,24 +50,84 @@ class TokenAuthenticator @Inject constructor(
             return null
         }
 
-        // 이미 재시도한 경우 무한 루프 방지
-        if (responseCount(response) >= 2) {
-            Timber.w("토큰 갱신 실패: 최대 재시도 횟수 초과 - 로그인 화면으로 이동")
+        // 무한 루프 방지: 이미 재시도한 요청이면 중단
+        if (isRetryAttempt(response)) {
+            Timber.w("TokenAuthenticator - 이미 재시도한 요청(${response.request.url}), 로그인 필요")
             notifyRequireLogin()
             return null
         }
 
-        val refreshToken = tokenProvider.getRefreshToken()
-        if (refreshToken.isNullOrBlank()) {
-            Timber.w("리프레시 토큰이 없습니다. 로그인 화면으로 이동")
-            notifyRequireLogin()
-            return null
+        Timber.d("TokenAuthenticator - 401 감지(${response.request.url.encodedPath}), 토큰 갱신 시도")
+
+        // 🔒 여러 401 요청 동시 도착 시 하나의 refresh만 수행
+        return runBlocking {
+            authenticatorMutex.withLock {
+            try {
+                val retrofit = retrofitProvider.get()
+                val authApi = retrofit.create(AuthApi::class.java)
+                val refreshToken = tokenProvider.getRefreshToken()
+
+                if (refreshToken.isNullOrBlank()) {
+                    Timber.w("TokenAuthenticator - 리프레시 토큰 없음")
+                    notifyRequireLogin()
+                    return@runBlocking null
+                }
+
+                // ⚠️ 중요: 이미 다른 요청에서 토큰이 갱신되었는지 확인
+                // 첫 번째 refresh 성공 후 캐시된 토큰이 있으면 재사용
+                val currentToken = tokenProvider.getAccessToken()
+                if (!currentToken.isNullOrBlank()) {
+                    Timber.d("TokenAuthenticator - 이미 유효한 토큰 존재, 재사용")
+                    return@runBlocking response.request.newBuilder()
+                        .header("Authorization", "Bearer $currentToken")
+                        .build()
+                }
+
+                // TokenProvider를 통한 토큰 갱신 (Mutex로 동시성 제어)
+                val refreshSuccess = tokenProvider.refreshTokensIfNeeded(authApi, refreshToken)
+
+                if (refreshSuccess) {
+                    val newAccessToken = tokenProvider.getAccessToken()
+                    if (!newAccessToken.isNullOrBlank()) {
+                        Timber.i("TokenAuthenticator - 토큰 갱신 성공, 재시도")
+                        return@runBlocking response.request.newBuilder()
+                            .header("Authorization", "Bearer $newAccessToken")
+                            .build()
+                    } else {
+                        Timber.e("TokenAuthenticator - 갱신 후 토큰 없음")
+                    }
+                } else {
+                    Timber.e("TokenAuthenticator - 토큰 갱신 실패")
+                }
+
+                // 갱신 실패 시 로그인 필요
+                notifyRequireLogin()
+                null
+
+            } catch (e: Exception) {
+                Timber.e(e, "TokenAuthenticator - 토큰 갱신 예외")
+                notifyRequireLogin()
+                null
+            }
+            } // authenticatorMutex.withLock 끝
+        }
+    }
+
+    /**
+     * 재시도 요청인지 확인 (무한 루프 방지)
+     * 동일 요청에 대해 2회 이상 401이 발생한 경우에만 재시도로 간주
+     */
+    private fun isRetryAttempt(response: Response): Boolean {
+        var count = 0
+        var current: Response? = response.priorResponse
+
+        while (current != null) {
+            count++
+            current = current.priorResponse
         }
 
-        // 현재는 토큰 갱신 API가 없으므로 로그인 화면으로 이동
-        Timber.w("401 응답 감지. 토큰 갱신 필요하지만 현재는 미구현. 로그인 화면으로 이동")
-        notifyRequireLogin()
-        return null
+        // 2회 이상 재시도한 경우에만 로그인 이벤트 발생
+        return count >= 2
     }
 
     /**
@@ -69,24 +137,11 @@ class TokenAuthenticator @Inject constructor(
         eventScope.launch {
             try {
                 authEventBus.notifyRequireLogin()
-                Timber.d("로그인 필요 이벤트 발생 완료")
+                Timber.d("TokenAuthenticator - 로그인 필요 이벤트 발생")
             } catch (e: Exception) {
-                Timber.e(e, "로그인 필요 이벤트 발생 실패")
+                Timber.e(e, "TokenAuthenticator - 로그인 이벤트 실패")
             }
         }
-    }
-
-    /**
-     * 응답 체인에서 재시도 횟수 계산
-     */
-    private fun responseCount(response: Response): Int {
-        var result = 1
-        var current = response.priorResponse
-        while (current != null) {
-            result++
-            current = current.priorResponse
-        }
-        return result
     }
 }
 

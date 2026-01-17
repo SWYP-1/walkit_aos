@@ -11,7 +11,7 @@ import org.junit.Test
 
 import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.core.Result
-import swyp.team.walkit.data.remote.interceptor.AuthExpiredException
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.domain.model.HomeData
 import swyp.team.walkit.domain.repository.HomeRepository
 

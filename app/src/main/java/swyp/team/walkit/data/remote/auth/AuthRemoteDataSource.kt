@@ -3,8 +3,10 @@ package swyp.team.walkit.data.remote.auth
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.api.auth.AuthApi
 import swyp.team.walkit.data.api.auth.AuthTokenResponse
+import swyp.team.walkit.data.api.auth.RefreshTokenRequest
 import swyp.team.walkit.data.api.auth.SocialLoginRequest
 import timber.log.Timber
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,6 +51,27 @@ class AuthRemoteDataSource @Inject constructor(
         } catch (t: Throwable) {
             Timber.e(t, "네이버 로그인 실패")
             Result.Error(t, t.message)
+        }
+    }
+
+    /**
+     * 로그아웃
+     * @param refreshToken 리프레시 토큰
+     * @return 로그아웃 결과
+     */
+    suspend fun logout(): Result<Unit> {
+        return try {
+            val response = authApi.logout()
+            if (response.isSuccessful) {
+                Timber.i("서버 로그아웃 성공")
+                Result.Success(Unit)
+            } else {
+                Timber.e("서버 로그아웃 실패: ${response.code()} - ${response.message()}")
+                Result.Error(Exception("서버 로그아웃 실패"), "로그아웃에 실패했습니다")
+            }
+        } catch (t: Throwable) {
+            Timber.e(t, "서버 로그아웃 중 예외 발생")
+            Result.Error(t, t.message ?: "로그아웃 처리 중 오류가 발생했습니다")
         }
     }
 }

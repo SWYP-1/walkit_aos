@@ -2,8 +2,8 @@ package swyp.team.walkit.data.remote.home
 
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.api.home.HomeApi
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.data.remote.home.dto.HomeData
-import swyp.team.walkit.data.remote.interceptor.AuthExpiredException
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton

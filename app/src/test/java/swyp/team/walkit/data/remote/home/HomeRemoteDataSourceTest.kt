@@ -18,7 +18,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.api.home.HomeApi
-import swyp.team.walkit.data.remote.interceptor.AuthExpiredException
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.data.remote.home.dto.HomeData
 
 /**

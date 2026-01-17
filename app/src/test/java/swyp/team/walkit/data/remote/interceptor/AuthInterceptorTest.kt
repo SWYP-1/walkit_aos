@@ -10,10 +10,8 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert
-
 import org.junit.Test
-
-
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import swyp.team.walkit.data.remote.auth.TokenProvider
 
 /**

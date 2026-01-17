@@ -1,200 +1,108 @@
 package swyp.team.walkit.data.remote.interceptor
 
 import kotlinx.coroutines.runBlocking
-
-
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Interceptor
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import org.json.JSONObject
+import retrofit2.Retrofit
 import swyp.team.walkit.data.remote.auth.TokenProvider
+import swyp.team.walkit.data.remote.exception.AuthExpiredException
 import timber.log.Timber
-import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
  * 인증 토큰을 요청 헤더에 추가하는 인터셉터
- * 
- * 주의: runBlocking을 사용하지 않고 TokenProvider의 캐시된 토큰 사용
+ *
+ * 역할: AccessToken 헤더 추가 + 401 응답 감지 시 토큰 갱신
+ * (서버가 WWW-Authenticate 헤더를 보내지 않아 Authenticator가 동작하지 않음)
  */
-
-/**
- * 인증 만료 예외 - 토큰이 만료되어 로그인 페이지로 리다이렉트되는 경우
- */
-class AuthExpiredException(message: String) : IOException(message)
-
 @Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenProvider: TokenProvider,
+    @Named("walkit") private val retrofitProvider: Provider<Retrofit>,
 ) : Interceptor {
 
-    private val lock = Any()
-    @Volatile
-    private var isRefreshing = false
+    // 🔒 AuthInterceptor 레벨 동시성 제어
+    // 여러 401 요청이 동시에 와도 하나의 재시도만 수행
+    private val interceptorMutex = kotlinx.coroutines.sync.Mutex()
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
         // 인증이 필요 없는 요청은 제외
-        // 1. 로그인 API는 토큰 불필요
-        // 2. 공개 API는 필요시 추가
         if (request.url.encodedPath.contains("/auth/")) {
             return chain.proceed(request)
         }
 
-        // 캐시된 토큰 가져오기 (동기, runBlocking 없음)
+        // 캐시된 토큰 가져오기 및 Authorization 헤더 추가
         val accessToken = tokenProvider.getAccessToken()
-        Timber.d("AuthInterceptor - 요청 URL: ${request.url}, 토큰 존재: ${!accessToken.isNullOrBlank()}")
-
         val newRequest = if (!accessToken.isNullOrBlank()) {
-            Timber.d("AuthInterceptor - Authorization 헤더 추가: Bearer ${accessToken.take(20)}...")
+            Timber.d("AuthInterceptor - Authorization 헤더 추가")
             request.newBuilder()
                 .header("Authorization", "Bearer $accessToken")
                 .build()
         } else {
-            Timber.w("액세스 토큰이 없습니다. 요청: ${request.url}")
+            Timber.w("AuthInterceptor - 액세스 토큰 없음")
             request
         }
 
         val response = chain.proceed(newRequest)
 
-        // 응답 상태 로깅 (디버깅용)
-        Timber.d("AuthInterceptor - 응답 상태: ${response.code}, Content-Type: ${response.header("Content-Type")}")
+        // 401 응답 감지 시 토큰 갱신 시도 (Authenticator 대신 Interceptor에서 처리)
+        if (response.code == 401) {
+            Timber.e("AuthInterceptor - 401 감지! 코드: ${response.code}, URL: ${request.url}")
+            response.close() // 기존 응답 닫기
 
-        // 인증 실패 감지: 401, 302 리다이렉트 또는 HTML 응답
-        val isAuthFailure = response.code == 401 ||
-                           (response.code == 302 && response.header("Location")?.contains("/login") == true) ||
-                           (response.header("Content-Type")?.contains("text/html") == true && !request.url.encodedPath.contains("/auth/"))
-
-        if (isAuthFailure) {
-            Timber.e("AuthInterceptor - 인증 실패 감지! 코드: ${response.code}, Location: ${response.header("Location")}")
-
-            // 302 리다이렉트의 경우 토큰 갱신 시도하지 않고 바로 실패 처리
-            if (response.code == 302) {
-                Timber.e("AuthInterceptor - 302 리다이렉트 감지, 토큰 만료로 간주")
-                runBlocking { tokenProvider.clearTokens() }
-                response.close()
-                // 302 리다이렉트는 로그인 페이지로의 리다이렉트이므로 특정 예외 타입으로 구분
-                throw AuthExpiredException("Authentication expired: redirect to login page")
-            }
-
-            // 동시성 제어: 한 번에 하나의 토큰 갱신만 수행
-            synchronized(lock) {
-                if (!isRefreshing) {
-                    isRefreshing = true
+            return runBlocking {
+                // 🔒 여러 401 요청 동시 접근 방지
+                interceptorMutex.withLock {
                     try {
-                        // 토큰 갱신 시도
-                        val refreshSuccess = runBlocking { refreshToken(chain) }
+                        // 🔍 리프레시 토큰 유효성 먼저 확인 (최근 실패한 경우 재시도 방지)
+                        if (!tokenProvider.isRefreshTokenValid()) {
+                            Timber.w("AuthInterceptor - 최근 리프레시 실패로 토큰이 무효함, 즉시 인증 만료 처리")
+                            throw AuthExpiredException("Refresh token is invalid due to recent failures")
+                        }
 
+                        val refreshToken = tokenProvider.getRefreshToken()
+                        if (refreshToken.isNullOrBlank()) {
+                            Timber.w("AuthInterceptor - 리프레시 토큰 없음")
+                            throw AuthExpiredException("No refresh token available")
+                        }
+
+                        val authApi = retrofitProvider.get().create(swyp.team.walkit.data.api.auth.AuthApi::class.java)
+                        val refreshSuccess = tokenProvider.forceRefreshTokens(authApi)
                         if (refreshSuccess) {
                             Timber.d("AuthInterceptor - 토큰 갱신 성공, 원래 요청 재시도")
-                            // 새 토큰으로 원래 요청 재시도
                             val newAccessToken = tokenProvider.getAccessToken()
                             val retryRequest = request.newBuilder()
                                 .header("Authorization", "Bearer $newAccessToken")
                                 .build()
-                            response.close() // 기존 응답 닫기
-                            return chain.proceed(retryRequest)
+                            val retryResponse = chain.proceed(retryRequest)
+
+                            // ⚠️ 재시도했는데 또 401이면 무한 루프 방지
+                            if (retryResponse.code == 401) {
+                                Timber.e("AuthInterceptor - 재시도했는데 또 401! 무한 루프 방지")
+                                retryResponse.close()
+                                throw AuthExpiredException("Token refresh succeeded but request still fails")
+                            }
+
+                            return@runBlocking retryResponse
                         } else {
                             Timber.e("AuthInterceptor - 토큰 갱신 실패")
-                            response.close()
-                            // 리프레시 토큰도 실패했으므로 인증 만료로 간주
                             throw AuthExpiredException("Token refresh failed: authentication expired")
                         }
-                    } finally {
-                        isRefreshing = false
-                    }
-                } else {
-                    Timber.d("AuthInterceptor - 다른 스레드에서 토큰 갱신 중, 대기 후 재시도")
-                    // 다른 스레드가 갱신 중이면 잠시 대기
-                    Thread.sleep(100)
-
-                    // 갱신 완료된 새 토큰으로 재시도
-                    val newAccessToken = tokenProvider.getAccessToken()
-                    if (!newAccessToken.isNullOrBlank()) {
-                        val retryRequest = request.newBuilder()
-                            .header("Authorization", "Bearer $newAccessToken")
-                            .build()
-                        response.close()
-                        return chain.proceed(retryRequest)
-                    } else {
-                        // 토큰이 없는 경우 response를 닫지 않고 반환
-                        return response
+                    } catch (e: Exception) {
+                        Timber.e(e, "AuthInterceptor - 토큰 갱신 중 예외")
+                        throw AuthExpiredException("Token refresh failed: ${e.message}")
                     }
                 }
             }
         }
 
         return response
-    }
-
-    private suspend fun refreshToken(chain: Interceptor.Chain): Boolean {
-        return try {
-            val refreshToken = tokenProvider.getRefreshToken()
-
-            if (refreshToken.isNullOrBlank()) {
-                Timber.e("AuthInterceptor - Refresh token이 없습니다")
-                tokenProvider.clearTokens()
-                return false
-            }
-
-            Timber.d("AuthInterceptor - Refresh token으로 토큰 갱신 요청")
-
-            // Refresh API 요청 생성
-            val jsonBody = JSONObject().apply {
-                put("refreshToken", refreshToken)
-            }.toString()
-
-            val originalRequest = chain.request()
-            val baseUrl = "${originalRequest.url.scheme}://${originalRequest.url.host}"
-
-            val refreshRequest = Request.Builder()
-                .url("$baseUrl/auth/refresh")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val refreshResponse = chain.proceed(refreshRequest)
-
-            if (refreshResponse.isSuccessful) {
-                val responseBody = refreshResponse.body?.string()
-                Timber.d("AuthInterceptor - Refresh 응답: $responseBody")
-
-                if (responseBody != null) {
-                    val jsonResponse = JSONObject(responseBody)
-                    val newAccessToken = jsonResponse.optString("accessToken")
-                    val newRefreshToken = jsonResponse.optString("refreshToken")
-
-                    if (newAccessToken.isNotBlank()) {
-                        // 새 토큰 저장 (updateTokens 사용)
-                        tokenProvider.updateTokens(newAccessToken, newRefreshToken.takeIf { it.isNotBlank() })
-                        Timber.d("AuthInterceptor - 새 토큰 저장 완료")
-                        refreshResponse.close()
-                        return true
-                    } else {
-                        Timber.e("AuthInterceptor - 응답에 accessToken이 없습니다")
-                        tokenProvider.clearTokens()
-                        refreshResponse.close()
-                        return false
-                    }
-                } else {
-                    Timber.e("AuthInterceptor - Refresh 응답 body가 null입니다")
-                    tokenProvider.clearTokens()
-                    refreshResponse.close()
-                    return false
-                }
-            } else {
-                Timber.e("AuthInterceptor - Refresh 실패: ${refreshResponse.code}")
-                tokenProvider.clearTokens()
-                refreshResponse.close()
-                return false
-            }
-        } catch (t: Throwable) {
-            Timber.e(t, "AuthInterceptor - 토큰 갱신 중 예외 발생")
-            tokenProvider.clearTokens()
-            return false
-        }
     }
 }
 

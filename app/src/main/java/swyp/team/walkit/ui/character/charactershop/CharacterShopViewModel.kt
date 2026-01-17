@@ -102,6 +102,9 @@ class CharacterShopViewModel @Inject constructor(
     private val _isRefreshLoading = MutableStateFlow(false)
     val isRefreshLoading: StateFlow<Boolean> = _isRefreshLoading.asStateFlow()
 
+    // 드레스룸 로딩 중 상태 (중복 로딩 방지)
+    private val _isDressingRoomLoading = MutableStateFlow(false)
+
     // 장바구니 다이얼로그 표시 상태
     private val _showCartDialog = MutableStateFlow(false)
     val showCartDialog: StateFlow<Boolean> = _showCartDialog.asStateFlow()
@@ -147,7 +150,14 @@ class CharacterShopViewModel @Inject constructor(
      * 캐릭터 + 코스메틱 아이템 병렬 로딩
      */
     fun loadDressingRoom(position: String? = null) {
+        // 🚫 중복 로딩 방지
+        if (_isDressingRoomLoading.value) {
+            Timber.Forest.d("드레스룸 이미 로딩 중 - 중복 호출 무시: position=$position")
+            return
+        }
+
         viewModelScope.launch {
+            _isDressingRoomLoading.value = true
             try {
                 Timber.Forest.d("드레스룸 로딩 시작 - position: $position")
 
@@ -358,6 +368,9 @@ class CharacterShopViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.Forest.e(t, "드레스룸 로딩 중 예외 발생")
                 _uiState.value = DressingRoomUiState.Error("드레스룸 로딩 실패: ${t.message}")
+            } finally {
+                _isDressingRoomLoading.value = false
+                Timber.Forest.d("드레스룸 로딩 상태 해제")
             }
         }
     }
@@ -754,10 +767,33 @@ class CharacterShopViewModel @Inject constructor(
     }
 
     /**
-     * 포지션 필터 변경
+     * 포지션 필터 변경 (로컬 필터링)
      */
     fun changePositionFilter(position: String?) {
-        loadDressingRoom(position)
+        val currentState = _uiState.value
+        if (currentState is DressingRoomUiState.Success) {
+            // position 파라미터를 EquipSlot으로 변환
+            val positionFilter = position?.let { pos ->
+                try {
+                    EquipSlot.valueOf(pos.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    null // 유효하지 않은 position이면 null (ALL)
+                }
+            }
+
+            // 로컬에서 필터링 적용
+            val tempState = currentState.copy(currentPosition = position)
+            val filteredItems = applyFilters(tempState)
+
+            _uiState.value = currentState.copy(
+                items = filteredItems,
+                currentPosition = position
+            )
+
+            Timber.Forest.d("포지션 필터 변경: $position → 필터링된 아이템 ${filteredItems.size}개")
+        } else {
+            Timber.Forest.w("UI 상태가 Success가 아님 - 포지션 필터 변경 무시")
+        }
     }
 
     /**

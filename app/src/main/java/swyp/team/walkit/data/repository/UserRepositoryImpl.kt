@@ -140,7 +140,14 @@ class UserRepositoryImpl @Inject constructor(
                 } else {
                     // HTTP 실패 (4xx, 5xx)
                     val errorBody = response.errorBody()?.string()
-                    val apiError = errorBody?.let { Json.decodeFromString<ApiErrorResponse>(it) }
+                    val apiError = errorBody?.let {
+                        try {
+                            Json { ignoreUnknownKeys = true }.decodeFromString<ApiErrorResponse>(it)
+                        } catch (e: Exception) {
+                            Timber.w(e, "ApiErrorResponse 파싱 실패, 기본 에러 사용")
+                            null
+                        }
+                    }
 
                     return@withContext when (response.code()) {
                         409 -> Result.Error(
@@ -239,7 +246,14 @@ class UserRepositoryImpl @Inject constructor(
                 } else {
                     // HTTP 실패 (4xx, 5xx)
                     val errorBody = response.errorBody()?.string()
-                    val apiError = errorBody?.let { Json.decodeFromString<ApiErrorResponse>(it) }
+                    val apiError = errorBody?.let {
+                        try {
+                            Json { ignoreUnknownKeys = true }.decodeFromString<ApiErrorResponse>(it)
+                        } catch (e: Exception) {
+                            Timber.w(e, "ApiErrorResponse 파싱 실패, 기본 에러 사용")
+                            null
+                        }
+                    }
 
                     return@withContext when (response.code()) {
                         409 -> Result.Error(
