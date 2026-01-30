@@ -24,9 +24,12 @@ import swyp.team.walkit.data.local.entity.SyncState
 import swyp.team.walkit.data.local.mapper.WalkingSessionMapper
 import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.data.remote.walking.WalkRemoteDataSource
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -176,13 +179,10 @@ constructor(
      * 세션 삭제
      */
     suspend fun deleteSession(id: String) {
-        try {
-            walkingSessionDao.deleteById(id)
-            Timber.d("세션 삭제 완료: ID=$id")
-        } catch (t: Throwable) {
-            Timber.e(t, "세션 삭제 실패: ID=$id")
-            throw t
-        }
+        // 데이터베이스 작업은 치명적 오류가 발생할 수 있으므로 catch하지 않음
+        // → 크래시로 이어져서 개발자가 즉시 수정 가능
+        walkingSessionDao.deleteById(id)
+        Timber.d("세션 삭제 완료: ID=$id")
     }
 
     /**
@@ -311,10 +311,17 @@ constructor(
                             Timber.w("이미지 파일이 존재하지 않음: $imagePath")
                             null
                         }
-                    } catch (t: Throwable) {
-                        Timber.e(t, "이미지 URI 변환 실패: $imagePath")
+                    } catch (e: FileNotFoundException) {
+                        // 파일이 없는 경우: 복구 가능한 오류
+                        Timber.w("이미지 파일이 존재하지 않음: $imagePath")
+                        null
+                    } catch (e: IOException) {
+                        // 파일 읽기 오류: 복구 가능한 오류
+                        CrashReportingHelper.logException(e)
+                        Timber.e(e, "이미지 URI 변환 실패: $imagePath")
                         null
                     }
+                    // NullPointerException 등 치명적 오류는 catch하지 않음
                 }
                 syncToServer(session, userId, imageUri)
 
@@ -322,11 +329,19 @@ constructor(
                 walkingSessionDao.updateSyncState(session.id, SyncState.SYNCED)
                 Timber.d("세션 동기화 성공: ID=${session.id}")
 
-            } catch (t: Throwable) {
-                // 실패 시 FAILED로 변경
+            } catch (e: IOException) {
+                // 네트워크 오류: 복구 가능
+                CrashReportingHelper.logNetworkError(e, "syncPendingSessions")
                 walkingSessionDao.updateSyncState(session.id, SyncState.FAILED)
-                Timber.w(t, "세션 동기화 실패: ID=${session.id}")
+                Timber.w(e, "세션 동기화 실패 (네트워크 오류): ID=${session.id}")
+            } catch (e: retrofit2.HttpException) {
+                // HTTP 오류: 복구 가능
+                CrashReportingHelper.logHttpError(e, "syncPendingSessions")
+                walkingSessionDao.updateSyncState(session.id, SyncState.FAILED)
+                Timber.w(e, "세션 동기화 실패 (HTTP ${e.code()}): ID=${session.id}")
             }
+            // NullPointerException, IllegalStateException 등 치명적 오류는 catch하지 않음
+            // → 크래시로 이어져서 개발자가 즉시 수정 가능
         }
 
         Timber.d("미동기화 세션 동기화 완료")
@@ -486,10 +501,17 @@ constructor(
             val absolutePath = file.absolutePath
             Timber.d("이미지 파일 복사 완료: $absolutePath (원본 URI: $uri)")
             absolutePath
-        } catch (t: Throwable) {
-            Timber.e(t, "이미지 파일 복사 실패: $uri")
+        } catch (e: FileNotFoundException) {
+            // 파일이 없는 경우: 복구 가능한 오류
+            Timber.w("이미지 파일을 찾을 수 없음: $uri")
+            null
+        } catch (e: IOException) {
+            // 파일 읽기/쓰기 오류: 복구 가능한 오류
+            CrashReportingHelper.logException(e)
+            Timber.e(e, "이미지 파일 복사 실패: $uri")
             null
         }
+        // NullPointerException 등 치명적 오류는 catch하지 않음
     }
 
     /**
@@ -563,10 +585,17 @@ constructor(
                     Timber.w("이미지 파일이 존재하지 않음: $imagePath")
                     null
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "이미지 URI 변환 실패: $imagePath")
+            } catch (e: FileNotFoundException) {
+                // 파일이 없는 경우: 복구 가능한 오류
+                Timber.w("이미지 파일을 찾을 수 없음: $imagePath")
+                null
+            } catch (e: IOException) {
+                // 파일 읽기 오류: 복구 가능한 오류
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "이미지 URI 변환 실패: $imagePath")
                 null
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
         // 이미지 URI 로깅 (디버깅용)
@@ -632,21 +661,27 @@ constructor(
                     Timber.w("서버 동기화가 로딩 상태입니다")
                 }
             }
-        } catch (t: Throwable) {
-            // CancellationException인 경우 (ViewModel이 destroy되거나 화면을 벗어난 경우)
-            // 취소된 경우에는 PENDING 상태로 되돌려서 나중에 재시도 가능하도록 함
-            if (t is CancellationException) {
-                walkingSessionDao.updateSyncState(localId, SyncState.PENDING)
-                Timber.w("서버 동기화 취소됨 (재시도 가능): localId=$localId")
-                // 취소 예외는 다시 throw하지 않음 (정상적인 취소이므로)
-                return null
-            }
-
-            // 실제 서버 에러인 경우에만 FAILED 상태로 변경
+        } catch (e: CancellationException) {
+            // 코루틴 취소: 정상적인 취소이므로 PENDING 상태로 되돌림
+            walkingSessionDao.updateSyncState(localId, SyncState.PENDING)
+            Timber.w("서버 동기화 취소됨 (재시도 가능): localId=$localId")
+            // 취소 예외는 다시 throw하지 않음 (정상적인 취소이므로)
+            return null
+        } catch (e: IOException) {
+            // 네트워크 오류: 복구 가능
+            CrashReportingHelper.logNetworkError(e, "syncSessionToServer")
             walkingSessionDao.updateSyncState(localId, SyncState.FAILED)
-            Timber.e(t, "서버 동기화 실패: localId=$localId")
-            return null // 실패 시 null 반환
+            Timber.e(e, "서버 동기화 실패 (네트워크 오류): localId=$localId")
+            return null
+        } catch (e: retrofit2.HttpException) {
+            // HTTP 오류: 복구 가능
+            CrashReportingHelper.logHttpError(e, "syncSessionToServer")
+            walkingSessionDao.updateSyncState(localId, SyncState.FAILED)
+            Timber.e(e, "서버 동기화 실패 (HTTP ${e.code()}): localId=$localId")
+            return null
         }
+        // NullPointerException, IllegalStateException 등 치명적 오류는 catch하지 않음
+        // → 크래시로 이어져서 개발자가 즉시 수정 가능
         return localId
     }
 
@@ -697,9 +732,11 @@ constructor(
                 val recentEntities = userEntities.filter { it.startTime >= thirtyDaysAgo }
                 Timber.d("🔍 [DEBUG] 최근 30일 세션 수: ${recentEntities.size}")
             }
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
+            // 디버깅 코드이므로 예외를 조용히 처리
             Timber.e(e, "🔍 [DEBUG] 세션 디버깅 실패")
         }
+        // Error 타입은 catch하지 않음
     }
 }
 

@@ -8,11 +8,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.remote.friend.FollowRemoteDataSource
 import swyp.team.walkit.domain.model.Friend
 import swyp.team.walkit.domain.repository.FriendRepository
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,14 +83,27 @@ class FriendRepositoryImpl @Inject constructor(
                 _friendsState.value = Result.Success(friends)
 
                 Result.Success(friends)
-            } catch (t: Throwable) {
-                Timber.e(t, "친구 목록 조회 실패")
-
-                // 에러 시에도 StateFlow 업데이트 (UI에 에러 상태 표시)
-                _friendsState.value = Result.Error(t, t.message)
-
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                // 네트워크 오류: 복구 가능
+                CrashReportingHelper.logNetworkError(e, "loadFriends")
+                Timber.e(e, "친구 목록 조회 실패: 네트워크 오류")
+                val errorResult = Result.Error(e, "인터넷 연결을 확인해주세요")
+                _friendsState.value = errorResult
+                errorResult
+            } catch (e: HttpException) {
+                // HTTP 오류: 복구 가능
+                CrashReportingHelper.logHttpError(e, "loadFriends")
+                Timber.e(e, "친구 목록 조회 실패: HTTP ${e.code()}")
+                val errorMessage = when (e.code()) {
+                    in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요"
+                    else -> "친구 목록을 불러올 수 없습니다"
+                }
+                val errorResult = Result.Error(e, errorMessage)
+                _friendsState.value = errorResult
+                errorResult
             }
+            // NullPointerException, IllegalStateException 등 치명적 오류는 catch하지 않음
+            // → 크래시로 이어져서 개발자가 즉시 수정 가능
         }
 
 
@@ -99,9 +115,14 @@ class FriendRepositoryImpl @Inject constructor(
             try {
                 val result = followRemoteDataSource.blockUser(nickname)
                 Result.Success(result)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 차단 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "blockUser")
+                Timber.e(e, "사용자 차단 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "blockUser")
+                Timber.e(e, "사용자 차단 실패: HTTP ${e.code()}")
+                Result.Error(e, "사용자 차단에 실패했습니다")
             }
         }
 
@@ -114,9 +135,14 @@ class FriendRepositoryImpl @Inject constructor(
                 followRemoteDataSource.acceptFollowRequest(nickname)
                 Timber.d("팔로우 요청 수락 성공: $nickname")
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "팔로우 요청 수락 실패: $nickname")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "acceptFollowRequest")
+                Timber.e(e, "팔로우 요청 수락 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "acceptFollowRequest")
+                Timber.e(e, "팔로우 요청 수락 실패: HTTP ${e.code()}")
+                Result.Error(e, "팔로우 요청 수락에 실패했습니다")
             }
         }
 
@@ -129,9 +155,14 @@ class FriendRepositoryImpl @Inject constructor(
                 followRemoteDataSource.rejectFollowRequest(nickname)
                 Timber.d("팔로우 요청 거절 성공: $nickname")
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "팔로우 요청 거절 실패: $nickname")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "rejectFollowRequest")
+                Timber.e(e, "팔로우 요청 거절 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "rejectFollowRequest")
+                Timber.e(e, "팔로우 요청 거절 실패: HTTP ${e.code()}")
+                Result.Error(e, "팔로우 요청 거절에 실패했습니다")
             }
         }
 

@@ -22,7 +22,9 @@ import swyp.team.walkit.data.local.mapper.GoalMapper
 import swyp.team.walkit.data.remote.goal.GoalRemoteDataSource
 import swyp.team.walkit.domain.model.Goal
 import swyp.team.walkit.domain.repository.GoalRepository
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import java.io.IOException
 
 /**
  * 목표 정보 Repository 구현체
@@ -50,8 +52,9 @@ class GoalRepositoryImpl @Inject constructor(
                     goalState.value = null
                     try {
                         goalDao.clear()
-                    } catch (t: Throwable) {
-                        Timber.e(t, "Goal 삭제 실패")
+                    } catch (e: Exception) {
+                        // DB 삭제 실패는 치명적이지 않으므로 로깅만
+                        Timber.e(e, "Goal 삭제 실패")
                     }
                 }
             }
@@ -77,10 +80,16 @@ class GoalRepositoryImpl @Inject constructor(
                     // 로컬에 없으면 서버에서 가져오기
                     refreshGoal()
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "목표 조회 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getGoal")
+                Timber.e(e, "목표 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getGoal")
+                Timber.e(e, "목표 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "목표를 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun createGoal(goal: Goal): Result<Goal> =
@@ -93,10 +102,16 @@ class GoalRepositoryImpl @Inject constructor(
                 goalState.value = createdGoal
                 
                 Result.Success(createdGoal)
-            } catch (t: Throwable) {
-                Timber.e(t, "목표 생성 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "createGoal")
+                Timber.e(e, "목표 생성 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "createGoal")
+                Timber.e(e, "목표 생성 실패: HTTP ${e.code()}")
+                Result.Error(e, "목표 생성에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun updateGoal(goal: Goal): Result<Goal> =
@@ -135,10 +150,12 @@ class GoalRepositoryImpl @Inject constructor(
                         apiError?.message ?: "목표 수정에 실패했습니다."
                     )
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "목표 수정 실패")
-                Result.Error(t, t.message ?: "알 수 없는 오류가 발생했습니다.")
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "updateGoal")
+                Timber.e(e, "목표 수정 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun refreshGoal(): Result<Goal> =
@@ -152,10 +169,16 @@ class GoalRepositoryImpl @Inject constructor(
                 goalState.value = goal
                 
                 Result.Success(goal)
-            } catch (t: Throwable) {
-                Timber.e(t, "목표 갱신 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "refreshGoal")
+                Timber.e(e, "목표 갱신 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "refreshGoal")
+                Timber.e(e, "목표 갱신 실패: HTTP ${e.code()}")
+                Result.Error(e, "목표를 갱신할 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
 }

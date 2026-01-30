@@ -101,10 +101,12 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingStarted)
 
             Timber.d("산책 추적 시작")
-        } catch (t: Throwable) {
-            Timber.e(t, "산책 추적 시작 실패")
-            throw t
+        } catch (e: IllegalStateException) {
+            // 센서 사용 불가 등 치명적 오류: 크래시 허용
+            Timber.e(e, "산책 추적 시작 실패: ${e.message}")
+            throw e
         }
+        // 다른 치명적 오류도 크래시 허용
     }
 
     /**
@@ -177,9 +179,10 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingStopped)
 
             Timber.d("산책 추적 중지")
-        } catch (t: Throwable) {
-            Timber.e(t, "산책 추적 중지 실패")
-            throw t
+        } catch (e: Exception) {
+            // 중지 실패는 치명적이지 않을 수 있지만, 로깅 후 다시 던짐
+            Timber.e(e, "산책 추적 중지 실패")
+            throw e
         }
     }
 
@@ -332,12 +335,17 @@ class WalkingRepositoryImpl @Inject constructor(
                     try {
                         val locationsJson = intent.getStringExtra(LocationTrackingService.EXTRA_LOCATIONS)
                         if (locationsJson != null) {
-                            val locations = Json.decodeFromString<List<LocationPoint>>(locationsJson)
-                            handleLocationUpdate(locations)
-                        }
-                    } catch (t: Throwable) {
-                        Timber.e(t, "위치 데이터 파싱 실패")
+                        val locations = Json.decodeFromString<List<LocationPoint>>(locationsJson)
+                        handleLocationUpdate(locations)
                     }
+                } catch (e: kotlinx.serialization.SerializationException) {
+                    // JSON 파싱 오류: 복구 가능
+                    Timber.e(e, "위치 데이터 파싱 실패: JSON 형식 오류")
+                } catch (e: Exception) {
+                    // 기타 예외: 로깅만 하고 계속 진행
+                    Timber.e(e, "위치 데이터 처리 실패: ${e.javaClass.simpleName}")
+                }
+                // Error 타입은 catch하지 않음
                 }
             }
         }
@@ -360,8 +368,12 @@ class WalkingRepositoryImpl @Inject constructor(
             try {
                 application.unregisterReceiver(it)
                 Timber.d("위치 업데이트 BroadcastReceiver 해제")
-            } catch (t: Throwable) {
-                Timber.e(t, "BroadcastReceiver 해제 실패")
+            } catch (e: IllegalArgumentException) {
+                // Receiver가 등록되지 않은 경우: 복구 가능
+                Timber.w("BroadcastReceiver가 등록되지 않음 (이미 해제됨)")
+            } catch (e: Exception) {
+                // 기타 예외: 로깅만
+                Timber.e(e, "BroadcastReceiver 해제 실패")
             }
         }
         locationReceiver = null
@@ -377,9 +389,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingPaused)
             
             Timber.d("산책 추적 일시정지")
-        } catch (t: Throwable) {
-            Timber.e(t, "산책 추적 일시정지 실패")
-            throw t
+        } catch (e: Exception) {
+            Timber.e(e, "산책 추적 일시정지 실패")
+            throw e
         }
     }
 
@@ -394,9 +406,9 @@ class WalkingRepositoryImpl @Inject constructor(
             _rawEvents.emit(WalkingRawEvent.TrackingResumed)
             
             Timber.d("산책 추적 재개")
-        } catch (t: Throwable) {
-            Timber.e(t, "산책 추적 재개 실패")
-            throw t
+        } catch (e: Exception) {
+            Timber.e(e, "산책 추적 재개 실패")
+            throw e
         }
     }
 
