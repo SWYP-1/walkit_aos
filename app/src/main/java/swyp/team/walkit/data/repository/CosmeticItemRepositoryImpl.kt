@@ -12,7 +12,10 @@ import swyp.team.walkit.data.remote.cosmetic.dto.PurchaseRequestDto
 import swyp.team.walkit.data.remote.cosmetic.mapper.CosmeticItemMapper
 import swyp.team.walkit.domain.model.CosmeticItem
 import swyp.team.walkit.domain.repository.CosmeticItemRepository
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,12 +46,16 @@ class CosmeticItemRepositoryImpl @Inject constructor(
             val domainItems = CosmeticItemMapper.toDomainList(dtos)
             Timber.d("코스메틱 아이템 조회 완료: ${domainItems.size}개${position?.let { " (position: $it)" } ?: ""}")
             Result.Success(data = domainItems)
-        } catch (t: Throwable) {
-            Timber.e(t, "코스메틱 아이템 조회 실패: ${t.message}")
-            Timber.e(t, "스택 트레이스:")
-            t.printStackTrace()
-            Result.Error(t)
+        } catch (e: IOException) {
+            CrashReportingHelper.logNetworkError(e, "getCosmeticItems")
+            Timber.e(e, "코스메틱 아이템 조회 실패: 네트워크 오류")
+            Result.Error(e, "인터넷 연결을 확인해주세요")
+        } catch (e: HttpException) {
+            CrashReportingHelper.logHttpError(e, "getCosmeticItems")
+            Timber.e(e, "코스메틱 아이템 조회 실패: HTTP ${e.code()}")
+            Result.Error(e, "코스메틱 아이템을 불러올 수 없습니다")
         }
+        // NullPointerException 등 치명적 오류는 catch하지 않음
     }
 
     override suspend fun purchaseItems(
@@ -62,20 +69,34 @@ class CosmeticItemRepositoryImpl @Inject constructor(
             )
 
             cosmeticItemRemoteDataSource.purchaseItems(request)
-        } catch (t: Throwable) {
-            Timber.e(t, "코스메틱 아이템 구매 중 예외 발생")
-            Result.Error(t)
+            Result.Success(Unit)
+        } catch (e: IOException) {
+            CrashReportingHelper.logNetworkError(e, "purchaseItems")
+            Timber.e(e, "코스메틱 아이템 구매 실패: 네트워크 오류")
+            Result.Error(e, "인터넷 연결을 확인해주세요")
+        } catch (e: HttpException) {
+            CrashReportingHelper.logHttpError(e, "purchaseItems")
+            Timber.e(e, "코스메틱 아이템 구매 실패: HTTP ${e.code()}")
+            Result.Error(e, "아이템 구매에 실패했습니다")
         }
+        // NullPointerException 등 치명적 오류는 catch하지 않음
     }
 
 
     override suspend fun wearItem(itemId: Int, isWorn: Boolean): Result<Unit> {
         return try {
             cosmeticItemRemoteDataSource.wearItem(itemId, isWorn)
-        } catch (t: Throwable) {
-            Timber.e(t, "코스메틱 아이템 착용/해제 실패")
-            Result.Error(t, t.message)
+            Result.Success(Unit)
+        } catch (e: IOException) {
+            CrashReportingHelper.logNetworkError(e, "wearItem")
+            Timber.e(e, "코스메틱 아이템 착용/해제 실패: 네트워크 오류")
+            Result.Error(e, "인터넷 연결을 확인해주세요")
+        } catch (e: HttpException) {
+            CrashReportingHelper.logHttpError(e, "wearItem")
+            Timber.e(e, "코스메틱 아이템 착용/해제 실패: HTTP ${e.code()}")
+            Result.Error(e, "아이템 착용/해제에 실패했습니다")
         }
+        // NullPointerException 등 치명적 오류는 catch하지 않음
     }
 }
 

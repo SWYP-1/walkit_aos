@@ -12,6 +12,8 @@ import swyp.team.walkit.data.local.dao.MissionProgressDao
 import swyp.team.walkit.data.local.mapper.MissionProgressMapper
 import swyp.team.walkit.domain.model.DailyMissionProgress
 import swyp.team.walkit.domain.repository.MissionProgressRepository
+import swyp.team.walkit.utils.CrashReportingHelper
+import timber.log.Timber
 
 /**
  * 미션 진행도 Repository 구현체
@@ -32,9 +34,13 @@ class MissionProgressRepositoryImpl @Inject constructor(
             try {
                 missionProgressDao.upsert(MissionProgressMapper.toEntity(progress))
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 저장 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "미션 진행도 저장 실패")
+                Result.Error(e, "미션 진행도를 저장할 수 없습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun clearProgress(date: LocalDate): Result<Unit> =
@@ -42,9 +48,13 @@ class MissionProgressRepositoryImpl @Inject constructor(
             try {
                 missionProgressDao.deleteByDate(date.format(formatter))
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 삭제 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "미션 진행도 삭제 실패")
+                Result.Error(e, "미션 진행도를 삭제할 수 없습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 }
 

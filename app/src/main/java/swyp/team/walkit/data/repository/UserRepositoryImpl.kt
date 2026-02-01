@@ -30,7 +30,9 @@ import swyp.team.walkit.domain.model.UserProfile
 import swyp.team.walkit.domain.model.UserSearchResult
 import swyp.team.walkit.domain.model.UserSummary
 import swyp.team.walkit.domain.repository.UserRepository
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import java.io.IOException
 
 /**
  * User Repository
@@ -79,10 +81,13 @@ class UserRepositoryImpl @Inject constructor(
                     // 캐시에 없으면 서버에서 가져오기
                     refreshUser()
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 조회 실패")
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 조회 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "사용자 조회 실패")
+                Result.Error(e, "사용자 정보를 불러올 수 없습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun refreshUser(): Result<User> =
@@ -103,10 +108,16 @@ class UserRepositoryImpl @Inject constructor(
                 Timber.d("Room 저장 확인: userId=${savedEntity?.userId}, nickname=${savedEntity?.nickname}, imageName=${savedEntity?.imageName}")
 
                 Result.Success(user)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 프로필 갱신 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "refreshUser")
+                Timber.e(e, "사용자 프로필 갱신 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "refreshUser")
+                Timber.e(e, "사용자 프로필 갱신 실패: HTTP ${e.code()}")
+                Result.Error(e, "사용자 정보를 갱신할 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun updateUser(user: User): Result<User> =
@@ -115,10 +126,13 @@ class UserRepositoryImpl @Inject constructor(
                 // TODO: 서버 API 연동 시 Remote → Room 으로 변경
                 userDao.upsert(UserMapper.toEntity(user))
                 Result.Success(user)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 업데이트 실패")
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 업데이트 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "사용자 업데이트 실패")
+                Result.Error(e, "사용자 정보를 업데이트할 수 없습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun registerNickname(nickname: String): Result<Unit> =
@@ -164,11 +178,21 @@ class UserRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (t: Throwable) {
-                // 네트워크 오류, JSON 파싱 오류 등
-                Timber.e(t, "닉네임 등록 실패: $nickname")
-                Result.Error(t, t.message ?: "닉네임 등록 실패")
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "registerNickname")
+                Timber.e(e, "닉네임 등록 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "registerNickname")
+                Timber.e(e, "닉네임 등록 실패: HTTP ${e.code()}")
+                Result.Error(e, "닉네임 등록에 실패했습니다")
+            } catch (e: kotlinx.serialization.SerializationException) {
+                // JSON 파싱 오류: 복구 가능
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "닉네임 등록 실패: JSON 파싱 오류")
+                Result.Error(e, "서버 응답을 처리할 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
 
@@ -197,10 +221,16 @@ class UserRepositoryImpl @Inject constructor(
                 }
 
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "생년월일 업데이트 실패: $birthDate")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "updateBirthDate")
+                Timber.e(e, "생년월일 업데이트 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "updateBirthDate")
+                Timber.e(e, "생년월일 업데이트 실패: HTTP ${e.code()}")
+                Result.Error(e, "생년월일 업데이트에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun updateUserProfileImage(imageUri: Uri): Result<Unit> =
@@ -210,10 +240,16 @@ class UserRepositoryImpl @Inject constructor(
                 remoteDataSource.updateUserProfileImage(imageUri)
                 Timber.d("프로필 이미지 서버 업로드 완료: $imageUri")
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 프로필 이미지 업데이트 실패: $imageUri")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "updateUserProfileImage")
+                Timber.e(e, "사용자 프로필 이미지 업데이트 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "updateUserProfileImage")
+                Timber.e(e, "사용자 프로필 이미지 업데이트 실패: HTTP ${e.code()}")
+                Result.Error(e, "프로필 이미지 업데이트에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun updateUserProfile(
@@ -270,10 +306,21 @@ class UserRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 프로필 업데이트 실패: $nickname")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "updateUserProfile")
+                Timber.e(e, "사용자 프로필 업데이트 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "updateUserProfile")
+                Timber.e(e, "사용자 프로필 업데이트 실패: HTTP ${e.code()}")
+                Result.Error(e, "프로필 업데이트에 실패했습니다")
+            } catch (e: kotlinx.serialization.SerializationException) {
+                // JSON 파싱 오류: 복구 가능
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "사용자 프로필 업데이트 실패: JSON 파싱 오류")
+                Result.Error(e, "서버 응답을 처리할 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun agreeToTerms(
@@ -291,10 +338,16 @@ class UserRepositoryImpl @Inject constructor(
                     marketingConsent = marketingConsent,
                 )
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "약관 동의 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "agreeToTerms")
+                Timber.e(e, "약관 동의 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "agreeToTerms")
+                Timber.e(e, "약관 동의 실패: HTTP ${e.code()}")
+                Result.Error(e, "약관 동의에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun saveAuthTokens(
@@ -312,9 +365,13 @@ class UserRepositoryImpl @Inject constructor(
                 authDataStore.clear()
                 userDao.clear() // 🔥 Room clear → Flow emit → StateFlow null
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 삭제 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "인증 정보 삭제 실패")
+                Result.Error(e, "인증 정보를 삭제할 수 없습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun searchUserByNickname(nickname: String): Result<List<UserSearchResult>> =
@@ -331,10 +388,16 @@ class UserRepositoryImpl @Inject constructor(
                 }
                 Timber.d("사용자 검색 성공: ${domainResults.size}개 결과")
                 Result.Success(domainResults)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 검색 실패: $nickname")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "searchUserByNickname")
+                Timber.e(e, "사용자 검색 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "searchUserByNickname")
+                Timber.e(e, "사용자 검색 실패: HTTP ${e.code()}")
+                Result.Error(e, "사용자 검색에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun getUserSummaryByNickname(
@@ -348,10 +411,16 @@ class UserRepositoryImpl @Inject constructor(
                 val domainResult = UserSummaryMapper.toDomain(dto)
                 Timber.d("사용자 요약 정보 조회 성공: ${domainResult.character.nickName}")
                 Result.Success(domainResult)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 요약 정보 조회 실패: $nickname")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getUserSummaryByNickname")
+                Timber.e(e, "사용자 요약 정보 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getUserSummaryByNickname")
+                Timber.e(e, "사용자 요약 정보 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "사용자 정보를 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun deleteUser(): Result<Response<Unit>> =
@@ -360,10 +429,16 @@ class UserRepositoryImpl @Inject constructor(
                 val response = userManagementRemoteDataSource.deleteUser()
                 Timber.d("사용자 탈퇴 요청 완료")
                 Result.Success(response)
-            } catch (t: Throwable) {
-                Timber.e(t, "사용자 탈퇴 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "deleteUser")
+                Timber.e(e, "사용자 탈퇴 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "deleteUser")
+                Timber.e(e, "사용자 탈퇴 실패: HTTP ${e.code()}")
+                Result.Error(e, "사용자 탈퇴에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun deleteImage(): Result<Response<Unit>> =
@@ -372,9 +447,15 @@ class UserRepositoryImpl @Inject constructor(
                 val response = userProfileRemoteDataSource.deleteImage()
                 Timber.d("프로필 이미지 삭제 요청 완료:")
                 Result.Success(response)
-            } catch (t: Throwable) {
-                Timber.e(t, "프로필 이미지 삭제 실패:")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "deleteImage")
+                Timber.e(e, "프로필 이미지 삭제 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "deleteImage")
+                Timber.e(e, "프로필 이미지 삭제 실패: HTTP ${e.code()}")
+                Result.Error(e, "프로필 이미지 삭제에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 }

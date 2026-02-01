@@ -142,14 +142,21 @@ fun DailyRecordRoute(
                 viewModel.daySessions.collect { sessions ->
                     daySessionsState.value = sessions.reversed()
                 }
-            } catch (e: Throwable) {
-                // ExceptionInInitializerError 등 Error 타입도 처리
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // 코루틴 취소 예외: 정상적인 취소이므로 무시
+                throw e // 다시 던져서 코루틴 취소를 전파
+            } catch (e: Exception) {
+                // Flow collect 중 발생한 예외: 복구 가능한 예외만 처리
+                // NullPointerException, IllegalStateException 등은 catch하지 않음
                 Timber.e(
                     e,
                     "daySessions collect 실패: ${e.javaClass.simpleName}, message=${e.message}"
                 )
+                // 빈 리스트로 설정하여 UI가 깨지지 않도록 함
                 daySessionsState.value = emptyList()
             }
+            // Error 타입 (OutOfMemoryError 등)은 catch하지 않음
+            // → 크래시로 이어져서 개발자가 즉시 수정 가능
         }
     }
 

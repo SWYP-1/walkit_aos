@@ -2,7 +2,7 @@ package swyp.team.walkit.data.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Response
+import retrofit2.HttpException
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.data.remote.walking.WalkRemoteDataSource
@@ -10,7 +10,9 @@ import swyp.team.walkit.domain.model.FollowerWalkRecord
 import swyp.team.walkit.domain.model.WalkSaveResult
 import swyp.team.walkit.domain.repository.WalkRepository
 import swyp.team.walkit.data.remote.walking.mapper.FollowerWalkRecordMapper
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,10 +40,16 @@ class WalkRepositoryImpl @Inject constructor(
                     is Result.Error -> response
                     Result.Loading -> Result.Loading
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "산책 저장 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "saveWalk")
+                Timber.e(e, "산책 저장 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "saveWalk")
+                Timber.e(e, "산책 저장 실패: HTTP ${e.code()}")
+                Result.Error(e, "산책 저장에 실패했습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun getFollowerWalkRecord(
@@ -90,19 +98,31 @@ class WalkRepositoryImpl @Inject constructor(
 
                     Result.Loading -> Result.Loading
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "팔로워 산책 기록 조회 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getFollowerWalkRecord")
+                Timber.e(e, "팔로워 산책 기록 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getFollowerWalkRecord")
+                Timber.e(e, "팔로워 산책 기록 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "산책 기록을 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun likeWalk(walkId: Long): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.likeWalk(walkId)
-            } catch (t: Throwable) {
-                Timber.e(t, "산책 좋아요 실패")
-                Result.Error(t, t.message)
+                Result.Success(Unit)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "likeWalk")
+                Timber.e(e, "산책 좋아요 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "likeWalk")
+                Timber.e(e, "산책 좋아요 실패: HTTP ${e.code()}")
+                Result.Error(e, "좋아요에 실패했습니다")
             }
         }
 
@@ -110,9 +130,15 @@ class WalkRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.unlikeWalk(walkId)
-            } catch (t: Throwable) {
-                Timber.e(t, "산책 좋아요 취소 실패")
-                Result.Error(t, t.message)
+                Result.Success(Unit)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "unlikeWalk")
+                Timber.e(e, "산책 좋아요 취소 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "unlikeWalk")
+                Timber.e(e, "산책 좋아요 취소 실패: HTTP ${e.code()}")
+                Result.Error(e, "좋아요 취소에 실패했습니다")
             }
         }
 
@@ -130,19 +156,31 @@ class WalkRepositoryImpl @Inject constructor(
                     is Result.Error -> dtoResult
                     Result.Loading -> Result.Loading
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "산책 목록 조회 실패")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getWalkList")
+                Timber.e(e, "산책 목록 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getWalkList")
+                Timber.e(e, "산책 목록 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "산책 목록을 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun updateWalkNote(walkId: Long, note: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 walkRemoteDataSource.updateWalkNote(walkId, note)
-            } catch (t: Throwable) {
-                Timber.e(t, "산책 노트 업데이트 실패")
-                Result.Error(t, t.message)
+                Result.Success(Unit)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "updateWalkNote")
+                Timber.e(e, "산책 노트 업데이트 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "updateWalkNote")
+                Timber.e(e, "산책 노트 업데이트 실패: HTTP ${e.code()}")
+                Result.Error(e, "노트 업데이트에 실패했습니다")
             }
         }
 }

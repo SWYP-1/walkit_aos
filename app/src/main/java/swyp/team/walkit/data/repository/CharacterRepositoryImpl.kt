@@ -11,7 +11,10 @@ import swyp.team.walkit.data.remote.auth.CharacterRemoteDataSource
 import swyp.team.walkit.data.remote.walking.mapper.CharacterMapper as RemoteCharacterMapper
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.repository.CharacterRepository
+import swyp.team.walkit.utils.CrashReportingHelper
 import timber.log.Timber
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,10 +38,12 @@ class CharacterRepositoryImpl @Inject constructor(
             try {
                 val entity = characterDao.getCharacter(userId)
                 entity?.let(CharacterMapper::toDomain)
-            } catch (t: Throwable) {
-                Timber.e(t, "DB에서 캐릭터 정보 조회 실패: $userId")
+            } catch (e: Exception) {
+                // DB 조회 실패는 치명적이지 않으므로 null 반환
+                Timber.e(e, "DB에서 캐릭터 정보 조회 실패: $userId")
                 null
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun getCharacter(userId: Long): Result<Character> =
@@ -63,10 +68,16 @@ class CharacterRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-            } catch (t: Throwable) {
-                Timber.e(t, "캐릭터 정보 조회 실패: $userId")
-                Result.Error(t, t.message)
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getCharacter")
+                Timber.e(e, "캐릭터 정보 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getCharacter")
+                Timber.e(e, "캐릭터 정보 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "캐릭터 정보를 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun getCharacterFromApi(lat: Double, lon: Double): Result<Character> =
@@ -76,10 +87,16 @@ class CharacterRepositoryImpl @Inject constructor(
                 val character = RemoteCharacterMapper.toDomain(dto)
                 Timber.d("API에서 캐릭터 정보 조회 성공: lat=$lat, lon=$lon")
                 Result.Success(character)
-            } catch (t: Throwable) {
-                Timber.e(t, "API에서 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
-                Result.Error(t, t.message ?: "캐릭터 정보 조회 실패")
+            } catch (e: IOException) {
+                CrashReportingHelper.logNetworkError(e, "getCharacterFromApi")
+                Timber.e(e, "API에서 캐릭터 정보 조회 실패: 네트워크 오류")
+                Result.Error(e, "인터넷 연결을 확인해주세요")
+            } catch (e: HttpException) {
+                CrashReportingHelper.logHttpError(e, "getCharacterFromApi")
+                Timber.e(e, "API에서 캐릭터 정보 조회 실패: HTTP ${e.code()}")
+                Result.Error(e, "캐릭터 정보를 불러올 수 없습니다")
             }
+            // NullPointerException 등 치명적 오류는 catch하지 않음
         }
 
     override suspend fun saveCharacter(
@@ -92,10 +109,13 @@ class CharacterRepositoryImpl @Inject constructor(
                 characterDao.upsert(entity)
                 Timber.d("캐릭터 정보 저장 성공: userId=$userId, grade=${character.grade}")
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "캐릭터 정보 저장 실패: userId=$userId")
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 저장 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "캐릭터 정보 저장 실패: userId=$userId")
+                Result.Error(e, "캐릭터 정보 저장에 실패했습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun deleteCharacter(userId: Long): Result<Unit> =
@@ -104,10 +124,13 @@ class CharacterRepositoryImpl @Inject constructor(
                 characterDao.deleteByUserId(userId)
                 Timber.d("캐릭터 정보 삭제 성공: userId=$userId")
                 Result.Success(Unit)
-            } catch (t: Throwable) {
-                Timber.e(t, "캐릭터 정보 삭제 실패: userId=$userId")
-                Result.Error(t, t.message)
+            } catch (e: Exception) {
+                // DB 삭제 실패는 치명적이지 않을 수 있지만, 로깅 후 에러 반환
+                CrashReportingHelper.logException(e)
+                Timber.e(e, "캐릭터 정보 삭제 실패: userId=$userId")
+                Result.Error(e, "캐릭터 정보 삭제에 실패했습니다")
             }
+            // Error 타입은 catch하지 않음
         }
 
     override suspend fun getCharacterByLocation(lat: Double, lon: Double): Result<Character> {
@@ -116,10 +139,16 @@ class CharacterRepositoryImpl @Inject constructor(
             val character = RemoteCharacterMapper.toDomain(dto)
             Timber.d("위치 기반 캐릭터 정보 조회 성공: lat=$lat, lon=$lon, nickname=${character.nickName}")
             Result.Success(character)
-        } catch (t: Throwable) {
-            Timber.e(t, "위치 기반 캐릭터 정보 조회 실패: lat=$lat, lon=$lon")
-            Result.Error(t, t.message)
+        } catch (e: IOException) {
+            CrashReportingHelper.logNetworkError(e, "getCharacterByLocation")
+            Timber.e(e, "위치 기반 캐릭터 정보 조회 실패: 네트워크 오류")
+            Result.Error(e, "인터넷 연결을 확인해주세요")
+        } catch (e: HttpException) {
+            CrashReportingHelper.logHttpError(e, "getCharacterByLocation")
+            Timber.e(e, "위치 기반 캐릭터 정보 조회 실패: HTTP ${e.code()}")
+            Result.Error(e, "캐릭터 정보를 불러올 수 없습니다")
         }
+        // NullPointerException 등 치명적 오류는 catch하지 않음
     }
 }
 
