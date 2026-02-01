@@ -109,7 +109,7 @@ graph TD
 ```mermaid
 graph TD
     A[산책 완료] --> B[필터링된 좌표 수집]
-    B --> C[PathSmoother.smoothPath()]
+    B --> C[PathSmoother.smoothPath]
     C --> D[PolyUtil.simplify]
     D --> E[Catmull-Rom 보간]
     E --> F[스무딩된 경로 저장]

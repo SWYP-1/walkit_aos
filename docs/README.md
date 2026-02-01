@@ -48,19 +48,3 @@
 1. 먼저 [전체 아키텍처 개요](./01-architecture-overview.md)를 읽어 전체 구조를 파악하세요.
 2. [데이터 흐름도](./02-data-flow.md)로 실제 동작 과정을 이해하세요.
 3. 각 컴포넌트의 상세 설명을 필요에 따라 참고하세요.
-
-## 📝 문서 업데이트 이력
-
-- 2025-01-XX: 초기 문서 작성
-- 2025-01-XX: P0 기능 추가 반영
-  - Activity Recognition 간격 1초로 단축
-  - AccelerometerManager 추가 (가속도계 기반 즉각 피드백)
-  - 하이브리드 거리 계산 (GPS + Step Counter)
-  - 배터리 최적화 기능 추가
-- 2025-01-XX: UI 개선 및 상태 관리 개선
-  - MainScreen에 탭 추가 (기록 측정 / 달린 기록)
-  - WalkingScreen 단순화 (LaunchedEffect navigate 제거)
-  - 상태 관리 개선 (뒤로가기 처리, 자동 초기화)
-  - WalkingResultScreen 지도 터치 최적화 (스크롤 분리)
-  - Room Database를 통한 세션 저장 기능 추가
-  - LocationTestData 유틸 함수 추가 (테스트용 위치 데이터)
