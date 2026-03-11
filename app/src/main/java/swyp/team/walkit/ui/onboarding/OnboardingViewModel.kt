@@ -320,6 +320,16 @@ constructor(
     }
 
     /**
+     * 약관 동의 다이얼로그에서 동의 시 DataStore에 저장
+     */
+    fun updateTermsAgreed(checked: Boolean) {
+        viewModelScope.launch {
+            onboardingDataStore.setTermsAgreed(checked)
+            Timber.d("약관 동의 상태 DataStore 저장 완료: $checked")
+        }
+    }
+
+    /**
      * 약관 동의 완료 상태 확인 및 저장
      */
     private fun checkAndSaveTermsAgreement() {

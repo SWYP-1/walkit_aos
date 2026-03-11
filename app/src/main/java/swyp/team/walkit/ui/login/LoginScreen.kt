@@ -96,11 +96,30 @@ fun LoginRoute(
      * - 로그인 성공 후 메인으로 이동하는 로직만 유지
      * - 약관 동의 및 온보딩 이동은 LoginViewModel에서 처리
      */
-    LaunchedEffect(termsAgreed) {
-        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed")
-        if (!isLoginChecked) return@LaunchedEffect
+    LaunchedEffect(termsAgreed, onboardingCompleted, isLoginChecked, isLoggedIn) {
+        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed, onboardingCompleted:$onboardingCompleted, isLoginChecked:$isLoginChecked")
 
-        if(termsAgreed == true){
+        // 로그인 체크가 완료되지 않았으면 대기
+        if (!isLoginChecked) {
+            Timber.d("로그인 체크 미완료 - 대기 중")
+            return@LaunchedEffect
+        }
+
+        // 로그인되지 않았으면 처리하지 않음
+        if (isLoggedIn) {
+            Timber.d("로그인됨 - 메인 처리")
+            onNavigateToMain()
+            return@LaunchedEffect
+        }
+
+        // 약관 동의가 true이고 온보딩이 완료된 경우 - 기존 사용자, 메인으로 이동
+        if (termsAgreed == true && onboardingCompleted) {
+            Timber.i("기존 사용자 - 약관 동의 완료, 온보딩 완료, 메인으로 이동")
+            onNavigateToMain()
+        }
+        // 약관 동의가 true이고 온보딩이 완료되지 않은 경우 - 신규 사용자, 온보딩으로 이동
+        else if (termsAgreed == true && !onboardingCompleted) {
+            Timber.i("신규 사용자 - 약관 동의 완료, 온보딩으로 이동")
             onNavigateToOnBoarding()
         }
     }
@@ -147,6 +166,7 @@ fun LoginRoute(
 
             scope.launch {
                 // 상태 업데이트 (LaunchedEffect가 네비게이션 처리)
+                onboardingViewModel.updateTermsAgreed(true)
                 onboardingViewModel.updateServiceTermsChecked(true)
                 onboardingViewModel.updatePrivacyPolicyChecked(true)
             }
@@ -194,6 +214,7 @@ fun LoginScreen(
                         CustomProgressIndicator()
                     }
                 }
+
                 else -> {
                     Spacer(Modifier.weight(1f))
 
@@ -296,7 +317,7 @@ private fun LoginScreenWithTermsDialogPreview() {
                     onLocationAgreedChange = {},
                     onMarketingConsentChange = {},
                     onAllAgreedChange = {},
-                    onSubmit = {},
+                    onConfirm = {},
                     onDismiss = {},
                     onTermsClick = {},
                     onPrivacyClick = {},

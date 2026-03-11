@@ -10,23 +10,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -38,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,68 +51,68 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 
-/**
- * 약관 동의 다이얼로그 Route
- *
- * ViewModel 주입 및 상태 수집을 담당합니다.
- */
-@Composable
-fun TermsAgreementDialogRoute(
-    onDismiss: () -> Unit,
-    onTermsAgreedUpdated: () -> Unit,
-    viewModel: TermsAgreementViewModel = hiltViewModel(),
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-
-    TermsAgreementDialog(
-        uiState = uiState,
-        onTermsAgreedChange = viewModel::updateTermsAgreed,
-        onPrivacyAgreedChange = viewModel::updatePrivacyAgreed,
-        onLocationAgreedChange = viewModel::updateLocationAgreed,
-        onMarketingConsentChange = viewModel::updateMarketingConsent,
-        onAllAgreedChange = { agreed ->
-            viewModel.toggleAllAgreements(agreed)
-        },
-        onTermsClick = {
-            // 서비스 이용 약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
-            )
-            context.startActivity(intent)
-        },
-        onPrivacyClick = {
-            // 개인정보처리방침 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5")
-            )
-            context.startActivity(intent)
-        },
-        onLocationClick = {
-            // 위치 정보 제공 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://www.notion.so/2d59b82980b980a09bafdba8e79fb042")
-            )
-            context.startActivity(intent)
-        },
-        onMarketingClick = {
-            // 마케팅 수신 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
-            val intent =
-                Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/marketing-consent"))
-            context.startActivity(intent)
-        },
-        onSubmit = {
-            viewModel.submitTermsAgreement(
-                onTermsAgreedUpdated = onTermsAgreedUpdated,
-                onError = { /* 에러는 UI State에 표시됨 */ },
-            )
-        },
-        onDismiss = onDismiss,
-    )
-}
+///**
+// * 약관 동의 다이얼로그 Route
+// *
+// * ViewModel 주입 및 상태 수집을 담당합니다.
+// */
+//@Composable
+//fun TermsAgreementDialogRoute(
+//    onDismiss: () -> Unit,
+//    onTermsAgreedUpdated: () -> Unit,
+//    viewModel: TermsAgreementViewModel = hiltViewModel(),
+//) {
+//    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+//    val context = LocalContext.current
+//
+//    TermsAgreementDialog(
+//        uiState = uiState,
+//        onTermsAgreedChange = viewModel::updateTermsAgreed,
+//        onPrivacyAgreedChange = viewModel::updatePrivacyAgreed,
+//        onLocationAgreedChange = viewModel::updateLocationAgreed,
+//        onMarketingConsentChange = viewModel::updateMarketingConsent,
+//        onAllAgreedChange = { agreed ->
+//            viewModel.toggleAllAgreements(agreed)
+//        },
+//        onTermsClick = {
+//            // 서비스 이용 약관 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+//            val intent = Intent(
+//                Intent.ACTION_VIEW,
+//                Uri.parse("https://www.notion.so/2d59b82980b98027b91ccde7032ce622")
+//            )
+//            context.startActivity(intent)
+//        },
+//        onPrivacyClick = {
+//            // 개인정보처리방침 링크 (웹사이트에 호스팅 후 실제 URL로 교체)
+//            val intent = Intent(
+//                Intent.ACTION_VIEW,
+//                Uri.parse("https://www.notion.so/2d59b82980b9805f9f4df589697a27c5")
+//            )
+//            context.startActivity(intent)
+//        },
+//        onLocationClick = {
+//            // 위치 정보 제공 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
+//            val intent = Intent(
+//                Intent.ACTION_VIEW,
+//                Uri.parse("https://www.notion.so/2d59b82980b980a09bafdba8e79fb042")
+//            )
+//            context.startActivity(intent)
+//        },
+//        onMarketingClick = {
+//            // 마케팅 수신 동의 상세 (웹사이트에 호스팅 후 실제 URL로 교체)
+//            val intent =
+//                Intent(Intent.ACTION_VIEW, Uri.parse("https://walkit.app/marketing-consent"))
+//            context.startActivity(intent)
+//        },
+//        onSubmit = {
+//            viewModel.submitTermsAgreement(
+//                onTermsAgreedUpdated = onTermsAgreedUpdated,
+//                onError = { /* 에러는 UI State에 표시됨 */ },
+//            )
+//        },
+//        onDismiss = onDismiss,
+//    )
+//}
 
 /**
  * 약관 동의 다이얼로그 내용
@@ -138,7 +132,7 @@ internal fun TermsAgreementDialogContent(
     onPrivacyClick: () -> Unit,
     onLocationClick: () -> Unit,
     onMarketingClick: () -> Unit,
-    onSubmit: () -> Unit,
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -257,6 +251,16 @@ internal fun TermsAgreementDialogContent(
 
             Spacer(Modifier.height(28.dp))
 
+            // 에러 메시지 (필수 약관 미동의 시)
+            uiState.errorMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    style = MaterialTheme.walkItTypography.bodyS,
+                    color = SemanticColor.stateRedPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+
             // 하단 버튼
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -264,7 +268,7 @@ internal fun TermsAgreementDialogContent(
             ) {
                 CtaButton(
                     text = "가입하기",
-                    onClick = onSubmit,
+                    onClick = onConfirm,
                     enabled = uiState.canProceed && !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -344,7 +348,7 @@ fun TermsAgreementDialog(
                 onPrivacyClick = onPrivacyClick,
                 onLocationClick = onLocationClick,
                 onMarketingClick = onMarketingClick,
-                onSubmit = onSubmit,
+                onConfirm = onSubmit,
                 onDismiss = onDismiss,
                 modifier = modifier.padding(bottom = 16.dp),
             )
@@ -479,7 +483,7 @@ private fun TermsAgreementContentPreview_AllChecked() {
                 onPrivacyClick = {},
                 onLocationClick = {},
                 onMarketingClick = {},
-                onSubmit = {},
+                onConfirm = {},
                 onDismiss = {},
             )
         }
@@ -507,7 +511,7 @@ private fun TermsAgreementContentPreview_NoneChecked() {
                 onPrivacyClick = {},
                 onLocationClick = {},
                 onMarketingClick = {},
-                onSubmit = {},
+                onConfirm = {},
                 onDismiss = {},
             )
         }
@@ -535,7 +539,7 @@ private fun TermsAgreementContentPreview_RequiredOnly() {
                 onPrivacyClick = {},
                 onLocationClick = {},
                 onMarketingClick = {},
-                onSubmit = {},
+                onConfirm = {},
                 onDismiss = {},
             )
         }
@@ -563,7 +567,7 @@ private fun TermsAgreementContentPreview_PartialChecked() {
                 onPrivacyClick = {},
                 onLocationClick = {},
                 onMarketingClick = {},
-                onSubmit = {},
+                onConfirm = {},
                 onDismiss = {},
             )
         }
@@ -592,7 +596,7 @@ private fun TermsAgreementContentPreview_Loading() {
                 onPrivacyClick = {},
                 onLocationClick = {},
                 onMarketingClick = {},
-                onSubmit = {},
+                onConfirm = {},
                 onDismiss = {},
             )
         }
@@ -640,7 +644,7 @@ fun TermsAgreementOverlay(
                 onTermsClick = onTermsClick,
                 onPrivacyClick = onPrivacyClick,
                 onLocationClick = onLocationClick,
-                onSubmit = onConfirm,
+                onConfirm = onConfirm,
                 onMarketingClick = onMarketingClick,
                 onDismiss = onDismiss,
             )
@@ -700,7 +704,10 @@ fun TermsAgreementOverlayRoute(
             context.startActivity(intent)
         },
         onConfirm = {
-            onTermsAgreedUpdated()
+            viewModel.submitTermsAgreement(
+                onTermsAgreedUpdated = onTermsAgreedUpdated,
+                onError = { /* 에러는 uiState.errorMessage에 표시됨 */ },
+            )
         },
         onMarketingClick =  {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.notion.so/2d59b82980b9802cb0e2c7f58ec65ec1"))
