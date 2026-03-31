@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -340,13 +341,18 @@ fun UserInfoManagementScreen(
     var showConfirmDialog by remember { mutableStateOf(false) }
 
 
-    // 뒤로가기 핸들러 (변경사항 확인)
+    // 뒤로가기 핸들러 (헤더·시스템 뒤로가기 공통)
     fun handleNavigateBack() {
         if (viewModel.hasChange.value) {
             showConfirmDialog = true
         } else {
             onNavigateBack()
         }
+    }
+
+    // 시스템 뒤로가기 - 변경사항 있으면 확인 다이얼로그 표시
+    BackHandler(enabled = true) {
+        handleNavigateBack()
     }
 
     // 저장 후 뒤로가기 핸들러
@@ -579,14 +585,6 @@ fun UserInfoManagementScreen(
                                 userInput.nicknameValidationError == null &&  // 닉네임 검증 에러가 없음
                                 userInput.isNicknameDuplicate != true  // 중복 상태가 아님
 
-                        // 디버깅용 로그
-                        Timber.d("=== canSave 계산 ===")
-                        Timber.d("로컬 상태: nickname=$nickname, birthYear=$birthYear, birthMonth=$birthMonth, birthDay=$birthDay")
-                        Timber.d("userInput 상태: nickname=${userInput.nickname}, isNicknameDuplicate=${userInput.isNicknameDuplicate}, nicknameValidationError=${userInput.nicknameValidationError}")
-                        Timber.d("조건 결과: hasChange=$hasChange, nicknameNotBlank=${nickname.isNotBlank()}, datesValid=${birthYear.isNotBlank() && birthMonth.isNotBlank() && birthDay.isNotBlank()}, validationErrorNull=${userInput.nicknameValidationError == null}, notDuplicate=${userInput.isNicknameDuplicate != true}")
-                        Timber.d("최종 canSave=$canSave")
-                        Timber.d("uiState=$uiState")
-                        Timber.d("==================")
 
                         Box(
                             modifier = Modifier
@@ -595,7 +593,7 @@ fun UserInfoManagementScreen(
                                 .then(
                                     if (uiState is UserInfoUiState.Updating || uiState is UserInfoUiState.CheckingDuplicate) {
                                         Timber.d("버튼 상태: 로딩중 (uiState=$uiState)")
-                                        Modifier.background(Grey3, RoundedCornerShape(8.dp))
+                                        Modifier.background(SemanticColor.buttonPrimaryDisabled, RoundedCornerShape(8.dp))
                                     } else if (canSave) {
                                         Timber.d("버튼 상태: 활성화됨 (canSave=$canSave)")
                                         Modifier
@@ -621,7 +619,7 @@ fun UserInfoManagementScreen(
                                 style = MaterialTheme.walkItTypography.bodyM.copy(
                                     fontWeight = FontWeight.Bold,
                                 ),
-                                color = Color.White,
+                                color = if(canSave) SemanticColor.textBorderPrimaryInverse else SemanticColor.textBorderSecondary,
                             )
                         }
                         Spacer(Modifier.height(8.dp))
@@ -657,7 +655,7 @@ fun UserInfoManagementScreen(
                 is BannerState.Success -> {
                     InfoBanner(
                         title = "저장 완료",
-                        description = "프로필 정보가 성공적으로 저장되었습니다.",
+                        description = "프로필 정보가 성공적으로 저장되었습니다",
                         backgroundColor = SemanticColor.backgroundDarkSecondary,
                         borderColor = SemanticColor.backgroundDarkSecondary,
                         iconTint = SemanticColor.iconWhite,
@@ -672,7 +670,7 @@ fun UserInfoManagementScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 48.dp + 32.dp) // CTA 버튼 높이 + 여백
+                            .padding(bottom = 48.dp + 16.dp) // CTA 버튼 높이 + 여백
                             .padding(horizontal = 16.dp)
                     )
                 }
@@ -695,7 +693,7 @@ fun UserInfoManagementScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 48.dp + 32.dp + 16.dp) // CTA 버튼 높이 + 여백
+                            .padding(bottom = 48.dp + 16.dp) // CTA 버튼 높이 + 여백
                             .padding(horizontal = 16.dp)
                             .clickable { bannerState = BannerState.Hidden } // 클릭하여 숨김
                     )

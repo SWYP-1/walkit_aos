@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalSlider
@@ -27,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import swyp.team.walkit.R
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
+import swyp.team.walkit.ui.theme.WalkItTypography
+import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.ui.walking.utils.createDefaultEmotionOptions
 import kotlin.math.roundToInt
 
@@ -141,11 +145,11 @@ fun EmotionSlider(
                                 .background(SemanticColor.buttonPrimaryActive),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "=",
-                                color = Color.White,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                painter = painterResource(R.drawable.ic_info_equal),
+                                contentDescription = "info equal",
+                                tint = SemanticColor.iconWhite,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -187,16 +191,16 @@ fun EmotionSlider(
                         // 라벨
                         Box(
                             modifier = Modifier
-                                .width(72.dp)
+                                .widthIn(min = 72.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(emotion.boxColor)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = emotion.label,
-                                fontSize = 16.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.walkItTypography.bodyS,
+                                fontWeight = FontWeight.SemiBold,
                                 color = emotion.textColor,
                                 maxLines = 1,
                                 softWrap = false

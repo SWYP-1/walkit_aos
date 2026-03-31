@@ -49,7 +49,7 @@ fun DominantEmotionCard(
     val textColor = getEmotionTextColor(emotionType)
 
     Card(
-        modifier = modifier.customShadow().cardBorder(),
+        modifier = modifier.cardBorder(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor,

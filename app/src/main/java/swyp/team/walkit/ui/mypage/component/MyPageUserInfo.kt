@@ -85,7 +85,12 @@ fun MyPageUserInfo(
         Text(
             text = buildAnnotatedString {
                 append("지금까지 ")
-                withStyle(style = SpanStyle(color = SemanticColor.textBorderGreenPrimary)) {
+                withStyle(
+                    style = MaterialTheme.walkItTypography.bodyS.toSpanStyle().copy(
+                        color = SemanticColor.textBorderGreenPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                ) {
                     append(consecutiveDays.toString())
                 }
                 append("일 연속 출석 중!")

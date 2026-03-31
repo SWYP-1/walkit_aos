@@ -48,12 +48,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.EmotionType
@@ -77,14 +80,17 @@ import java.time.format.DateTimeFormatter
 /**
  * Modifier extension for custom shadow effect
  */
-fun Modifier.customShadow(): Modifier = this.graphicsLayer {
-    shadowElevation = 10f
-    ambientShadowColor = Color(0x0F000000)
-    spotShadowColor = Color(0x0F000000)
-    shape = RoundedCornerShape(12.dp)
-    clip = false
-}
 
+
+fun Modifier.customShadow(): Modifier =
+    this.dropShadow(
+        shape = RoundedCornerShape(12.dp),
+        shadow = Shadow(
+            radius = 10.dp,
+            color = Color.Black.copy(alpha = 0.06f),
+            offset = DpOffset(0.dp, 0.dp)
+        )
+    )
 /**
  * Modifier extension for card border stroke
  */
@@ -957,11 +963,11 @@ fun WalkingDiaryCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .customShadow()
             .background(
                 color = SemanticColor.backgroundWhitePrimary,
                 shape = RoundedCornerShape(12.dp)
             )
-            .customShadow()
             .cardBorder(),
     ) {
         Column(
@@ -972,7 +978,8 @@ fun WalkingDiaryCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
 
                 Text(
@@ -1057,7 +1064,7 @@ fun WalkingDiaryCard(
                     } else {
                         Text(
                             text = note.ifEmpty { "감정 일기 내용" },
-                            style = MaterialTheme.walkItTypography.captionM,
+                            style = MaterialTheme.walkItTypography.bodyS,
                             color = SemanticColor.textBorderSecondary,
                             maxLines = Int.MAX_VALUE,
                             modifier = Modifier

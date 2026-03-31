@@ -420,7 +420,7 @@ private fun EmotionRecordStepScreenContent(
             // 제목: "산책 기록하기"
             Text(
                 text = "산책 기록하기",
-                style = MaterialTheme.walkItTypography.headingS,
+                style = MaterialTheme.walkItTypography.headingM,
                 fontWeight = FontWeight.SemiBold,
                 color = SemanticColor.textBorderPrimary,
                 modifier = Modifier
@@ -553,18 +553,12 @@ private fun EmotionRecordStepScreenContent(
                                 isFocused = focusState.isFocused
                             }
                             .background(
-                                color = if (isFocused)
-                                    SemanticColor.backgroundWhitePrimary
-                                else
-                                    SemanticColor.backgroundWhiteSecondary,
+                                color = SemanticColor.backgroundWhitePrimary,
                                 shape = RoundedCornerShape(8.dp)
                             )
                             .border(
                                 width = 1.dp,
-                                color = if (isFocused)
-                                    SemanticColor.textBorderPrimary
-                                else
-                                    SemanticColor.backgroundWhiteSecondary,
+                                color = SemanticColor.textBorderPrimary,
                                 shape = RoundedCornerShape(8.dp)
                             )
                             .padding(
@@ -577,7 +571,6 @@ private fun EmotionRecordStepScreenContent(
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Default,
                         ),
-                        maxLines = 8,
                         decorationBox = { innerTextField ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (emotionText.isEmpty()) {

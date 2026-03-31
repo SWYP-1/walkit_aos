@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
 import swyp.team.walkit.domain.model.WeeklyMission
@@ -21,6 +22,7 @@ import swyp.team.walkit.ui.home.MissionUiState
 import swyp.team.walkit.ui.home.MissionWithState
 import swyp.team.walkit.ui.mission.component.MissionCard
 import swyp.team.walkit.ui.theme.SemanticColor
+import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.shimmer
 import timber.log.Timber
@@ -82,8 +84,8 @@ private fun MissionSectionHeader(
         Text(
             text = "오늘의 추천 미션",
             modifier = modifier.padding(vertical = 12.dp),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.walkItTypography.bodyXL,
+            fontWeight = FontWeight.SemiBold
         )
         Row(
             modifier = Modifier
@@ -102,8 +104,9 @@ private fun MissionSectionHeader(
                 color = SemanticColor.textBorderSecondary,
             )
             Icon(
-                painter = painterResource(R.drawable.ic_arrow_forward),
-                contentDescription = "더보기", tint = SemanticColor.iconGrey
+                painter = painterResource(R.drawable.ic_cheven_right),
+                contentDescription = "더보기", tint = SemanticColor.iconGrey,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -248,5 +251,13 @@ private fun MissionError(
                 // .clickable(onClick = onRetry) // TODO: 재시도 로직 연결
             )
         }
+    }
+}
+
+@Preview
+@Composable
+fun MissionSectionHeaderPreview(modifier: Modifier = Modifier) {
+    WalkItTheme {
+        MissionSectionHeader()
     }
 }

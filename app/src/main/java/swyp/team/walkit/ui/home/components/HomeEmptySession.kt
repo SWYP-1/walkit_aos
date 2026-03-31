@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
@@ -32,7 +33,6 @@ fun HomeEmptySession(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier = modifier
             .background(Grey3, shape = RoundedCornerShape(16.dp))
-            .customShadow()
             .cardBorder()
             .padding(vertical = 36.dp, horizontal = 28.dp),
         verticalArrangement = Arrangement.Center,
@@ -59,7 +59,8 @@ fun HomeEmptySession(modifier: Modifier = Modifier, onClick: () -> Unit) {
             style = MaterialTheme.walkItTypography.bodyS.copy(
                 fontWeight = FontWeight.Medium
             ),
-            color = SemanticColor.textBorderSecondary
+            color = SemanticColor.textBorderSecondary,
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(20.dp))
         Box(

@@ -72,7 +72,7 @@ fun ImageUploadMenu(
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "이미지 업로드",
+                text = "이미지 편집",
                 style = MaterialTheme.walkItTypography.bodyS.copy(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 ),
@@ -212,7 +212,7 @@ private fun DropdownMenuItemsPreview() {
                 },
                 text = {
                     Text(
-                        text = "갤러리에서 가져오기",
+                        text = "갤러리에서 선택",
                         style = MaterialTheme.walkItTypography.bodyM,
                     )
                 },
@@ -228,7 +228,7 @@ private fun DropdownMenuItemsPreview() {
                 },
                 text = {
                     Text(
-                        text = "삭제하기",
+                        text = "이미지 삭제",
                         style = MaterialTheme.walkItTypography.bodyM,
                     )
                 },

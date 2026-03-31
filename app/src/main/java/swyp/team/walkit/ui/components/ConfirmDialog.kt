@@ -1,8 +1,6 @@
 package swyp.team.walkit.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,13 +26,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import swyp.team.walkit.ui.theme.Green4
-import swyp.team.walkit.ui.theme.Grey7
 import swyp.team.walkit.ui.theme.Grey10
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.White
 import swyp.team.walkit.ui.theme.walkItTypography
-import kotlin.math.max
 
 /**
  * 확인 다이얼로그 컴포넌트
@@ -140,63 +135,31 @@ fun ConfirmDialog(
                 )
                 Spacer(Modifier.height(20.dp))
 
-                // 버튼 영역 (기존 코드 그대로)
+                // 버튼 영역 - CtaButton으로 통일
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // 부정 버튼
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(47.dp)
-                            .clickable {
-                                onNegative()
-                                onDismiss()
-                            }
-                            .border(
-                                width = 1.dp,
-                                color = Green4,
-                                shape = RoundedCornerShape(8.dp),
-                            )
-                            .background(
-                                color = White,
-                                shape = RoundedCornerShape(8.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = negativeButtonText,
-                            style = MaterialTheme.walkItTypography.bodyM.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                            color = Green4,
-                        )
-                    }
-
-                    // 긍정 버튼
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(47.dp)
-                            .clickable {
-                                onPositive()
-                                onDismiss()
-                            }
-                            .background(
-                                color = Green4,
-                                shape = RoundedCornerShape(8.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = positiveButtonText,
-                            style = MaterialTheme.walkItTypography.bodyM.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                            color = White,
-                        )
-                    }
+                    CtaButton(
+                        text = negativeButtonText,
+                        onClick = {
+                            onNegative()
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                        variant = CtaButtonVariant.SECONDARY,
+                        size = CtaButtonSize.SMALL,
+                    )
+                    CtaButton(
+                        text = positiveButtonText,
+                        onClick = {
+                            onPositive()
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                        variant = CtaButtonVariant.PRIMARY,
+                        size = CtaButtonSize.SMALL,
+                    )
                 }
             }
         }

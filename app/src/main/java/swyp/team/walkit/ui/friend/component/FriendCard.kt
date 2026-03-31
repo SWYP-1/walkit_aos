@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import swyp.team.walkit.domain.model.FollowStatus
 import swyp.team.walkit.ui.theme.Pretendard
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.TypeScale
+import swyp.team.walkit.ui.theme.walkItTypography
 
 /**
  * 버튼 설정 데이터 클래스
@@ -162,7 +164,7 @@ private fun FollowButton(
                 text = "팔로우",
                 backgroundColor = SemanticColor.buttonPrimaryDefault,
                 textColor = SemanticColor.textBorderPrimaryInverse,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
             )
         }
 
@@ -181,7 +183,7 @@ private fun FollowButton(
                 text = "팔로잉",
                 backgroundColor = SemanticColor.buttonDisabled,
                 textColor = SemanticColor.textBorderDisabled,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
             )
         }
 
@@ -190,7 +192,7 @@ private fun FollowButton(
                 text = "",
                 backgroundColor = Color.Transparent,
                 textColor = Color.Transparent,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
             )
         }
 
@@ -199,7 +201,7 @@ private fun FollowButton(
                 text = "거절됨",
                 backgroundColor = Color.Transparent,
                 textColor = Color.Transparent,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
             )
         }
     }
@@ -235,32 +237,24 @@ private fun FollowButton(
         (-0.16f).sp
     }
 
-    //TODO : && followStatus != FollowStatus.REJECTED 거절당하면 두번다시 못누르나?
-    Button(
-        onClick = onClick,
-        enabled = enabled && followStatus != FollowStatus.ACCEPTED,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = buttonColor,
-            contentColor = textColor,
-            disabledContainerColor = buttonColor,
-            disabledContentColor = textColor,
-        ),
-        shape = RoundedCornerShape(8.dp), // 둥근 모서리
-        contentPadding = PaddingValues(
-            horizontal = 16.dp,
-            vertical = verticalPadding,
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(buttonColor)
+            .clickable(
+                enabled = enabled && followStatus != FollowStatus.ACCEPTED,
+                onClick = onClick
+            )
+            .padding(
+                horizontal = 16.dp,
+                vertical = verticalPadding
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = buttonText,
-            fontFamily = Pretendard,
-            fontSize = fontSize,
+            style = MaterialTheme.walkItTypography.captionM,
             fontWeight = fontWeight,
-            lineHeight = (fontSize.value * 1.5f).sp, // lineHeight 1.5
-            letterSpacing = letterSpacing,
-            color = textColor,
         )
     }
 }

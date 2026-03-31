@@ -42,9 +42,9 @@ import swyp.team.walkit.utils.DateUtils.getMonthWeek
 private fun MissionCardState.buttonText(): String =
     when (this) {
         MissionCardState.INACTIVE,
-        MissionCardState.ACTIVE_CHALLENGE -> "도전 하기"
+        MissionCardState.ACTIVE_CHALLENGE -> "도전하기"
 
-        MissionCardState.READY_FOR_CLAIM -> "보상 받기"
+        MissionCardState.READY_FOR_CLAIM -> "보상받기"
         MissionCardState.COMPLETED -> "보상 완료"
     }
 
@@ -166,7 +166,7 @@ fun MissionCard(
                     Modifier.cardBorder()
                 }
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = cardState.backgroundColor()
         ),
