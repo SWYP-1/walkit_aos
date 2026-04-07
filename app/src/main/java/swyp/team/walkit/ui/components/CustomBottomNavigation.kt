@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,7 +37,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults.contentColor
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import swyp.team.walkit.ui.theme.SemanticColor
 
 /**
@@ -130,28 +135,38 @@ fun CustomBottomNavigation(
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    Box(
         modifier = modifier
-            .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()), // 시스템 네비게이션 바 위에 표시
+            .padding(
+                bottom = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding()
+            )
+            .fillMaxWidth()
+            .dropShadow(
+                shape = RectangleShape,
+                shadow = Shadow(
+                    radius = 0.dp,
+                    color = Color.Black.copy(alpha = 0.05f),
+                    offset = DpOffset(0.dp, -2.dp)
+                )
+            )
+            .background(Color.White) // ← 중요 (shadow 대비)
     ) {
-        Column(Modifier.fillMaxWidth()) {
-            HorizontalDivider(thickness = 1.dp, color = Color(0x1A000000))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEach { item ->
-                    BottomBarItemView(
-                        item = item,
-                        isSelected = selectedRoute == item.route,
-                        onClick = { onItemClick(item.route) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-        }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                BottomBarItemView(
+                    item = item,
+                    isSelected = selectedRoute == item.route,
+                    onClick = { onItemClick(item.route) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

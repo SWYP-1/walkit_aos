@@ -51,6 +51,11 @@
             android:name="com.kakao.sdk.AppKey"
             android:value="${KAKAO_APP_KEY}" />
 
+        <!-- Firebase 자동 화면 추적 비활성화: 수동 screen_view만 사용 -->
+        <meta-data
+            android:name="firebase_analytics_automatic_screen_reporting_enabled"
+            android:value="false" />
+
         <!-- Location Tracking Foreground Service -->
         <service
             android:name=".domain.service.LocationTrackingService"

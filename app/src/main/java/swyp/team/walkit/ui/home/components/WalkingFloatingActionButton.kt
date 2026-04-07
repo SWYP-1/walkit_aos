@@ -17,12 +17,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import swyp.team.walkit.R
 import swyp.team.walkit.ui.theme.SemanticColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
+import swyp.team.walkit.ui.record.components.customShadow
 import swyp.team.walkit.ui.theme.walkItTypography
 
 @Composable
@@ -34,14 +40,22 @@ fun WalkingFloatingActionButton(
         onClick = onClick,
         modifier = modifier
             .size(100.dp)
-            .shadow(
-                elevation = 12.dp,
+            .dropShadow(
                 shape = CircleShape,
-                spotColor = Color(0x26000000),
-                ambientColor = Color(0x26000000),
+                shadow = Shadow(
+                    radius = 10.dp,
+                    color = Color(0x26000000),
+                    offset = DpOffset(0.dp, 4.dp)   // 아래 그림자
+                )
             ),
         shape = CircleShape,
         containerColor = SemanticColor.stateGreenTertiary, // #F3FFF8
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp
+        )
     ) {
         Column(
             modifier = Modifier

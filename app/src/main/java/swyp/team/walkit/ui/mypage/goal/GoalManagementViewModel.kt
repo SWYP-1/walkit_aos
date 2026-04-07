@@ -42,6 +42,10 @@ class GoalManagementViewModel @Inject constructor(
     private val _goalError = MutableStateFlow<GoalError?>(null)
     val goalError: StateFlow<GoalError?> = _goalError.asStateFlow()
 
+    // 저장 성공 배너 표시 (UserInfoManagementScreen과 동일한 패턴)
+    private val _saveSuccess = MutableStateFlow(false)
+    val saveSuccess: StateFlow<Boolean> = _saveSuccess.asStateFlow()
+
     init {
         // 서버 캐시 구독
         viewModelScope.launch {
@@ -86,6 +90,7 @@ class GoalManagementViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> {
                     Timber.d("목표 업데이트 성공: 걸음=${targetSteps}, 빈도=${walkFrequency}회")
+                    _saveSuccess.value = true
                 }
                 is Result.Error -> {
                     val exception = result.exception
@@ -127,6 +132,13 @@ class GoalManagementViewModel @Inject constructor(
      */
     fun clearGoalError() {
         _goalError.value = null
+    }
+
+    /**
+     * 저장 성공 배너 숨김
+     */
+    fun clearSaveSuccess() {
+        _saveSuccess.value = false
     }
 
     /**

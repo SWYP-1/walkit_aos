@@ -83,9 +83,10 @@ fun LoginRoute(
         )
     }
 
-    // 다이얼로그 표시 여부 결정
+    // 다이얼로그 표시 여부 결정 (메인 전환 시 깜빡임 방지)
     LaunchedEffect(isLoginChecked, termsAgreed, isNavigating, isLoggedIn) {
-        // termsAgreed가 null이면 아직 로드 중이므로 다이얼로그 표시하지 않음 (깜빡임 방지)
+        // termsAgreed가 null이면 아직 로드 중 - 다이얼로그 표시하지 않음
+        // termsAgreed가 true면 곧 메인/온보딩으로 이동 - 다이얼로그 표시하지 않음
         val shouldShowDialog = isLoginChecked && isLoggedIn && termsAgreed == false && !isNavigating
         Timber.d("약관 동의 다이얼로그 표시 조건 - shouldShowDialog: $shouldShowDialog (isLoginChecked: $isLoginChecked, isLoggedIn: $isLoggedIn, termsAgreed: $termsAgreed, isNavigating: $isNavigating)")
         showTermsDialog = shouldShowDialog
@@ -93,20 +94,43 @@ fun LoginRoute(
 
     /**
      * ✅ Navigation 진입점 (수정됨)
-     * - 로그인 성공 후 메인으로 이동하는 로직만 유지
-     * - 약관 동의 및 온보딩 이동은 LoginViewModel에서 처리
+     * - 로그인 성공 후 약관/온보딩 상태에 따라 메인 또는 온보딩으로 이동
+     * - termsAgreed 확인 후 네비게이션하여 약관 다이얼로그 깜빡임 방지
      */
-    LaunchedEffect(termsAgreed) {
-        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed")
-        if (!isLoginChecked) return@LaunchedEffect
+    LaunchedEffect(termsAgreed, onboardingCompleted, isLoginChecked, isLoggedIn) {
+        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed, onboardingCompleted:$onboardingCompleted, isLoginChecked:$isLoginChecked")
 
-        if(termsAgreed == true){
+        // 로그인 체크가 완료되지 않았으면 대기
+        if (!isLoginChecked) {
+            Timber.d("로그인 체크 미완료 - 대기 중")
+            return@LaunchedEffect
+        }
+
+        // 로그인되지 않았으면 네비게이션 없음
+        if (!isLoggedIn) return@LaunchedEffect
+
+        // termsAgreed가 null이면 아직 로드 중 - 대기 (다이얼로그 깜빡임 방지)
+        if (termsAgreed == null) {
+            Timber.d("약관 동의 로드 중 - 대기")
+            return@LaunchedEffect
+        }
+
+        // termsAgreed가 false면 약관 다이얼로그 표시 (다른 LaunchedEffect에서 처리) - 네비게이션 없음
+        if (termsAgreed == false) return@LaunchedEffect
+
+        // termsAgreed == true
+        if (onboardingCompleted) {
+            Timber.i("기존 사용자 - 약관 동의 완료, 온보딩 완료, 메인으로 이동")
+            onNavigateToMain()
+        } else {
+            Timber.i("신규 사용자 - 약관 동의 완료, 온보딩으로 이동")
             onNavigateToOnBoarding()
         }
     }
     LaunchedEffect(isNavigating) {
         if (isNavigating == true) {
             onNavigateToMain()
+            return@LaunchedEffect
         }
     }
 
@@ -147,6 +171,7 @@ fun LoginRoute(
 
             scope.launch {
                 // 상태 업데이트 (LaunchedEffect가 네비게이션 처리)
+                onboardingViewModel.updateTermsAgreed(true)
                 onboardingViewModel.updateServiceTermsChecked(true)
                 onboardingViewModel.updatePrivacyPolicyChecked(true)
             }
@@ -194,6 +219,7 @@ fun LoginScreen(
                         CustomProgressIndicator()
                     }
                 }
+
                 else -> {
                     Spacer(Modifier.weight(1f))
 
@@ -296,7 +322,7 @@ private fun LoginScreenWithTermsDialogPreview() {
                     onLocationAgreedChange = {},
                     onMarketingConsentChange = {},
                     onAllAgreedChange = {},
-                    onSubmit = {},
+                    onConfirm = {},
                     onDismiss = {},
                     onTermsClick = {},
                     onPrivacyClick = {},

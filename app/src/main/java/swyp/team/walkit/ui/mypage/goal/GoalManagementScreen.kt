@@ -1,6 +1,7 @@
 package swyp.team.walkit.ui.mypage.goal
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +25,7 @@ import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.ConfirmDialog
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.components.CtaButtonVariant
+import swyp.team.walkit.ui.components.InfoBanner
 import swyp.team.walkit.ui.mypage.goal.GoalError
 import swyp.team.walkit.ui.mypage.goal.components.GoalInfoBanner
 import swyp.team.walkit.ui.mypage.goal.component.GoalSettingCard
@@ -43,26 +45,33 @@ fun GoalManagementRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val goalError by viewModel.goalError.collectAsStateWithLifecycle()
+    val saveSuccess by viewModel.saveSuccess.collectAsStateWithLifecycle()
 
     GoalManagementScreen(
         goalState = uiState,
         goalError = goalError,
+        saveSuccess = saveSuccess,
         onNavigateBack = onNavigateBack,
         onUpdateGoal = viewModel::updateGoal,
         onResetGoal = viewModel::resetGoal,
         onClearError = viewModel::clearGoalError,
+        onClearSaveSuccess = viewModel::clearSaveSuccess,
         modifier = modifier,
     )
 }
+
+private const val SUCCESS_BANNER_DURATION_MS = 3000L
 
 @Composable
 fun GoalManagementScreen(
     goalState: GoalState,
     goalError: GoalError?,
+    saveSuccess: Boolean = false,
     onNavigateBack: () -> Unit,
     onUpdateGoal: suspend (Int, Int) -> Unit,
     onResetGoal: suspend () -> Unit,
     onClearError: () -> Unit,
+    onClearSaveSuccess: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -78,6 +87,24 @@ fun GoalManagementScreen(
     }
 
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var confirmDialogFromBack by remember { mutableStateOf(false) }
+
+    val hasChanges = GoalState(selectedSteps, selectedFrequency).hasChangesComparedTo(goalState)
+
+    // 뒤로가기 핸들러 (헤더·시스템 뒤로가기 공통)
+    fun handleNavigateBack() {
+        if (hasChanges) {
+            confirmDialogFromBack = true
+            showConfirmDialog = true
+        } else {
+            onNavigateBack()
+        }
+    }
+
+    // 시스템 뒤로가기 - 변경사항 있으면 확인 다이얼로그 표시
+    BackHandler(enabled = true) {
+        handleNavigateBack()
+    }
 
     // 에러 메시지 표시 상태 관리 (스낵바처럼 3초 후 사라짐)
     var showErrorMessage by remember { mutableStateOf(false) }
@@ -105,13 +132,21 @@ fun GoalManagementScreen(
         }
     }
 
+    // 저장 성공 시 InfoBanner 표시 (UserInfoManagementScreen과 동일한 패턴)
+    LaunchedEffect(saveSuccess) {
+        if (saveSuccess) {
+            kotlinx.coroutines.delay(SUCCESS_BANNER_DURATION_MS)
+            onClearSaveSuccess()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(SemanticColor.backgroundWhitePrimary)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            AppHeader(title = "내 목표 관리", onNavigateBack = onNavigateBack)
+            AppHeader(title = "내 목표 관리", onNavigateBack = { handleNavigateBack() })
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -189,10 +224,8 @@ fun GoalManagementScreen(
                         text = "저장하기",
                         enabled = goalError != GoalError.UpdateNotAllowed, // 한 달에 1번 변경 제한 에러에서만 비활성화
                         onClick = {
-                            if (GoalState(selectedSteps, selectedFrequency).hasChangesComparedTo(
-                                    goalState
-                                )
-                            ) {
+                            if (hasChanges) {
+                                confirmDialogFromBack = false
                                 showConfirmDialog = true
                             } else {
                                 onNavigateBack()
@@ -212,17 +245,51 @@ fun GoalManagementScreen(
                 message = "변경한 목표를 저장하시겠습니까?",
                 onPositive = {
                     showConfirmDialog = false
+                    val shouldNavigateBack = confirmDialogFromBack
+                    confirmDialogFromBack = false
                     scope.launch {
                         try {
                             onUpdateGoal(selectedSteps, selectedFrequency)
+                            if (shouldNavigateBack) onNavigateBack()
                         } catch (t: Throwable) {
-                            // ViewModel에서 에러 처리를 하므로 여기서는 별도 처리하지 않음
                             Timber.e(t, "목표 저장 중 예외 발생")
                         }
                     }
                 },
-                onNegative = { showConfirmDialog = false },
-                onDismiss = { showConfirmDialog = false })
+                onNegative = {
+                    showConfirmDialog = false
+                    if (confirmDialogFromBack) onNavigateBack()
+                    confirmDialogFromBack = false
+                },
+                onDismiss = {
+                    showConfirmDialog = false
+                    if (confirmDialogFromBack) onNavigateBack()
+                    confirmDialogFromBack = false
+                })
+        }
+
+        // 저장 성공 InfoBanner (UserInfoManagementScreen과 동일한 스타일)
+        if (saveSuccess) {
+            InfoBanner(
+                title = "저장 완료",
+                description = "목표가 성공적으로 저장되었습니다",
+                backgroundColor = SemanticColor.backgroundDarkSecondary,
+                borderColor = SemanticColor.backgroundDarkSecondary,
+                iconTint = SemanticColor.iconWhite,
+                textColor = SemanticColor.textBorderPrimaryInverse,
+                icon = { tint ->
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info_check),
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp + 46.dp + 16.dp) // Spacer(32) + CtaButton(46) + 16dp 여백
+                    .padding(horizontal = 16.dp)
+            )
         }
     }
 }

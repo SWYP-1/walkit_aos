@@ -476,39 +476,28 @@ class LoginViewModel @Inject constructor(
                 userRepository.refreshUser().onSuccess { user ->
                     Timber.i("로그인 직후 사용자 정보 조회 성공: ${user.nickname}")
 
-                    // 신규 가입 감지: 서버 닉네임이 있지만 로컬 온보딩이 완료되지 않은 경우
                     viewModelScope.launch {
-                        val isOnboardingCompleted = onboardingDataStore.isCompleted.first()
-                        Timber.d("로컬 온보딩 완료 상태: $isOnboardingCompleted")
-
-                        // 디버깅: DataStore 값들 확인
-                        val progress = onboardingDataStore.getProgress()
-                        Timber.d("DataStore 현재 값들 - completedKey: 확인불가, currentStep: ${progress.currentStep}, nickname: '${progress.nickname}'")
-
-                        if (!user.nickname.isNullOrBlank() && isOnboardingCompleted) {
-                            // 닉네임 있고 로컬 온보딩도 완료됨 - 기존 사용자, 메인으로 이동
+                        if (!user.nickname.isNullOrBlank()) {
+                            // 서버에서 닉네임이 있음 = 기존 사용자 (약관/온보딩 완료된 상태)
+                            // 새 기기·재설치 시 로컬 DataStore가 비어있어도 서버 프로필이 있으면 바로 메인으로
                             Timber.i("로그인 완료 - 기존 사용자: ${user.nickname}")
 
-                            // 서버 데이터 동기화 WorkManager 즉시 실행
+                            // 로컬 상태 동기화 (termsAgreed, completed) - 새 기기에서도 약관 다이얼로그 방지
+                            onboardingDataStore.setTermsAgreed(true)
+                            onboardingDataStore.setCompleted(true)
+                            Timber.d("LoginViewModel - 기존 사용자 로컬 약관/온보딩 상태 동기화 완료")
+
                             SessionSyncScheduler.runSyncOnce(application)
                             Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
 
-                            // 기존 사용자는 약관 동의 완료로 간주하여 다이얼로그 표시 방지
-                            Timber.d("LoginViewModel - 기존 사용자 약관 동의 완료로 설정하여 다이얼로그 방지")
-
-                            // 네비게이션 실행
                             onNavigateToMain?.invoke()
                         } else {
-                            // 신규 사용자 또는 온보딩 미완료 - 약관 동의부터 시작
-                            val reason = if (user.nickname.isNullOrBlank()) "서버 닉네임 없음" else "로컬 온보딩 미완료"
-                            Timber.i("약관 동의 시작 - 신규 사용자 감지: $reason")
+                            // 서버 닉네임 없음 = 신규 사용자, 약관 동의부터 시작
+                            Timber.i("약관 동의 시작 - 신규 사용자 감지: 서버 닉네임 없음")
 
-                            // 상태 업데이트 (다이얼로그 표시를 위한 trigger)
-                            _isLoggedIn.value = true  // 로그인 상태 유지 (약관 동의 필요)
+                            _isLoggedIn.value = true
                             _uiState.value = LoginUiState.Idle
-
                             Timber.d("LoginViewModel - 약관 동의용 상태 설정 완료: isLoggedIn=true")
-                            // 약관 동의 다이얼로그는 LoginRoute에서 상태를 감지하여 자동 표시됨
                         }
                     }
                 }.onError { throwable, message ->

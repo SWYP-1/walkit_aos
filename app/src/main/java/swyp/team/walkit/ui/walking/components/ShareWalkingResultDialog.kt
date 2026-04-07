@@ -95,7 +95,6 @@ private fun CaptureBox(
 }
 
 
-
 /* -------------------- 메인 다이얼로그 -------------------- */
 
 @Composable
@@ -127,9 +126,10 @@ fun ShareWalkingResultDialog(
                     .padding(16.dp)
             ) {
 
+                Spacer(Modifier.height(8.dp))
                 /* ---------- 타이틀 ---------- */
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(modifier = Modifier.fillMaxWidth(),horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "기록 공유하기",
                         style = MaterialTheme.walkItTypography.bodyL.copy(
@@ -163,7 +163,9 @@ fun ShareWalkingResultDialog(
                                 .allowHardware(false)
                                 .build(),
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop,
                             error = {
                                 Image(

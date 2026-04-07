@@ -19,6 +19,7 @@ import org.junit.Test
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
+import swyp.team.walkit.core.AuthEventBus
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.CosmeticItem
@@ -48,6 +49,7 @@ class CharacterShopViewModelTest {
     private lateinit var mockUserRepository: UserRepository
     private lateinit var mockLottieImageProcessor: LottieImageProcessor
     private lateinit var mockCharacterImageLoader: CharacterImageLoader
+    private lateinit var mockAuthEventBus : AuthEventBus
 
     private lateinit var viewModel: CharacterShopViewModel
 
@@ -62,6 +64,7 @@ class CharacterShopViewModelTest {
         mockUserRepository = mockk()
         mockLottieImageProcessor = mockk()
         mockCharacterImageLoader = mockk()
+        mockAuthEventBus = mockk()
 
         viewModel = CharacterShopViewModel(
             application = mockk(),
@@ -71,7 +74,8 @@ class CharacterShopViewModelTest {
             userRepository = mockUserRepository,
             lottieImageProcessor = mockLottieImageProcessor,
             characterImageLoader = mockCharacterImageLoader,
-            characterEventBus = mockk()
+            characterEventBus = mockk(),
+            authEventBus = mockAuthEventBus,
         )
     }
 

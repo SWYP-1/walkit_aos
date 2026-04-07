@@ -69,7 +69,7 @@ fun PostWalkingEmotionSelectRoute(
 ) {
     // 기본 상태바 설정 적용 (상태창 영역 사용 안 함)
 //    SetStatusBarConfig(config = DefaultStatusBarConfig)
-    
+
     // ViewModel 인스턴스 확인 로그 및 초기화
     LaunchedEffect(Unit) {
         Timber.d("🚶 PostWalkingEmotionSelectRoute - 진입: viewModel.hashCode=${viewModel.hashCode()}, currentSessionLocalId=${viewModel.currentSessionLocalIdValue}")
@@ -120,7 +120,11 @@ private fun PostWalkingEmotionSelectScreen(
     var isDeleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Box(modifier = modifier.fillMaxSize().background(SemanticColor.backgroundWhitePrimary)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SemanticColor.backgroundWhitePrimary)
+    ) {
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -132,9 +136,11 @@ private fun PostWalkingEmotionSelectScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             )
-            SectionCard {
+            SectionCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
-                    Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -268,7 +274,6 @@ private fun PostWalkingEmotionSelectScreen(
         }
     }
 }
-
 
 
 @Preview(showBackground = true)

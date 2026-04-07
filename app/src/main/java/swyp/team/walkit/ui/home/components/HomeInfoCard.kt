@@ -83,7 +83,7 @@ fun HomeNameAndGoalContent(
         modifier = modifier
             .fillMaxWidth()
     ) {
-        Row() {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = nickName,
 

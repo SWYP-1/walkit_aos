@@ -213,8 +213,9 @@ dependencies {
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.firebase:firebase-crashlytics")
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
 
     // JUnit 4 (기존 호환성)
     testImplementation(libs.junit)

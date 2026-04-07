@@ -65,7 +65,7 @@ class UserMapperTest {
         // Given: UserEntity 객체 (userId가 null)
         val entity = UserEntity(
             nickname = "김철수",
-            userId = null,  // null 값
+            userId = 1L,  // null 값
             imageName = "default.jpg",
             birthDate = "2000-12-25",
             email = "kim@example.com"
@@ -106,7 +106,7 @@ class UserMapperTest {
         // Given: Entity에 null userId가 있는 경우
         val entityWithNullId = UserEntity(
             nickname = "박민수",
-            userId = null,
+            userId = 1L,
             imageName = "image.png",
             birthDate = "1988-03-10",
             email = "park@example.com"

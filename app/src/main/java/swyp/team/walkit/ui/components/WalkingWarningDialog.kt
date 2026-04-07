@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
@@ -58,7 +59,7 @@ fun WalkingWarningDialog(
     continueButtonText: String = "계속하기",
     cancelButtonColor: Color = SemanticColor.backgroundWhitePrimary,
     cancelButtonTextColor: Color = SemanticColor.textBorderPrimary,
-    cancelButtonBorderColor : Color = SemanticColor.textBorderPrimary,
+    cancelButtonBorderColor: Color = SemanticColor.textBorderPrimary,
     onDismiss: () -> Unit,
     onCancel: () -> Unit,
     onContinue: () -> Unit,
@@ -159,19 +160,18 @@ fun WalkingWarningDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(47.dp)
+                            .background(
+                                color = cancelButtonColor
+                            )
                             .border(
                                 width = 1.dp,
                                 color = cancelButtonBorderColor,
                                 shape = RoundedCornerShape(8.dp),
                             )
-                            .background(
-                                color = cancelButtonColor,
-                                shape = RoundedCornerShape(8.dp),
-                            )
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable(
-                                interactionSource = remember {
-                                    MutableInteractionSource()
-                                },
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
                             ) {
                                 onCancel()
                                 onDismiss()
@@ -186,20 +186,18 @@ fun WalkingWarningDialog(
                             color = cancelButtonTextColor,
                         )
                     }
-
                     // 계속하기
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(47.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(
-                                color = Grey10,
-                                shape = RoundedCornerShape(8.dp),
+                                color = Grey10
                             )
                             .clickable(
-                                interactionSource = remember {
-                                    MutableInteractionSource()
-                                },
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
                             ) {
                                 onContinue()
                                 onDismiss()

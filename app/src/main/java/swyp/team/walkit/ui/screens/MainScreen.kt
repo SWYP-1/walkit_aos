@@ -18,6 +18,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,9 @@ fun MainScreen(
     val locationViewModel: LocationAgreementViewModel = hiltViewModel()
     val locationUiState by locationViewModel.uiState.collectAsStateWithLifecycle()
 
+    // 탭별 screen_view 추적 (중복 방지 포함)
+    val tabAnalyticsViewModel: MainScreenTabAnalyticsViewModel = hiltViewModel()
+
     // // 상태바 설정: MainScreen은 시스템 바 패딩을 사용하므로 DefaultStatusBarConfig 적용
     // SetStatusBarConfig(config = DefaultStatusBarConfig)
 
@@ -112,6 +116,10 @@ fun MainScreen(
         } else {
             selectedTabIndex
         }
+
+    LaunchedEffect(currentTabIndex) {
+        tabAnalyticsViewModel.onTabChanged(currentTabIndex)
+    }
     
     // Route 기반 selected route 결정
     val selectedRoute = when (currentTabIndex) {

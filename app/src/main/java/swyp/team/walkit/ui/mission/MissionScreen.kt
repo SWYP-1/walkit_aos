@@ -124,7 +124,6 @@ fun MissionScreen(
                             color = SemanticColor.textBorderPrimary
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
                     Row {
                         Text(
                             text = "미션은 한 주에 최대 1개씩 수행할 수 있어요",
@@ -140,7 +139,7 @@ fun MissionScreen(
 
                     // 필터 칩
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         MissionCategory.getFilterCategories().forEach { category ->
                             CategoryChip(
@@ -180,11 +179,11 @@ fun MissionScreen(
 
                 // 카드 사이 간격 8dp (마지막 제외)
                 if (index != filteredMissions.lastIndex) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(12.dp)) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
         }
     }
 }

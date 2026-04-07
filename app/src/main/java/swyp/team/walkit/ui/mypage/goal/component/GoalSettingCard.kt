@@ -126,7 +126,7 @@ fun GoalSettingCard(
                 Text(
                     text = formattedNumber,
                     style = MaterialTheme.walkItTypography.bodyM,
-                    color = SemanticColor.textBorderSecondary,
+                    color = SemanticColor.textBorderPrimary,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }

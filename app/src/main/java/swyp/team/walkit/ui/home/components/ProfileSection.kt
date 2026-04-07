@@ -110,14 +110,13 @@ private fun ProfileContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 좌측 걸음 수
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = formatNumber(uiState.todaySteps),
                     style = MaterialTheme.walkItTypography.headingXL.copy(
                         fontWeight = FontWeight.SemiBold
                     ),
                     color = SemanticColor.textBorderPrimary,
-                    modifier = Modifier.alignBy { it[FirstBaseline] }
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
@@ -126,7 +125,6 @@ private fun ProfileContent(
                         fontWeight = FontWeight.Medium
                     ),
                     color = SemanticColor.textBorderPrimary,
-                    modifier = Modifier.alignBy { it[FirstBaseline] }
                 )
             }
 

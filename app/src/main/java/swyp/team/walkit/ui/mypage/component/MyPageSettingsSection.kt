@@ -52,7 +52,7 @@ fun MyPageSettingsSection(
             Spacer(Modifier.height(12.dp))
         }
 
-        Spacer(Modifier.height(verticalPadding))
+        Spacer(Modifier.height(8.dp))
 
         // 추가 설정 섹션
         SectionCard {
@@ -67,7 +67,9 @@ fun MyPageSettingsSection(
             Spacer(Modifier.height(8.dp))
             MenuItem("목표 관리", onNavigateGoalManagement)
 
+            Spacer(Modifier.height(1.5.dp))
             MenuItem("내 미션",onNavigateMission)
+            Spacer(Modifier.height(1.5.dp))
             Spacer(Modifier.height(verticalPadding))
 //            MenuItem("커스텀 테스트", onNavigateCustomTest)
         }

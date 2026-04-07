@@ -3,6 +3,7 @@ package swyp.team.walkit.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,60 +61,71 @@ fun AppHeader(
     modifier: Modifier = Modifier,
     rightAction: @Composable (() -> Unit)? = null,
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp) // Material Design 표준 헤더 높이
-            .background(background) // color/background/whtie-primary
-        ,
-        contentAlignment = Alignment.Center
+            .background(background)
     ) {
-        Row(
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .height(56.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // 왼쪽: 뒤로가기 버튼
-            if (showBackButton) {
-                IconButton(
-                    onClick = onNavigateBack,
-                    modifier = Modifier.size(24.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_backward),
-                        contentDescription = "뒤로가기",
-                        tint = SemanticColor.iconBlack,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            } else {
-                Box(modifier = Modifier.size(24.dp))
-            }
-            // 중앙: 제목 (가운데 정렬)
-            Text(
-                text = title,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.walkItTypography.bodyXL.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
 
-            // 오른쪽: 액션 버튼 또는 프로필 이미지
-            Box(
-                modifier = Modifier.size(24.dp),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (rightAction != null) {
-                    rightAction()
+
+                // 왼쪽: 뒤로가기 버튼
+                if (showBackButton) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_backward),
+                            contentDescription = "뒤로가기",
+                            tint = SemanticColor.iconBlack,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 } else {
-                    // 기본: 빈 공간 (레이아웃 균형 유지)
+                    Box(modifier = Modifier.size(24.dp))
+                }
+
+                // 중앙: 제목
+                Text(
+                    text = title,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.walkItTypography.bodyXL.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+
+                // 오른쪽 액션
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    rightAction?.invoke()
                 }
             }
         }
+
+        // 항상 맨 아래 1dp
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            thickness = 1.dp,
+            color = SemanticColor.textBorderSecondaryInverse
+        )
     }
 }
 

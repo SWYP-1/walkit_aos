@@ -1,5 +1,6 @@
 package swyp.team.walkit.ui.mypage.component
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,7 +18,7 @@ fun MyPageCharacterEditButton(
     CtaButton(
         text = "내 정보 수정",
         onClick = onNavigateCharacterEdit,
-        modifier = modifier.padding(horizontal = 50.dp)
+        modifier = modifier.fillMaxWidth().padding(horizontal = 50.dp)
     )
 }
 

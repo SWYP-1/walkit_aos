@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
@@ -13,9 +15,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
+import swyp.team.walkit.analytics.NavigationAnalyticsViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import swyp.team.walkit.data.model.LocationPoint
@@ -97,6 +101,14 @@ fun NavGraph(
     navController: NavHostController,
     userViewModel: UserViewModel,
 ) {
+    val navigationAnalyticsViewModel: NavigationAnalyticsViewModel = hiltViewModel()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val routePattern = currentBackStackEntry?.destination?.route
+
+    LaunchedEffect(routePattern) {
+        routePattern?.let { navigationAnalyticsViewModel.onRouteChanged(it) }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,

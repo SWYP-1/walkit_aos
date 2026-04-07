@@ -140,7 +140,7 @@ private fun SearchResultScreen(
         is SearchUiState.Success -> {
             // 성공 상태 - LazyColumn 사용
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 items(searchUiState.results) { result ->
                     FriendCard(
