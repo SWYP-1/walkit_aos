@@ -49,11 +49,11 @@ import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.components.CtaButtonVariant
 import swyp.team.walkit.ui.components.PreviousButton
-import swyp.team.walkit.ui.components.EmotionSlider
 import swyp.team.walkit.ui.components.SectionCard
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
+import swyp.team.walkit.ui.walking.components.EmotionSelectCard
 import swyp.team.walkit.ui.walking.utils.createDefaultEmotionOptions
 import swyp.team.walkit.ui.walking.utils.findSelectedEmotionIndex
 import swyp.team.walkit.ui.walking.utils.valueToEmotionType
@@ -153,47 +153,69 @@ fun PreWalkingEmotionSelectScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(modifier = modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp)) {
-            SectionCard {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "산책 전 나의 마음은 어떤가요?",
-                        style = MaterialTheme.walkItTypography.headingS.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = SemanticColor.textBorderPrimary,
-                        textAlign = TextAlign.Center,
-                    )
 
-                    Spacer(Modifier.height(4.dp))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp, horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
 
-                    Text(
-                        text = "산책하기 전 지금 어떤 감정을 느끼는지 선택해주세요",
-                        style = MaterialTheme.walkItTypography.bodyS,
-                        color = SemanticColor.textBorderSecondary,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                Spacer(Modifier.height(40.dp))
 
+                Text(
+                    text = "산책 전 나의 마음은 어떤가요?",
+                    style = MaterialTheme.walkItTypography.headingS.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = SemanticColor.textBorderPrimary,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = "산책하기 전 지금 어떤 감정을 느끼는지 선택해주세요",
+                    style = MaterialTheme.walkItTypography.bodyS,
+                    color = SemanticColor.textBorderSecondary,
+                    textAlign = TextAlign.Center,
+                )
             }
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(41.dp))
 
-            // EmotionSlider를 사용한 감정 선택
-            EmotionSlider(
+            // EmotionSelectCard를 사용한 2열 감정 선택 리스트
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                emotions = emotionOptions,
-                selectedIndex = selectedIndex,
-                onEmotionSelected = { index ->
-                    if (index in emotionOptions.indices) {
-                        val emotionType = valueToEmotionType(emotionOptions[index].value)
-                        onEmotionSelected(emotionType)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                emotionOptions.chunked(2).forEach { rowEmotions ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        rowEmotions.forEach { emotion ->
+                            val index = emotionOptions.indexOf(emotion)
+                            val isSelected = index == selectedIndex
+                            EmotionSelectCard(
+                                emotionText = emotion.label,
+                                textColor = emotion.textColor,
+                                drawableId = emotion.imageResId,
+                                boxColor = emotion.boxColor,
+                                isSelected = isSelected,
+                                onClick = {
+                                    val emotionType = valueToEmotionType(emotion.value)
+                                    onEmotionSelected(emotionType)
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // 홀수 개일 경우 빈 공간 채우기
+                        if (rowEmotions.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
-            )
+            }
 
         }
 

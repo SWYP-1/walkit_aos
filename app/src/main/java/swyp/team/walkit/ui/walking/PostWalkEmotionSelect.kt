@@ -39,10 +39,10 @@ import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.components.CtaButtonVariant
 import swyp.team.walkit.ui.components.CustomProgressIndicator
-import swyp.team.walkit.ui.components.EmotionSlider
 import swyp.team.walkit.ui.components.SectionCard
 import swyp.team.walkit.ui.components.TextHighlight
 import swyp.team.walkit.ui.components.WalkingWarningDialog
+import swyp.team.walkit.ui.walking.components.EmotionSelectCard
 import swyp.team.walkit.ui.walking.utils.createDefaultEmotionOptions
 import swyp.team.walkit.ui.walking.utils.findSelectedEmotionIndex
 import swyp.team.walkit.ui.walking.utils.valueToEmotionType
@@ -136,141 +136,145 @@ private fun PostWalkingEmotionSelectScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             )
-            SectionCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "산책 후 나의 마음은 어떤가요?",
-                        style = MaterialTheme.walkItTypography.headingS.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = SemanticColor.textBorderPrimary,
-                        textAlign = TextAlign.Center,
-                    )
 
-                    Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(4.dp))
 
-                    Text(
-                        text = "산책 후 감정이 어떻게 변했는지 기록해주세요",
-                        style = MaterialTheme.walkItTypography.bodyS,
-                        color = SemanticColor.textBorderSecondary,
-                        textAlign = TextAlign.Center,
-                    )
+            Text(
+                text = "산책 후 감정이 어떻게 변했는지 기록해주세요",
+                style = MaterialTheme.walkItTypography.bodyS,
+                color = SemanticColor.textBorderSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, bottom = 25.dp, top = 25.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+
+
+            // 감정 옵션 리스트 생성 (Composable 함수 사용)
+            val emotionOptions = createDefaultEmotionOptions()
+
+            // 선택된 감정의 인덱스 찾기
+            val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
+
+            // EmotionSelectCard를 사용한 2열 감정 선택 리스트
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                emotionOptions.chunked(2).forEach { rowEmotions ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        rowEmotions.forEach { emotion ->
+                            val index = emotionOptions.indexOf(emotion)
+                            val isSelected = index == selectedIndex
+                            EmotionSelectCard(
+                                emotionText = emotion.label,
+                                textColor = emotion.textColor,
+                                drawableId = emotion.imageResId,
+                                boxColor = emotion.boxColor,
+                                isSelected = isSelected,
+                                onClick = {
+                                    val emotionType = valueToEmotionType(emotion.value)
+                                    onEmotionSelected(emotionType)
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // 홀수 개일 경우 빈 공간 채우기
+                        if (rowEmotions.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
-
             }
 
-            Column(
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CtaButton(
+                    text = "닫기",
+                    variant = CtaButtonVariant.SECONDARY,
+                    onClick = {
+                        showWarningDialog = true
+                    },
+                    modifier = Modifier.width(96.dp)
+                )
+
+                CtaButton(
+                    text = "다음으로",
+                    onClick = onNextClick,
+                    enabled = selectedEmotion != null,
+                    modifier = Modifier.weight(1f),
+                    iconResId = R.drawable.ic_arrow_forward,
+                    // iconTint 생략하면 자동으로 content 색상 사용
+                )
+            }
+        }
+
+        // 삭제 진행 중 오버레이
+        if (isDeleting) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, bottom = 32.dp, top = 46.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                    .background(SemanticColor.backgroundWhitePrimary.copy(alpha = 0.9f)),
+                contentAlignment = Alignment.Center
             ) {
-
-
-                // 감정 옵션 리스트 생성 (Composable 함수 사용)
-                val emotionOptions = createDefaultEmotionOptions()
-
-                // 선택된 감정의 인덱스 찾기
-                val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
-
-                // EmotionSlider를 사용한 감정 선택
-                EmotionSlider(
-                    modifier = Modifier.fillMaxWidth(),
-                    emotions = emotionOptions,
-                    selectedIndex = selectedIndex,
-                    onEmotionSelected = { index ->
-                        if (index in emotionOptions.indices) {
-                            val emotionType = valueToEmotionType(emotionOptions[index].value)
-                            onEmotionSelected(emotionType)
-                        }
-                    }
-                )
-                Spacer(Modifier.weight(1f))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CtaButton(
-                        text = "닫기",
-                        variant = CtaButtonVariant.SECONDARY,
-                        onClick = {
-                            showWarningDialog = true
-                        },
-                        modifier = Modifier.width(96.dp)
-                    )
-
-                    CtaButton(
-                        text = "다음으로",
-                        onClick = onNextClick,
-                        enabled = selectedEmotion != null,
-                        modifier = Modifier.weight(1f),
-                        iconResId = R.drawable.ic_arrow_forward,
-                        // iconTint 생략하면 자동으로 content 색상 사용
-                    )
+                    CustomProgressIndicator()
                 }
             }
+        }
 
-            // 삭제 진행 중 오버레이
-            if (isDeleting) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(SemanticColor.backgroundWhitePrimary.copy(alpha = 0.9f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        CustomProgressIndicator()
-                    }
-                }
-            }
+        // 경고 다이얼로그
+        if (showWarningDialog) {
+            WalkingWarningDialog(
+                title = "산책 기록을 중단하시겠습니까?",
+                message = "이대로 종료하시면 작성한 산책 기록이\n모두 사라져요!",
+                titleHighlight = TextHighlight(
+                    text = "중단",
+                    color = SemanticColor.stateRedPrimary,
+                ),
+                cancelButtonText = "중단하기",
+                continueButtonText = "계속하기",
+                onDismiss = { showWarningDialog = false },
+                onCancel = {
+                    // 산책 기록 중단 및 메인 화면으로 이동
+                    showWarningDialog = false
+                    Timber.d("🚶 PostEmotionSelect - 중단하기 클릭: 세션 삭제 시작")
+                    isDeleting = true
 
-            // 경고 다이얼로그
-            if (showWarningDialog) {
-                WalkingWarningDialog(
-                    title = "산책 기록을 중단하시겠습니까?",
-                    message = "이대로 종료하시면 작성한 산책 기록이\n모두 사라져요!",
-                    titleHighlight = TextHighlight(
-                        text = "중단",
-                        color = SemanticColor.stateRedPrimary,
-                    ),
-                    cancelButtonText = "중단하기",
-                    continueButtonText = "계속하기",
-                    onDismiss = { showWarningDialog = false },
-                    onCancel = {
-                        // 산책 기록 중단 및 메인 화면으로 이동
-                        showWarningDialog = false
-                        Timber.d("🚶 PostEmotionSelect - 중단하기 클릭: 세션 삭제 시작")
-                        isDeleting = true
-
-                        scope.launch {
-                            try {
-                                onDeleteSession()  // 1️⃣ 세션 삭제 완료 대기
-                                Timber.d("🚶 PostEmotionSelect - 세션 삭제 완료")
-                            } catch (e: Throwable) {
-                                Timber.e(e, "🚶 PostEmotionSelect - 세션 삭제 실패")
-                            } finally {
-                                isDeleting = false
-                                onClose()  // 2️⃣ 삭제 완료 후 화면 이동
-                                Timber.d("🚶 PostEmotionSelect - onClose() 호출 완료")
-                            }
+                    scope.launch {
+                        try {
+                            onDeleteSession()  // 1️⃣ 세션 삭제 완료 대기
+                            Timber.d("🚶 PostEmotionSelect - 세션 삭제 완료")
+                        } catch (e: Throwable) {
+                            Timber.e(e, "🚶 PostEmotionSelect - 세션 삭제 실패")
+                        } finally {
+                            isDeleting = false
+                            onClose()  // 2️⃣ 삭제 완료 후 화면 이동
+                            Timber.d("🚶 PostEmotionSelect - onClose() 호출 완료")
                         }
-                    },
-                    onContinue = {
-                        // 다이얼로그만 닫기
-                        showWarningDialog = false
-                    },
-                )
-            }
+                    }
+                },
+                onContinue = {
+                    // 다이얼로그만 닫기
+                    showWarningDialog = false
+                },
+            )
         }
     }
 }

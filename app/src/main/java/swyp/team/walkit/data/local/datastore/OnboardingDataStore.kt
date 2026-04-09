@@ -43,9 +43,15 @@ class OnboardingDataStore @Inject constructor(
     private val marketingConsentKey = booleanPreferencesKey("onboarding_marketing_consent")
     private val nicknameRegisteredKey = booleanPreferencesKey("onboarding_nickname_registered")
 
+    // '어떻게 사용하나요' 온보딩 완료 여부
+    private val howToUseCompletedKey = booleanPreferencesKey("how_to_use_completed")
+
     val isCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[completedKey] ?: false }
 
     val isTermsAgreed: Flow<Boolean> = dataStore.data.map { prefs -> prefs[termsAgreedKey] ?: false }
+
+    // '어떻게 사용하나요' 온보딩 완료 상태 Flow
+    val isHowToUseCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[howToUseCompletedKey] ?: false }
 
     // 소셜별 온보딩 완료 상태 Flow
     val kakaoOnboardingCompleted: Flow<Boolean> = dataStore.data.map { prefs -> prefs[kakaoOnboardingCompletedKey] ?: false }
@@ -96,6 +102,10 @@ class OnboardingDataStore @Inject constructor(
 
     suspend fun setCompleted(completed: Boolean) {
         dataStore.edit { prefs -> prefs[completedKey] = completed }
+    }
+
+    suspend fun setHowToUseCompleted(completed: Boolean) {
+        dataStore.edit { prefs -> prefs[howToUseCompletedKey] = completed }
     }
 
     suspend fun setTermsAgreed(agreed: Boolean) {

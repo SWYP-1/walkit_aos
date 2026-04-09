@@ -32,26 +32,30 @@ fun SplashScreen(
 ) {
     val isLoggedIn by loginViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val isSplashChecked by loginViewModel.isSplashChecked.collectAsStateWithLifecycle()
+    val isHowToUseCompleted by loginViewModel.isHowToUseCompleted.collectAsStateWithLifecycle()
     var navigated by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isSplashChecked, isLoggedIn) {
-        Timber.d("스플래시 LaunchedEffect 실행 - loginChecked:$isSplashChecked, loggedIn:$isLoggedIn, navigated:$navigated")
+    LaunchedEffect(isSplashChecked, isLoggedIn, isHowToUseCompleted) {
+        Timber.d("스플래시 LaunchedEffect 실행 - loginChecked:$isSplashChecked, loggedIn:$isLoggedIn, howToUseCompleted:$isHowToUseCompleted, navigated:$navigated")
 
         if (!isSplashChecked || navigated) {
             Timber.d("스플래시 네비게이션 스킵 - loginChecked:$isSplashChecked, navigated:$navigated")
             return@LaunchedEffect
         }
 
-        val targetRoute = if (isLoggedIn) {
+        val targetRoute = if (!isHowToUseCompleted) {
+            Screen.HowToUseOnboarding.route
+        } else if (isLoggedIn) {
             Screen.Main.route
         } else {
             Screen.Login.route  // 로그인 실패 시 로그인 화면으로 이동
         }
 
         Timber.i(
-            "스플래시 분기 결정 - loginChecked:%s, loggedIn:%s, target:%s",
+            "스플래시 분기 결정 - loginChecked:%s, loggedIn:%s, howToUseCompleted:%s, target:%s",
             isSplashChecked,
             isLoggedIn,
+            isHowToUseCompleted,
             targetRoute,
         )
 
@@ -68,11 +72,11 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SemanticColor.backgroundWhitePrimary),
+            .background(SemanticColor.textBorderGreenPrimary),
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            painter = painterResource(R.drawable.logo_splash),
+            painter = painterResource(R.drawable.ic_splash_logo),
             contentDescription = "splash",
         )
     }

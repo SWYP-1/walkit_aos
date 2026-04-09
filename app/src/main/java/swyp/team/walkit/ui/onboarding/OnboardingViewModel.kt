@@ -645,6 +645,15 @@ constructor(
             }
         }
     }
+
+    /**
+     * '어떻게 사용하나요' 온보딩 완료 처리
+     */
+    fun setHowToUseCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            onboardingDataStore.setHowToUseCompleted(completed)
+        }
+    }
 }
 
 

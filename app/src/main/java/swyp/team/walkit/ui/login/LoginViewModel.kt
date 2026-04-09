@@ -75,6 +75,9 @@ class LoginViewModel @Inject constructor(
     private val _isSplashChecked = MutableStateFlow(false)
     val isSplashChecked: StateFlow<Boolean> = _isSplashChecked.asStateFlow()
 
+    private val _isHowToUseCompleted = MutableStateFlow(false)
+    val isHowToUseCompleted: StateFlow<Boolean> = _isHowToUseCompleted.asStateFlow()
+
 
     init {
         Timber.i("LoginViewModel 초기화 시작")
@@ -103,6 +106,9 @@ class LoginViewModel @Inject constructor(
             Timber.d("checkLoginStatus() 코루틴 시작")
             _isSplashChecked.value = false
             try {
+                // '어떻게 사용하나요' 온보딩 완료 여부 확인
+                _isHowToUseCompleted.value = onboardingDataStore.isHowToUseCompleted.first()
+
                 // 서버 토큰 확인
                 Timber.d("서버 토큰 확인 시작")
                 val accessToken = try {
@@ -475,26 +481,27 @@ class LoginViewModel @Inject constructor(
                 // refreshUser() 호출하여 서버에서 최신 사용자 정보 가져오기 (캐시 무시)
                 userRepository.refreshUser().onSuccess { user ->
                     Timber.i("로그인 직후 사용자 정보 조회 성공: ${user.nickname}")
-
+                    // 닉네임 존재 여부에 따른 사용자 분류
                     viewModelScope.launch {
                         if (!user.nickname.isNullOrBlank()) {
-                            // 서버에서 닉네임이 있음 = 기존 사용자 (약관/온보딩 완료된 상태)
-                            // 새 기기·재설치 시 로컬 DataStore가 비어있어도 서버 프로필이 있으면 바로 메인으로
+                            // 1. 기존 사용자 (서버에 닉네임이 있음)
+                            // 로컬 온보딩 완료 상태 강제로 업데이트 (재설치 시에도 팝업 방지)
                             Timber.i("로그인 완료 - 기존 사용자: ${user.nickname}")
 
-                            // 로컬 상태 동기화 (termsAgreed, completed) - 새 기기에서도 약관 다이얼로그 방지
+                            // 🔥 로컬 상태 동기화: 기존 유저는 약관과 온보딩이 이미 완료된 상태임
                             onboardingDataStore.setTermsAgreed(true)
                             onboardingDataStore.setCompleted(true)
                             Timber.d("LoginViewModel - 기존 사용자 로컬 약관/온보딩 상태 동기화 완료")
 
+                            // 서버 데이터 동기화 WorkManager 즉시 실행
                             SessionSyncScheduler.runSyncOnce(application)
                             Timber.d("서버 데이터 동기화 WorkManager 작업 예약됨")
 
+                            // 네비게이션 실행
                             onNavigateToMain?.invoke()
                         } else {
-                            // 서버 닉네임 없음 = 신규 사용자, 약관 동의부터 시작
-                            Timber.i("약관 동의 시작 - 신규 사용자 감지: 서버 닉네임 없음")
-
+                            // 2. 신규 사용자 (서버에 닉네임이 없음) - 약관 동의부터 시작
+                            Timber.i("약관 동의 시작 - 신규 사용자 감지 (서버 닉네임 없음)")
                             _isLoggedIn.value = true
                             _uiState.value = LoginUiState.Idle
                             Timber.d("LoginViewModel - 약관 동의용 상태 설정 완료: isLoggedIn=true")

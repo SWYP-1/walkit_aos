@@ -8,8 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -35,6 +37,9 @@ import swyp.team.walkit.ui.mission.MissionRoute
 import swyp.team.walkit.ui.mypage.goal.GoalManagementRoute
 import swyp.team.walkit.ui.mypage.settings.NotificationSettingsRoute
 import swyp.team.walkit.ui.onboarding.OnboardingScreen
+import swyp.team.walkit.ui.onboarding.howtouse.HowToUseOnboardingScreen
+import swyp.team.walkit.ui.onboarding.OnboardingViewModel
+import swyp.team.walkit.ui.login.LoginViewModel
 import swyp.team.walkit.ui.alarm.AlarmScreen
 import swyp.team.walkit.ui.customtest.CustomTestRoute
 import swyp.team.walkit.ui.customtest.RandomPathTestScreen
@@ -68,6 +73,7 @@ sealed class Screen(val route: String) {
     }
 
     data object Onboarding : Screen("onboarding")
+    data object HowToUseOnboarding : Screen("how_to_use_onboarding")
     data object Friends : Screen("friends")
     data object FriendSearch : Screen("friend_search")
     data object FriendSearchDetail : Screen("friend_search_detail/{nickname}/{followStatus}") {
@@ -292,6 +298,25 @@ fun NavGraph(
                     },
                 )
             }
+        }
+
+        /* How to Use Onboarding */
+        composable(Screen.HowToUseOnboarding.route) {
+            val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+
+            Scaffold(contentWindowInsets = WindowInsets.systemBars){
+                paddingValues ->
+                HowToUseOnboardingScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    onStart = {
+                        onboardingViewModel.setHowToUseCompleted(true)
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.HowToUseOnboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
         }
 
         /* Custom Test */

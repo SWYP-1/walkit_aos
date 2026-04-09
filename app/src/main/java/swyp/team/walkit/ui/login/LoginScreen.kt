@@ -82,48 +82,32 @@ fun LoginRoute(
             onNavigateToOnBoarding = onNavigateToOnBoarding
         )
     }
+    // 다이얼로그 표시 여부 결정
+    LaunchedEffect(isLoginChecked, termsAgreed, isNavigating, isLoggedIn, onboardingCompleted) {
+        // 1. 네비게이션 중이거나 이미 온보딩을 완료한 기존 사용자면 절대 표시하지 않음
+        if (isNavigating || onboardingCompleted) {
+            showTermsDialog = false
+            return@LaunchedEffect
+        }
 
-    // 다이얼로그 표시 여부 결정 (메인 전환 시 깜빡임 방지)
-    LaunchedEffect(isLoginChecked, termsAgreed, isNavigating, isLoggedIn) {
-        // termsAgreed가 null이면 아직 로드 중 - 다이얼로그 표시하지 않음
-        // termsAgreed가 true면 곧 메인/온보딩으로 이동 - 다이얼로그 표시하지 않음
-        val shouldShowDialog = isLoginChecked && isLoggedIn && termsAgreed == false && !isNavigating
-        Timber.d("약관 동의 다이얼로그 표시 조건 - shouldShowDialog: $shouldShowDialog (isLoginChecked: $isLoginChecked, isLoggedIn: $isLoggedIn, termsAgreed: $termsAgreed, isNavigating: $isNavigating)")
+        // 2. 로그인 상태가 확인되었고(isLoginChecked), 로그인은 되었는데(isLoggedIn), 약관 동의가 안 된 경우(termsAgreed == false)에만 표시
+        val shouldShowDialog = isLoginChecked && isLoggedIn && termsAgreed == false
+        
+        Timber.d("약관 동의 다이얼로그 표시 조건 - shouldShowDialog: $shouldShowDialog (isLoginChecked: $isLoginChecked, isLoggedIn: $isLoggedIn, termsAgreed: $termsAgreed, isNavigating: $isNavigating, onboardingCompleted: $onboardingCompleted)")
         showTermsDialog = shouldShowDialog
     }
 
-    /**
-     * ✅ Navigation 진입점 (수정됨)
-     * - 로그인 성공 후 약관/온보딩 상태에 따라 메인 또는 온보딩으로 이동
-     * - termsAgreed 확인 후 네비게이션하여 약관 다이얼로그 깜빡임 방지
-     */
-    LaunchedEffect(termsAgreed, onboardingCompleted, isLoginChecked, isLoggedIn) {
-        Timber.d("LaunchedEffect 실행 - isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed, onboardingCompleted:$onboardingCompleted, isLoginChecked:$isLoginChecked")
+    LaunchedEffect(isLoginChecked, isLoggedIn, termsAgreed, onboardingCompleted) {
+        Timber.d("네비게이션 체크 - isLoginChecked:$isLoginChecked, isLoggedIn:$isLoggedIn, termsAgreed:$termsAgreed, onboardingCompleted:$onboardingCompleted")
+        
+        if (!isLoginChecked) return@LaunchedEffect
+        
+        // 1. 이미 온보딩을 완료한 유저는 여기서 처리하지 않음 (LoginViewModel이 Main으로 이동시킴)
+        if (onboardingCompleted) return@LaunchedEffect
 
-        // 로그인 체크가 완료되지 않았으면 대기
-        if (!isLoginChecked) {
-            Timber.d("로그인 체크 미완료 - 대기 중")
-            return@LaunchedEffect
-        }
-
-        // 로그인되지 않았으면 네비게이션 없음
-        if (!isLoggedIn) return@LaunchedEffect
-
-        // termsAgreed가 null이면 아직 로드 중 - 대기 (다이얼로그 깜빡임 방지)
-        if (termsAgreed == null) {
-            Timber.d("약관 동의 로드 중 - 대기")
-            return@LaunchedEffect
-        }
-
-        // termsAgreed가 false면 약관 다이얼로그 표시 (다른 LaunchedEffect에서 처리) - 네비게이션 없음
-        if (termsAgreed == false) return@LaunchedEffect
-
-        // termsAgreed == true
-        if (onboardingCompleted) {
-            Timber.i("기존 사용자 - 약관 동의 완료, 온보딩 완료, 메인으로 이동")
-            onNavigateToMain()
-        } else {
-            Timber.i("신규 사용자 - 약관 동의 완료, 온보딩으로 이동")
+        // 2. 로그인된 상태에서 약관 동의가 확인되면 온보딩으로 이동
+        if (isLoggedIn && termsAgreed == true) {
+            Timber.i("온보딩으로 이동 조건 충족 - 네비게이션 실행")
             onNavigateToOnBoarding()
         }
     }
