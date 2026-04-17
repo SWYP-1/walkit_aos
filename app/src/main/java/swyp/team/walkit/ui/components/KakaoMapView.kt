@@ -2,6 +2,9 @@ package swyp.team.walkit.ui.components
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.annotation.DrawableRes
+import androidx.appcompat.content.res.AppCompatResources
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -51,12 +54,25 @@ import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.kakao.vectormap.camera.CameraPosition
 import com.kakao.vectormap.GestureType
 import swyp.team.walkit.data.model.LocationPoint
+import swyp.team.walkit.data.model.MapMarker
+import swyp.team.walkit.data.model.MapMarkerType
 import swyp.team.walkit.presentation.viewmodel.CameraSettings
 import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.presentation.viewmodel.KakaoMapUiState
 import swyp.team.walkit.presentation.viewmodel.MapRenderState
 import swyp.team.walkit.ui.theme.SemanticColor
+import swyp.team.walkit.R
+import com.kakao.vectormap.label.Label
+import com.kakao.vectormap.label.LabelLayer
+import com.kakao.vectormap.label.LabelLayerOptions
+import com.kakao.vectormap.label.LabelOptions
+import com.kakao.vectormap.label.LabelStyle
+import com.kakao.vectormap.label.LabelStyles
+import swyp.team.walkit.ui.interactivemap.MapTrackingMode
 import timber.log.Timber
+
+/** 현재 위치 레이블 전용 레이어 ID (일반 마커 레이어와 분리) */
+private const val MY_LOCATION_LAYER_ID = "walkit_my_location_layer"
 
 /**
  * 상수 정의
@@ -76,6 +92,8 @@ private object MapSnapshotConstants {
  * @param modifier Modifier
  * @param viewModel KakaoMapViewModel (옵션, 없으면 자동 생성)
  * @param onMapViewReady MapView가 준비되었을 때 호출되는 콜백 (스냅샷 생성용)
+ * @param markers 지도에 표시할 마커 리스트
+ * @param onMarkerClick 마커 클릭 시 호출되는 콜백
  */
 @Composable
 fun KakaoMapView(
@@ -84,6 +102,16 @@ fun KakaoMapView(
     viewModel: KakaoMapViewModel = hiltViewModel(),
     onMapViewReady: ((MapView?) -> Unit)? = null,
     latLngBoundsPaddingPx: Int = 64, // LatLngBounds 패딩 (픽셀)
+    markers: List<MapMarker> = emptyList(),
+    /** userId → 친구 핀 Bitmap. null이면 ic_pin_friend 기본 아이콘 사용 */
+    friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
+    onMarkerClick: ((MapMarker) -> Unit)? = null,
+    /** 현재 위치 추적 모드 */
+    trackingMode: MapTrackingMode = MapTrackingMode.IDLE,
+    /** FOLLOWING 모드일 때 ViewModel이 주기적으로 업데이트하는 현재 위치 */
+    currentLocation: LocationPoint? = null,
+    /** 사용자 제스처(드래그 등)로 트래킹이 해제될 때 콜백 */
+    onTrackingDisabled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val localDensity = LocalDensity.current
@@ -108,6 +136,10 @@ fun KakaoMapView(
         mutableStateOf<IntSize?>(null)
     }
 
+    // 현재 위치 추적용 전용 레이어 및 레이블 (일반 마커 레이어와 분리)
+    var myLocationLayer by remember { mutableStateOf<LabelLayer?>(null) }
+    var myLocationLabel by remember { mutableStateOf<Label?>(null) }
+
     // 화면 크기 측정 및 ViewModel에 전달
     LaunchedEffect(mapViewSize) {
         mapViewSize?.let { size ->
@@ -121,6 +153,91 @@ fun KakaoMapView(
     // ViewModel에 locations 전달 (크기가 측정되면 자동으로 재계산됨)
     LaunchedEffect(locations) {
         viewModel.setLocations(locations, localDensity)
+    }
+
+    // 마커 업데이트
+    LaunchedEffect(markers, friendBitmaps, kakaoMapInstance) {
+        val kakaoMap = kakaoMapInstance ?: run {
+            Timber.w("[마커 LaunchedEffect] kakaoMapInstance=null — 스킵")
+            return@LaunchedEffect
+        }
+        Timber.d("[마커 LaunchedEffect] 트리거 — markers=${markers.size}개, friendBitmaps=${friendBitmaps.size}개")
+        // 각 마커 좌표 출력 (위치 디버깅)
+        markers.forEach { m ->
+            Timber.d("[마커 LaunchedEffect] ${m.type} id=${m.id} lat=${m.latitude} lon=${m.longitude}")
+        }
+        drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
+
+        // 마커가 있을 때 카메라를 마커 전체가 보이도록 이동
+        if (markers.isNotEmpty()) {
+            try {
+                val boundsBuilder = LatLngBounds.Builder()
+                markers.forEach { marker ->
+                    boundsBuilder.include(LatLng.from(marker.latitude, marker.longitude))
+                }
+                val bounds = boundsBuilder.build()
+                Timber.d("[마커 LaunchedEffect] fitMapPoints bounds: ")
+                kakaoMap.moveCamera(
+                    CameraUpdateFactory.fitMapPoints(bounds, 120)
+                )
+                Timber.d("[마커 LaunchedEffect] 카메라 이동 요청 완료")
+            } catch (t: Throwable) {
+                Timber.e(t, "[마커 LaunchedEffect] 카메라 이동 실패")
+            }
+        }
+    }
+
+    // 지도 준비 완료 시 현재 위치 전용 레이어 생성 (일반 마커와 별도 관리)
+    LaunchedEffect(kakaoMapInstance) {
+        val kakaoMap = kakaoMapInstance
+        if (kakaoMap == null) {
+            myLocationLayer = null
+            myLocationLabel = null
+            return@LaunchedEffect
+        }
+        myLocationLayer = runCatching {
+            kakaoMap.labelManager?.addLayer(LabelLayerOptions.from(MY_LOCATION_LAYER_ID))
+        }.getOrElse { t ->
+            Timber.e(t, "현재 위치 레이어 생성 실패")
+            null
+        }
+    }
+
+    // 트래킹 모드 / 현재 위치 변경 시 TrackingManager 연동
+    LaunchedEffect(trackingMode, currentLocation, kakaoMapInstance, myLocationLayer) {
+        val kakaoMap = kakaoMapInstance ?: return@LaunchedEffect
+        val layer = myLocationLayer ?: return@LaunchedEffect
+
+        when (trackingMode) {
+            MapTrackingMode.IDLE -> {
+                // 트래킹 중단 및 현재 위치 레이블 제거
+                kakaoMap.trackingManager?.stopTracking()
+                layer.removeAll()
+                myLocationLabel = null
+                Timber.d("위치 추적 중단")
+            }
+            MapTrackingMode.FOLLOWING -> {
+                val loc = currentLocation ?: return@LaunchedEffect
+                val latLng = LatLng.from(loc.latitude, loc.longitude)
+
+                val existingLabel = myLocationLabel
+                if (existingLabel != null) {
+                    // 기존 레이블 위치 이동 — TrackingManager가 카메라를 자동으로 따라감
+                    existingLabel.moveTo(latLng)
+                    Timber.d("현재 위치 레이블 이동: ${loc.latitude}, ${loc.longitude}")
+                } else {
+                    // 최초 트래킹 시작: 레이블 생성 → startTracking 호출
+                    val bitmap = vectorDrawableToBitmap(context, R.drawable.ic_my_location)
+                    val labelManager = kakaoMap.labelManager ?: return@LaunchedEffect
+                    val style = labelManager.addLabelStyles(LabelStyles.from(LabelStyle.from(bitmap)))
+                    val newLabel = layer.addLabel(LabelOptions.from(latLng).setStyles(style))
+                    myLocationLabel = newLabel
+                    kakaoMap.trackingManager?.startTracking(newLabel)
+                    kakaoMap.trackingManager?.setTrackingRotation(false)
+                    Timber.d("위치 추적 시작: ${loc.latitude}, ${loc.longitude}")
+                }
+            }
+        }
     }
 
     // 렌더링 상태에 따라 작업 수행
@@ -203,7 +320,11 @@ fun KakaoMapView(
                         uiState,
                         context,
                         strokePx,
-                        latLngBoundsPaddingPx.toFloat()
+                        latLngBoundsPaddingPx.toFloat(),
+                        markers,
+                        friendBitmaps,
+                        onMarkerClick,
+                        onTrackingDisabled = onTrackingDisabled,
                     ) { kakaoMap ->
                         kakaoMapInstance = kakaoMap
                     }
@@ -240,6 +361,10 @@ private fun initializeMapView(
     context: Context,
     strokePx: Float,
     latLngBoundsPaddingPx: Float,
+    markers: List<MapMarker>,
+    friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
+    onMarkerClick: ((MapMarker) -> Unit)?,
+    onTrackingDisabled: () -> Unit = {},
     onMapReady: (KakaoMap) -> Unit,
 ) {
     mapView.start(
@@ -255,8 +380,26 @@ private fun initializeMapView(
         object : KakaoMapReadyCallback() {
             override fun onMapReady(kakaoMap: KakaoMap) {
                 Timber.d("KakaoMap ready")
-                setupCameraListener(kakaoMap, viewModel)
+                setupCameraListener(kakaoMap, viewModel, onTrackingDisabled)
+
+                // 마커 초기화
+                drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
+
+                // 초기 카메라 위치 설정 (마커가 있을 때)
+                if (markers.isNotEmpty()) {
+                    val boundsBuilder = LatLngBounds.Builder()
+                    markers.forEach { marker ->
+                        boundsBuilder.include(LatLng.from(marker.latitude, marker.longitude))
+                    }
+                    val cameraUpdate = CameraUpdateFactory.fitMapPoints(
+                        boundsBuilder.build(),
+                        latLngBoundsPaddingPx.toInt()
+                    )
+                    kakaoMap.moveCamera(cameraUpdate)
+                }
+
                 onMapReady(kakaoMap)
+                // 초기 상태에 따른 업데이트 실행
                 updateMapFromState(
                     kakaoMap,
                     mapView,
@@ -277,14 +420,20 @@ private fun initializeMapView(
 private fun setupCameraListener(
     kakaoMap: KakaoMap,
     viewModel: KakaoMapViewModel,
+    onTrackingDisabled: () -> Unit = {},
 ) {
     kakaoMap.setOnCameraMoveEndListener(null)
     kakaoMap.setOnCameraMoveEndListener { _: KakaoMap, _: CameraPosition, gestureType: GestureType ->
         if (gestureType == GestureType.Unknown &&
             viewModel.renderState.value == MapRenderState.MovingCamera
         ) {
+            // 프로그래밍 방식 카메라 이동 완료
             Timber.d("카메라 이동 완료 (프로그래밍 방식)")
             viewModel.onCameraMoveComplete()
+        } else if (gestureType != GestureType.Unknown) {
+            // 사용자 드래그/줌 제스처 → 트래킹 비활성화
+            Timber.d("사용자 제스처 감지 (gestureType=$gestureType) → 트래킹 비활성화")
+            onTrackingDisabled()
         }
     }
 }
@@ -303,6 +452,13 @@ private fun updateMapFromState(
 ) {
     when (uiState) {
         is KakaoMapUiState.Ready -> {
+            // 경로가 없는 인터랙티브 지도 모드 — 카메라/경로 상태 머신 전체 스킵
+            // (마커 카메라 이동은 LaunchedEffect(markers, ...) 에서 독립적으로 처리)
+            if (uiState.locations.isEmpty()) {
+                Timber.d("경로 없음 — updateMapFromState 스킵 (인터랙티브 지도 모드)")
+                return
+            }
+
             // 이미 경로 그리기 중이면 중복 호출 방지 (카메라 이동은 허용)
             val currentRenderState = viewModel.renderState.value
             if (currentRenderState == MapRenderState.DrawingPath) {
@@ -831,5 +987,139 @@ private fun moveCameraToPath(
         }
     } catch (t: Throwable) {
         Timber.e(t, "카메라 이동 실패: ${t.message}")
+    }
+}
+
+/**
+ * 기존 마커 제거
+ */
+private fun clearMarkers(kakaoMap: KakaoMap) {
+    try {
+        kakaoMap.labelManager?.layer?.removeAll()
+        Timber.d("기존 마커 모두 제거됨")
+    } catch (t: Throwable) {
+        Timber.e(t, "마커 제거 실패")
+    }
+}
+
+/**
+ * 벡터 드로어블 리소스를 Bitmap으로 변환한다.
+ *
+ * KakaoMap SDK는 OpenGL 렌더링 기반으로, Vector XML 드로어블을 직접
+ * 지원하지 않으므로 반드시 Bitmap으로 변환 후 LabelStyle에 전달해야 한다.
+ */
+private fun vectorDrawableToBitmap(context: Context, @DrawableRes resId: Int): Bitmap {
+    val drawable = AppCompatResources.getDrawable(context, resId)
+        ?: throw IllegalArgumentException("리소스를 찾을 수 없음: $resId")
+    val bitmap = Bitmap.createBitmap(
+        drawable.intrinsicWidth,
+        drawable.intrinsicHeight,
+        Bitmap.Config.ARGB_8888,
+    )
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return bitmap
+}
+
+/**
+ * 마커 그리기
+ *
+ * KakaoMap SDK는 Vector Drawable을 직접 지원하지 않으므로
+ * [vectorDrawableToBitmap]으로 변환 후 [LabelStyle.from]에 전달한다.
+ */
+private fun drawMarkers(
+    context: Context,
+    kakaoMap: KakaoMap,
+    markers: List<MapMarker>,
+    friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
+    onMarkerClick: ((MapMarker) -> Unit)? = null,
+) {
+    if (markers.isEmpty()) {
+        clearMarkers(kakaoMap)
+        return
+    }
+
+    Timber.d("[drawMarkers] 시작 — 총 ${markers.size}개 (FRIEND=${markers.count { it.type == MapMarkerType.FRIEND }}, SPOT=${markers.count { it.type == MapMarkerType.SPOT }})")
+
+    try {
+        val labelManager = kakaoMap.labelManager
+        if (labelManager == null) {
+            Timber.e("[drawMarkers] labelManager가 null — 마커 그리기 불가")
+            return
+        }
+        val layer = labelManager.layer
+        if (layer == null) {
+            Timber.e("[drawMarkers] labelManager.layer가 null — 마커 그리기 불가")
+            return
+        }
+
+        clearMarkers(kakaoMap)
+
+        markers.forEach { marker ->
+            // 친구 핀: 캐릭터 Bitmap 우선, 없으면 ic_pin_friend 폴백
+            // 장소 핀: ic_pin_spot
+            val bitmap = when (marker.type) {
+                MapMarkerType.FRIEND -> {
+                    val userId = marker.id.removePrefix("friend_").toLongOrNull()
+                    val cachedBitmap = userId?.let { friendBitmaps[it] }
+                    if (cachedBitmap != null && !cachedBitmap.isRecycled && !cachedBitmap.isTransparent()) {
+                        Timber.d("[drawMarkers] 친구 핀(userId=$userId) — 캐릭터 Bitmap 사용 (${cachedBitmap.width}x${cachedBitmap.height})")
+                        cachedBitmap
+                    } else {
+                        if (cachedBitmap != null) {
+                            Timber.w("[drawMarkers] 친구 핀(userId=$userId) — 캐릭터 Bitmap 투명/재활용됨, ic_pin_friend 폴백")
+                        } else {
+                            Timber.d("[drawMarkers] 친구 핀(userId=$userId) — ic_pin_friend 폴백")
+                        }
+                        vectorDrawableToBitmap(context, R.drawable.ic_pin_friend)
+                    }
+                }
+                MapMarkerType.SPOT -> vectorDrawableToBitmap(context, R.drawable.ic_pin_spot)
+            }
+            val style = labelManager.addLabelStyles(
+                LabelStyles.from(LabelStyle.from(bitmap))
+            )
+            val options = LabelOptions.from(LatLng.from(marker.latitude, marker.longitude))
+                .setStyles(style)
+                .setTag(marker)
+
+            layer.addLabel(options)
+        }
+
+        kakaoMap.setOnLabelClickListener { _, _, label ->
+            val marker = label.tag as? MapMarker
+            if (marker != null) {
+                onMarkerClick?.invoke(marker)
+                true
+            } else {
+                false
+            }
+        }
+
+        Timber.d("[drawMarkers] 완료 — ${markers.size}개 그리기 성공")
+    } catch (t: Throwable) {
+        Timber.e(t, "[drawMarkers] 실패: ${t.message}")
+    }
+}
+
+/**
+ * Bitmap의 모든 픽셀이 완전 투명(alpha=0)인지 확인한다.
+ * Lottie 렌더링 실패 시 투명 Bitmap이 생성될 수 있으므로 폴백 판단에 사용.
+ */
+private fun Bitmap.isTransparent(): Boolean {
+    if (width == 0 || height == 0) return true
+    // 성능을 위해 중앙 영역 샘플 픽셀만 확인 (전체 픽셀 순회 방지)
+    val centerX = width / 2
+    val centerY = height / 2
+    val samplePoints = listOf(
+        centerX to centerY,
+        width / 4 to height / 4,
+        width * 3 / 4 to height / 4,
+        width / 4 to height * 3 / 4,
+        width * 3 / 4 to height * 3 / 4,
+    )
+    return samplePoints.all { (x, y) ->
+        android.graphics.Color.alpha(getPixel(x, y)) == 0
     }
 }

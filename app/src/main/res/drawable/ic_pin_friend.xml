@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="44dp"
+    android:viewportWidth="36"
+    android:viewportHeight="44">
+  <!-- 핀 몸통 (파란색) -->
+  <path
+      android:pathData="M18,2C10.268,2 4,8.268 4,16C4,26 18,42 18,42C18,42 32,26 32,16C32,8.268 25.732,2 18,2Z"
+      android:fillColor="#2196F3"/>
+  <!-- 핀 내부 흰색 원 -->
+  <path
+      android:pathData="M18,10C14.686,10 12,12.686 12,16C12,19.314 14.686,22 18,22C21.314,22 24,19.314 24,16C24,12.686 21.314,10 18,10Z"
+      android:fillColor="#FFFFFF"/>
+</vector>

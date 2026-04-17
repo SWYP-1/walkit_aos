@@ -1,34 +1,19 @@
 package swyp.team.walkit.ui.friend
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +25,7 @@ import swyp.team.walkit.ui.friend.FriendViewModel
 import swyp.team.walkit.ui.friend.SearchUiState
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CustomProgressIndicator
+import swyp.team.walkit.ui.components.EmptyResultScreen
 import swyp.team.walkit.ui.components.SearchBar
 import swyp.team.walkit.ui.friend.component.FriendCard
 import swyp.team.walkit.ui.theme.SemanticColor
@@ -164,45 +150,11 @@ private fun SearchResultScreen(
 
 @Composable
 fun FriendSearchEmptyScreen(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                color = SemanticColor.backgroundWhiteSecondary,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(vertical = 40.dp, horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.Center),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_face_search_empty),
-                contentDescription = null
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "검색 결과가 없어요",
-                // body XL/semibold
-                style = MaterialTheme.walkItTypography.bodyXL.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = SemanticColor.textBorderPrimary
-            )
-            Text(
-                text = "다른 검색어를 입력하세요",
-                // body S/medium
-                style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = SemanticColor.textBorderSecondary
-            )
-        }
-    }
+    EmptyResultScreen(
+        title = "검색 결과가 없어요",
+        subtitle = "다른 검색어를 입력하세요",
+        modifier = modifier,
+    )
 }
 
 @Preview(showBackground = true)

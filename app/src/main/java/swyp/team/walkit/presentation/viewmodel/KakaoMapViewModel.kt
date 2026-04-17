@@ -151,9 +151,15 @@ constructor() : ViewModel() {
 
                 Timber.d("📍 사용할 위치 데이터: ${locationsToUse.size}개 포인트")
 
-                // 새로운 경로 설정 시 렌더링 상태 초기화
-                _renderState.value = MapRenderState.Idle
-                Timber.d("📍 renderState를 Idle로 초기화")
+                // 경로가 없으면(인터랙티브 지도 모드) 즉시 Complete,
+                // 경로가 있으면 Idle로 초기화하여 경로 그리기 흐름 시작
+                if (locationsToUse.isEmpty()) {
+                    _renderState.value = MapRenderState.Complete
+                    Timber.d("📍 경로 없음 — renderState를 Complete로 설정 (오버레이 제거)")
+                } else {
+                    _renderState.value = MapRenderState.Idle
+                    Timber.d("📍 renderState를 Idle로 초기화")
+                }
 
                 // 카메라 설정 계산 (화면 크기 고려)
                 val cameraSettings = calculateCameraSettings(
