@@ -19,7 +19,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -68,6 +71,7 @@ fun ExpandableAvatarRow(
                     LottieAvatar(
                         activity = activity,
                         lottieJson = lottieJsonMap[activity.userId],
+                        showName = true,
                     )
                 }
 
@@ -75,15 +79,18 @@ fun ExpandableAvatarRow(
                     Box(
                         modifier = Modifier
                             .clickable { onNavigateToFriends() }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .background(
+                                color = SemanticColor.buttonPrimaryDefault,
+                                shape = CircleShape
+                            )
+                            .size(24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = "더보기",
-                            style = MaterialTheme.walkItTypography.captionM.copy(
-                                fontWeight = FontWeight.Normal,
-                                color = SemanticColor.textBorderSecondary,
-                            ),
+                        Icon(
+                            painter = painterResource(R.drawable.ic_cheven_right),
+                            contentDescription = "right",
+                            tint = SemanticColor.iconWhite,
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }
@@ -121,50 +128,70 @@ fun ExpandableAvatarRow(
 fun LottieAvatar(
     activity: FollowerRecentActivity,
     lottieJson: String?,
+    showName: Boolean = false,
 ) {
-    // 아바타 + 빨간 점 배지를 겹쳐서 표시
-    Box(contentAlignment = Alignment.TopEnd) {
-        // 아바타 원형
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .border(1.dp, color = SemanticColor.textBorderDisabled, shape = CircleShape)
-                .clip(CircleShape)
-                .background(SemanticColor.backgroundWhitePrimary),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (lottieJson != null) {
-                val composition by rememberLottieComposition(
-                    LottieCompositionSpec.JsonString(lottieJson),
-                )
-                LottieAnimation(
-                    composition = composition,
-                    iterations = LottieConstants.IterateForever,
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // 아바타 + 빨간 점 배지를 겹쳐서 표시
+        Box(contentAlignment = Alignment.TopEnd) {
+            // 아바타 원형
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .border(1.dp, color = SemanticColor.textBorderDisabled, shape = CircleShape)
+                    .clip(CircleShape)
+                    .background(SemanticColor.backgroundWhitePrimary),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (lottieJson != null) {
+                    val composition by rememberLottieComposition(
+                        LottieCompositionSpec.JsonString(lottieJson),
+                    )
+                    LottieAnimation(
+                        composition = composition,
+                        iterations = LottieConstants.IterateForever,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            // 상반신(머리+몸통)만 원형 안에 보이도록 확대 + 아래 오프셋
+                            // offset 양수 → 콘텐츠가 아래로 이동 → 원의 클립이 상단(머리)을 보여줌
+                            .scale(1.1f)
+                            .offset(y = 4.dp),
+                    )
+                } else {
+                    // Lottie 생성 실패 시 닉네임 이니셜 표시
+                    Text(
+                        text = activity.nickName.take(1),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            // 어제 산책 시 빨간 점 배지 표시
+            if (activity.walkedYesterday) {
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        // 상반신(머리+몸통)만 원형 안에 보이도록 확대 + 아래 오프셋
-                        // offset 양수 → 콘텐츠가 아래로 이동 → 원의 클립이 상단(머리)을 보여줌
-                        .scale(1.2f)
-                        .offset(y = 4.dp),
-                )
-            } else {
-                // Lottie 생성 실패 시 닉네임 이니셜 표시
-                Text(
-                    text = activity.nickName.take(1),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF3B30))
+                        .border(1.5.dp, Color.White, CircleShape),
                 )
             }
         }
 
-        // 어제 산책 시 빨간 점 배지 표시
-        if (activity.walkedYesterday) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFFF3B30))
-                    .border(1.5.dp, Color.White, CircleShape),
+        // 펼쳐진 상태에서 닉네임 표시 (최대 5글자, 초과 시 … 처리)
+        if (showName) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = activity.nickName,
+                style = MaterialTheme.walkItTypography.captionM.copy(
+                    fontSize = 8.sp,
+                    lineHeight = 10.4.sp,
+                    textAlign = TextAlign.Center,
+                    color = SemanticColor.textBorderSecondary,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(30.dp),
             )
         }
     }

@@ -179,6 +179,24 @@ class FcmTokenManager @Inject constructor(
     }
 
     /**
+     * 로그아웃 시 FCM 토큰 무효화
+     *
+     * Firebase 레벨에서 현재 토큰을 삭제한다.
+     * 삭제 후 Firebase가 onNewToken()을 통해 새 토큰을 발급하지만,
+     * 로그아웃 상태이므로 서버에는 전송되지 않는다.
+     * 다음 로그인 시 syncTokenToServer()가 새 토큰을 서버에 등록한다.
+     */
+    suspend fun deleteToken() {
+        try {
+            firebaseMessaging.deleteToken().await()
+            fcmTokenDataStore.clearToken()
+            Timber.d("FCM 토큰 무효화 완료")
+        } catch (t: Throwable) {
+            Timber.e(t, "FCM 토큰 무효화 실패")
+        }
+    }
+
+    /**
      * 로그인 상태 확인
      */
     private fun isLoggedIn(): Boolean {

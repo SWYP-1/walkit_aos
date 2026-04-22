@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -120,6 +121,8 @@ fun RecommendSpotPinBottomTab(
         )
         Spacer(modifier = Modifier.height(18.dp))
 
+        // key: URL이 바뀌면 컴포저블 완전 재생성 → 이전 이미지 상태 잔상 방지
+        key(spot.thumbnailUrl) {
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
                 .data(spot.thumbnailUrl)
@@ -143,17 +146,18 @@ fun RecommendSpotPinBottomTab(
                             .background(SemanticColor.backgroundWhiteSecondary),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
+                        Image(
                             painter = painterResource(R.drawable.ic_face_smile),
                             contentDescription = null,
-                            tint = SemanticColor.iconGrey,
-                            modifier = Modifier.width(92.dp).height(85.dp)
+                            modifier = Modifier
+                                .width(92.dp)
+                                .height(85.dp),
                         )
                     }
                 }
                 else -> SubcomposeAsyncImageContent()
             }
         }
-
+        } // key
     }
 }

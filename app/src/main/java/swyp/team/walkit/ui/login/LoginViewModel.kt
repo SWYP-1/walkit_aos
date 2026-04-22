@@ -128,6 +128,8 @@ class LoginViewModel @Inject constructor(
                         if (!user.nickname.isNullOrBlank()) {
                             _isLoggedIn.value = true
                             Timber.i("사용자 정보 확인 성공 - 닉네임: ${user.nickname}, 로그인 상태 유지")
+                            // 자동 로그인 경로: 로그아웃 후 새로 발급된 FCM 토큰을 서버에 동기화
+                            fcmTokenManager.syncTokenToServer()
                             SessionSyncScheduler.runSyncOnce(application)
 
                         } else {

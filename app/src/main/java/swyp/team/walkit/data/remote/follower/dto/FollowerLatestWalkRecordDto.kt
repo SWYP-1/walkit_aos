@@ -48,4 +48,7 @@ data class WalkRecordDetailDto(
 
     @SerialName("stepCount")
     val stepCount: Int = 0,
+
+    @SerialName("walkId")
+    val walkId: Long = 0,
 )

@@ -51,6 +51,9 @@ import swyp.team.walkit.domain.repository.WalkRepository
 import swyp.team.walkit.domain.service.LocationManager
 import swyp.team.walkit.domain.service.LottieImageProcessor
 import swyp.team.walkit.utils.LocationTestData
+import coil.imageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -213,7 +216,10 @@ class InteractiveMapViewModel @Inject constructor(
                 )
                 _uiState.update { state ->
                     when (result) {
-                        is Result.Success -> state.copy(spots = result.data)
+                        is Result.Success -> {
+                            preloadSpotImages(result.data)
+                            state.copy(spots = result.data)
+                        }
                         is Result.Error -> state.copy(errorMessage = result.message)
                         else -> state
                     }
@@ -568,11 +574,29 @@ class InteractiveMapViewModel @Inject constructor(
      *
      * Composition 파싱은 Default 디스패처, draw()는 메인 스레드에서 수행한다.
      */
+    /**
+     * 스팟 목록의 썸네일 이미지를 Coil 메모리 캐시에 미리 로드한다.
+     * 핀 클릭 시 이미지가 이미 캐시에 있으므로 이전 이미지 잔상 없이 즉시 표시된다.
+     */
+    private fun preloadSpotImages(spots: List<NearbySpot>) {
+        val app = getApplication<Application>()
+        spots.forEach { spot ->
+            val request = ImageRequest.Builder(app)
+                .data(spot.thumbnailUrl)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .build()
+            app.imageLoader.enqueue(request)
+        }
+    }
+
     private suspend fun renderLottieFirstFrame(json: String, sizePx: Int = 0): Bitmap? {
         val density = getApplication<Application>().resources.displayMetrics.density
         val outerCirclePx = (40 * density).roundToInt() // 외부 파란 원 지름 (40dp)
         val innerCirclePx = (26 * density).roundToInt() // 내부 캐릭터 원 지름 (26dp)
-        val triHeightPx   = (8  * density).roundToInt()
+        val triFullHeightPx   = (11 * density).roundToInt() // 피그마 정삼각형 전체 높이
+        val triVisibleHeightPx = (8  * density).roundToInt() // 원 아래로 노출되는 높이
+        val triOverlapPx      = triFullHeightPx - triVisibleHeightPx // 원 안으로 숨는 높이 (3dp)
 
         val composition = withContext(Dispatchers.Default) {
             runCatching {
@@ -586,7 +610,11 @@ class InteractiveMapViewModel @Inject constructor(
         return withContext(Dispatchers.Main) {
             runCatching {
                 val charRenderW = innerCirclePx * 2
-                val charRenderH = (innerCirclePx * 2.8f).roundToInt()
+                // Lottie composition의 실제 비율로 높이 결정
+                val compBounds = composition.bounds
+//                val charRenderH = (innerCirclePx * 2.8f).roundToInt() // 1:2.8 고정
+//                val charRenderH = charRenderW // 1:1 고정
+                val charRenderH = (charRenderW * compBounds.height().toFloat() / compBounds.width()).roundToInt()
                 val charBitmap = Bitmap.createBitmap(charRenderW, charRenderH, Bitmap.Config.ARGB_8888)
 
                 com.airbnb.lottie.LottieDrawable().apply {
@@ -613,7 +641,7 @@ class InteractiveMapViewModel @Inject constructor(
                     draw(Canvas(charBitmap))
                 }
 
-                buildPinBitmap(charBitmap, outerCirclePx, innerCirclePx, triHeightPx)
+                buildPinBitmap(charBitmap, outerCirclePx, innerCirclePx, triFullHeightPx, triVisibleHeightPx)
             }.getOrElse { t ->
                 Timber.e(t, "핀 Bitmap 렌더 실패")
                 null
@@ -629,21 +657,24 @@ class InteractiveMapViewModel @Inject constructor(
      *  - 내부 흰 원   (innerCirclePx): 캐릭터 표시 영역
      *  - 정삼각형 꼭지 (triHeightPx): 핀 바텀 포인터
      *
-     * @param charBitmap      세로로 길게 렌더링된 캐릭터 Bitmap
-     * @param outerCirclePx   외부 파란 원 지름 (px)
-     * @param innerCirclePx   내부 캐릭터 원 지름 (px)
-     * @param triHeightPx     정삼각형 꼭지 높이 (px)
+     * @param charBitmap         캐릭터 Bitmap
+     * @param outerCirclePx      외부 파란 원 지름 (px)
+     * @param innerCirclePx      내부 캐릭터 원 지름 (px)
+     * @param triFullHeightPx    정삼각형 전체 높이 (피그마 기준 11dp, 밑변 계산에 사용)
+     * @param triVisibleHeightPx 원 아래로 노출되는 삼각형 높이 (피그마 기준 8dp)
      */
     private fun buildPinBitmap(
         charBitmap: Bitmap,
         outerCirclePx: Int,
         innerCirclePx: Int,
-        triHeightPx: Int,
+        triFullHeightPx: Int,
+        triVisibleHeightPx: Int,
     ): Bitmap {
-        // 정삼각형: 밑변 = 높이 × 2/√3
-        val triBasePx = (triHeightPx * 2.0 / sqrt(3.0)).roundToInt()
+        // 정삼각형 밑변 = 전체 높이 × 2/√3
+        val triBasePx   = (triFullHeightPx * 2.0 / sqrt(3.0)).roundToInt()
+        val triOverlapPx = triFullHeightPx - triVisibleHeightPx // 원 안으로 숨는 높이
         val totalW = outerCirclePx
-        val totalH = outerCirclePx + triHeightPx
+        val totalH = outerCirclePx + triVisibleHeightPx // 비트맵 총 높이 = 원 + 노출 부분
 
         val output = Bitmap.createBitmap(totalW, totalH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
@@ -658,10 +689,9 @@ class InteractiveMapViewModel @Inject constructor(
         paint.color = Color.parseColor("#5B93FF")
         paint.style = Paint.Style.FILL
         canvas.drawCircle(cx, cy, outerRadius, paint)
-        val triOverlapPx = (2 * getApplication<Application>().resources.displayMetrics.density)
         canvas.drawPath(Path().apply {
-            moveTo(cx - triBasePx / 2f, outerCirclePx - triOverlapPx)
-            lineTo(cx + triBasePx / 2f, outerCirclePx - triOverlapPx)
+            moveTo(cx - triBasePx / 2f, outerCirclePx - triOverlapPx.toFloat())
+            lineTo(cx + triBasePx / 2f, outerCirclePx - triOverlapPx.toFloat())
             lineTo(cx, totalH.toFloat())
             close()
         }, paint)

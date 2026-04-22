@@ -80,5 +80,6 @@ class FollowerMapRepositoryImpl @Inject constructor(
             stepCount = responseWalkRecordDto.stepCount,
             likeCount = likeCount,
             liked = liked,
+            walkId = responseWalkRecordDto.walkId,
         )
 }

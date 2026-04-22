@@ -24,6 +24,8 @@ data class FollowerLatestWalkRecord(
     val likeCount: Int,
     /** 내가 좋아요를 눌렀는지 여부 */
     val liked: Boolean,
+    /** 산책 기록 ID */
+    val walkId: Long,
 )
 
 /**

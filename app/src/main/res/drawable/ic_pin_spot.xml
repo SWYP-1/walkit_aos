@@ -9,9 +9,9 @@
         android:pathData="M20,0C8.954,0 0,8.954 0,20C0,31.046 8.954,40 20,40C31.046,40 40,31.046 40,20C40,8.954 31.046,0 20,0Z"
         android:fillColor="#4CAF50"/>
 
-    <!-- 하단 정삼각형 꼬리 (높이 8dp, 밑변 ≈9.24dp) -->
+    <!-- 하단 정삼각형 꼬리 (전체 높이 11dp, 노출 8dp, 원 안 겹침 3dp, 밑변 ≈12.70dp) -->
     <path
-        android:pathData="M15.381,40 L24.619,40 L20,48 Z"
+        android:pathData="M13.65,37 L26.35,37 L20,48 Z"
         android:fillColor="#4CAF50"/>
 
     <!-- ic_map_spot 아이콘 (원 내부 중앙, 22×22 크기로 스케일) -->

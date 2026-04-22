@@ -46,7 +46,6 @@ class FriendWalkViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val userId: Long = checkNotNull(savedStateHandle["userId"])
-    private val walkId: Long = checkNotNull(savedStateHandle["walkId"])
 
     private val _uiState = MutableStateFlow(FriendWalkUiState())
     val uiState: StateFlow<FriendWalkUiState> = _uiState.asStateFlow()
@@ -98,6 +97,11 @@ class FriendWalkViewModel @Inject constructor(
                     else currentLike.count + 1,
         )
         _uiState.update { it.copy(likeState = optimistic) }
+
+        val walkId = _uiState.value.walkRecord?.walkId ?: run {
+            Timber.w("좋아요 토글 실패: walkRecord가 아직 로드되지 않음")
+            return
+        }
 
         likeToggleJob?.cancel()
         likeToggleJob = viewModelScope.launch {

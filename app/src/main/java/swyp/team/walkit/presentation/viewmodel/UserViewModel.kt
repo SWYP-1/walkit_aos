@@ -24,6 +24,7 @@ import swyp.team.walkit.domain.model.DailyMissionProgress
 import swyp.team.walkit.domain.model.User
 import swyp.team.walkit.domain.repository.MissionProgressRepository
 import swyp.team.walkit.domain.repository.UserRepository
+import swyp.team.walkit.domain.service.FcmTokenManager
 import timber.log.Timber
 import swyp.team.walkit.core.onError
 
@@ -35,6 +36,7 @@ class UserViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userRepository: UserRepository,
     private val missionProgressRepository: MissionProgressRepository,
+    private val fcmTokenManager: FcmTokenManager,
 ) : ViewModel() {
     private val today = MutableStateFlow(LocalDate.now())
 
@@ -170,8 +172,9 @@ class UserViewModel @Inject constructor(
                 onError(error)
             } else {
                 Timber.d("카카오 로그아웃 성공")
-                // 앱의 인증 토큰도 삭제
                 viewModelScope.launch {
+                    // FCM 토큰 무효화 (유저가 바뀌면 새 토큰 재발급되도록)
+                    fcmTokenManager.deleteToken()
                     userRepository.clearAuth()
                     onSuccess()
                 }
@@ -224,8 +227,8 @@ class UserViewModel @Inject constructor(
                 onError(error)
             } else {
                 Timber.d("카카오 연결 해제 성공")
-                // 앱의 인증 토큰도 삭제
                 viewModelScope.launch {
+                    fcmTokenManager.deleteToken()
                     userRepository.clearAuth()
                     onSuccess()
                 }
