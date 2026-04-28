@@ -1,6 +1,12 @@
 package swyp.team.walkit.utils
 
 import swyp.team.walkit.data.model.LocationPoint
+import swyp.team.walkit.domain.model.FollowerMapRecord
+import swyp.team.walkit.domain.model.FollowerRecentActivity
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * 테스트용 위치 데이터 유틸리티
@@ -108,5 +114,49 @@ object LocationTestData {
         }
         
         return locations
+    }
+
+    /**
+     * [FollowerRecentActivity] 목록을 받아 현재 기기 위치 주변에 가짜 친구 핀을 생성한다.
+     *
+     * 각 활동마다 [centerLat], [centerLon] 기준 [radiusKm] km 반경 내
+     * 임의 위치에 [FollowerMapRecord]를 배치한다.
+     * 실제 API 데이터 없이 UI 개발·테스트 용도로 사용한다.
+     *
+     * @param activities     가짜 핀으로 변환할 팔로워 활동 목록
+     * @param centerLat      기준 위도 (현재 기기 위치)
+     * @param centerLon      기준 경도 (현재 기기 위치)
+     * @param radiusKm       핀을 배치할 최대 반경 (기본 1.0 km)
+     */
+    fun generateFakeFollowerMapRecords(
+        activities: List<FollowerRecentActivity>,
+        centerLat: Double,
+        centerLon: Double,
+        radiusKm: Double = 1.0,
+    ): List<FollowerMapRecord> {
+        // 위도 1도 ≈ 111 km
+        val radiusDeg = radiusKm / 111.0
+        // 경도는 위도에 따라 보정
+        val lonScale = cos(Math.toRadians(centerLat))
+
+        return activities.mapIndexed { index, activity ->
+            // 극좌표 → 직교좌표로 균등 원형 분포 생성
+            val angle = (index.toDouble() / activities.size) * 2 * PI +
+                (Math.random() - 0.5) * (PI / activities.size)  // 약간의 무작위 섞기
+            val distance = sqrt(Math.random()) * radiusDeg       // 반경 내 균등 분포
+
+            val lat = centerLat + distance * sin(angle)
+            val lon = centerLon + (distance * cos(angle)) / lonScale
+
+            FollowerMapRecord(
+                userId = activity.userId,
+                walkId = activity.userId * 1000L + index,   // 가짜 walkId
+                latitude = lat,
+                longitude = lon,
+                grade = activity.grade,
+                headImageName = activity.headImageName,
+                bodyImageName = activity.bodyImageName,
+            )
+        }
     }
 }

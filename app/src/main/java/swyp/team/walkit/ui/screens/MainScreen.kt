@@ -40,6 +40,7 @@ import swyp.team.walkit.R
 import swyp.team.walkit.navigation.Screen
 import swyp.team.walkit.ui.character.charactershop.CharacterShopRoute
 import swyp.team.walkit.ui.home.HomeRoute
+import swyp.team.walkit.ui.interactivemap.InteractiveMapRoute
 import swyp.team.walkit.ui.home.LocationAgreementUiState
 import swyp.team.walkit.ui.home.LocationAgreementViewModel
 import swyp.team.walkit.ui.home.components.WalkingFloatingActionButton
@@ -105,13 +106,13 @@ fun MainScreen(
     val calculatedTabIndex = when (currentRoute) {
         Screen.GoalManagement.route,
         Screen.UserInfoManagement.route,
-        Screen.NotificationSettings.route -> 3 // 마이페이지 탭
+        Screen.NotificationSettings.route -> 4 // 마이페이지 탭
         else -> selectedTabIndex
     }
 
     // 계산된 탭 인덱스 사용 (navigation에서 돌아올 때)
     val currentTabIndex =
-        if (calculatedTabIndex != selectedTabIndex && calculatedTabIndex in 0..3) {
+        if (calculatedTabIndex != selectedTabIndex && calculatedTabIndex in 0..4) {
             calculatedTabIndex
         } else {
             selectedTabIndex
@@ -124,9 +125,10 @@ fun MainScreen(
     // Route 기반 selected route 결정
     val selectedRoute = when (currentTabIndex) {
         0 -> "home"
-        1 -> "record"
-        2 -> "character"
-        3 -> "mypage"
+        1 -> "map"
+        2 -> "record"
+        3 -> "character"
+        4 -> "mypage"
         else -> "home"
     }
 
@@ -141,6 +143,16 @@ fun MainScreen(
                 )
             },
             label = "홈"
+        ),
+        BottomBarItem(
+            route = "map",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_action_search), // 임시 아이콘
+                    contentDescription = "지도"
+                )
+            },
+            label = "지도"
         ),
         BottomBarItem(
             route = "record",
@@ -210,9 +222,10 @@ fun MainScreen(
                 onItemClick = { route ->
                     val newIndex = when (route) {
                         "home" -> 0
-                        "record" -> 1
-                        "character" -> 2
-                        "mypage" -> 3
+                        "map" -> 1
+                        "record" -> 2
+                        "character" -> 3
+                        "mypage" -> 4
                         else -> 0
                     }
                     selectedTabIndex = newIndex
@@ -236,11 +249,21 @@ fun MainScreen(
                         navController.navigate(Screen.Mission.route)
                     },
                     onNavigateToRecord = {
-                        selectedTabIndex = 1
+                        selectedTabIndex = 2
                     },
                 )
 
-                1 -> RecordRoute(
+                1 -> {
+                    // 지도 화면
+                    InteractiveMapRoute(
+                        onNavigateToFriends = { navController.navigate(Screen.Friends.route) },
+                        onNavigateToFriendDetail = { userId, walkId ->
+                            navController.navigate(Screen.FriendDetail.createRoute(userId, walkId))
+                        },
+                    )
+                }
+
+                2 -> RecordRoute(
                     onStartOnboarding = {
                         navController.navigate(Screen.Onboarding.route)
                     },
@@ -255,12 +278,12 @@ fun MainScreen(
                     }
                 )
 
-                2 -> {
+                3 -> {
                     // 캐릭터 화면 (CharacterShop)
                     CharacterShopRoute()
                 }
 
-                3 -> {
+                4 -> {
                     MyPageRoute(
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateUserInfoEdit = {

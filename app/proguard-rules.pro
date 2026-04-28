@@ -189,12 +189,16 @@
 -dontwarn com.kakao.sdk.**
 -keep class com.kakao.maps.** { *; }
 -dontwarn com.kakao.maps.**
+-keep class com.kakao.vectormap.** { *; }
+-dontwarn com.kakao.vectormap.**
 
 # ============================================
 # Naver OAuth SDK
 # ============================================
 -keep class com.nhn.android.naverlogin.** { *; }
 -dontwarn com.nhn.android.naverlogin.**
+-keep class com.navercorp.nid.** { *; }
+-dontwarn com.navercorp.nid.**
 
 # ============================================
 # Google Play Services - Location

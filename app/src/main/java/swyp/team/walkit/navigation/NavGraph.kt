@@ -45,6 +45,7 @@ import swyp.team.walkit.ui.customtest.CustomTestRoute
 import swyp.team.walkit.ui.customtest.RandomPathTestScreen
 import swyp.team.walkit.ui.customtest.LatLngBoundsTestScreen
 import swyp.team.walkit.ui.friend.FriendSearchDetailRoute
+import swyp.team.walkit.ui.interactivemap.friendwalk.FriendWalkRoute
 import swyp.team.walkit.ui.mypage.userInfo.UserInfoManagementRoute
 import swyp.team.walkit.ui.record.dailyrecord.DailyRecordRoute
 import timber.log.Timber
@@ -57,6 +58,7 @@ sealed class Screen(val route: String) {
     data object Splash : Screen("splash")
     data object Login : Screen("login")
     data object Main : Screen("main")
+    data object Map : Screen("map")
 
     // 🔥 Walking Graph
     data object WalkingGraph : Screen("walking_graph")
@@ -95,6 +97,10 @@ sealed class Screen(val route: String) {
         fun createRoute(dateString: String): String {
             return "daily_record/$dateString"
         }
+    }
+
+    data object FriendDetail : Screen("friend_detail/{userId}/{walkId}") {
+        fun createRoute(userId: Long, walkId: Long) = "friend_detail/$userId/$walkId"
     }
 
 }
@@ -433,6 +439,22 @@ fun NavGraph(
         composable(Screen.Alarm.route) {
             Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
                 AlarmScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+        }
+
+        /* Friend Detail */
+        composable(
+            route = Screen.FriendDetail.route,
+            arguments = listOf(
+                navArgument("userId") { type = NavType.LongType },
+                navArgument("walkId") { type = NavType.LongType },
+            ),
+        ) {
+            Scaffold(contentWindowInsets = WindowInsets.systemBars) { paddingValues ->
+                FriendWalkRoute(
                     modifier = Modifier.padding(paddingValues),
                     onNavigateBack = { navController.popBackStack() },
                 )

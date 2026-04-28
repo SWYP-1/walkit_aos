@@ -10,6 +10,7 @@ import swyp.team.walkit.data.local.dao.GoalDao
 import swyp.team.walkit.data.local.dao.MissionProgressDao
 import swyp.team.walkit.data.local.dao.NotificationSettingsDao
 import swyp.team.walkit.data.local.dao.PurchasedItemDao
+import swyp.team.walkit.data.local.dao.RecentSearchDao
 import swyp.team.walkit.data.local.dao.UserDao
 import swyp.team.walkit.data.local.dao.WalkingSessionDao
 import swyp.team.walkit.data.local.database.AppDatabase
@@ -17,6 +18,7 @@ import swyp.team.walkit.data.repository.CharacterRepositoryImpl
 import swyp.team.walkit.data.repository.CosmeticItemRepositoryImpl
 import swyp.team.walkit.data.repository.FriendRepositoryImpl
 import swyp.team.walkit.data.repository.MissionProgressRepositoryImpl
+import swyp.team.walkit.data.repository.RecentSearchRepositoryImpl
 import swyp.team.walkit.data.repository.WalkRepositoryImpl
 import swyp.team.walkit.data.repository.WalkingSessionRepository
 import swyp.team.walkit.data.remote.auth.CharacterRemoteDataSource
@@ -26,6 +28,7 @@ import swyp.team.walkit.domain.repository.CharacterRepository
 import swyp.team.walkit.domain.repository.CosmeticItemRepository
 import swyp.team.walkit.domain.repository.FriendRepository
 import swyp.team.walkit.domain.repository.MissionProgressRepository
+import swyp.team.walkit.domain.repository.RecentSearchRepository
 import swyp.team.walkit.domain.repository.WalkRepository
 import dagger.Module
 import dagger.Provides
@@ -62,7 +65,7 @@ object DatabaseModule {
                 AppDatabase::class.java,
                 AppDatabase.DATABASE_NAME,
             )
-            .addMigrations(MIGRATION_11_12, AppDatabase.MIGRATION_12_13)
+            .addMigrations(MIGRATION_11_12, AppDatabase.MIGRATION_12_13, AppDatabase.MIGRATION_13_14)
             .build()
 
     @Provides
@@ -126,6 +129,16 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideNotificationSettingsDao(database: AppDatabase): NotificationSettingsDao = database.notificationSettingsDao()
+
+    @Provides
+    @Singleton
+    fun provideRecentSearchDao(database: AppDatabase): RecentSearchDao = database.recentSearchDao()
+
+    @Provides
+    @Singleton
+    fun provideRecentSearchRepository(
+        recentSearchDao: RecentSearchDao,
+    ): RecentSearchRepository = RecentSearchRepositoryImpl(recentSearchDao)
 
     @Provides
     @Singleton

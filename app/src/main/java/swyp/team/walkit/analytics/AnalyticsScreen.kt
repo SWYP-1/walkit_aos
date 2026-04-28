@@ -10,6 +10,7 @@ enum class AnalyticsScreen(val screenName: String) {
     Onboarding("Onboarding"),
 
     MainHome("Main_Home"),
+    MainMap("Main_Map"),
     MainRecord("Main_Record"),
     MainCharacter("Main_Character"),
     MainMyPage("Main_MyPage"),

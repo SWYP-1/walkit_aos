@@ -12,6 +12,7 @@ fun routeToAnalyticsScreen(routePattern: String): AnalyticsScreen? {
         Screen.Splash.route -> AnalyticsScreen.Splash
         Screen.Login.route -> AnalyticsScreen.Login
         Screen.Onboarding.route -> AnalyticsScreen.Onboarding
+        Screen.Map.route -> AnalyticsScreen.MainMap
 
         Screen.Walking.route -> AnalyticsScreen.Walking
         Screen.PostEmotionSelectionStep.route -> AnalyticsScreen.PostEmotionSelection

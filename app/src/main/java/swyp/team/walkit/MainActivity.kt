@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
+            // nav bar 대비 강제를 유지하여 바텀시트가 nav bar 영역에 비쳐 보이는 현상 방지
         }
 
         WindowInsetsControllerCompat(window, window.decorView).apply {

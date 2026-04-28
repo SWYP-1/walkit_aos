@@ -29,6 +29,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import swyp.team.walkit.BuildConfig
 import swyp.team.walkit.data.api.walking.WalkApi
 import swyp.team.walkit.data.api.home.HomeApi
+import swyp.team.walkit.data.api.spot.SpotApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Provider
@@ -186,6 +187,12 @@ object NetworkModule {
     fun provideCosmeticItemApi(
         @Named("walkit") retrofit: Retrofit,
     ): CosmeticItemApi = retrofit.create(CosmeticItemApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSpotApi(
+        @Named("walkit") retrofit: Retrofit,
+    ): SpotApi = retrofit.create(SpotApi::class.java)
 
     @Provides
     @Singleton

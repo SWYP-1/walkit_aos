@@ -24,9 +24,10 @@ class MainScreenTabAnalyticsViewModel @Inject constructor(
 
         val screen = when (tabIndex) {
             0 -> AnalyticsScreen.MainHome
-            1 -> AnalyticsScreen.MainRecord
-            2 -> AnalyticsScreen.MainCharacter
-            3 -> AnalyticsScreen.MainMyPage
+            1 -> AnalyticsScreen.MainMap
+            2 -> AnalyticsScreen.MainRecord
+            3 -> AnalyticsScreen.MainCharacter
+            4 -> AnalyticsScreen.MainMyPage
             else -> return
         }
 

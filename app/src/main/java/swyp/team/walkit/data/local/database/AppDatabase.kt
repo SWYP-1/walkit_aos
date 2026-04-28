@@ -13,6 +13,7 @@ import swyp.team.walkit.data.local.dao.GoalDao
 import swyp.team.walkit.data.local.dao.MissionProgressDao
 import swyp.team.walkit.data.local.dao.NotificationSettingsDao
 import swyp.team.walkit.data.local.dao.PurchasedItemDao
+import swyp.team.walkit.data.local.dao.RecentSearchDao
 import swyp.team.walkit.data.local.dao.UserDao
 import swyp.team.walkit.data.local.dao.WalkingSessionDao
 import swyp.team.walkit.data.local.entity.AppliedItemEntity
@@ -21,6 +22,7 @@ import swyp.team.walkit.data.local.entity.GoalEntity
 import swyp.team.walkit.data.local.entity.MissionProgressEntity
 import swyp.team.walkit.data.local.entity.NotificationSettingsEntity
 import swyp.team.walkit.data.local.entity.PurchasedItemEntity
+import swyp.team.walkit.data.local.entity.RecentSearchEntity
 import swyp.team.walkit.data.local.entity.UserEntity
 import swyp.team.walkit.data.local.entity.WalkingSessionEntity
 
@@ -40,8 +42,9 @@ import swyp.team.walkit.data.local.entity.WalkingSessionEntity
         CharacterEntity::class,
         GoalEntity::class,
         NotificationSettingsEntity::class,
+        RecentSearchEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -55,12 +58,23 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun characterDao(): CharacterDao
     abstract fun goalDao(): GoalDao
     abstract fun notificationSettingsDao(): NotificationSettingsDao
+    abstract fun recentSearchDao(): RecentSearchDao
 
     companion object {
         /**
          * Migration from version 12 to 13: Change UserEntity PrimaryKey from nickname to userId
          */
         const val DATABASE_NAME = "walking_database"
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recent_searches (
+                        `query` TEXT NOT NULL PRIMARY KEY,
+                        searchedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // 1. Create new table with userId as PrimaryKey

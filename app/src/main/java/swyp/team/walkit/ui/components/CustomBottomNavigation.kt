@@ -135,13 +135,10 @@ fun CustomBottomNavigation(
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // nav bar padding을 내부 Row로 이동하고 외부 Box에 흰색 배경을 전체 적용한다.
+    // 이렇게 해야 시스템 nav bar 영역까지 흰색으로 덮여 바텀시트가 비쳐 보이지 않는다.
     Box(
         modifier = modifier
-            .padding(
-                bottom = WindowInsets.navigationBars
-                    .asPaddingValues()
-                    .calculateBottomPadding()
-            )
             .fillMaxWidth()
             .dropShadow(
                 shape = RectangleShape,
@@ -151,11 +148,16 @@ fun CustomBottomNavigation(
                     offset = DpOffset(0.dp, -2.dp)
                 )
             )
-            .background(Color.White) // ← 중요 (shadow 대비)
+            .background(Color.White)
     ) {
-
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding()
+                ),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {

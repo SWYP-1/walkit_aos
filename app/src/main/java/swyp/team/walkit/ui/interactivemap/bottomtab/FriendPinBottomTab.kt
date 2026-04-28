@@ -154,7 +154,7 @@ private fun WalkRecordDetail(
 ) {
     val context = LocalContext.current
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth().background(SemanticColor.backgroundWhitePrimary)) {
 
         // 산책 날짜
         if (walkRecord.createdDate != null) {
