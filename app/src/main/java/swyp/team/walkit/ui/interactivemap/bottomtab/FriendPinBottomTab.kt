@@ -45,7 +45,6 @@ import swyp.team.walkit.ui.record.friendrecord.LikeUiState
 import swyp.team.walkit.ui.record.friendrecord.component.LikeButton
 import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.walkItTypography
-import swyp.team.walkit.utils.DateUtils.formatIsoToKoreanDate
 import swyp.team.walkit.utils.FormatUtils.formatStepCount
 import java.util.concurrent.TimeUnit
 
@@ -156,18 +155,6 @@ private fun WalkRecordDetail(
 
     Column(modifier = modifier.fillMaxWidth().background(SemanticColor.backgroundWhitePrimary)) {
 
-        // 산책 날짜
-        if (walkRecord.createdDate != null) {
-            Text(
-                text = walkRecord.createdDate.substringBefore("T"),
-                style = MaterialTheme.walkItTypography.bodyS.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = SemanticColor.textBorderSecondary
-                ),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
         // 산책 이미지
         if (!walkRecord.imageUrl.isNullOrBlank()) {
             AsyncImage(
@@ -190,7 +177,7 @@ private fun WalkRecordDetail(
             leftLabel = "걸음 수",
             leftValue = formatStepCount(walkRecord.stepCount),
             leftUnit = SummaryUnit.Step("걸음"),
-            rightLabel = "누적 산책 시간",
+            rightLabel = "산책 시간",
             rightUnit = SummaryUnit.Time(walkRecord.totalTime),
 //            header = {
 //                walkRecord.createdDate.let { date ->

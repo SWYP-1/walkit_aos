@@ -54,6 +54,7 @@ class FollowerMapRepositoryImpl @Inject constructor(
 
     private fun FollowerRecentActivityDto.toDomain(): FollowerRecentActivity = FollowerRecentActivity(
         userId = userId,
+        walkId = walkId,
         nickName = nickName,
         walkedYesterday = walkedYesterday,
         grade = responseCharacterDto.grade,

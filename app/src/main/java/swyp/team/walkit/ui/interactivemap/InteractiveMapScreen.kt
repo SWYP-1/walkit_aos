@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import swyp.team.walkit.data.model.MapMarker
+import swyp.team.walkit.data.model.MapPin
 import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.ui.components.KakaoMapView
 import swyp.team.walkit.ui.interactivemap.bottomtab.BottomSheetDragHandle
@@ -46,6 +47,7 @@ fun InteractiveMapRoute(
     interactiveViewModel: InteractiveMapViewModel = hiltViewModel(),
 ) {
     val uiState by interactiveViewModel.uiState.collectAsStateWithLifecycle()
+    val mapPins by interactiveViewModel.mapPins.collectAsStateWithLifecycle()
     val scaffoldState = rememberBottomSheetScaffoldState()
     val scope = rememberCoroutineScope()
 
@@ -95,9 +97,12 @@ fun InteractiveMapRoute(
     InteractiveMapScreen(
         modifier = modifier,
         uiState = uiState,
+        mapPins = mapPins,
         scaffoldState = scaffoldState,
         mapViewModel = mapViewModel,
         onMarkerClick = interactiveViewModel::onMarkerClick,
+        onZoomChanged = interactiveViewModel::onZoomChanged,
+        onAvatarClick = interactiveViewModel::onAvatarClick,
         onNavigateToFriends = onNavigateToFriends,
         onSpotSearchIconClick = interactiveViewModel::onSpotSearchIconClick,
         onSpotQueryChange = interactiveViewModel::onSpotSearchQueryChange,
@@ -121,9 +126,12 @@ fun InteractiveMapRoute(
 fun InteractiveMapScreen(
     modifier: Modifier = Modifier,
     uiState: InteractiveMapUiState,
+    mapPins: List<MapPin> = emptyList(),
     scaffoldState: BottomSheetScaffoldState,
     mapViewModel: KakaoMapViewModel,
     onMarkerClick: (MapMarker) -> Unit,
+    onZoomChanged: (Int) -> Unit = {},
+    onAvatarClick: (userId: Long) -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
     onSpotSearchIconClick: () -> Unit = {},
     onSpotQueryChange: (String) -> Unit = {},
@@ -205,10 +213,13 @@ fun InteractiveMapScreen(
                 viewModel = mapViewModel,
                 modifier = Modifier.fillMaxSize(),
                 markers = uiState.allMarkers,
+                pins = mapPins,
                 friendBitmaps = uiState.followerPinBitmapMap,
                 onMarkerClick = onMarkerClick,
+                onZoomChanged = onZoomChanged,
                 trackingMode = uiState.trackingMode,
                 currentLocation = uiState.currentLocation,
+                centerLocation = uiState.mapCenterLocation,
                 onTrackingDisabled = onTrackingDisabled,
             )
 
@@ -218,6 +229,7 @@ fun InteractiveMapScreen(
                 activities = uiState.recentActivities,
                 lottieJsonMap = uiState.followerLottieJsonMap,
                 onNavigateToFriends = onNavigateToFriends,
+                onAvatarClick = onAvatarClick,
             )
 
             // 나침반(위치 추적) 버튼 — 화면 좌측, 시트 상단 16dp 위 고정

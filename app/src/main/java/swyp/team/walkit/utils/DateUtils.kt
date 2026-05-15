@@ -148,6 +148,17 @@ object DateUtils {
         }
     }
 
+    /** ISO 날짜 문자열을 "M월 d일" 형식으로 변환한다. (예: "3월 25일") */
+    fun formatIsoToMonthDay(isoDateTime: String): String {
+        return try {
+            val datePart = isoDateTime.substringBefore("T")
+            val date = LocalDate.parse(datePart, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            "${date.monthValue}월 ${date.dayOfMonth}일"
+        } catch (t: Throwable) {
+            isoDateTime
+        }
+    }
+
     fun getMonthWeek(dateString: String): MonthWeek {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val date = LocalDate.parse(dateString, formatter)

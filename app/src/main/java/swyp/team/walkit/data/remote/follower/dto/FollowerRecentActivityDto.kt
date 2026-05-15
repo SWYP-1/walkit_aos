@@ -13,6 +13,9 @@ data class FollowerRecentActivityDto(
     @SerialName("userId")
     val userId: Long,
 
+    @SerialName("walkId")
+    val walkId: Long = 0L,
+
     @SerialName("nickName")
     val nickName: String,
 

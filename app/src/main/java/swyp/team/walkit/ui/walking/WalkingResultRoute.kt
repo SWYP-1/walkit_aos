@@ -75,18 +75,19 @@ fun WalkingResultRoute(
 //        return
 //    }
 
-    // 동기화 완료 시 다이얼로그 표시, 실패 시 바로 홈 이동
+    // 동기화 완료 일회성 이벤트 수신 → 다이얼로그 표시
+    LaunchedEffect(Unit) {
+        viewModel.syncCompleteEvent.collect {
+            Timber.d("🚶 산책 동기화 성공: 다이얼로그 표시")
+            showWalkingCompleteDialog = true
+        }
+    }
+
+    // 동기화 실패 시 홈 이동
     LaunchedEffect(snapshotState) {
-        when (snapshotState) {
-            SnapshotState.Complete -> {
-                Timber.d("🚶 산책 동기화 성공: 다이얼로그 표시")
-                showWalkingCompleteDialog = true
-            }
-            is SnapshotState.Error -> {
-                Timber.d("🚶 산책 동기화 실패로 홈으로 이동: $snapshotState")
-                onNavigateToHome()
-            }
-            else -> Unit // 다른 상태에서는 아무 동작도 하지 않음
+        if (snapshotState is SnapshotState.Error) {
+            Timber.d("🚶 산책 동기화 실패로 홈으로 이동: $snapshotState")
+            onNavigateToHome()
         }
     }
 

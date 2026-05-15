@@ -21,14 +21,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import swyp.team.walkit.ui.theme.SemanticColor
+import swyp.team.walkit.ui.theme.WalkItTypography
 import swyp.team.walkit.ui.theme.walkItTypography
 
 /**
  * 기록 탭 타입
  */
 enum class RecordTabType {
-    Month,
     Week,
+    Month,
 }
 
 /**
@@ -42,27 +43,25 @@ fun RecordTabRow(
 ) {
     val tabs = RecordTabType.values()
     val containerShape = RoundedCornerShape(12.dp)
-    val tabShape = RoundedCornerShape(8.dp)
+    val tabShape = RoundedCornerShape(16.dp)
 
-    Column(
+    Row(
         modifier = modifier
-            .fillMaxWidth()
-            .customShadow()
-            .border(
-                width = 1.dp,
-                color = SemanticColor.textBorderSecondaryInverse,
-                shape = containerShape
-            )
-            .background(
-                color = SemanticColor.backgroundWhitePrimary,
-                shape = containerShape
-            )
-            .padding(vertical = 8.dp, horizontal = 7.5.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+
+        Text(
+            text = "감정 달력",
+            style = MaterialTheme.walkItTypography.headingS.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = SemanticColor.textBorderPrimary
+            )
+        )
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEachIndexed { index, tab ->
@@ -70,30 +69,28 @@ fun RecordTabRow(
 
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .height(44.dp)
                         .clip(tabShape)
-                        .background(
-                            color = if (selected)
-                                SemanticColor.stateAquaBluePrimary
-                            else
-                                Color.Transparent
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) SemanticColor.stateGreenPrimary
+                            else SemanticColor.textBorderTertiary,
+                            shape = tabShape
                         )
+                        .background(color = if (selected) SemanticColor.backgroundGreenPrimary else SemanticColor.backgroundWhitePrimary)
                         .clickable { onTabSelected(index) }
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 4.dp, horizontal = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = when (tab) {
-                            RecordTabType.Month -> "월간"
                             RecordTabType.Week -> "주간"
+                            RecordTabType.Month -> "월간"
                         },
                         color = if (selected)
-                            SemanticColor.textBorderPrimaryInverse
+                            SemanticColor.stateGreenPrimary
                         else
-                            SemanticColor.textBorderSecondary,
-                        style = MaterialTheme.walkItTypography.bodyM.copy(
+                            SemanticColor.textBorderPrimary,
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
                             fontWeight = FontWeight.SemiBold
                         )
                     )

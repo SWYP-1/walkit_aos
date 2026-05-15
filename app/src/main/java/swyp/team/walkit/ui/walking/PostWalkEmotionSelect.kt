@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,20 +24,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.EmotionType
-import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.components.CtaButton
 import swyp.team.walkit.ui.components.CtaButtonVariant
 import swyp.team.walkit.ui.components.CustomProgressIndicator
-import swyp.team.walkit.ui.components.SectionCard
 import swyp.team.walkit.ui.components.TextHighlight
 import swyp.team.walkit.ui.components.WalkingWarningDialog
 import swyp.team.walkit.ui.walking.components.EmotionSelectCard
@@ -52,8 +46,6 @@ import swyp.team.walkit.ui.theme.SemanticColor
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.ui.walking.components.WalkingProgressBar
-import swyp.team.walkit.utils.SetStatusBarConfig
-import swyp.team.walkit.utils.DefaultStatusBarConfig
 import timber.log.Timber
 
 /**
@@ -77,8 +69,6 @@ fun PostWalkingEmotionSelectRoute(
         // postWalkingEmotion 초기화 (필요한 경우)
         viewModel.initializePostWalkingEmotionIfNeeded()
     }
-    val scope = rememberCoroutineScope()
-
     val selectedEmotionString by viewModel.postWalkingEmotion.collectAsStateWithLifecycle()
     val selectedEmotion = stringToEmotionTypeOrNull(selectedEmotionString)
 
@@ -128,7 +118,6 @@ private fun PostWalkingEmotionSelectScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-
             // 진행 바 (1번째 칸 채워짐)
             WalkingProgressBar(
                 currentStep = 1,
@@ -144,29 +133,21 @@ private fun PostWalkingEmotionSelectScreen(
                 style = MaterialTheme.walkItTypography.bodyS,
                 color = SemanticColor.textBorderSecondary,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
-        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 25.dp, top = 25.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
+            Spacer(Modifier.height(24.dp))
 
-
-            // 감정 옵션 리스트 생성 (Composable 함수 사용)
+            // 감정 카드 — 남은 공간을 채우며 스크롤 가능
             val emotionOptions = createDefaultEmotionOptions()
-
-            // 선택된 감정의 인덱스 찾기
             val selectedIndex = findSelectedEmotionIndex(selectedEmotion, emotionOptions)
 
-            // EmotionSelectCard를 사용한 2열 감정 선택 리스트
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 emotionOptions.chunked(2).forEach { rowEmotions ->
                     Row(
@@ -189,7 +170,6 @@ private fun PostWalkingEmotionSelectScreen(
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        // 홀수 개일 경우 빈 공간 채우기
                         if (rowEmotions.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -197,18 +177,17 @@ private fun PostWalkingEmotionSelectScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
-
+            // 닫기/다음 버튼 — 항상 하단 고정 (스크롤 영역 밖)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 25.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CtaButton(
                     text = "닫기",
                     variant = CtaButtonVariant.SECONDARY,
-                    onClick = {
-                        showWarningDialog = true
-                    },
+                    onClick = { showWarningDialog = true },
                     modifier = Modifier.width(96.dp)
                 )
 
@@ -218,7 +197,6 @@ private fun PostWalkingEmotionSelectScreen(
                     enabled = selectedEmotion != null,
                     modifier = Modifier.weight(1f),
                     iconResId = R.drawable.ic_arrow_forward,
-                    // iconTint 생략하면 자동으로 content 색상 사용
                 )
             }
         }

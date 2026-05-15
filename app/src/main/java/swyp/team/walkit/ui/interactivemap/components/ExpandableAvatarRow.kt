@@ -1,20 +1,28 @@
 package swyp.team.walkit.ui.interactivemap.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -38,6 +46,7 @@ fun ExpandableAvatarRow(
     lottieJsonMap: Map<Long, String?>,
     modifier: Modifier = Modifier,
     onNavigateToFriends: () -> Unit = {},
+    onAvatarClick: (userId: Long) -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -57,42 +66,27 @@ fun ExpandableAvatarRow(
             .then(paddingModifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // 제일 좌측 — 상태 토글 버튼 (+ / ×)
+        AvatarRowToggle(
+            isOpen = expanded,
+            onClick = { expanded = !expanded },
+        )
+
+        Spacer(Modifier.width(8.dp))
+
         if (expanded) {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f, fill = false),
             ) {
-                item {
-                    CloseButton(onClick = { expanded = false })
-                }
-
                 items(activities) { activity ->
                     LottieAvatar(
                         activity = activity,
                         lottieJson = lottieJsonMap[activity.userId],
                         showName = true,
+                        onClick = { onAvatarClick(activity.userId) },
                     )
-                }
-
-                item {
-                    Box(
-                        modifier = Modifier
-                            .clickable { onNavigateToFriends() }
-                            .background(
-                                color = SemanticColor.buttonPrimaryDefault,
-                                shape = CircleShape
-                            )
-                            .size(24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_cheven_right),
-                            contentDescription = "right",
-                            tint = SemanticColor.iconWhite,
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
                 }
             }
         } else {
@@ -104,15 +98,36 @@ fun ExpandableAvatarRow(
                     LottieAvatar(
                         activity = activity,
                         lottieJson = lottieJsonMap[activity.userId],
+                        onClick = { onAvatarClick(activity.userId) },
                     )
                 }
             }
+        }
 
-            if (activities.size > visibleItems.size) {
-                Spacer(Modifier.width(4.dp))
-                MoreChip(
-                    count = activities.size - visibleItems.size,
-                    onClick = { expanded = true },
+        // 제일 우측 — 친구 목록 이동 버튼
+        Spacer(Modifier.width(8.dp))
+
+        if(expanded){
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(color = SemanticColor.buttonPrimaryDefault)
+                    .clickable { onNavigateToFriends() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_cheven_right),
+                    contentDescription = "친구 목록으로 이동",
+                    tint = SemanticColor.iconWhite,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }else {
+            val restCount = activities.size - visibleItems.size;
+            if(restCount > 0){
+                MoreFriendCountText(
+                    count = restCount
                 )
             }
         }
@@ -129,17 +144,27 @@ fun LottieAvatar(
     activity: FollowerRecentActivity,
     lottieJson: String?,
     showName: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         // 아바타 + 빨간 점 배지를 겹쳐서 표시
         Box(contentAlignment = Alignment.TopEnd) {
-            // 아바타 원형
+            // 아바타 원형 — clip을 먼저 적용해야 리플이 원형으로 바운드됨
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .border(1.dp, color = SemanticColor.textBorderDisabled, shape = CircleShape)
                     .clip(CircleShape)
-                    .background(SemanticColor.backgroundWhitePrimary),
+                    .border(1.dp, color = SemanticColor.textBorderDisabled, shape = CircleShape)
+                    .background(SemanticColor.backgroundWhitePrimary)
+                    .then(
+                        if (onClick != null) Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = true),
+                            onClick = onClick,
+                        ) else Modifier
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (lottieJson != null) {
@@ -173,7 +198,6 @@ fun LottieAvatar(
                         .size(8.dp)
                         .clip(CircleShape)
                         .background(Color(0xFFFF3B30))
-                        .border(1.5.dp, Color.White, CircleShape),
                 )
             }
         }
@@ -198,48 +222,57 @@ fun LottieAvatar(
 }
 
 @Composable
-fun MoreChip(
-    count: Int,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .background(Color.LightGray)
-            .clickable { onClick() },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "+$count",
-            style = MaterialTheme.walkItTypography.bodyXL.copy(
-                fontWeight = FontWeight.Normal,
-                color = SemanticColor.textBorderSecondary,
-            ),
-        )
-        Icon(
-            painter = painterResource(R.drawable.ic_cheven_right),
-            tint = SemanticColor.iconGrey,
-            contentDescription = null,
-            modifier = Modifier
-                .offset(x = (-4).dp)
-                .size(24.dp),
-        )
-    }
+fun MoreFriendCountText(modifier: Modifier = Modifier,count : Int) {
+    Text(
+        text = "+$count",
+        style = MaterialTheme.walkItTypography.bodyXL.copy(
+            fontWeight = FontWeight.Normal,
+            color = SemanticColor.textBorderSecondary,
+        ),
+    )
 }
 
 @Composable
-fun CloseButton(onClick: () -> Unit) {
+fun AvatarRowToggle(
+    isOpen: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isOpen) 45f else 0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "AvatarRowToggle rotation",
+    )
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isOpen) SemanticColor.backgroundWhiteQuaternary else SemanticColor.buttonPrimaryDefault,
+        animationSpec = tween(durationMillis = 250),
+        label = "AvatarRowToggle bg",
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (isOpen) SemanticColor.iconGrey else SemanticColor.iconWhite,
+        animationSpec = tween(durationMillis = 250),
+        label = "AvatarRowToggle tint",
+    )
+
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(Color.Gray)
-            .clickable { onClick() },
+            .background(backgroundColor)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = "X",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = if (isOpen) "닫기" else "펼치기",
+            tint = iconTint,
+            modifier = Modifier
+                .size(20.dp)
+                .rotate(rotation),
         )
     }
 }

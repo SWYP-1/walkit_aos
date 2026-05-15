@@ -36,8 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import swyp.team.walkit.domain.model.Friend
+import swyp.team.walkit.domain.model.Goal
 import swyp.team.walkit.presentation.viewmodel.CalendarViewModel
 import swyp.team.walkit.presentation.viewmodel.CalendarViewModel.WalkAggregate
+import swyp.team.walkit.presentation.viewmodel.GoalViewModel
 import swyp.team.walkit.ui.components.CustomProgressIndicator
 import swyp.team.walkit.ui.record.components.*
 import swyp.team.walkit.ui.record.friendrecord.FriendRecordScreen
@@ -55,6 +57,7 @@ fun RecordRoute(
     modifier: Modifier = Modifier,
     calendarViewModel: CalendarViewModel = hiltViewModel(),
     recordViewModel: RecordViewModel = hiltViewModel(),
+    goalViewModel: GoalViewModel = hiltViewModel(),
     friendBarViewModel: FriendBarViewModel = hiltViewModel(),
     friendRecordViewModel: FriendRecordViewModel = hiltViewModel(),
     onNavigateToFriend: () -> Unit = {},
@@ -64,6 +67,8 @@ fun RecordRoute(
     onLoadFriendRecord: (String) -> Unit = {}, // 더 이상 사용하지 않음
 ) {
     val recordUiState by recordViewModel.uiState.collectAsStateWithLifecycle()
+    val goalState by goalViewModel.goalState.collectAsStateWithLifecycle()
+    val goal = (goalState as? swyp.team.walkit.core.Result.Success)?.data ?: Goal.EMPTY
     val friendsState by friendBarViewModel.friendsState.collectAsStateWithLifecycle()
     val weekStats by calendarViewModel.weekStats.collectAsStateWithLifecycle()
     val monthStats by calendarViewModel.monthStats.collectAsStateWithLifecycle()
@@ -71,6 +76,7 @@ fun RecordRoute(
     val weekSessions by calendarViewModel.weekSessions.collectAsStateWithLifecycle()
     val monthMissionsCompleted by calendarViewModel.monthMissionsCompleted.collectAsStateWithLifecycle()
     val currentDate by calendarViewModel.currentDate.collectAsStateWithLifecycle()
+    val missionProgress by calendarViewModel.missionProgress.collectAsStateWithLifecycle()
 
     // RecordScreen 진입 시 친구 목록 캐시 확인 및 갱신
     LaunchedEffect(Unit) {
@@ -89,10 +95,12 @@ fun RecordRoute(
     RecordScreenContent(
         modifier = modifier,
         recordUiState = recordUiState,
+        goal = goal,
         friendsState = friendsState,
         weekStats = weekStats,
         monthStats = monthStats,
         currentDate = currentDate,
+        missionProgress = missionProgress,
         onPrevWeek = { calendarViewModel.prevWeek() },
         onNextWeek = { calendarViewModel.nextWeek() },
         onNavigateToAlarm = onNavigateToAlarm,
@@ -110,7 +118,10 @@ fun RecordRoute(
         monthMissionsCompleted = monthMissionsCompleted,
         onMonthChanged = { calendarViewModel.setDate(it.atDay(1)) },
         onBlockUser = { nickName -> recordViewModel.blockSelectedFriend(nickName) },
-        onSetDate = { today -> calendarViewModel.setDate(today) }
+        onSetDate = { today -> calendarViewModel.setDate(today) },
+        onClaimMissionReward = { id -> calendarViewModel.claimMissionReward(id) },
+        onUpdateNote = { id, note -> calendarViewModel.updateSessionNote(id, note) },
+        onDeleteNote = { id -> calendarViewModel.deleteSessionNote(id) },
     )
 }
 
@@ -118,10 +129,12 @@ fun RecordRoute(
 private fun RecordScreenContent(
     modifier: Modifier = Modifier,
     recordUiState: RecordUiState,
+    goal: Goal,
     friendsState: swyp.team.walkit.core.Result<List<Friend>>,
     weekStats: WalkAggregate,
     monthStats: WalkAggregate,
     currentDate: LocalDate,
+    missionProgress: swyp.team.walkit.domain.model.MissionProgress,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
     onNavigateToFriend: () -> Unit,
@@ -136,6 +149,9 @@ private fun RecordScreenContent(
     onMonthChanged: (java.time.YearMonth) -> Unit,
     onSetDate: (LocalDate) -> Unit,
     onBlockUser: (String) -> Unit,
+    onClaimMissionReward: (Long) -> Unit = {},
+    onUpdateNote: (id: String, note: String) -> Unit = { _, _ -> },
+    onDeleteNote: (id: String) -> Unit = {},
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     val tabs = RecordTabType.values()
@@ -155,7 +171,7 @@ private fun RecordScreenContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SemanticColor.backgroundWhitePrimary)
+            .background(SemanticColor.backgroundWhiteSecondary)
     ) {
 
         // 상단 스크롤 영역
@@ -166,56 +182,56 @@ private fun RecordScreenContent(
         ) {
             // 상단 영역들
             RecordHeader(onClickAlarm = onNavigateToAlarm)
-            Spacer(Modifier.height(16.dp))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                Text(
-                    text = "친구목록",
-                    style = MaterialTheme.walkItTypography.captionM,
-                    color = SemanticColor.textBorderPrimary,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-
-            // 상단 API 기반 영역
-            when (recordUiState) {
-                is RecordUiState.Loading -> {
-                    RecordTopSectionSkeleton()
-                }
-
-                is RecordUiState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("상단 데이터 로딩 실패", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-
-                is RecordUiState.Success -> {
-                    // FriendBarViewModel에서 친구 목록 상태 가져오기
-                    val friends = when (friendsState) {
-                        is swyp.team.walkit.core.Result.Success -> friendsState.data
-                        else -> emptyList()
-                    }
-
-                    RecordTopSection(
-                        user = recordUiState.user,
-                        friends = friends,
-                        selectedFriendNickname = recordUiState.selectedFriendNickname,
-                        onMyProfileClick = onMyProfileClick,
-                        onFriendSelected = onFriendSelected,
-                        onNavigateToFriend = onNavigateToFriend
-                    )
-                }
-            }
-
-            Divider()
+//            Spacer(Modifier.height(16.dp))
+//            Row(
+//                Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 20.dp)
+//            ) {
+//                Text(
+//                    text = "친구목록",
+//                    style = MaterialTheme.walkItTypography.captionM,
+//                    color = SemanticColor.textBorderPrimary,
+//                )
+//            }
+//            Spacer(Modifier.height(8.dp))
+//
+//            // 상단 API 기반 영역
+//            when (recordUiState) {
+//                is RecordUiState.Loading -> {
+//                    RecordTopSectionSkeleton()
+//                }
+//
+//                is RecordUiState.Error -> {
+//                    Box(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .height(120.dp),
+//                        contentAlignment = Alignment.Center
+//                    ) {
+//                        Text("상단 데이터 로딩 실패", color = MaterialTheme.colorScheme.error)
+//                    }
+//                }
+//
+//                is RecordUiState.Success -> {
+//                    // FriendBarViewModel에서 친구 목록 상태 가져오기
+//                    val friends = when (friendsState) {
+//                        is swyp.team.walkit.core.Result.Success -> friendsState.data
+//                        else -> emptyList()
+//                    }
+//
+//                    RecordTopSection(
+//                        user = recordUiState.user,
+//                        friends = friends,
+//                        selectedFriendNickname = recordUiState.selectedFriendNickname,
+//                        onMyProfileClick = onMyProfileClick,
+//                        onFriendSelected = onFriendSelected,
+//                        onNavigateToFriend = onNavigateToFriend
+//                    )
+//                }
+//            }
+//
+//            Divider()
 
             // 친구 미선택 시 탭 콘텐츠 표시
             if (!(recordUiState is RecordUiState.Success && recordUiState.selectedFriendNickname != null)) {
@@ -240,10 +256,15 @@ private fun RecordScreenContent(
                         weekSessions = weekSessions,
                         monthMissionsCompleted = monthMissionsCompleted,
                         currentDate = currentDate,
+                        goal = goal,
+                        missionProgress = missionProgress,
                         onPrevWeek = onPrevWeek,
                         onNextWeek = onNextWeek,
                         onNavigateToDailyRecord = onNavigateToDailyRecord,
-                        onMonthChanged = onMonthChanged
+                        onMonthChanged = onMonthChanged,
+                        onClaimMissionReward = onClaimMissionReward,
+                        onUpdateNote = onUpdateNote,
+                        onDeleteNote = onDeleteNote,
                     )
 
 

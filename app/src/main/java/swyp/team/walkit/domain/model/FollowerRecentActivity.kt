@@ -6,6 +6,8 @@ package swyp.team.walkit.domain.model
 data class FollowerRecentActivity(
     /** 팔로우 사용자 ID */
     val userId: Long,
+    /** 가장 최근 산책 기록 ID */
+    val walkId: Long = 0L,
     /** 닉네임 */
     val nickName: String,
     /** 어제 산책 여부 */

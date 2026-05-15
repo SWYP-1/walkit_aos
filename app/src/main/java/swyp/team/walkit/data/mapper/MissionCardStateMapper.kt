@@ -1,13 +1,16 @@
 package swyp.team.walkit.data.mapper
 
 import kotlinx.coroutines.flow.first
+import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.data.repository.WalkingSessionRepository
 import swyp.team.walkit.domain.model.MissionConfig
+import swyp.team.walkit.domain.model.MissionProgress
 import swyp.team.walkit.domain.model.MissionStatus
 import swyp.team.walkit.domain.model.MissionType
 import swyp.team.walkit.domain.model.WeeklyMission
 import swyp.team.walkit.ui.mission.model.MissionCardState
 import timber.log.Timber
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -153,6 +156,76 @@ class MissionCardStateMapper @Inject constructor(
         Timber.d("미션 조건 충족 여부: $conditionMet ($todaySteps >= $requiredSteps)")
 
         return conditionMet
+    }
+
+    /**
+     * 미션 타입별 주간 진행도 계산
+     *
+     * @param mission 미션 데이터
+     * @param weekSessions 해당 주 전체 세션 목록 (이미 필터링된 상태)
+     */
+    fun calculateProgress(
+        mission: WeeklyMission,
+        weekSessions: List<WalkingSession>,
+    ): MissionProgress {
+        val config = mission.getMissionConfig()
+        val missionId = mission.userWeeklyMissionId
+        return when (mission.type) {
+            MissionType.CHALLENGE_STEPS -> {
+                val target = (config as? MissionConfig.ChallengeStepsConfig)?.weeklyGoalSteps
+                    ?: return MissionProgress.None
+                val current = weekSessions.sumOf { it.stepCount }
+                MissionProgress.Steps(
+                    current = current,
+                    target = target,
+                    missionName = mission.title,
+                    rewardPoints = mission.rewardPoints,
+                    userWeeklyMissionId = missionId,
+                )
+            }
+            MissionType.CHALLENGE_ATTENDANCE -> {
+                val target = (config as? MissionConfig.ChallengeAttendanceConfig)?.requiredAttendanceDays
+                    ?: return MissionProgress.None
+                val sessionDates = weekSessions
+                    .mapNotNull { session ->
+                        try {
+                            Instant.ofEpochMilli(session.startTime)
+                                .atZone(ZoneId.systemDefault()).toLocalDate()
+                        } catch (t: Throwable) { null }
+                    }
+                    .distinct().sorted()
+                // 현재 진행 중인 연속 스트릭 (가장 최근 날짜부터 역방향 계산)
+                val current = if (sessionDates.isEmpty()) 0
+                else {
+                    var streak = 1
+                    for (i in sessionDates.size - 1 downTo 1) {
+                        if (sessionDates[i].minusDays(1) == sessionDates[i - 1]) {
+                            streak++
+                        } else {
+                            break
+                        }
+                    }
+                    streak
+                }
+                MissionProgress.Attendance(
+                    current = current,
+                    target = target,
+                    missionName = mission.title,
+                    rewardPoints = mission.rewardPoints,
+                    userWeeklyMissionId = missionId,
+                )
+            }
+            MissionType.PHOTO_COLOR -> {
+                val color = (config as? MissionConfig.PhotoColorConfig)?.color
+                    ?: return MissionProgress.None
+                MissionProgress.PhotoColor(
+                    targetColor = color,
+                    isCompleted = mission.status == MissionStatus.COMPLETED,
+                    rewardPoints = mission.rewardPoints,
+                    userWeeklyMissionId = missionId,
+                )
+            }
+        }
     }
 
     /**

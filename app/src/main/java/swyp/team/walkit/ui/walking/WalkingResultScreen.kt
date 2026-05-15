@@ -72,7 +72,6 @@ import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.walking.components.GoalProgressCard
 import swyp.team.walkit.ui.walking.components.PathThumbnail
-import swyp.team.walkit.ui.walking.components.WalkingResultCompletionDialog
 import swyp.team.walkit.ui.walking.components.WalkingResultLoadingOverlay
 import swyp.team.walkit.ui.walking.viewmodel.SnapshotState
 import androidx.compose.ui.tooling.preview.Preview
@@ -508,9 +507,6 @@ private fun WalkingResultScreenContent(
         }
     }
 
-    // 완료 팝업 표시 여부
-    var showCompletionDialog by remember { mutableStateOf(false) }
-
     // 고유 팝업 표시 여부
     var showShareDialog by remember { mutableStateOf(false) }
 
@@ -523,13 +519,6 @@ private fun WalkingResultScreenContent(
     LaunchedEffect(currentSession.note) {
         if (!isEditing) { // 사용자가 편집 중이 아닐 때만 업데이트
             editedNote = currentSession.note ?: ""
-        }
-    }
-
-    // 서버 동기화 완료 시 팝업 표시
-    LaunchedEffect(snapshotState) {
-        if (snapshotState is SnapshotState.Complete) {
-            showCompletionDialog = true
         }
     }
 
@@ -863,15 +852,6 @@ private fun WalkingResultScreenContent(
             WalkingResultLoadingOverlay()
         }
 
-        // 완료 팝업
-        if (showCompletionDialog) {
-            WalkingResultCompletionDialog(
-                onConfirm = {
-                    showCompletionDialog = false
-                    onNavigateToHome()
-                },
-            )
-        }
         if (showShareDialog) {
             ShareWalkingResultDialog(
                 stepCount = currentSession.stepCount.toString(),

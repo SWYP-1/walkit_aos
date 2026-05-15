@@ -56,6 +56,8 @@ import com.kakao.vectormap.GestureType
 import swyp.team.walkit.data.model.LocationPoint
 import swyp.team.walkit.data.model.MapMarker
 import swyp.team.walkit.data.model.MapMarkerType
+import swyp.team.walkit.data.model.MapPin
+import swyp.team.walkit.data.utils.MapClusteringUtil
 import swyp.team.walkit.presentation.viewmodel.CameraSettings
 import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.presentation.viewmodel.KakaoMapUiState
@@ -103,13 +105,19 @@ fun KakaoMapView(
     onMapViewReady: ((MapView?) -> Unit)? = null,
     latLngBoundsPaddingPx: Int = 64, // LatLngBounds 패딩 (픽셀)
     markers: List<MapMarker> = emptyList(),
+    /** 클러스터링된 핀 목록. 비어있지 않으면 markers보다 우선 사용된다 */
+    pins: List<MapPin> = emptyList(),
     /** userId → 친구 핀 Bitmap. null이면 ic_pin_friend 기본 아이콘 사용 */
     friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
     onMarkerClick: ((MapMarker) -> Unit)? = null,
+    /** 카메라 줌 레벨 변경 콜백 (클러스터 재계산 트리거) */
+    onZoomChanged: (Int) -> Unit = {},
     /** 현재 위치 추적 모드 */
     trackingMode: MapTrackingMode = MapTrackingMode.IDLE,
     /** FOLLOWING 모드일 때 ViewModel이 주기적으로 업데이트하는 현재 위치 */
     currentLocation: LocationPoint? = null,
+    /** 초기 진입 시 카메라를 이동할 목표 좌표 (1회만 반응, 이후 null) */
+    centerLocation: LocationPoint? = null,
     /** 사용자 제스처(드래그 등)로 트래킹이 해제될 때 콜백 */
     onTrackingDisabled: () -> Unit = {},
 ) {
@@ -155,36 +163,36 @@ fun KakaoMapView(
         viewModel.setLocations(locations, localDensity)
     }
 
-    // 마커 업데이트
-    LaunchedEffect(markers, friendBitmaps, kakaoMapInstance) {
+    val screenDensity = LocalDensity.current.density
+
+    // 마커 업데이트 — 카메라는 건드리지 않고 핀만 갱신
+    LaunchedEffect(pins, markers, friendBitmaps, kakaoMapInstance) {
         val kakaoMap = kakaoMapInstance ?: run {
             Timber.w("[마커 LaunchedEffect] kakaoMapInstance=null — 스킵")
             return@LaunchedEffect
         }
-        Timber.d("[마커 LaunchedEffect] 트리거 — markers=${markers.size}개, friendBitmaps=${friendBitmaps.size}개")
-        // 각 마커 좌표 출력 (위치 디버깅)
-        markers.forEach { m ->
-            Timber.d("[마커 LaunchedEffect] ${m.type} id=${m.id} lat=${m.latitude} lon=${m.longitude}")
-        }
-        drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
-
-        // 마커가 있을 때 카메라를 마커 전체가 보이도록 이동
-        if (markers.isNotEmpty()) {
-            try {
-                val boundsBuilder = LatLngBounds.Builder()
-                markers.forEach { marker ->
-                    boundsBuilder.include(LatLng.from(marker.latitude, marker.longitude))
-                }
-                val bounds = boundsBuilder.build()
-                Timber.d("[마커 LaunchedEffect] fitMapPoints bounds: ")
-                kakaoMap.moveCamera(
-                    CameraUpdateFactory.fitMapPoints(bounds, 120)
-                )
-                Timber.d("[마커 LaunchedEffect] 카메라 이동 요청 완료")
-            } catch (t: Throwable) {
-                Timber.e(t, "[마커 LaunchedEffect] 카메라 이동 실패")
+        if (pins.isNotEmpty()) {
+            Timber.d("[마커 LaunchedEffect] 핀 모드 — pins=${pins.size}개 (clusters=${pins.count { it is MapPin.Cluster }})")
+            drawPins(context, kakaoMap, pins, friendBitmaps, onMarkerClick, screenDensity)
+        } else {
+            Timber.d("[마커 LaunchedEffect] 마커 모드 — markers=${markers.size}개, friendBitmaps=${friendBitmaps.size}개")
+            markers.forEach { m ->
+                Timber.d("[마커 LaunchedEffect] ${m.type} id=${m.id} lat=${m.latitude} lon=${m.longitude}")
             }
+            drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
         }
+    }
+
+    // 초기 진입 시 카메라 이동 (centerLocation이 변경될 때만 반응)
+    LaunchedEffect(centerLocation, kakaoMapInstance) {
+        val kakaoMap = kakaoMapInstance ?: return@LaunchedEffect
+        val loc = centerLocation ?: return@LaunchedEffect
+        kakaoMap.moveCamera(
+            CameraUpdateFactory.newCenterPosition(
+                LatLng.from(loc.latitude, loc.longitude), 15
+            )
+        )
+        Timber.d("[centerLocation] 카메라 이동 → lat=${loc.latitude}, lon=${loc.longitude}")
     }
 
     // 지도 준비 완료 시 현재 위치 전용 레이어 생성 (일반 마커와 별도 관리)
@@ -322,9 +330,12 @@ fun KakaoMapView(
                         strokePx,
                         latLngBoundsPaddingPx.toFloat(),
                         markers,
+                        pins,
                         friendBitmaps,
                         onMarkerClick,
+                        onZoomChanged = onZoomChanged,
                         onTrackingDisabled = onTrackingDisabled,
+                        density = screenDensity,
                     ) { kakaoMap ->
                         kakaoMapInstance = kakaoMap
                     }
@@ -362,9 +373,12 @@ private fun initializeMapView(
     strokePx: Float,
     latLngBoundsPaddingPx: Float,
     markers: List<MapMarker>,
+    pins: List<MapPin> = emptyList(),
     friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
     onMarkerClick: ((MapMarker) -> Unit)?,
+    onZoomChanged: (Int) -> Unit = {},
     onTrackingDisabled: () -> Unit = {},
+    density: Float = 1f,
     onMapReady: (KakaoMap) -> Unit,
 ) {
     mapView.start(
@@ -380,22 +394,13 @@ private fun initializeMapView(
         object : KakaoMapReadyCallback() {
             override fun onMapReady(kakaoMap: KakaoMap) {
                 Timber.d("KakaoMap ready")
-                setupCameraListener(kakaoMap, viewModel, onTrackingDisabled)
+                setupCameraListener(kakaoMap, viewModel, onZoomChanged, onTrackingDisabled)
 
-                // 마커 초기화
-                drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
-
-                // 초기 카메라 위치 설정 (마커가 있을 때)
-                if (markers.isNotEmpty()) {
-                    val boundsBuilder = LatLngBounds.Builder()
-                    markers.forEach { marker ->
-                        boundsBuilder.include(LatLng.from(marker.latitude, marker.longitude))
-                    }
-                    val cameraUpdate = CameraUpdateFactory.fitMapPoints(
-                        boundsBuilder.build(),
-                        latLngBoundsPaddingPx.toInt()
-                    )
-                    kakaoMap.moveCamera(cameraUpdate)
+                // 마커 초기화 — SDK 준비 시점에 이미 마커가 있는 경우 대응
+                if (pins.isNotEmpty()) {
+                    drawPins(context, kakaoMap, pins, friendBitmaps, onMarkerClick, density)
+                } else {
+                    drawMarkers(context, kakaoMap, markers, friendBitmaps, onMarkerClick)
                 }
 
                 onMapReady(kakaoMap)
@@ -420,10 +425,13 @@ private fun initializeMapView(
 private fun setupCameraListener(
     kakaoMap: KakaoMap,
     viewModel: KakaoMapViewModel,
+    onZoomChanged: (Int) -> Unit = {},
     onTrackingDisabled: () -> Unit = {},
 ) {
     kakaoMap.setOnCameraMoveEndListener(null)
-    kakaoMap.setOnCameraMoveEndListener { _: KakaoMap, _: CameraPosition, gestureType: GestureType ->
+    kakaoMap.setOnCameraMoveEndListener { _: KakaoMap, position: CameraPosition, gestureType: GestureType ->
+        // 줌 레벨 변경 알림 (클러스터 재계산 트리거)
+        onZoomChanged(position.zoomLevel)
         if (gestureType == GestureType.Unknown &&
             viewModel.renderState.value == MapRenderState.MovingCamera
         ) {
@@ -1020,6 +1028,137 @@ private fun vectorDrawableToBitmap(context: Context, @DrawableRes resId: Int): B
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)
     return bitmap
+}
+
+/**
+ * 클러스터 배지 Bitmap 생성.
+ *
+ * 파란 원 + 흰색 테두리 + 중앙 숫자 레이블로 구성된 48dp 크기 Bitmap을 반환한다.
+ */
+private fun createClusterBitmap(count: Int, density: Float): Bitmap {
+    val sizePx = (48 * density).toInt()
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+    val cx = sizePx / 2f
+    val cy = sizePx / 2f
+    val radius = sizePx / 2f
+
+    // 장소 핀 색상과 동일한 배경 원
+    paint.color = android.graphics.Color.parseColor("#4CAF50")
+    paint.style = android.graphics.Paint.Style.FILL
+    canvas.drawCircle(cx, cy, radius, paint)
+
+    // 흰색 테두리
+    paint.color = android.graphics.Color.WHITE
+    paint.style = android.graphics.Paint.Style.STROKE
+    paint.strokeWidth = 2f * density
+    canvas.drawCircle(cx, cy, radius - density, paint)
+
+    // 숫자 텍스트
+    paint.style = android.graphics.Paint.Style.FILL
+    paint.textSize = 14f * density
+    paint.textAlign = android.graphics.Paint.Align.CENTER
+    paint.isFakeBoldText = true
+    val text = if (count > 99) "99+" else count.toString()
+    val textY = cy - (paint.descent() + paint.ascent()) / 2f
+    canvas.drawText(text, cx, textY, paint)
+
+    return bitmap
+}
+
+/**
+ * [MapPin] 목록을 지도에 그린다.
+ *
+ * - [MapPin.Single]: 기존 단일 마커와 동일하게 렌더링
+ * - [MapPin.Cluster]: 숫자 배지가 있는 원형 Bitmap으로 렌더링하고, 클릭 시 클러스터 중심으로 줌인
+ */
+private fun drawPins(
+    context: Context,
+    kakaoMap: KakaoMap,
+    pins: List<MapPin>,
+    friendBitmaps: Map<Long, Bitmap?> = emptyMap(),
+    onMarkerClick: ((MapMarker) -> Unit)? = null,
+    density: Float = 1f,
+) {
+    if (pins.isEmpty()) {
+        clearMarkers(kakaoMap)
+        return
+    }
+
+    Timber.d("[drawPins] 시작 — 총 ${pins.size}개 (clusters=${pins.count { it is MapPin.Cluster }})")
+
+    try {
+        val labelManager = kakaoMap.labelManager ?: run {
+            Timber.e("[drawPins] labelManager가 null")
+            return
+        }
+        val layer = labelManager.layer ?: run {
+            Timber.e("[drawPins] labelManager.layer가 null")
+            return
+        }
+
+        clearMarkers(kakaoMap)
+
+        pins.forEach { pin ->
+            when (pin) {
+                is MapPin.Single -> {
+                    val marker = pin.marker
+                    val bitmap = when (marker.type) {
+                        MapMarkerType.FRIEND -> {
+                            val userId = marker.id.removePrefix("friend_").toLongOrNull()
+                            val cached = userId?.let { friendBitmaps[it] }
+                            if (cached != null && !cached.isRecycled && !cached.isTransparent()) cached
+                            else vectorDrawableToBitmap(context, R.drawable.ic_pin_friend)
+                        }
+                        MapMarkerType.SPOT -> vectorDrawableToBitmap(context, R.drawable.ic_pin_spot)
+                    }
+                    val style = labelManager.addLabelStyles(LabelStyles.from(LabelStyle.from(bitmap)))
+                    layer.addLabel(
+                        LabelOptions.from(LatLng.from(marker.latitude, marker.longitude))
+                            .setStyles(style)
+                            .setTag(pin)
+                    )
+                }
+                is MapPin.Cluster -> {
+                    val bitmap = createClusterBitmap(pin.count, density)
+                    val style = labelManager.addLabelStyles(LabelStyles.from(LabelStyle.from(bitmap)))
+                    layer.addLabel(
+                        LabelOptions.from(LatLng.from(pin.latitude, pin.longitude))
+                            .setStyles(style)
+                            .setTag(pin)
+                    )
+                }
+            }
+        }
+
+        kakaoMap.setOnLabelClickListener { map, _, label ->
+            when (val tag = label.tag) {
+                is MapPin.Single -> {
+                    onMarkerClick?.invoke(tag.marker)
+                    true
+                }
+                is MapPin.Cluster -> {
+                    // 클러스터 클릭 시 중심 좌표로 줌인
+                    val targetZoom = (MapClusteringUtil.UNCLUSTER_ZOOM).coerceAtLeast(
+                        (map.cameraPosition?.zoomLevel ?: 15) + 2
+                    )
+                    map.moveCamera(
+                        CameraUpdateFactory.newCenterPosition(
+                            LatLng.from(tag.latitude, tag.longitude), targetZoom
+                        )
+                    )
+                    true
+                }
+                else -> false
+            }
+        }
+
+        Timber.d("[drawPins] 완료 — ${pins.size}개 그리기 성공")
+    } catch (t: Throwable) {
+        Timber.e(t, "[drawPins] 실패: ${t.message}")
+    }
 }
 
 /**

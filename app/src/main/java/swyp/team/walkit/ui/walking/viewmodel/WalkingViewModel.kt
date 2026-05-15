@@ -18,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import swyp.team.walkit.R
@@ -220,6 +222,10 @@ class WalkingViewModel @Inject constructor(
     // 스냅샷 생성 및 서버 동기화 상태
     private val _snapshotState = MutableStateFlow<SnapshotState>(SnapshotState.Idle)
     val snapshotState: StateFlow<SnapshotState> = _snapshotState.asStateFlow()
+
+    // 서버 동기화 완료 일회성 이벤트 (재구성 시 재소비 방지)
+    private val _syncCompleteEvent = Channel<Unit>(Channel.CONFLATED)
+    val syncCompleteEvent = _syncCompleteEvent.receiveAsFlow()
 
     // 세션 저장 완료 상태 추적
     private val _isSessionSaved = MutableStateFlow(false)
@@ -1288,6 +1294,7 @@ class WalkingViewModel @Inject constructor(
                 }
 
                 _snapshotState.value = SnapshotState.Complete
+                _syncCompleteEvent.trySend(Unit)
                 Timber.d("서버 동기화 완료: localId=$localId")
             } catch (e: CancellationException) {
                 // nonCancellable을 사용했으므로 이 경우는 발생하지 않아야 하지만, 안전을 위해 처리

@@ -1,5 +1,6 @@
 package swyp.team.walkit.ui.interactivemap.friendwalk
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import swyp.team.walkit.ui.components.AppHeader
 import swyp.team.walkit.ui.interactivemap.bottomtab.FriendPinBottomTab
+import swyp.team.walkit.ui.theme.SemanticColor
+import swyp.team.walkit.utils.DateUtils.formatIsoToMonthDay
 
 /**
  * 친구 산책 전체 화면
@@ -49,8 +52,9 @@ fun FriendWalkScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
+            val dateTitle = uiState.walkRecord?.createdDate?.let { formatIsoToMonthDay(it) } ?: ""
             AppHeader(
-                title = "",
+                title = dateTitle,
                 showBackButton = true,
                 onNavigateBack = onNavigateBack,
             )
@@ -59,6 +63,7 @@ fun FriendWalkScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(SemanticColor.backgroundWhitePrimary)   // 👉 먼저 배경
                 .padding(innerPadding),
         ) {
             when {

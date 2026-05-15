@@ -22,8 +22,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.core.map
+import swyp.team.walkit.data.mapper.MissionCardStateMapper
 import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.data.repository.WalkingSessionRepository
+import swyp.team.walkit.domain.model.MissionProgress
 import swyp.team.walkit.domain.repository.MissionRepository
 import swyp.team.walkit.utils.CalenderUtils.dayRange
 import swyp.team.walkit.utils.CalenderUtils.monthRange
@@ -32,6 +34,7 @@ import swyp.team.walkit.utils.WalkingTestData
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import timber.log.Timber
 
 /**
@@ -42,6 +45,7 @@ import timber.log.Timber
 class CalendarViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
     private val missionRepository: MissionRepository,
+    private val missionCardStateMapper: MissionCardStateMapper,
 ) : ViewModel() {
 
 
@@ -191,6 +195,42 @@ class CalendarViewModel @Inject constructor(
                 initialValue = emptyList(),
             )
 
+    // 주간 미션 진행도 — 세션 변화 시 자동 갱신
+    val missionProgress: StateFlow<MissionProgress> =
+        today
+            .flatMapLatest { date ->
+                val (start, end) = weekRange(date)
+                val missionResult = missionRepository.getActiveWeeklyMission()
+                val mission = (missionResult as? Result.Success)?.data?.firstOrNull()
+                    ?: return@flatMapLatest flowOf(MissionProgress.None)
+                walkingSessionRepository.getSessionsBetween(start, end)
+                    .map { sessions ->
+                        val progress = missionCardStateMapper.calculateProgress(mission, sessions)
+                        // 주간 총 걸음수 기준으로 달성 여부 판단 (오늘 걸음수만 보던 버그 수정)
+                        val isReadyForClaim = when (progress) {
+                            is MissionProgress.Steps -> progress.current >= progress.target
+                            is MissionProgress.Attendance -> progress.current >= progress.target
+                            is MissionProgress.PhotoColor -> progress.isCompleted
+                            is MissionProgress.None -> false
+                        }
+                        when (progress) {
+                            is MissionProgress.Steps -> progress.copy(isReadyForClaim = isReadyForClaim)
+                            is MissionProgress.Attendance -> progress.copy(isReadyForClaim = isReadyForClaim)
+                            is MissionProgress.PhotoColor -> progress.copy(isReadyForClaim = isReadyForClaim)
+                            is MissionProgress.None -> progress
+                        }
+                    }
+            }
+            .catch { e ->
+                Timber.e(e, "미션 진행도 로드 실패")
+                emit(MissionProgress.None)
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = MissionProgress.None,
+            )
+
     val daySessions: StateFlow<List<WalkingSession>> =
         today
             .flatMapLatest { date ->
@@ -337,7 +377,7 @@ class CalendarViewModel @Inject constructor(
 // CalendarViewModel.kt
     fun nextWeek() {
         val current = today.value
-        val currentWeekStart = current.with(DayOfWeek.MONDAY)
+        val currentWeekStart = current.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         val nextWeekStart = currentWeekStart.plusWeeks(1)
 
         today.value = nextWeekStart
@@ -346,11 +386,24 @@ class CalendarViewModel @Inject constructor(
 
     fun prevWeek() {
         val current = today.value
-        val currentWeekStart = current.with(DayOfWeek.MONDAY)
+        val currentWeekStart = current.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         val prevWeekStart = currentWeekStart.minusWeeks(1)
 
         today.value = prevWeekStart
         _isLoadingDaySessions.value = true
+    }
+
+    /**
+     * 주간 미션 보상 수령
+     */
+    fun claimMissionReward(userWeeklyMissionId: Long) {
+        viewModelScope.launch {
+            when (val result = missionRepository.verifyWeeklyMissionReward(userWeeklyMissionId)) {
+                is Result.Success -> Timber.d("미션 보상 수령 성공: $userWeeklyMissionId")
+                is Result.Error -> Timber.e(result.exception, "미션 보상 수령 실패: $userWeeklyMissionId")
+                Result.Loading -> Unit
+            }
+        }
     }
 
     private fun List<WalkingSession>.aggregate(): WalkAggregate {

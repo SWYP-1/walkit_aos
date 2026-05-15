@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,8 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,10 +65,13 @@ import androidx.compose.ui.unit.dp
 import swyp.team.walkit.R
 import swyp.team.walkit.data.model.EmotionType
 import swyp.team.walkit.ui.walking.utils.stringToEmotionType
+import swyp.team.walkit.ui.walking.utils.stringToEmotionTypeOrNull
 import swyp.team.walkit.presentation.viewmodel.CalendarViewModel.WalkAggregate
 import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.ui.components.SectionCard
 import swyp.team.walkit.ui.home.components.DominantEmotionCard
+import swyp.team.walkit.domain.model.Goal
+import swyp.team.walkit.domain.model.MissionProgress
 import swyp.team.walkit.ui.theme.Green1
 import swyp.team.walkit.ui.theme.Grey10
 import swyp.team.walkit.ui.theme.SemanticColor
@@ -76,6 +83,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 /**
  * Modifier extension for custom shadow effect
@@ -121,10 +129,13 @@ fun MonthSectionSafe(
     stats: WalkAggregate,
     sessions: List<WalkingSession>,
     missionsCompleted: List<String>,
-    onNavigateToDailyRecord: (String) -> Unit, // 날짜 형식: "yyyy-MM-dd"
-    onMonthChanged: (YearMonth) -> Unit = {}, // 월 변경 시 ViewModel에 알림
+    onNavigateToDailyRecord: (String) -> Unit = {},
+    onMonthChanged: (YearMonth) -> Unit = {},
+    onUpdateNote: (id: String, note: String) -> Unit = { _, _ -> },
+    onDeleteNote: (id: String) -> Unit = {},
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
@@ -132,21 +143,11 @@ fun MonthSectionSafe(
         }
     }
 
-    val monthlyStats = remember(sessions, currentMonth) {
-        try {
-            calculateMonthlyStatsForRecord(sessions, currentMonth)
-        } catch (e: Exception) {
-            // 이상값 발생 시 기본값 반환
-            MonthlyStatsRecord(
-                primaryMood = null,
-                emotionCount = 0,
-                description = "이번 달의 주요 감정입니다.",
-                totalSteps = 0,
-                averageSteps = 0,
-                walkingTimeMinutes = 0,
-                sessionsCount = 0
-            )
-        }
+    // 선택된 날짜의 세션만 필터링 (최신순)
+    val selectedDaySessions = remember(sessions, selectedDate) {
+        sessions
+            .filter { safeEpochMilliToLocalDate(it.startTime) == selectedDate }
+            .sortedByDescending { it.startTime }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -162,10 +163,14 @@ fun MonthSectionSafe(
                 onPreviousMonth = {
                     currentMonth = currentMonth.minusMonths(1)
                     onMonthChanged(currentMonth)
+                    selectedDate = if (YearMonth.from(LocalDate.now()) == currentMonth)
+                        LocalDate.now() else currentMonth.atDay(1)
                 },
                 onNextMonth = {
                     currentMonth = currentMonth.plusMonths(1)
                     onMonthChanged(currentMonth)
+                    selectedDate = if (YearMonth.from(LocalDate.now()) == currentMonth)
+                        LocalDate.now() else currentMonth.atDay(1)
                 },
             )
 
@@ -173,21 +178,47 @@ fun MonthSectionSafe(
                 yearMonth = currentMonth,
                 sessionsByDate = sessionsByDate,
                 missionsCompleted = missionsCompleted,
-                onNavigateToDailyRecord = onNavigateToDailyRecord,
+                selectedDate = selectedDate,
+                onDateSelected = { selectedDate = it },
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
 
-        WalkingStatsCard(
-            sessions = sessions,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // 선택된 날짜의 산책 일지
+        selectedDaySessions.forEach { session ->
+            key(session.id) {
+                var isEditing by remember { mutableStateOf(false) }
+                var editedNote by remember(session.id) { mutableStateOf(session.note ?: "") }
 
-        DominantEmotionCard(
-            emotionType = monthlyStats.primaryMood,
-            emotionCount = monthlyStats.emotionCount,
-            periodText = "이번달",
-        )
+                // debounce 자동 저장: 타이핑 멈춘 후 800ms 뒤 저장
+                LaunchedEffect(editedNote) {
+                    kotlinx.coroutines.delay(800)
+                    if (editedNote != (session.note ?: "")) {
+                        onUpdateNote(session.id, editedNote)
+                    }
+                }
+
+                // safety net: 날짜 변경 등으로 컴포저블이 사라질 때 미저장 내용 저장
+                DisposableEffect(session.id) {
+                    onDispose {
+                        if (editedNote != (session.note ?: "")) {
+                            onUpdateNote(session.id, editedNote)
+                        }
+                    }
+                }
+
+                WalkingDiaryCard(
+                    session = session,
+                    note = editedNote,
+                    isEditMode = isEditing,
+                    setEditing = { isEditing = it },
+                    onNoteChange = { editedNote = it },
+                    onDeleteClick = { onDeleteNote(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -203,16 +234,19 @@ fun MonthSectionSafe(
 fun WeekSectionSafe(
     stats: WalkAggregate,
     currentDate: LocalDate,
+    goal: Goal,
     onPrevWeek: () -> Unit,
     onNextWeek: () -> Unit,
-    sessions: List<WalkingSession> = emptyList(), // 이미 해당 주의 세션만 필터링된 데이터
+    sessions: List<WalkingSession> = emptyList(),
+    missionProgress: MissionProgress = MissionProgress.None,
+    onClaimMissionReward: (Long) -> Unit = {},
 ) {
     // 현재 월과 연도
     val currentMonth = currentDate.month
     val currentYear = currentDate.year
 
-    // 해당 주의 전체 날짜 범위 (월요일 시작)
-    val startOfWeek = currentDate.with(DayOfWeek.MONDAY)
+    // 해당 주의 전체 날짜 범위 (일요일 시작)
+    val startOfWeek = currentDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
     val weekDates = remember(startOfWeek) {
         (0..6).map { startOfWeek.plusDays(it.toLong()) }
     }
@@ -266,6 +300,19 @@ fun WeekSectionSafe(
                 sessionsByDate = sessionsByDate,
             )
         }
+
+        WeeklyGoalBarChartCard(
+            weekDates = weekDates,
+            sessionsByDate = sessionsByDate,
+            goal = goal,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        MissionProgressCard(
+            progress = missionProgress,
+            modifier = Modifier.fillMaxWidth(),
+            onClaimReward = onClaimMissionReward,
+        )
 
         WalkingStatsCard(
             sessions = weekSessions,
@@ -366,52 +413,33 @@ private fun WeekNavigator(
  * 주간 라벨 포맷팅 함수
  * 예: "12월 첫째주", "12월 둘째주"
  *
- * 해당 주의 시작일(월요일)이 속한 월을 기준으로,
- * 그 월의 첫 번째 날(1일)이 포함된 주의 월요일을 첫째주 기준으로 계산합니다.
- * WeekSectionSafe와 CalendarViewModel과 동일하게 월요일 기준으로 계산합니다.
- * 국립국어원 표준 및 ISO 8601 표준에 따라 월요일을 주의 시작으로 사용합니다.
+ * 해당 주의 시작일(일요일)이 속한 월을 기준으로,
+ * 그 월의 첫 번째 일요일을 첫째주 기준으로 계산합니다.
  */
-
-
-// ========================================
-// 1. formatWeekLabel 수정
-// ========================================
-
 fun formatWeekLabel(date: LocalDate): String {
-    // 현재 날짜가 속한 주의 월요일
-    val currentWeekStart = date.with(DayOfWeek.MONDAY)
+    // 현재 날짜가 속한 주의 일요일 (일요일 시작 기준)
+    val currentWeekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
 
-    // 그 주의 7일 생성
-    val weekDates = (0..6).map { currentWeekStart.plusDays(it.toLong()) }
-
-    // ===== 핵심 변경: 월요일이 속한 월을 기준으로 =====
     val targetMonth = currentWeekStart.month
     val targetYear = currentWeekStart.year
 
-
-    // 해당 월의 모든 월요일 찾기
+    // 해당 월의 모든 일요일 찾기
     val firstDayOfMonth = LocalDate.of(targetYear, targetMonth, 1)
     val lastDayOfMonth = firstDayOfMonth.plusMonths(1).minusDays(1)
 
-    // 해당 월의 첫 번째 월요일 찾기
-    val firstMonday = if (firstDayOfMonth.dayOfWeek == DayOfWeek.MONDAY) {
-        firstDayOfMonth
-    } else {
-        firstDayOfMonth.with(DayOfWeek.MONDAY).let {
-            if (it.isBefore(firstDayOfMonth)) it.plusWeeks(1) else it
-        }
+    // 해당 월의 첫 번째 일요일 찾기
+    val firstSunday = firstDayOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+
+    // 해당 월의 모든 일요일 수집
+    val sundaysInMonth = mutableListOf<LocalDate>()
+    var sunday = firstSunday
+    while (!sunday.isAfter(lastDayOfMonth)) {
+        sundaysInMonth.add(sunday)
+        sunday = sunday.plusWeeks(1)
     }
 
-    // 해당 월의 모든 월요일 수집
-    val mondaysInMonth = mutableListOf<LocalDate>()
-    var monday = firstMonday
-    while (!monday.isAfter(lastDayOfMonth)) {
-        mondaysInMonth.add(monday)
-        monday = monday.plusWeeks(1)
-    }
-
-    // 현재 주의 월요일이 해당 월의 몇 번째 월요일인지 확인
-    val weekNumber = mondaysInMonth.indexOf(currentWeekStart) + 1
+    // 현재 주의 일요일이 해당 월의 몇 번째 일요일인지 확인
+    val weekNumber = sundaysInMonth.indexOf(currentWeekStart) + 1
 
     val weekLabel = when (weekNumber) {
         1 -> "첫째주"
@@ -426,25 +454,6 @@ fun formatWeekLabel(date: LocalDate): String {
     return "${targetMonth.value}월 $weekLabel"
 }
 
-// 예시:
-// 12월 30일(월)~1월 5일(일) - 월요일 기준
-// → weekDates = [12/30(월), 12/31(화), 1/1(수), 1/2(목), 1/3(금), 1/4(토), 1/5(일)]
-// → 12월: 2일, 1월: 5일
-// → dominantMonth = 1월
-// → currentMonday = 12/30(월)이지만 dominantMonth는 1월
-// → 1월의 첫 번째 날(1일)이 속한 주의 월요일 = 12/30(월)
-// → 주차 계산: (12/30 - 12/30) / 7 + 1 = 1
-// → "1월 첫째주" ✅
-
-// 예시:
-// 12월 31일(화) 선택 시
-// → currentWeekStart = 12/30(월) (12/31의 해당 주 월요일)
-// → weekDates = [12/30(월), 12/31(화), 1/1(수), 1/2(목), 1/3(금), 1/4(토), 1/5(일)]
-// → 12월이 2일, 1월이 5일 → dominantMonth = 1월
-// → currentMonday = 12/30(월), firstWeekMonday = 12/30(월)
-// → 주차 계산: (12/30 - 12/30) / 7 + 1 = 1
-// → "1월 첫째주"로 표시됨 ✅
-
 /**
  * 캘린더 그리드 컴포넌트
  */
@@ -453,11 +462,11 @@ private fun CalendarGridRecord(
     yearMonth: YearMonth,
     sessionsByDate: Map<LocalDate, List<WalkingSession>>,
     missionsCompleted: List<String>,
-    onNavigateToDailyRecord: (String) -> Unit,
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstDayOfMonth = yearMonth.atDay(1)
-    val lastDayOfMonth = yearMonth.atEndOfMonth()
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7
     val daysInMonth = yearMonth.lengthOfMonth()
 
@@ -500,84 +509,70 @@ private fun CalendarGridRecord(
             ) {
                 repeat(7) { dayOfWeek ->
                     if (week == 0 && dayOfWeek < firstDayOfWeek) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(3 / 4f)
-                                .padding(4.dp),
-                        )
+                        Box(modifier = Modifier.weight(1f).padding(horizontal = 1.19.dp, vertical = 4.dp).aspectRatio(1f))
                     } else if (dayIndex < daysInMonth) {
                         val date = yearMonth.atDay(dayIndex + 1)
-                        val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
+                        val sessions = sessionsByDate[date]
+                        val hasWalkSession = sessions?.isNotEmpty() == true
                         val dateString =
                             date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                         val hasMissionCompleted = missionsCompletedSet.contains(dateString)
+                        val dominantEmotion = run {
+                            val emotionList = sessions
+                                ?.mapNotNull { stringToEmotionTypeOrNull(it.postWalkEmotion) }
+                                ?: emptyList()
+                            emotionList
+                                .groupingBy { it }
+                                .eachCount()
+                                .maxWithOrNull(
+                                    compareBy(
+                                        { it.value },
+                                        { emotionList.indexOfLast { e -> e == it.key } }
+                                    )
+                                )?.key
+                        }
 
                         CalendarDayCellRecord(
                             date = date,
                             day = dayIndex + 1,
                             hasWalkSession = hasWalkSession,
                             hasMissionCompleted = hasMissionCompleted,
-                            onNavigateToDailyRecord = onNavigateToDailyRecord,
+                            dominantEmotion = dominantEmotion,
+                            isSelected = date == selectedDate,
+                            onDateSelected = { onDateSelected(date) },
                             modifier = Modifier
                                 .weight(1f)
-                                .aspectRatio(3 / 4f)
-                                .padding(4.dp),
+                                .padding(horizontal = 1.19.dp, vertical = 4.dp)
+                                .aspectRatio(1f),
                         )
                         dayIndex++
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .padding(4.dp),
-                        )
+                        Box(modifier = Modifier.weight(1f).padding(horizontal = 1.19.dp, vertical = 4.dp).aspectRatio(1f))
                     }
                 }
             }
         }
 
-        Spacer(Modifier.width(12.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .clip(CircleShape)
-                    .background(SemanticColor.stateGreenPrimary)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "산책",
-                // caption M/regular
-                style = MaterialTheme.walkItTypography.captionM,
-                color = SemanticColor.textBorderPrimary
-            )
-            Spacer(Modifier.width(12.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .clip(CircleShape)
-                    .background(SemanticColor.stateAquaBlueSecondary)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "미션",
-                // caption M/regular
-                style = MaterialTheme.walkItTypography.captionM,
-                color = SemanticColor.textBorderPrimary
-            )
-        }
         Spacer(Modifier.height(18.dp))
     }
 }
 
 /**
+ * 감정 타입을 캘린더 원형 배경 색상으로 변환
+ */
+private fun EmotionType.toCalendarCircleColor(): Color = when (this) {
+    EmotionType.IRRITATED -> SemanticColor.stateRedSecondary
+    EmotionType.DEPRESSED -> SemanticColor.stateBlueSecondary
+    EmotionType.JOYFUL    -> SemanticColor.stateYellowSecondary
+    EmotionType.DELIGHTED -> SemanticColor.stateGreenSecondary
+    EmotionType.TIRED     -> SemanticColor.statePurpleSecondary
+    EmotionType.HAPPY     -> SemanticColor.statePinkSecondary
+}
+
+/**
  * 캘린더 데이 셀 컴포넌트
+ *
+ * 산책 기록이 있는 날짜는 감정 타입에 맞는 42dp 원형 배경 위에 날짜를 표시한다.
  */
 @Composable
 private fun CalendarDayCellRecord(
@@ -585,75 +580,95 @@ private fun CalendarDayCellRecord(
     day: Int,
     hasWalkSession: Boolean,
     hasMissionCompleted: Boolean,
-    onNavigateToDailyRecord: (String) -> Unit,
+    dominantEmotion: EmotionType?,
+    isSelected: Boolean,
+    onDateSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val today = LocalDate.now()
     val isToday = date == today
 
-    val backgroundColor =
-        if (isToday) SemanticColor.stateAquaBlueTertiary else SemanticColor.backgroundWhitePrimary
-    val borderColor = if (isToday) SemanticColor.stateAquaBluePrimary else Color.Transparent
-
-    Column(
+    Box(
         modifier = modifier
-            .background(backgroundColor)
-            .clip(RoundedCornerShape(4.dp))
-            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(4.dp))
-            .then(
-                if (hasWalkSession) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(), // Ripple 효과 활성화
-                        onClick = {
-                            Log.d("CalendarDayCellRecord", "Clicked $date")
-                            onNavigateToDailyRecord(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-                        })
-                } else {
-                    Modifier // 클릭 불가능
-                }
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(),
+                onClick = { onDateSelected() },
             ),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = day.toString(),
-            style = MaterialTheme.walkItTypography.bodyS,
-            color = if (hasWalkSession) Color(0xFF171717) else Color(0xFFCCCCCC), // 산책 기록 없는 날짜는 회색
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Row() {
-            // 산책 완료시 점
-            if (hasWalkSession) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(SemanticColor.stateGreenPrimary)
-                )
-            }
-            // 미션 완료시 점
-            if (hasMissionCompleted) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(SemanticColor.stateAquaBlueSecondary)
-                )
-            }
-
+        // 오늘 배경 (선택된 경우에만 표시)
+        if (isToday && isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(SemanticColor.stateGreenSecondary)
+                    .border(2.dp, SemanticColor.stateGreenPrimary, CircleShape)
+            )
+        }
+        // 감정 색상 원형 배경 (오늘이 선택된 경우엔 녹색 배경이 우선)
+        if (hasWalkSession && !(isToday && isSelected)) {
+            val circleColor = dominantEmotion?.toCalendarCircleColor() ?: SemanticColor.stateGreenSecondary
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(circleColor)
+            )
+        }
+        // 선택된 날짜 링 표시 (오늘은 자체 스타일 유지)
+        if (isSelected && !isToday) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .border(2.dp, SemanticColor.stateBluePrimary, CircleShape)
+            )
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.walkItTypography.bodyS.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = Color(0xFF171717),
+            )
+            // 오늘 표시 점
+//            if (isToday && !hasWalkSession) {
+//                Spacer(Modifier.height(2.dp))
+//                Box(
+//                    modifier = Modifier
+//                        .size(4.dp)
+//                        .clip(CircleShape)
+//                        .background(SemanticColor.stateBluePrimary)
+//                )
+//            }
+            // 미션 완료 점
+//            if (hasMissionCompleted) {
+//                Spacer(Modifier.height(2.dp))
+//                Box(
+//                    modifier = Modifier
+//                        .size(4.dp)
+//                        .clip(CircleShape)
+//                        .background(SemanticColor.stateAquaBlueSecondary)
+//                )
+//            }
+        }
     }
-
 }
 
 
 /**
  * 주간 캘린더 그리드 컴포넌트
+ *
+ * 상단 요일 레이블(월~일) + 하단 날짜 원형 셀 구조.
+ * 산책 기록이 있는 날짜는 감정 색 원 안에 숫자가 표시된다.
  */
 @Composable
 private fun WeekCalendarGrid(
@@ -661,91 +676,230 @@ private fun WeekCalendarGrid(
     sessionsByDate: Map<LocalDate, List<WalkingSession>>,
     modifier: Modifier = Modifier,
 ) {
+    // weekDates는 일~토 순서 (Sunday-based)
+    val dayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
+
     Column(modifier = modifier) {
+        // 요일 레이블 행
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(13.dp)
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-            weekDates.forEach { date ->
-                Column(
-                    modifier = Modifier.weight(1f), // ⭐ 핵심
-                    horizontalAlignment = Alignment.CenterHorizontally
+            dayLabels.forEach { label ->
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(modifier = Modifier.size(31.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = date.dayOfMonth.toString(),
-                            style = MaterialTheme.walkItTypography.bodyS.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = SemanticColor.textBorderSecondary,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-
-
-                    val hasWalkSession = sessionsByDate[date]?.isNotEmpty() == true
-
-                    WeekCalendarDayCell(
-                        date = date,
-                        hasWalkSession = hasWalkSession,
-                        modifier = Modifier
-                            .fillMaxWidth()      // Column 폭 = 1/7
-                            .aspectRatio(1f)
+                    Text(
+                        text = label,
+                        style = MaterialTheme.walkItTypography.bodyS.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = SemanticColor.textBorderSecondary,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
         }
 
-    }
-}
+        Spacer(Modifier.height(8.dp))
 
-/**
- * 주간 캘린더 데이 셀 컴포넌트
- */
-@Composable
-private fun WeekCalendarDayCell(
-    date: LocalDate,
-    hasWalkSession: Boolean,
-    modifier: Modifier = Modifier,
-) {
+        // 날짜 원형 셀 행
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(2.83.dp),
+        ) {
+            weekDates.forEach { date ->
+                val sessions = sessionsByDate[date]
+                val hasWalkSession = sessions?.isNotEmpty() == true
+                val dominantEmotion = run {
+                    val emotionList = sessions
+                        ?.mapNotNull { stringToEmotionTypeOrNull(it.postWalkEmotion) }
+                        ?: emptyList()
+                    emotionList
+                        .groupingBy { it }
+                        .eachCount()
+                        .maxWithOrNull(
+                            compareBy(
+                                { it.value },
+                                { emotionList.indexOfLast { e -> e == it.key } }
+                            )
+                        )?.key
+                }
 
-    Box(
-        modifier = modifier.background(
-            color = Color.Transparent, shape = CircleShape
-        ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (hasWalkSession) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .size(32.dp)
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_weekly_cell_walked),
-                    contentDescription = "weekly day cell walked"
+                WeekCalendarDayCell(
+                    day = date.dayOfMonth,
+                    hasWalkSession = hasWalkSession,
+                    dominantEmotion = dominantEmotion,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
                 )
-            }
-
-        } else {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .size(32.dp)
-                    .background(
-                        SemanticColor.textBorderDisabled
-                    )
-            ) {
-
             }
         }
     }
 }
 
+/**
+ * 주간 캘린더 데이 셀 컴포넌트
+ *
+ * 산책 기록이 있으면 감정 타입에 맞는 원형 배경 안에 날짜 숫자를 표시한다.
+ * 산책 기록이 없으면 숫자만 표시한다.
+ */
+@Composable
+private fun WeekCalendarDayCell(
+    day: Int,
+    hasWalkSession: Boolean,
+    dominantEmotion: EmotionType?,
+    modifier: Modifier = Modifier,
+) {
+    val circleColor = dominantEmotion?.toCalendarCircleColor() ?: SemanticColor.stateGreenSecondary
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        if (hasWalkSession) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(circleColor)
+            )
+        }
+        Text(
+            text = day.toString(),
+            style = MaterialTheme.walkItTypography.bodyS.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = Color(0xFF171717),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+
+/**
+ * 주간 목표달성률 막대그래프 카드
+ *
+ * 각 날짜별로 가장 걸음 수가 많은 단일 세션을 기준으로 목표 달성 여부를 판단한다.
+ * 목표 달성(최고 세션 >= targetStepCount)이면 녹색, 미달이면 회색 막대를 표시한다.
+ */
+@Composable
+internal fun WeeklyGoalBarChartCard(
+    weekDates: List<LocalDate>,
+    sessionsByDate: Map<LocalDate, List<WalkingSession>>,
+    goal: Goal,
+    modifier: Modifier = Modifier,
+) {
+    val today = LocalDate.now()
+    val dayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
+
+    // 날짜별 최고 단일 세션 걸음 수
+    val bestStepsByDate: List<Int> = weekDates.map { date ->
+        sessionsByDate[date]?.maxOfOrNull { it.stepCount } ?: 0
+    }
+
+    // 주간 달성 횟수: 단일 세션 기준으로 목표 이상인 세션의 총 개수
+    val weeklyAchievedCount = sessionsByDate.values.sumOf { sessions ->
+        sessions.count { it.stepCount >= goal.targetStepCount }
+    }
+
+    // Y축 최대 스케일: 목표 걸음 수가 항상 80dp 기준
+    val maxScale = goal.targetStepCount.coerceAtLeast(1)
+    val maxBarHeight = 80.dp
+
+    Column(
+        modifier = modifier
+            .customShadow()
+            .cardBorder()
+            .background(SemanticColor.backgroundWhitePrimary, shape = RoundedCornerShape(12.dp))
+            .padding(16.dp)
+    ) {
+        // 헤더
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "목표 달성률",
+                style = MaterialTheme.walkItTypography.bodyM.copy(fontWeight = FontWeight.SemiBold),
+                color = SemanticColor.textBorderPrimary,
+            )
+//            Text(
+//                text = "목표 ${goal.targetWalkCount}회 중 ${weeklyAchievedCount}회 달성",
+//                style = MaterialTheme.walkItTypography.captionM,
+//                color = if (weeklyAchievedCount >= goal.targetWalkCount)
+//                    SemanticColor.stateGreenPrimary else SemanticColor.textBorderSecondary,
+//            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // 차트 영역
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 11.5.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            weekDates.forEachIndexed { index, date ->
+                val bestStep = bestStepsByDate[index]
+                val hasWalk = bestStep > 0
+                val barRatio = if (hasWalk) (bestStep.toFloat() / maxScale).coerceIn(0f, 1f) else 0f
+                val isToday = date == today
+
+                Column(
+                    modifier = Modifier.width(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+
+                    // 막대 영역
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(maxBarHeight),
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+
+                        // 막대
+                        if (hasWalk) {
+                            Box(
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .fillMaxHeight(barRatio)
+                                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                    .background(
+                                        if (isToday) SemanticColor.textBorderGreenPrimary
+                                        else SemanticColor.stateGreenSecondary
+                                    )
+                                    .align(Alignment.BottomCenter)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // 요일 레이블
+                    Text(
+                        text = dayLabels[index],
+                        style = MaterialTheme.walkItTypography.captionM.copy(
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        color = if (isToday) SemanticColor.textBorderSecondary
+                                else SemanticColor.textBorderSecondary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
 
 /**
  * 목표 체크 행 컴포넌트
@@ -1378,7 +1532,7 @@ fun DiaryMoreMenuPreview() {
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.White)
-                        .padding(vertical = 4.dp)
+                        .padding(horizontal = 2.83.dp, vertical = 4.dp)
                 ) {
                     DropMenuItem(
                         text = "수정하기",
@@ -1398,5 +1552,120 @@ fun DiaryMoreMenuPreview() {
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "차트 — 목표 미달 (걸음 수 혼합)")
+@Composable
+private fun WeeklyGoalBarChartCardPreview() {
+    WalkItTheme {
+        val today = LocalDate.now()
+        val weekDates = (0..6).map { today.with(DayOfWeek.MONDAY).plusDays(it.toLong()) }
+        fun fakeSession(id: String, date: LocalDate, steps: Int) = WalkingSession(
+            id = id,
+            startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+            endTime = 0L,
+            stepCount = steps,
+            preWalkEmotion = "",
+            postWalkEmotion = "",
+            createdDate = date.toString(),
+        )
+        val sessionsByDate = mapOf(
+            weekDates[0] to listOf(fakeSession("1", weekDates[0], 8_000)),
+            weekDates[1] to listOf(fakeSession("2", weekDates[1], 12_000)),
+            weekDates[2] to listOf(fakeSession("3", weekDates[2], 10_000)),
+        )
+        WeeklyGoalBarChartCard(
+            weekDates = weekDates,
+            sessionsByDate = sessionsByDate,
+            goal = Goal(targetStepCount = 10_000, targetWalkCount = 3),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "주간 캘린더 — 감정 원 다양")
+@Composable
+private fun WeekCalendarGridPreview() {
+    WalkItTheme {
+        val today = LocalDate.now()
+        val weekDates = (0..6).map { today.with(DayOfWeek.MONDAY).plusDays(it.toLong()) }
+        val emotions = listOf(
+            EmotionType.JOYFUL,
+            EmotionType.DELIGHTED,
+            null,
+            EmotionType.TIRED,
+            EmotionType.HAPPY,
+            EmotionType.IRRITATED,
+            EmotionType.DEPRESSED,
+        )
+        fun fakeSession(id: String, date: LocalDate, emotion: EmotionType) = WalkingSession(
+            id = id,
+            startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+            endTime = 0L,
+            stepCount = 8_000,
+            preWalkEmotion = "",
+            postWalkEmotion = emotion.name,
+            createdDate = date.toString(),
+        )
+        val sessionsByDate = weekDates.mapIndexedNotNull { i, date ->
+            val emotion = emotions[i] ?: return@mapIndexedNotNull null
+            date to listOf(fakeSession("$i", date, emotion))
+        }.toMap()
+
+        WeekCalendarGrid(
+            weekDates = weekDates,
+            sessionsByDate = sessionsByDate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SemanticColor.backgroundWhitePrimary)
+                .padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "월간 캘린더 — 감정 원 다양")
+@Composable
+private fun CalendarGridRecordPreview() {
+    WalkItTheme {
+        val yearMonth = YearMonth.now()
+        val emotions = listOf(
+            EmotionType.JOYFUL,
+            EmotionType.DELIGHTED,
+            EmotionType.TIRED,
+            EmotionType.HAPPY,
+            EmotionType.IRRITATED,
+            EmotionType.DEPRESSED,
+            null,
+        )
+        fun fakeSession(id: String, date: LocalDate, emotion: EmotionType) = WalkingSession(
+            id = id,
+            startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+            endTime = 0L,
+            stepCount = 8_000,
+            preWalkEmotion = "",
+            postWalkEmotion = emotion.name,
+            createdDate = date.toString(),
+        )
+        val sessionsByDate = (1..yearMonth.lengthOfMonth())
+            .mapNotNull { day ->
+                val date = yearMonth.atDay(day)
+                val emotion = emotions[day % emotions.size] ?: return@mapNotNull null
+                date to listOf(fakeSession("$day", date, emotion))
+            }.toMap()
+
+        CalendarGridRecord(
+            yearMonth = yearMonth,
+            sessionsByDate = sessionsByDate,
+            missionsCompleted = emptyList(),
+            selectedDate = LocalDate.now(),
+            onDateSelected = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SemanticColor.backgroundWhitePrimary)
+                .padding(horizontal = 4.dp),
+        )
     }
 }

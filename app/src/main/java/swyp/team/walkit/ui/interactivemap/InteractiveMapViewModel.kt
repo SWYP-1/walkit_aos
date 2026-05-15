@@ -23,8 +23,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -34,7 +37,9 @@ import swyp.team.walkit.R
 import swyp.team.walkit.core.Result
 import swyp.team.walkit.data.model.MapMarker
 import swyp.team.walkit.data.model.MapMarkerType
+import swyp.team.walkit.data.model.MapPin
 import swyp.team.walkit.data.model.toMapMarker
+import swyp.team.walkit.data.utils.MapClusteringUtil
 import swyp.team.walkit.domain.model.Character
 import swyp.team.walkit.domain.model.CharacterImage
 import swyp.team.walkit.domain.model.FollowerMapRecord
@@ -127,6 +132,8 @@ data class InteractiveMapUiState(
     val trackingMode: MapTrackingMode = MapTrackingMode.IDLE,
     /** FOLLOWING 모드일 때 폴링된 현재 위치 (null이면 아직 위치 없음) */
     val currentLocation: LocationPoint? = null,
+    /** 초기 진입 시 카메라 이동 목표 (1회만 세팅, 이후 null 유지) */
+    val mapCenterLocation: LocationPoint? = null,
     val errorMessage: String? = null,
 ) {
     /** 장소 마커 + 친구 마커를 합친 전체 마커 목록 */
@@ -153,6 +160,14 @@ class InteractiveMapViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(InteractiveMapUiState())
     val uiState: StateFlow<InteractiveMapUiState> = _uiState.asStateFlow()
+
+    /** 현재 카메라 줌 레벨 (KakaoMapView의 cameraMoveEnd 콜백으로 갱신됨) */
+    private val _zoomLevel = MutableStateFlow(15)
+
+    /** 줌 레벨과 마커 목록을 결합해 클러스터링된 핀 목록을 반환한다 */
+    val mapPins: StateFlow<List<MapPin>> = combine(_uiState, _zoomLevel) { state, zoom ->
+        MapClusteringUtil.cluster(state.allMarkers, zoom)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 스팟 바텀시트 단방향 이벤트 (시트 확장 등) */
     private val _spotSheetEvents = MutableSharedFlow<SpotSheetEvent>(extraBufferCapacity = 1)
@@ -208,6 +223,11 @@ class InteractiveMapViewModel @Inject constructor(
             currentLat = lat
             currentLon = lon
 
+            // 최초 진입 시에만 카메라 이동 목표 세팅 (재검색 시 카메라 위치 유지)
+            if (_uiState.value.mapCenterLocation == null) {
+                _uiState.update { it.copy(mapCenterLocation = LocationPoint(lat, lon)) }
+            }
+
             // ① 주변 장소 — 완료되면 즉시 반영
             launch {
                 val result = spotRepository.getNearbySpots(
@@ -235,7 +255,7 @@ class InteractiveMapViewModel @Inject constructor(
                     // ③ 팔로워 산책 기록이 이미 로드됐다면 핀 Bitmap도 즉시 재빌드
                     rebuildPinBitmapsIfReady()
                     // TODO: 실제 API 연동 후 제거 — activities 기반 가짜 친구 핀 주입
-                    injectFakeFollowerPins(activities = result.data)
+                    /*injectFakeFollowerPins(activities = result.data)*/
                 } else if (result is Result.Error) {
                     _uiState.update { it.copy(errorMessage = result.message) }
                 }
@@ -310,6 +330,16 @@ class InteractiveMapViewModel @Inject constructor(
      * - 친구 핀: 친구 바텀시트 표시 + 최근 산책 기록 비동기 로드
      * - 스팟 핀: 스팟 검색 상태로 전환 + 시트 확장
      */
+    /**
+     * 아바타 행에서 팔로워 아이템 클릭 시 호출.
+     * recentActivities에 walkId가 포함되므로 followerRecords 조회 없이 바로 이동한다.
+     */
+    fun onAvatarClick(userId: Long) {
+        val walkId = _uiState.value.recentActivities
+            .firstOrNull { it.userId == userId }?.walkId ?: 0L
+        _friendDetailNavEvent.tryEmit(FriendDetailNavEvent(userId, walkId))
+    }
+
     fun onMarkerClick(marker: MapMarker) {
         when (marker.type) {
             MapMarkerType.FRIEND -> {
@@ -474,6 +504,14 @@ class InteractiveMapViewModel @Inject constructor(
         _uiState.update { it.copy(trackingMode = MapTrackingMode.IDLE) }
         stopLocationPolling()
         Timber.d("사용자 제스처로 트래킹 비활성화")
+    }
+
+    /**
+     * 카메라 줌 레벨이 변경될 때 KakaoMapView에서 호출한다.
+     * 줌 레벨이 바뀌면 [mapPins]가 자동으로 재클러스터링된다.
+     */
+    fun onZoomChanged(zoom: Int) {
+        _zoomLevel.value = zoom
     }
 
     /**
