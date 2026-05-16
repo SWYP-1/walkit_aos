@@ -10,13 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import swyp.team.walkit.data.local.dao.WalkingSessionDao
-import swyp.team.walkit.data.local.entity.SyncState
-import swyp.team.walkit.data.local.mapper.WalkingSessionMapper
 import swyp.team.walkit.data.model.WalkingSession
 import swyp.team.walkit.data.repository.WalkingSessionRepository
-import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -32,7 +27,6 @@ sealed interface WalkingResultUiState {
 @HiltViewModel
 class WalkingResultViewModel @Inject constructor(
     private val walkingSessionRepository: WalkingSessionRepository,
-    private val walkingSessionDao: WalkingSessionDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalkingResultUiState>(WalkingResultUiState.Loading)
@@ -44,26 +38,19 @@ class WalkingResultViewModel @Inject constructor(
 
     private fun loadSessions() {
         viewModelScope.launch {
-            // 이번 주 시작/끝 시간 계산
+            // 일요일 기준 이번 주 범위 계산 (앱 전체 기준과 통일)
             val today = LocalDate.now()
-            val startOfWeek = today.with(DayOfWeek.MONDAY).atStartOfDay(ZoneId.systemDefault())
-            val endOfWeek = startOfWeek.plusDays(6).plusHours(23).plusMinutes(59).plusSeconds(59)
+            val daysFromSunday = (today.dayOfWeek.value % 7).toLong()
+            val startDate = today.minusDays(daysFromSunday)
+            val endDate = startDate.plusDays(7)
+            val weekStartMillis = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val weekEndMillis = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
 
-            val weekStartMillis = startOfWeek.toInstant().toEpochMilli()
-            val weekEndMillis = endOfWeek.toInstant().toEpochMilli()
-
-            walkingSessionDao
-                .getSessionsThisWeek(weekStartMillis, weekEndMillis)
-                .map { entities ->
-                    // Entity에서 Domain으로 변환하고 SYNCED 필터링
-                    val syncedSessions = entities
-                        .filter { it.syncState == SyncState.SYNCED }
-                        .map { WalkingSessionMapper.toDomain(it) }
-
-                    val allSessions = entities.map { WalkingSessionMapper.toDomain(it) }
-
+            // repository는 현재 사용자 기준 + SYNCED 상태만 반환
+            walkingSessionRepository.getSessionsBetween(weekStartMillis, weekEndMillis)
+                .map { syncedSessions ->
                     WalkingResultUiState.Success(
-                        sessionsThisWeek = allSessions,
+                        sessionsThisWeek = syncedSessions,
                         syncedSessionsThisWeek = syncedSessions
                     )
                 }
@@ -74,19 +61,6 @@ class WalkingResultViewModel @Inject constructor(
                     _uiState.value = state
                 }
         }
-    }
-
-    private fun List<WalkingSession>.filterThisWeek(): List<WalkingSession> {
-        val today = LocalDate.now()
-        val startOfWeek = today.with(DayOfWeek.MONDAY)
-        val endOfWeek = startOfWeek.plusDays(6)
-        return filter { session ->
-            val date =
-                Instant.ofEpochMilli(session.startTime)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
-            !date.isBefore(startOfWeek) && !date.isAfter(endOfWeek)
-        }.sortedByDescending { it.startTime }
     }
 }
 

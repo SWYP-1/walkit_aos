@@ -196,19 +196,21 @@ object DateUtils {
     }
 
     /**
-     * 이번 주 범위 반환 (월요일 00:00:00 ~ 오늘 23:59:59)
+     * 이번 주 범위 반환 (일요일 00:00:00 ~ 오늘 23:59:59)
      *
-     * @return Pair<startMillis, endMillis> 이번 주 월요일부터 오늘까지의 타임스탬프
+     * 앱 전체가 일요일 시작 기준을 사용하므로 동일하게 맞춤.
+     *
+     * @return Pair<startMillis, endMillis> 이번 주 일요일부터 오늘까지의 타임스탬프
      */
     fun getCurrentWeekRange(): Pair<Long, Long> {
         val now = LocalDate.now()
-        val weekFields = WeekFields.of(Locale.getDefault())
 
-        // 이번 주 월요일 찾기
-        val monday = now.with(weekFields.dayOfWeek(), 1L) // 1 = 월요일
+        // 일요일 기준 주 시작 계산 (SUNDAY.value=7, 7%7=0 이므로 일요일 그대로 유지)
+        val daysFromSunday = (now.dayOfWeek.value % 7).toLong()
+        val sunday = now.minusDays(daysFromSunday)
 
-        // 월요일 00:00:00
-        val startOfWeek = monday.atStartOfDay(ZoneId.systemDefault())
+        // 일요일 00:00:00
+        val startOfWeek = sunday.atStartOfDay(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
 
