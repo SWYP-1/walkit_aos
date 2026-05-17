@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -45,7 +45,8 @@ import swyp.team.walkit.data.model.MapPin
 import swyp.team.walkit.presentation.viewmodel.KakaoMapViewModel
 import swyp.team.walkit.ui.components.KakaoMapView
 import swyp.team.walkit.ui.interactivemap.bottomtab.BottomSheetDragHandle
-import swyp.team.walkit.ui.interactivemap.bottomtab.SpotBottomSheetContent
+import swyp.team.walkit.ui.interactivemap.bottomtab.SpotSheetBody
+import swyp.team.walkit.ui.interactivemap.bottomtab.SpotSheetHeader
 import swyp.team.walkit.ui.interactivemap.components.ExpandableAvatarRow
 import swyp.team.walkit.ui.interactivemap.components.MapSearchBar
 import swyp.team.walkit.ui.interactivemap.components.MapTrackingButton
@@ -70,24 +71,8 @@ fun InteractiveMapRoute(
     val mapPins by interactiveViewModel.mapPins.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val maxHeight = screenHeight * SHEET_MAX_FRACTION
 
     val sheetState = remember { AnchoredDraggableState(initialValue = SheetAnchor.MIN) }
-
-    // 화면 높이 확정 후 3단계 앵커 등록
-    // offset 0 = 최대(위), 커질수록 아래로 내려감
-    LaunchedEffect(maxHeight) {
-        with(density) {
-            sheetState.updateAnchors(
-                DraggableAnchors {
-                    SheetAnchor.MAX at 0f
-                    SheetAnchor.MID at (maxHeight - SHEET_MID_HEIGHT).toPx()
-                    SheetAnchor.MIN at (maxHeight - SHEET_MIN_HEIGHT).toPx()
-                }
-            )
-        }
-    }
 
     // 화면 최초 진입 시 현재 위치 기반으로 지도 데이터 전체 로드
     LaunchedEffect(Unit) {
@@ -131,13 +116,32 @@ fun InteractiveMapRoute(
         }
     }
 
-    InteractiveMapScreen(
-        modifier = modifier,
+    // BoxWithConstraints로 실제 컨테이너 높이를 측정
+    // LocalConfiguration.screenHeightDp는 전체 화면 높이를 반환하여 Scaffold padding 이후의
+    // 실제 content 높이와 달라 버튼/시트 위치가 어긋나는 문제를 방지
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val containerHeight = maxHeight
+        val sheetMaxHeight = containerHeight * SHEET_MAX_FRACTION
+
+        LaunchedEffect(sheetMaxHeight) {
+            with(density) {
+                sheetState.updateAnchors(
+                    DraggableAnchors {
+                        SheetAnchor.MAX at 0f
+                        SheetAnchor.MID at (sheetMaxHeight - SHEET_MID_HEIGHT).toPx()
+                        SheetAnchor.MIN at (sheetMaxHeight - SHEET_MIN_HEIGHT).toPx()
+                    }
+                )
+            }
+        }
+
+        InteractiveMapScreen(
+        modifier = Modifier,
         uiState = uiState,
         mapPins = mapPins,
         sheetState = sheetState,
         sheetMinHeight = SHEET_MIN_HEIGHT,
-        sheetMaxHeight = maxHeight,
+        sheetMaxHeight = sheetMaxHeight,
         mapViewModel = mapViewModel,
         onMarkerClick = interactiveViewModel::onMarkerClick,
         onZoomChanged = interactiveViewModel::onZoomChanged,
@@ -157,7 +161,8 @@ fun InteractiveMapRoute(
         onRefreshMapSearch = interactiveViewModel::loadMapDataFromCurrentLocation,
         onTrackingClick = interactiveViewModel::onTrackingButtonClick,
         onTrackingDisabled = interactiveViewModel::onTrackingDisabled,
-    )
+        )
+    }
 }
 
 @Composable
@@ -241,7 +246,7 @@ fun InteractiveMapScreen(
             onAvatarClick = onAvatarClick,
         )
 
-        // 위치 추적 버튼 — 시트 상단 16dp 위 고정, 시트가 올라올수록 같이 올라감
+        // 위치 추적 버튼 — 시트 상단에 고정, 시트가 올라올수록 같이 올라감
         MapTrackingButton(
             trackingMode = uiState.trackingMode,
             onClick = onTrackingClick,
@@ -250,7 +255,7 @@ fun InteractiveMapScreen(
                 .padding(start = 16.dp, bottom = sheetMinHeight + 16.dp + extraRiseDp),
         )
 
-        // 현 지도에서 검색 버튼 — 시트 상단 16dp 위 고정, 시트가 올라올수록 같이 올라감
+        // 현 지도에서 검색 버튼 — 시트 상단에 고정, 시트가 올라올수록 같이 올라감
         MapSearchBar(
             onClick = onRefreshMapSearch,
             modifier = Modifier
@@ -286,7 +291,8 @@ fun InteractiveMapScreen(
                 .background(Color.White),
         ) {
             Column(Modifier.fillMaxSize()) {
-                // 드래그 핸들 영역 (이 부분만 드래그 가능 → 아래 LazyList 스크롤과 충돌 방지)
+                // 드래그 핸들 + 헤더를 묶어 anchoredDraggable 영역으로 확장
+                // → 헤더까지 드래그하여 시트 높이 조절 가능
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -295,30 +301,41 @@ fun InteractiveMapScreen(
                             orientation = Orientation.Vertical,
                             flingBehavior = flingBehavior,
                         ),
-                    contentAlignment = Alignment.Center,
                 ) {
-                    BottomSheetDragHandle()
+                    Column(Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            BottomSheetDragHandle()
+                        }
+                        SpotSheetHeader(
+                            content = uiState.spotSheetContent,
+                            searchQuery = uiState.spotSearchQuery,
+                            recentSearchQueries = uiState.recentSearchQueries,
+                            onSearchIconClick = onSpotSearchIconClick,
+                            onQueryChange = onSpotQueryChange,
+                            onSearch = onSpotSearch,
+                            onSearchClear = onSpotSearchClear,
+                            onSearchBack = onSpotSearchBack,
+                            onRecentSearchBack = onRecentSearchBack,
+                            onClearAllRecentSearch = onClearAllRecentSearch,
+                        )
+                    }
                 }
 
-                // 스팟 콘텐츠 (스크롤 가능, 드래그와 충돌 없음)
-                SpotBottomSheetContent(
+                // 본문 (스크롤 가능, 드래그 영역 밖)
+                SpotSheetBody(
                     content = uiState.spotSheetContent,
                     spots = uiState.spots,
                     searchQuery = uiState.spotSearchQuery,
                     searchResults = uiState.spotSearchResults,
                     isSearching = uiState.isSearchingSpots,
                     recentSearchQueries = uiState.recentSearchQueries,
-                    onSearchIconClick = onSpotSearchIconClick,
-                    onQueryChange = onSpotQueryChange,
-                    onSearch = onSpotSearch,
-                    onSearchClear = onSpotSearchClear,
                     onSpotItemClick = onSpotItemClick,
                     onSpotDetailClose = onSpotDetailClose,
-                    onSearchBack = onSpotSearchBack,
-                    onRecentSearchBack = onRecentSearchBack,
                     onRecentSearchClick = onRecentSearchClick,
                     onRemoveRecentSearch = onRemoveRecentSearch,
-                    onClearAllRecentSearch = onClearAllRecentSearch,
                 )
             }
         }
