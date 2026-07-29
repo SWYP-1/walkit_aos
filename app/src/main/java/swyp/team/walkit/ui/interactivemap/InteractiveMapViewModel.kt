@@ -99,6 +99,8 @@ sealed interface SpotSheetEvent {
     data object ExpandSheet : SpotSheetEvent
     /** 시트를 전체 펼침 상태로 즉시 snap (애니메이션 없음 — SpotList 노출 방지) */
     data object SnapToExpand : SpotSheetEvent
+    /** 시트를 절반(MID) 상태로 확장 — 장소 핀 클릭 시 사용 */
+    data object ExpandToMid : SpotSheetEvent
     /** 시트를 중간(partialExpand) 상태로 축소 */
     data object PartialExpand : SpotSheetEvent
 }
@@ -353,7 +355,7 @@ class InteractiveMapViewModel @Inject constructor(
                 val spot = _uiState.value.spots.find { it.toMapMarker().id == marker.id }
                 if (spot != null) {
                     _uiState.update { it.copy(spotSheetContent = SpotSheetContent.SpotDetail(spot)) }
-                    _spotSheetEvents.tryEmit(SpotSheetEvent.ExpandSheet)
+                    _spotSheetEvents.tryEmit(SpotSheetEvent.ExpandToMid)
                 }
             }
         }

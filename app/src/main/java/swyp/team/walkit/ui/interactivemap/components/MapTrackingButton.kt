@@ -37,7 +37,7 @@ fun MapTrackingButton(
     modifier: Modifier = Modifier,
 ) {
     val iconTint = when (trackingMode) {
-        MapTrackingMode.IDLE -> SemanticColor.iconGrey
+        MapTrackingMode.IDLE -> SemanticColor.iconBlack
         MapTrackingMode.FOLLOWING -> SemanticColor.iconGreen
     }
 

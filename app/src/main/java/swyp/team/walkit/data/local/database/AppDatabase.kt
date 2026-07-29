@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import swyp.team.walkit.data.local.dao.ActiveTrackingDao
 import swyp.team.walkit.data.local.dao.AppliedItemDao
 import swyp.team.walkit.data.local.dao.CharacterDao
 import swyp.team.walkit.data.local.dao.GoalDao
@@ -16,6 +17,7 @@ import swyp.team.walkit.data.local.dao.PurchasedItemDao
 import swyp.team.walkit.data.local.dao.RecentSearchDao
 import swyp.team.walkit.data.local.dao.UserDao
 import swyp.team.walkit.data.local.dao.WalkingSessionDao
+import swyp.team.walkit.data.local.entity.ActiveTrackingEntity
 import swyp.team.walkit.data.local.entity.AppliedItemEntity
 import swyp.team.walkit.data.local.entity.CharacterEntity
 import swyp.team.walkit.data.local.entity.GoalEntity
@@ -43,14 +45,16 @@ import swyp.team.walkit.data.local.entity.WalkingSessionEntity
         GoalEntity::class,
         NotificationSettingsEntity::class,
         RecentSearchEntity::class,
+        ActiveTrackingEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun walkingSessionDao(): WalkingSessionDao
+    abstract fun activeTrackingDao(): ActiveTrackingDao
     abstract fun purchasedItemDao(): PurchasedItemDao
     abstract fun appliedItemDao(): AppliedItemDao
     abstract fun missionProgressDao(): MissionProgressDao
@@ -65,6 +69,21 @@ abstract class AppDatabase : RoomDatabase() {
          * Migration from version 12 to 13: Change UserEntity PrimaryKey from nickname to userId
          */
         const val DATABASE_NAME = "walking_database"
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS active_tracking (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        startTime INTEGER NOT NULL,
+                        locationsJson TEXT NOT NULL DEFAULT '[]',
+                        filteredLocationsJson TEXT NOT NULL DEFAULT '[]',
+                        lastFlushTime INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
         val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""

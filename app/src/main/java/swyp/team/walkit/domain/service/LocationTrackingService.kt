@@ -21,6 +21,9 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import swyp.team.walkit.MainActivity
+import swyp.team.walkit.data.local.dao.ActiveTrackingDao
+import swyp.team.walkit.data.local.entity.ActiveTrackingEntity
+import swyp.team.walkit.data.local.entity.FilteredPoint
 import swyp.team.walkit.data.model.LocationPoint
 import swyp.team.walkit.domain.contract.WalkingRawEvent
 import swyp.team.walkit.domain.service.ActivityType
@@ -38,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -63,6 +67,9 @@ class LocationTrackingService : Service() {
     @Inject
     lateinit var pathSmoother: PathSmoother
 
+    @Inject
+    lateinit var activeTrackingDao: ActiveTrackingDao
+
     private var isTracking = false
     private val locationPoints = mutableListOf<LocationPoint>()  // 원본 GPS 데이터
     private val filteredPoints = mutableListOf<Pair<Double, Double>>()  // 필터링된 좌표
@@ -77,8 +84,12 @@ class LocationTrackingService : Service() {
     // 배터리 최적화 관련
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var batteryMonitoringJob: kotlinx.coroutines.Job? = null
+    private var periodicFlushJob: kotlinx.coroutines.Job? = null
     private var currentBatteryLevel: Int = 100
     private var isPowerSaveMode: Boolean = false
+
+    // GPS 포인트 flush 관련
+    private var flushCounter = 0
 
     // Contract-based architecture를 위한 SharedFlow
     private val _rawEvents = MutableSharedFlow<WalkingRawEvent>(replay = 1)
@@ -115,6 +126,10 @@ class LocationTrackingService : Service() {
 
         // 배터리 모니터링 간격
         private const val BATTERY_CHECK_INTERVAL_MS = 60000L // 1분마다 체크
+
+        // GPS 포인트 flush 관련
+        private const val FLUSH_THRESHOLD = 10     // N개 포인트마다 flush
+        private const val FLUSH_INTERVAL_MS = 30_000L // 30초마다 정기 flush
 
         const val ACTION_START_TRACKING = "swyp.team.walkit.START_TRACKING"
         const val ACTION_STOP_TRACKING = "swyp.team.walkit.STOP_TRACKING"
@@ -198,47 +213,56 @@ class LocationTrackingService : Service() {
     ): Int {
         when (intent?.action) {
             ACTION_START_TRACKING -> {
-                _isRunning.value = true  // 상태 변경 추가
-                serviceScope.launch {
-                    startTracking()
-                }
+                _isRunning.value = true
+                serviceScope.launch { startTracking() }
             }
 
             ACTION_STOP_TRACKING -> {
-                _isRunning.value = false  // 상태 변경 추가
-                serviceScope.launch {
-                    stopTracking()
-                }
+                _isRunning.value = false
+                serviceScope.launch { stopTracking() }
             }
 
             ACTION_UPDATE_NOTIFICATION -> {
-                // 알림 업데이트 데이터 수신
                 val stepCount = intent.getIntExtra(EXTRA_STEP_COUNT, currentStepCount)
                 val distance = intent.getFloatExtra(EXTRA_DISTANCE, currentDistance)
                 val duration = intent.getLongExtra(EXTRA_DURATION, currentDuration)
                 updateNotification(stepCount, distance, duration)
             }
+
+            null -> {
+                // START_STICKY에 의한 OS 재시작 → DB에서 GPS 포인트 복구 후 추적 재개
+                _isRunning.value = true
+                serviceScope.launch { startTrackingFromRecovery() }
+            }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     /**
      * 위치 추적 시작
+     *
+     * @param isRecovery true 이면 locationPoints/filteredPoints를 초기화하지 않음 (OS 재시작 복구 시)
      */
-    suspend fun startTracking() {
+    suspend fun startTracking(isRecovery: Boolean = false) {
         if (isTracking) {
             Timber.d("이미 위치 추적 중입니다")
             return
         }
 
-        locationPoints.clear()
-        filteredPoints.clear()
-        lastSentIndex = 0
-
-        // GPS 필터 상태 초기화
-        gpsFilter.reset()
+        if (!isRecovery) {
+            locationPoints.clear()
+            filteredPoints.clear()
+            lastSentIndex = 0
+            flushCounter = 0
+            gpsFilter.reset()
+            withContext(Dispatchers.IO) {
+                activeTrackingDao.upsert(
+                    ActiveTrackingEntity(startTime = System.currentTimeMillis()),
+                )
+            }
+        }
 
         startForeground(NOTIFICATION_ID, createNotification())
         isTracking = true
@@ -246,8 +270,9 @@ class LocationTrackingService : Service() {
         // Contract-based architecture: 추적 시작 이벤트 emit
         emitTrackingStarted()
 
-        // 배터리 모니터링 시작
+        // 배터리 모니터링 + 정기 flush 시작
         startBatteryMonitoring()
+        startPeriodicFlush()
 
         locationCallback =
             object : LocationCallback() {
@@ -289,6 +314,17 @@ class LocationTrackingService : Service() {
 
                         // 원본 좌표 리스트에도 추가 (호환성 유지)
                         locationPoints.add(point)
+
+                        // N개마다 DB flush (main thread에서 snapshot 취득)
+                        flushCounter++
+                        if (flushCounter >= FLUSH_THRESHOLD) {
+                            flushCounter = 0
+                            val locSnapshot = locationPoints.toList()
+                            val filtSnapshot = filteredPoints.map { FilteredPoint(it.first, it.second) }
+                            serviceScope.launch(Dispatchers.IO) {
+                                flushSnapshotToDB(locSnapshot, filtSnapshot)
+                            }
+                        }
 
                         Timber.d(
                             "위치 업데이트: 필터링됨 " +
@@ -344,8 +380,19 @@ class LocationTrackingService : Service() {
         // Contract-based architecture: 추적 중지 이벤트 emit
         emitTrackingStopped()
 
-        // 배터리 모니터링 중지
+        // 배터리 모니터링 + 정기 flush 중지
         stopBatteryMonitoring()
+        stopPeriodicFlush()
+
+        // 최종 flush 후 active_tracking 정리 (정상 종료)
+        val locSnapshot = withContext(Dispatchers.Main) { locationPoints.toList() }
+        val filtSnapshot = withContext(Dispatchers.Main) {
+            filteredPoints.map { FilteredPoint(it.first, it.second) }
+        }
+        withContext(Dispatchers.IO) {
+            flushSnapshotToDB(locSnapshot, filtSnapshot)
+            activeTrackingDao.clear()
+        }
 
         // 위치 데이터를 Broadcast로 전송
         sendLocationDataBroadcast()
@@ -443,6 +490,68 @@ class LocationTrackingService : Service() {
             "filtering_ratio" to if (originalCount > 0) String.format("%.2f", filteredCount.toFloat() / originalCount) else "0.00",
             "filter_info" to gpsFilter.getFilterInfo()
         )
+    }
+
+    /**
+     * GPS 포인트 스냅샷을 DB에 저장
+     */
+    private suspend fun flushSnapshotToDB(
+        locSnapshot: List<LocationPoint>,
+        filtSnapshot: List<FilteredPoint>,
+    ) {
+        try {
+            val locJson = Json.encodeToString(locSnapshot)
+            val filtJson = Json.encodeToString(filtSnapshot)
+            activeTrackingDao.updateLocations(locJson, filtJson, System.currentTimeMillis())
+            Timber.d("GPS flush: ${locSnapshot.size}개 포인트 DB 저장")
+        } catch (t: Throwable) {
+            Timber.e(t, "GPS 포인트 DB 저장 실패")
+        }
+    }
+
+    /**
+     * 30초 간격 정기 flush 시작
+     */
+    private fun startPeriodicFlush() {
+        periodicFlushJob?.cancel()
+        periodicFlushJob = serviceScope.launch {
+            while (isTracking) {
+                delay(FLUSH_INTERVAL_MS)
+                if (!isTracking) break
+                val (locSnapshot, filtSnapshot) = withContext(Dispatchers.Main) {
+                    locationPoints.toList() to filteredPoints.map { FilteredPoint(it.first, it.second) }
+                }
+                withContext(Dispatchers.IO) { flushSnapshotToDB(locSnapshot, filtSnapshot) }
+            }
+        }
+    }
+
+    private fun stopPeriodicFlush() {
+        periodicFlushJob?.cancel()
+        periodicFlushJob = null
+    }
+
+    /**
+     * OS 강제 킬 후 START_STICKY 재시작 시 DB에서 GPS 포인트를 복구하여 추적 재개
+     */
+    private suspend fun startTrackingFromRecovery() {
+        val saved = withContext(Dispatchers.IO) { activeTrackingDao.get() }
+        if (saved != null) {
+            Timber.d("GPS 복구: DB에서 ${saved.locationsJson.length}자 로드")
+            withContext(Dispatchers.Main) {
+                try {
+                    val locs = Json.decodeFromString<List<LocationPoint>>(saved.locationsJson)
+                    val filtered = Json.decodeFromString<List<FilteredPoint>>(saved.filteredLocationsJson)
+                    locationPoints.addAll(locs)
+                    filteredPoints.addAll(filtered.map { it.lat to it.lng })
+                    lastSentIndex = locationPoints.size
+                    Timber.d("GPS 복구 완료: ${locs.size}개 포인트")
+                } catch (t: Throwable) {
+                    Timber.e(t, "GPS 복구 실패 - 새 세션으로 시작")
+                }
+            }
+        }
+        startTracking(isRecovery = true)
     }
 
     /**

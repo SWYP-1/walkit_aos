@@ -98,7 +98,7 @@ fun WalkingScreenRoute(
     val isSavingSession by viewModel.isSavingSession.collectAsStateWithLifecycle()
     val walkingCharacter by viewModel.walkingCharacter.collectAsStateWithLifecycle()
 
-//    SetStatusBarConfig(config = TransparentStatusBarConfig)
+    SetStatusBarConfig(config = TransparentStatusBarConfig)
 
     WalkingScreen(
         modifier = modifier,

@@ -99,6 +99,7 @@ fun Modifier.customShadow(): Modifier =
             offset = DpOffset(0.dp, 0.dp)
         )
     )
+
 /**
  * Modifier extension for card border stroke
  */
@@ -135,7 +136,7 @@ fun MonthSectionSafe(
     onDeleteNote: (id: String) -> Unit = {},
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(LocalDate.now()) }
 
     val sessionsByDate = remember(sessions) {
         sessions.groupBy { session ->
@@ -145,8 +146,9 @@ fun MonthSectionSafe(
 
     // 선택된 날짜의 세션만 필터링 (최신순)
     val selectedDaySessions = remember(sessions, selectedDate) {
+        val date = selectedDate ?: return@remember emptyList()
         sessions
-            .filter { safeEpochMilliToLocalDate(it.startTime) == selectedDate }
+            .filter { safeEpochMilliToLocalDate(it.startTime) == date }
             .sortedByDescending { it.startTime }
     }
 
@@ -164,13 +166,13 @@ fun MonthSectionSafe(
                     currentMonth = currentMonth.minusMonths(1)
                     onMonthChanged(currentMonth)
                     selectedDate = if (YearMonth.from(LocalDate.now()) == currentMonth)
-                        LocalDate.now() else currentMonth.atDay(1)
+                        LocalDate.now() else null
                 },
                 onNextMonth = {
                     currentMonth = currentMonth.plusMonths(1)
                     onMonthChanged(currentMonth)
                     selectedDate = if (YearMonth.from(LocalDate.now()) == currentMonth)
-                        LocalDate.now() else currentMonth.atDay(1)
+                        LocalDate.now() else null
                 },
             )
 
@@ -278,7 +280,7 @@ fun WeekSectionSafe(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
         Column(
             Modifier
@@ -347,7 +349,11 @@ private fun MonthNavigator(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPreviousMonth) {
-            Icon(painter = painterResource(R.drawable.ic_calendar_left), "이전 달")
+            Icon(
+                painter = painterResource(R.drawable.ic_calendar_left),
+                "이전 달",
+                tint = SemanticColor.iconGrey
+            )
         }
 
         Text(
@@ -359,7 +365,10 @@ private fun MonthNavigator(
         )
 
         IconButton(onClick = onNextMonth) {
-            Icon(painter = painterResource(R.drawable.ic_calendar_right), "다음 달")
+            Icon(
+                painter = painterResource(R.drawable.ic_calendar_right),
+                "다음 달", tint = SemanticColor.iconGrey
+            )
         }
     }
 }
@@ -462,7 +471,7 @@ private fun CalendarGridRecord(
     yearMonth: YearMonth,
     sessionsByDate: Map<LocalDate, List<WalkingSession>>,
     missionsCompleted: List<String>,
-    selectedDate: LocalDate,
+    selectedDate: LocalDate?,
     onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -474,7 +483,7 @@ private fun CalendarGridRecord(
         missionsCompleted.toSet()
     }
 
-    Column {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -509,7 +518,12 @@ private fun CalendarGridRecord(
             ) {
                 repeat(7) { dayOfWeek ->
                     if (week == 0 && dayOfWeek < firstDayOfWeek) {
-                        Box(modifier = Modifier.weight(1f).padding(horizontal = 1.19.dp, vertical = 4.dp).aspectRatio(1f))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 1.19.dp, vertical = 4.dp)
+                                .aspectRatio(1f)
+                        )
                     } else if (dayIndex < daysInMonth) {
                         val date = yearMonth.atDay(dayIndex + 1)
                         val sessions = sessionsByDate[date]
@@ -538,7 +552,7 @@ private fun CalendarGridRecord(
                             hasWalkSession = hasWalkSession,
                             hasMissionCompleted = hasMissionCompleted,
                             dominantEmotion = dominantEmotion,
-                            isSelected = date == selectedDate,
+                            isSelected = selectedDate != null && date == selectedDate,
                             onDateSelected = { onDateSelected(date) },
                             modifier = Modifier
                                 .weight(1f)
@@ -547,13 +561,16 @@ private fun CalendarGridRecord(
                         )
                         dayIndex++
                     } else {
-                        Box(modifier = Modifier.weight(1f).padding(horizontal = 1.19.dp, vertical = 4.dp).aspectRatio(1f))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 1.19.dp, vertical = 4.dp)
+                                .aspectRatio(1f)
+                        )
                     }
                 }
             }
         }
-
-        Spacer(Modifier.height(18.dp))
     }
 }
 
@@ -563,10 +580,10 @@ private fun CalendarGridRecord(
 private fun EmotionType.toCalendarCircleColor(): Color = when (this) {
     EmotionType.IRRITATED -> SemanticColor.stateRedSecondary
     EmotionType.DEPRESSED -> SemanticColor.stateBlueSecondary
-    EmotionType.JOYFUL    -> SemanticColor.stateYellowSecondary
+    EmotionType.JOYFUL -> SemanticColor.stateYellowSecondary
     EmotionType.DELIGHTED -> SemanticColor.stateGreenSecondary
-    EmotionType.TIRED     -> SemanticColor.statePurpleSecondary
-    EmotionType.HAPPY     -> SemanticColor.statePinkSecondary
+    EmotionType.TIRED -> SemanticColor.statePurpleSecondary
+    EmotionType.HAPPY -> SemanticColor.statePinkSecondary
 }
 
 /**
@@ -605,13 +622,14 @@ private fun CalendarDayCellRecord(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(CircleShape)
-                    .background(SemanticColor.stateGreenSecondary)
+                    .background(SemanticColor.backgroundGreenSecondary)
                     .border(2.dp, SemanticColor.stateGreenPrimary, CircleShape)
             )
         }
         // 감정 색상 원형 배경 (오늘이 선택된 경우엔 녹색 배경이 우선)
         if (hasWalkSession && !(isToday && isSelected)) {
-            val circleColor = dominantEmotion?.toCalendarCircleColor() ?: SemanticColor.stateGreenSecondary
+            val circleColor =
+                dominantEmotion?.toCalendarCircleColor() ?: SemanticColor.stateGreenSecondary
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -627,7 +645,7 @@ private fun CalendarDayCellRecord(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(CircleShape)
-                    .border(2.dp, SemanticColor.stateBluePrimary, CircleShape)
+                    .border(2.dp, SemanticColor.stateGreenPrimary, CircleShape)
             )
         }
 
@@ -892,7 +910,7 @@ internal fun WeeklyGoalBarChartCard(
                             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
                         ),
                         color = if (isToday) SemanticColor.textBorderSecondary
-                                else SemanticColor.textBorderSecondary,
+                        else SemanticColor.textBorderSecondary,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -1336,7 +1354,9 @@ fun WalkingStatsCard(
     val totalMinutes = ((totalDurationMillis / (1000 * 60)) % 60).toInt()
 
     Card(
-        modifier = modifier.customShadow().cardBorder(),
+        modifier = modifier
+            .customShadow()
+            .cardBorder(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
@@ -1570,6 +1590,7 @@ private fun WeeklyGoalBarChartCardPreview() {
             postWalkEmotion = "",
             createdDate = date.toString(),
         )
+
         val sessionsByDate = mapOf(
             weekDates[0] to listOf(fakeSession("1", weekDates[0], 8_000)),
             weekDates[1] to listOf(fakeSession("2", weekDates[1], 12_000)),
@@ -1601,6 +1622,7 @@ private fun WeekCalendarGridPreview() {
             EmotionType.IRRITATED,
             EmotionType.DEPRESSED,
         )
+
         fun fakeSession(id: String, date: LocalDate, emotion: EmotionType) = WalkingSession(
             id = id,
             startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
@@ -1610,6 +1632,7 @@ private fun WeekCalendarGridPreview() {
             postWalkEmotion = emotion.name,
             createdDate = date.toString(),
         )
+
         val sessionsByDate = weekDates.mapIndexedNotNull { i, date ->
             val emotion = emotions[i] ?: return@mapIndexedNotNull null
             date to listOf(fakeSession("$i", date, emotion))
@@ -1640,6 +1663,7 @@ private fun CalendarGridRecordPreview() {
             EmotionType.DEPRESSED,
             null,
         )
+
         fun fakeSession(id: String, date: LocalDate, emotion: EmotionType) = WalkingSession(
             id = id,
             startTime = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
@@ -1649,6 +1673,7 @@ private fun CalendarGridRecordPreview() {
             postWalkEmotion = emotion.name,
             createdDate = date.toString(),
         )
+
         val sessionsByDate = (1..yearMonth.lengthOfMonth())
             .mapNotNull { day ->
                 val date = yearMonth.atDay(day)

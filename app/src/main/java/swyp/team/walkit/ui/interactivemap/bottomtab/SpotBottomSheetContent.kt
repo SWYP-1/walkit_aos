@@ -467,7 +467,6 @@ private fun SpotGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 400.dp),
     ) {
         items(spots) { spot ->
             SpotGridItem(spot = spot, onClick = { onItemClick(spot) })
@@ -486,7 +485,7 @@ private fun SpotGridItem(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF8F8F8))
+//            .background(Color(0xFFF8F8F8))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -507,7 +506,8 @@ private fun SpotGridItem(
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(12.dp)),
         )
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+        Spacer(Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(horizontal = 4.dp)) {
             Text(
                 text = spot.placeName,
                 style = MaterialTheme.walkItTypography.bodyS.copy(
@@ -519,11 +519,25 @@ private fun SpotGridItem(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${spot.distance}m",
+                text = formatDistance(spot.distance),
                 style = MaterialTheme.walkItTypography.captionM,
                 color = SemanticColor.textBorderTertiary,
             )
         }
+        Spacer(Modifier.height(3.dp))
+    }
+}
+
+// ─── 거리 포맷 ────────────────────────────────────────────────────────────────
+
+/** 미터 단위 문자열을 사람이 읽기 좋은 거리 표현으로 변환. 100m 미만은 m, 이상은 km */
+private fun formatDistance(distanceStr: String): String {
+    val meters = distanceStr.toDoubleOrNull() ?: return distanceStr
+    return if (meters < 100.0) {
+        "${meters.toInt()}m"
+    } else {
+        val tenths = (meters / 100.0).toInt()
+        if (tenths % 10 == 0) "${tenths / 10}km" else "${tenths / 10}.${tenths % 10}km"
     }
 }
 

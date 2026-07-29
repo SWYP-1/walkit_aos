@@ -100,7 +100,7 @@ fun MainScreen(
         }
     }
 
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(2) }
 
     // navigation 상태에 따라 탭 결정
     val calculatedTabIndex = when (currentRoute) {
@@ -124,36 +124,16 @@ fun MainScreen(
     
     // Route 기반 selected route 결정
     val selectedRoute = when (currentTabIndex) {
-        0 -> "home"
+        0 -> "record"
         1 -> "map"
-        2 -> "record"
+        2 -> "home"
         3 -> "character"
         4 -> "mypage"
-        else -> "home"
+        else -> "record"
     }
 
     // Bottom Navigation 아이템 정의
     val bottomNavItems = listOf(
-        BottomBarItem(
-            route = "home",
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_nav_home),
-                    contentDescription = "홈"
-                )
-            },
-            label = "홈"
-        ),
-        BottomBarItem(
-            route = "map",
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_action_search), // 임시 아이콘
-                    contentDescription = "지도"
-                )
-            },
-            label = "지도"
-        ),
         BottomBarItem(
             route = "record",
             icon = {
@@ -165,10 +145,30 @@ fun MainScreen(
             label = "산책 기록"
         ),
         BottomBarItem(
+            route = "map",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_map),
+                    contentDescription = "지도"
+                )
+            },
+            label = "지도"
+        ),
+        BottomBarItem(
+            route = "home",
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_home),
+                    contentDescription = "홈"
+                )
+            },
+            label = "홈"
+        ),
+        BottomBarItem(
             route = "character",
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_nav_character),
+                    painter = painterResource(R.drawable.ic_nav_shop),
                     contentDescription = "캐릭터샵"
                 )
             },
@@ -182,7 +182,7 @@ fun MainScreen(
                     contentDescription = "마이 페이지"
                 )
             },
-            label = "마이 페이지"
+            label = "마이"
         )
     )
 
@@ -191,7 +191,7 @@ fun MainScreen(
             .fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (currentTabIndex == 0) {
+            if (currentTabIndex == 2) {
                 // 홈 화면에서만 FloatingActionButton 표시
                 WalkingFloatingActionButton(
                     onClick = {
@@ -221,9 +221,9 @@ fun MainScreen(
                 selectedRoute = selectedRoute,
                 onItemClick = { route ->
                     val newIndex = when (route) {
-                        "home" -> 0
+                        "record" -> 0
                         "map" -> 1
-                        "record" -> 2
+                        "home" -> 2
                         "character" -> 3
                         "mypage" -> 4
                         else -> 0
@@ -240,30 +240,7 @@ fun MainScreen(
                     .fillMaxSize()
         ) {
             when (currentTabIndex) {
-                0 -> HomeRoute(
-                    onClickWalk = { navController.navigate(Screen.WalkingGraph.route) },
-                    onClickAlarm = {
-                        navController.navigate(Screen.Alarm.route)
-                    },
-                    onClickMissionMore = {
-                        navController.navigate(Screen.Mission.route)
-                    },
-                    onNavigateToRecord = {
-                        selectedTabIndex = 2
-                    },
-                )
-
-                1 -> {
-                    // 지도 화면
-                    InteractiveMapRoute(
-                        onNavigateToFriends = { navController.navigate(Screen.Friends.route) },
-                        onNavigateToFriendDetail = { userId, walkId ->
-                            navController.navigate(Screen.FriendDetail.createRoute(userId, walkId))
-                        },
-                    )
-                }
-
-                2 -> RecordRoute(
+                0 -> RecordRoute(
                     onStartOnboarding = {
                         navController.navigate(Screen.Onboarding.route)
                     },
@@ -276,6 +253,29 @@ fun MainScreen(
                     onNavigateToDailyRecord = { dateString ->
                         navController.navigate(Screen.DailyRecord.createRoute(dateString))
                     }
+                )
+
+                1 -> {
+                    // 지도 화면
+                    InteractiveMapRoute(
+                        onNavigateToFriends = { navController.navigate(Screen.Friends.route) },
+                        onNavigateToFriendDetail = { userId, walkId ->
+                            navController.navigate(Screen.FriendDetail.createRoute(userId, walkId))
+                        },
+                    )
+                }
+
+                2 -> HomeRoute(
+                    onClickWalk = { navController.navigate(Screen.WalkingGraph.route) },
+                    onClickAlarm = {
+                        navController.navigate(Screen.Alarm.route)
+                    },
+                    onClickMissionMore = {
+                        navController.navigate(Screen.Mission.route)
+                    },
+                    onNavigateToRecord = {
+                        selectedTabIndex = 0
+                    },
                 )
 
                 3 -> {

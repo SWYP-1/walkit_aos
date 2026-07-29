@@ -1,6 +1,9 @@
 package swyp.team.walkit.ui.interactivemap
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,8 +60,8 @@ import kotlin.math.roundToInt
 enum class SheetAnchor { MIN, MID, MAX }
 
 private val SHEET_MIN_HEIGHT = 82.dp
-private val SHEET_MID_HEIGHT = 350.dp
-private const val SHEET_MAX_FRACTION = 0.9f
+private val SHEET_MID_HEIGHT = 402.dp
+private const val SHEET_MAX_FRACTION = 1.0f
 
 @Composable
 fun InteractiveMapRoute(
@@ -90,6 +94,9 @@ fun InteractiveMapRoute(
                     // 한 프레임 대기 → 콘텐츠가 리컴포즈된 뒤 expand 시작
                     withFrameNanos { }
                     sheetState.animateTo(SheetAnchor.MAX)
+                }
+                SpotSheetEvent.ExpandToMid -> scope.launch {
+                    sheetState.animateTo(SheetAnchor.MID)
                 }
                 SpotSheetEvent.PartialExpand -> scope.launch {
                     sheetState.animateTo(SheetAnchor.MIN)
@@ -127,7 +134,7 @@ fun InteractiveMapRoute(
             with(density) {
                 sheetState.updateAnchors(
                     DraggableAnchors {
-                        SheetAnchor.MAX at 0f
+                        SheetAnchor.MAX at 16.dp.toPx()
                         SheetAnchor.MID at (sheetMaxHeight - SHEET_MID_HEIGHT).toPx()
                         SheetAnchor.MIN at (sheetMaxHeight - SHEET_MIN_HEIGHT).toPx()
                     }
@@ -220,6 +227,14 @@ fun InteractiveMapScreen(
         }
     }
 
+    // 시트 가시 높이가 컨테이너의 90% 미만일 때만 지도 버튼 표시
+    val showMapButtons by remember {
+        derivedStateOf {
+            val threshold = with(density) { (sheetMaxHeight * 0.1f).toPx() }
+            offsetPx > threshold
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // 지도 (전체 화면)
         KakaoMapView(
@@ -247,21 +262,33 @@ fun InteractiveMapScreen(
         )
 
         // 위치 추적 버튼 — 시트 상단에 고정, 시트가 올라올수록 같이 올라감
-        MapTrackingButton(
-            trackingMode = uiState.trackingMode,
-            onClick = onTrackingClick,
+        AnimatedVisibility(
+            visible = showMapButtons,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 16.dp, bottom = sheetMinHeight + 16.dp + extraRiseDp),
-        )
+        ) {
+            MapTrackingButton(
+                trackingMode = uiState.trackingMode,
+                onClick = onTrackingClick,
+            )
+        }
 
         // 현 지도에서 검색 버튼 — 시트 상단에 고정, 시트가 올라올수록 같이 올라감
-        MapSearchBar(
-            onClick = onRefreshMapSearch,
+        AnimatedVisibility(
+            visible = showMapButtons,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = sheetMinHeight + 16.dp + extraRiseDp),
-        )
+        ) {
+            MapSearchBar(
+                onClick = onRefreshMapSearch,
+            )
+        }
 
         // 에러 메시지
         if (uiState.errorMessage != null) {

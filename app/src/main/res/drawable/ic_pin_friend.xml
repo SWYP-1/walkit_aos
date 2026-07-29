@@ -1,14 +1,22 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="36dp"
-    android:height="44dp"
-    android:viewportWidth="36"
-    android:viewportHeight="44">
-  <!-- 핀 몸통 (파란색) -->
-  <path
-      android:pathData="M18,2C10.268,2 4,8.268 4,16C4,26 18,42 18,42C18,42 32,26 32,16C32,8.268 25.732,2 18,2Z"
-      android:fillColor="#2196F3"/>
-  <!-- 핀 내부 흰색 원 -->
-  <path
-      android:pathData="M18,10C14.686,10 12,12.686 12,16C12,19.314 14.686,22 18,22C21.314,22 24,19.314 24,16C24,12.686 21.314,10 18,10Z"
-      android:fillColor="#FFFFFF"/>
+    android:width="40dp"
+    android:height="48dp"
+    android:viewportWidth="40"
+    android:viewportHeight="48">
+
+    <!-- 원형 배경 (지름 40dp) -->
+    <path
+        android:pathData="M20,0C8.954,0 0,8.954 0,20C0,31.046 8.954,40 20,40C31.046,40 40,31.046 40,20C40,8.954 31.046,0 20,0Z"
+        android:fillColor="#2196F3"/>
+
+    <!-- 하단 삼각형 꼬리 (ic_pin_spot과 동일) -->
+    <path
+        android:pathData="M13.65,37 L26.35,37 L20,48 Z"
+        android:fillColor="#2196F3"/>
+
+    <!-- 내부 흰색 원 (프로필 이미지 영역, 반지름 13dp) -->
+    <path
+        android:pathData="M20,7C12.82,7 7,12.82 7,20C7,27.18 12.82,33 20,33C27.18,33 33,27.18 33,20C33,12.82 27.18,7 20,7Z"
+        android:fillColor="#FFFFFF"/>
+
 </vector>

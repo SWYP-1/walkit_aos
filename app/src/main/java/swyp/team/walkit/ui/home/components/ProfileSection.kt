@@ -12,7 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -20,7 +25,9 @@ import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -39,6 +46,7 @@ import swyp.team.walkit.ui.theme.WalkItTheme
 import swyp.team.walkit.ui.theme.walkItTypography
 import swyp.team.walkit.utils.shimmer
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import swyp.team.walkit.data.remote.home.dto.WeatherDto
 import swyp.team.walkit.domain.model.Grade
 import swyp.team.walkit.ui.components.TestCharacterWithAnchor
@@ -158,6 +166,73 @@ private fun ProfileContent(
                 val composition by rememberLottieComposition(
                     LottieCompositionSpec.JsonString(uiState.processedLottieJson)
                 )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier
+                            .drawBehind {
+                                drawIntoCanvas { canvas ->
+                                    val paint = Paint()
+                                    paint.asFrameworkPaint().apply {
+                                        isAntiAlias = true
+                                        color = android.graphics.Color.argb(38, 0, 0, 0)
+                                        maskFilter = android.graphics.BlurMaskFilter(
+                                            20f, android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    }
+                                    canvas.drawRoundRect(
+                                        left = 0f,
+                                        top = 0f,
+                                        right = size.width,
+                                        bottom = size.height,
+                                        radiusX = 8.dp.toPx(),
+                                        radiusY = 8.dp.toPx(),
+                                        paint = paint,
+                                    )
+                                }
+                            }
+                            .background(
+                                SemanticColor.backgroundGreenSecondary,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🏃",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    lineHeight = 20.8.sp,
+                                    fontWeight = FontWeight(400),
+                                    color = Color(0xFF000000),
+                                )
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = "말풍선 텍스트",
+                                style = MaterialTheme.walkItTypography.captionM.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = SemanticColor.buttonPrimaryFocus,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
+                    Canvas(modifier = Modifier.size(width = 14.dp, height = 12.dp)) {
+                        val path = Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(size.width, 0f)
+                            lineTo(size.width / 2f, size.height)
+                            close()
+                        }
+                        drawPath(path = path, color = SemanticColor.backgroundGreenSecondary)
+                    }
+                }
+
+
+                Spacer(Modifier.height(2.dp))
 
                 LottieAnimation(
                     composition = composition,
@@ -381,7 +456,7 @@ private fun ProfileSectionSuccessPreview() {
     WalkItTheme {
         ProfileSection(
             uiState = ProfileUiState.Success(
-                nickname = "테스트사용자",                 character = Character(
+                nickname = "테스트사용자", character = Character(
                     nickName = "테스트사용자",
                     level = 5,
                     grade = Grade.TREE,

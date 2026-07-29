@@ -120,7 +120,7 @@ fun HowToUseOnboardingScreen(
                 .background(Color.Transparent)
         ) {
 
-            Spacer(Modifier.height(66.dp))
+            Spacer(Modifier.height(10.dp))
 
             // ================= Pager =================
             HorizontalPager(
@@ -156,7 +156,7 @@ fun HowToUseOnboardingScreen(
                                 .fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Spacer(Modifier.height(29.dp))
+                            Spacer(Modifier.weight(1f))
 
                             Text(
                                 text = titleList[page],
@@ -175,6 +175,8 @@ fun HowToUseOnboardingScreen(
                                 color = SemanticColor.textBorderSecondary,
                                 textAlign = TextAlign.Center
                             )
+
+                            Spacer(Modifier.weight(1f))
                         }
                     }
                 }
@@ -192,6 +194,7 @@ fun HowToUseOnboardingScreen(
                 Spacer(Modifier.height(40.dp))
 
                 CtaButton(
+                    modifier = Modifier.fillMaxWidth(),
                     text = if (pagerState.currentPage < titleList.size - 1) "다음으로" else "시작하기",
                     onClick = {
                         if (pagerState.currentPage < titleList.size - 1) {

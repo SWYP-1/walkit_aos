@@ -239,7 +239,99 @@ class TokenProviderImpl @Inject constructor(
 
 ---
 
-## 3. 로직의 견고성
+## 3. 두 Mutex의 상호작용 상세 분석
+
+### 3.1 락 구조 개요
+
+두 Mutex는 **서로 다른 레이어**를 보호하며, 독립적으로 설계되어 있습니다.
+
+```
+AuthInterceptor                 TokenProvider
+─────────────────               ──────────────────────────────
+interceptorMutex                singleRefreshMutex
+(OkHttp 스레드 직렬화)           (앱 전역 API 호출 보호)
+```
+
+| | `interceptorMutex` | `singleRefreshMutex` |
+|---|---|---|
+| 위치 | `AuthInterceptor` | `TokenProvider` |
+| 역할 | OkHttp 스레드 직렬화 | 실제 refresh API 중복 호출 방지 |
+| 보호 대상 | 401 처리 로직 전체 | `authApi.refreshToken()` 단일 호출 보장 |
+| 필요한 이유 | B, C가 동시에 TokenProvider에 접근하지 못하도록 | TokenProvider가 Interceptor 외 경로에서 직접 호출될 수 있기 때문 |
+
+---
+
+### 3.2 A, B, C 동시 401 수신 시 전체 흐름
+
+```
+[OkHttp 스레드 3개 동시에 401 수신]
+
+A, B, C ──→ interceptorMutex 진입 시도
+              │
+              ├── A: 진입 성공
+              ├── B: 대기
+              └── C: 대기
+```
+
+**① A가 `interceptorMutex` 안에서 `refreshTokensOn401` 호출**
+
+```kotlin
+// AuthInterceptor
+interceptorMutex.withLock {
+    val refreshSuccess = tokenProvider.refreshTokensOn401(authApi)
+}
+```
+
+**② TokenProvider 안에서 A 처리**
+
+```kotlin
+singleRefreshMutex.withLock {
+    // currentRefreshJob = null, 최근 성공 없음 → 실제 API 호출 진행
+    val refreshJob = CompletableDeferred<Boolean>()
+    currentRefreshJob = refreshJob
+
+    val response = authApi.refreshToken(...)   // 실제 API 호출
+
+    lastRefreshSuccessTime = now               // ← 핵심: 성공 시각 기록
+    refreshJob.complete(true)
+    currentRefreshJob = null
+    return true
+}
+```
+
+**③ A 완료 → `interceptorMutex` 해제 → B 진입**
+
+```kotlin
+singleRefreshMutex.withLock {
+    // currentRefreshJob = null (A가 이미 초기화)
+    // lastRefreshSuccessTime 5초 보호 체크:
+    if (currentTime - lastRefreshSuccessTime < 5000) {
+        return true  // API 호출 없이 즉시 성공 반환
+    }
+}
+```
+
+B는 API 호출 없이 통과 → C도 동일하게 처리됩니다.
+
+---
+
+### 3.3 `currentRefreshJob`이 필요한 시나리오
+
+`interceptorMutex`가 있으면 B, C는 순차적으로 진입하므로 `singleRefreshMutex` 내에서 `currentRefreshJob`이 non-null일 가능성은 낮습니다. 그러나 `TokenProvider.refreshTokensOn401`이 Interceptor를 우회하여 **직접 호출되는 경로**가 생길 경우 실질적인 방어선이 됩니다.
+
+```
+ViewModel ──────────────────────────────────────┐
+                                                ↓
+AuthInterceptor → interceptorMutex → TokenProvider.refreshTokensOn401
+                                                ↑
+다른 컴포넌트(직접 호출) ───────────────────────┘
+```
+
+이 경우 두 호출이 `singleRefreshMutex`에 동시에 도달할 수 있고, 먼저 진입한 호출이 `currentRefreshJob`을 세팅하면 나중에 진입한 호출은 `job.await()`로 결과를 대기합니다. `TokenProvider` 자체가 Interceptor 구조 변경에 독립적으로 중복 갱신을 막을 수 있는 이유입니다.
+
+---
+
+## 4. 로직의 견고성
 
 이 프로젝트의 인증 토큰 refresh 로직은 다음과 같은 측면에서 매우 견고하게 구현되었습니다.
 

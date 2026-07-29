@@ -25,6 +25,7 @@ val Pink2 = Color(0xFFFDD0D5)
 val Pink4 = Color(0xFFF76476)
 
 val Green1 = Color(0xFFF3FFF8)
+val Green2 = Color(0xFFD8FFD6)
 val Green3 = Color(0xFF86E27E)
 val Green4 = Color(0xFF52CE4B)
 val Green5 = Color(0xFF2ABB42)

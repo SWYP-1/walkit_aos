@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import swyp.team.walkit.data.local.dao.ActiveTrackingDao
 import swyp.team.walkit.data.local.dao.AppliedItemDao
 import swyp.team.walkit.data.local.dao.CharacterDao
 import swyp.team.walkit.data.local.dao.GoalDao
@@ -65,12 +66,16 @@ object DatabaseModule {
                 AppDatabase::class.java,
                 AppDatabase.DATABASE_NAME,
             )
-            .addMigrations(MIGRATION_11_12, AppDatabase.MIGRATION_12_13, AppDatabase.MIGRATION_13_14)
+            .addMigrations(MIGRATION_11_12, AppDatabase.MIGRATION_12_13, AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15)
             .build()
 
     @Provides
     @Singleton
     fun provideWalkingSessionDao(database: AppDatabase): WalkingSessionDao = database.walkingSessionDao()
+
+    @Provides
+    @Singleton
+    fun provideActiveTrackingDao(database: AppDatabase): ActiveTrackingDao = database.activeTrackingDao()
 
     @Provides
     @Singleton

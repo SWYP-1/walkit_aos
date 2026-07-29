@@ -6,10 +6,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -85,17 +87,14 @@ class MainActivity : ComponentActivity() {
         // Edge-to-Edge 비활성화하여 시스템 바 색상 제어 가능하도록 함
         // enableEdgeToEdge() // 제거하여 시스템 바 색상 제어 가능
 
+        // 전역 edge-to-edge: 콘텐츠가 상태바/네비게이션바 뒤까지 그려짐
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        // 시스템 바 색상 설정
-        window.statusBarColor = getColor(R.color.white)
-        window.navigationBarColor = getColor(R.color.white)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
-            // nav bar 대비 강제를 유지하여 바텀시트가 nav bar 영역에 비쳐 보이는 현상 방지
         }
 
+        // 상태바/네비게이션바 아이콘 색상 설정 (흰 배경 기준 다크 아이콘)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
@@ -157,10 +156,16 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                NavGraph(
-                    navController = navController,
-                    userViewModel = userViewModel
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White)
+                ) {
+                    NavGraph(
+                        navController = navController,
+                        userViewModel = userViewModel
+                    )
+                }
             }
         }
     }

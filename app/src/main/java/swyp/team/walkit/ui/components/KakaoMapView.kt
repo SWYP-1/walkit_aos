@@ -1036,14 +1036,16 @@ private fun vectorDrawableToBitmap(context: Context, @DrawableRes resId: Int): B
  * 파란 원 + 흰색 테두리 + 중앙 숫자 레이블로 구성된 48dp 크기 Bitmap을 반환한다.
  */
 private fun createClusterBitmap(count: Int, density: Float): Bitmap {
-    val sizePx = (48 * density).toInt()
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    // ic_pin_spot 과 동일한 40×48dp 크기, 원 지름은 너비(40dp) 기준
+    val widthPx = (40 * density).toInt()
+    val heightPx = (48 * density).toInt()
+    val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
-    val cx = sizePx / 2f
-    val cy = sizePx / 2f
-    val radius = sizePx / 2f
+    val cx = widthPx / 2f
+    val cy = heightPx / 2f
+    val radius = widthPx / 2f
 
     // 장소 핀 색상과 동일한 배경 원
     paint.color = android.graphics.Color.parseColor("#4CAF50")
